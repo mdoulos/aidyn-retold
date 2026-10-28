@@ -12,6 +12,9 @@
 #
 # There's no param block on purpose: PowerShell would bind Godot's own options
 # to it (it read --path as a -Path switch), so every argument goes to Godot as is.
+# From PowerShell, put ++ before the project's own options, not --: PowerShell
+# drops a bare -- as its end of parameters, and the project then gets no options.
+# Godot reads ++ as it reads --.
 $printPath = $args.Count -eq 1 -and $args[0] -eq '-ExePath'
 $godotArgs = $args
 $ErrorActionPreference = 'Stop'

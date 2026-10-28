@@ -14,7 +14,9 @@
 # to it (it read --path as a -Path switch), so every argument goes to Godot as is.
 # From PowerShell, put ++ before the project's own options, not --: PowerShell
 # drops a bare -- as its end of parameters, and the project then gets no options.
-# Godot reads ++ as it reads --.
+# Godot reads ++ as it reads --. Quote lists too ('40,55'): PowerShell reads
+# 40,55 as an array and passes it as two arguments, which the options' pairs
+# fall out of step over (--at 40 crashes the start).
 $printPath = $args.Count -eq 1 -and $args[0] -eq '-ExePath'
 $godotArgs = $args
 $ErrorActionPreference = 'Stop'

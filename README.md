@@ -110,10 +110,14 @@ Aidyn Renewed until October 28, 2026
 - [AidynEditor](https://github.com/TiberGuy/AidynEditor) (MIT licensed): used
   to cross-check the database's fields.
 - [Aidyn ReChronicled](https://github.com/spitzdano/AidynReChronicled) by
-  Spitzdano: its findings and designs (fixes to the original's bugs, its
-  rendering and sound work, its play aids) guide work here, with his
-  permission, rebuilt in this project's own code and checked against the ROM
-  ([ADR 0032](docs/adr/0032-rechronicled-is-read-for-its-findings.md)).
+  Spitzdano: a sister project, a static recompilation of the original with
+  enhancements of its own. The two projects collaborate and share their assets
+  freely, both ways. Its findings and designs (fixes to the original's bugs,
+  its rendering and sound work, its play aids) guide work here, rebuilt in
+  this project's own code and checked against the ROM, and its painted art
+  and restored sound are this project's to carry in mods and releases
+  ([ADR 0032](docs/adr/0032-rechronicled-is-read-for-its-findings.md),
+  [ADR 0034](docs/adr/0034-enhanced-and-rechronicled-collaborate.md)).
 - Early in HBHT's life, a community decompilation of the game served as a map
   to the ROM's machine code. No code was copied from it, HBHT stopped reading
   it on October 4, 2026

@@ -138,6 +138,8 @@ public partial class MapSetView : VBoxContainer
     private readonly List<Marked> _objects = [];
     private readonly List<Marked> _shown = [];
     private readonly Dictionary<RecordId, ChunkEntry> _chunkOfMap = [];
+    // Each placed model's bounds in the map set, worked out once: asking Godot for every mesh's on every mouse move lagged.
+    private readonly Dictionary<PlacedObject, Aabb?> _bounds = [];
 
     /// <summary>The objects as edited here and not yet saved. They outlive a reload of the plugins.</summary>
     public WorldEdits Edits { get; } = new();
@@ -309,6 +311,7 @@ public partial class MapSetView : VBoxContainer
         _collisionLayer.Clear();
         _objects.Clear();
         _chunkOfMap.Clear();
+        _bounds.Clear();
         SetStatus("", "");
         _set = null;
         _catalog = null;
@@ -671,24 +674,35 @@ public partial class MapSetView : VBoxContainer
         {
             foreach (var placed in chunk.Objects)
             {
-                if (!placed.Node.Visible || !placed.Node.IsInsideTree())
+                if (!placed.Node.Visible || BoundsOf(placed) is not { } box || RayBox(from, direction, box) is not { } distance || distance >= bestDistance)
                     continue;
-                foreach (var level in placed.Levels)
-                {
-                    if (level is not { Alpha: > 0 })
-                        continue;
-                    foreach (var mesh in level.Meshes)
-                    {
-                        var box = mesh.GlobalTransform * mesh.GetAabb();
-                        if (RayBox(from, direction, box) is not { } distance)
-                            continue;
-                        if (distance < bestDistance && _objects.FirstOrDefault(m => m.Chunk.Row == key.Row && m.Chunk.Column == key.Column && m.Object.Index == placed.Object.Index) is { } marked)
-                            (best, bestDistance) = (marked, distance);
-                    }
-                }
+                if (_objects.FirstOrDefault(m => m.Chunk.Row == key.Row && m.Chunk.Column == key.Column && m.Object.Index == placed.Object.Index) is { } marked)
+                    (best, bestDistance) = (marked, distance);
             }
         }
         return best;
+    }
+
+    /// <summary>A placed model's bounds in the map set, over its shown levels' meshes, worked out the first time and after it moves.</summary>
+    private Aabb? BoundsOf(PlacedObject placed)
+    {
+        if (_bounds.TryGetValue(placed, out var known))
+            return known;
+        Aabb? bounds = null;
+        if (placed.Node.IsInsideTree())
+        {
+            foreach (var level in placed.Levels)
+            {
+                if (level is not { Alpha: > 0 })
+                    continue;
+                foreach (var mesh in level.Meshes)
+                {
+                    var box = mesh.GlobalTransform * mesh.GetAabb();
+                    bounds = bounds is { } b ? b.Merge(box) : box;
+                }
+            }
+        }
+        return _bounds[placed] = bounds;
     }
 
     private void OnViewInput(InputEvent e)
@@ -911,20 +925,7 @@ public partial class MapSetView : VBoxContainer
     private MeshInstance3D? SelectionBox(Marked marked)
     {
         if (marked.Object is not SceneObject || !_chunks.TryGetValue((marked.Chunk.Row, marked.Chunk.Column), out var scenery)
-            || scenery.Find(marked.Object.Index) is not { } placed)
-            return null;
-        Aabb? bounds = null;
-        foreach (var level in placed.Levels)
-        {
-            if (level is not { Alpha: > 0 })
-                continue;
-            foreach (var mesh in level.Meshes)
-            {
-                var box = mesh.GlobalTransform * mesh.GetAabb();
-                bounds = bounds is { } b ? b.Merge(box) : box;
-            }
-        }
-        if (bounds is not { } whole)
+            || scenery.Find(marked.Object.Index) is not { } placed || BoundsOf(placed) is not { } whole)
             return null;
         whole = whole.Grow(0.1f);
         var lines = new ImmediateMesh();
@@ -1003,9 +1004,14 @@ public partial class MapSetView : VBoxContainer
         if (o is SceneObject scene && _chunks.TryGetValue((marked.Chunk.Row, marked.Chunk.Column), out var scenery))
         {
             if (scenery.Find(o.Index) is { } placed)
+            {
                 placed.Node.Transform = ChunkScenery.TransformOf(scene);
+                _bounds.Remove(placed);
+            }
             else
+            {
                 PlaceNew(scenery, scene);
+            }
         }
         _selected = updated;
         UpdateSaveButton();
@@ -1065,7 +1071,11 @@ public partial class MapSetView : VBoxContainer
         Edits.Remove(map, marked.Object.Index);
         _objects.Remove(marked);
         if (marked.Object is SceneObject && _chunks.TryGetValue((marked.Chunk.Row, marked.Chunk.Column), out var scenery))
+        {
+            if (scenery.Find(marked.Object.Index) is { } placed)
+                _bounds.Remove(placed);
             scenery.Remove(marked.Object.Index);
+        }
         UpdateSaveButton();
         RebuildMarkers();
         Select(null);

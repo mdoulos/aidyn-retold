@@ -840,6 +840,8 @@ public partial class MapSetView : VBoxContainer
         var kind = MapObjects.KindOf(o);
         _selection.AddChild(Points([marked.Position], Colors.White, 18, 0.98f));
         _selection.AddChild(Points([marked.Position], kind.Colour, 12, 0.97f));
+        if (SelectionBox(marked) is { } box)
+            _selection.AddChild(box);
 
         // Its radius, as three circles, and a line to each object it names.
         var json = Edits.IsEdited(marked.Chunk.Map, o.Index) ? MapPatch.ToJson(o) : MapObjects.Json(catalog.Plugins, marked.Id);
@@ -847,17 +849,21 @@ public partial class MapSetView : VBoxContainer
         lines.SurfaceBegin(Mesh.PrimitiveType.Lines, LineMaterial);
         if (o.Radius > 0)
         {
-            lines.SurfaceSetColor(new Color(kind.Colour, 0.6f));
+            // A scene object's radius is how far away it's drawn, so a flat ring; the rest reach, so a sphere.
+            lines.SurfaceSetColor(new Color(kind.Colour, o is SceneObject ? 0.35f : 0.6f));
             const int Segments = 48;
-            for (var i = 0; i < Segments; i++)
-            {
-                var (a, b) = (Mathf.Tau * i / Segments, Mathf.Tau * (i + 1) / Segments);
-                foreach (var axis in new Func<float, Vector3>[]
-                {
+            Func<float, Vector3>[] axes = o is SceneObject
+                ? [t => new Vector3(Mathf.Cos(t), 0, Mathf.Sin(t))]
+                :
+                [
                     t => new Vector3(Mathf.Cos(t), 0, Mathf.Sin(t)),
                     t => new Vector3(Mathf.Cos(t), Mathf.Sin(t), 0),
                     t => new Vector3(0, Mathf.Cos(t), Mathf.Sin(t)),
-                })
+                ];
+            for (var i = 0; i < Segments; i++)
+            {
+                var (a, b) = (Mathf.Tau * i / Segments, Mathf.Tau * (i + 1) / Segments);
+                foreach (var axis in axes)
                 {
                     lines.SurfaceAddVertex(marked.Position + axis(a) * o.Radius);
                     lines.SurfaceAddVertex(marked.Position + axis(b) * o.Radius);
@@ -896,6 +902,42 @@ public partial class MapSetView : VBoxContainer
             _orbit.Pitch = -0.6f;
             _orbit.Frame(_camera, marked.Position, Mathf.Clamp(o.Radius * 1.5f, 8, 60));
         }
+    }
+
+    /// <summary>
+    /// A bright box round the picked scene object's placed model, by its meshes' bounds, drawn over everything so the
+    /// pick shows through walls. Null for an object with no model placed.
+    /// </summary>
+    private MeshInstance3D? SelectionBox(Marked marked)
+    {
+        if (marked.Object is not SceneObject || !_chunks.TryGetValue((marked.Chunk.Row, marked.Chunk.Column), out var scenery)
+            || scenery.Find(marked.Object.Index) is not { } placed)
+            return null;
+        Aabb? bounds = null;
+        foreach (var level in placed.Levels)
+        {
+            if (level is not { Alpha: > 0 })
+                continue;
+            foreach (var mesh in level.Meshes)
+            {
+                var box = mesh.GlobalTransform * mesh.GetAabb();
+                bounds = bounds is { } b ? b.Merge(box) : box;
+            }
+        }
+        if (bounds is not { } whole)
+            return null;
+        whole = whole.Grow(0.1f);
+        var lines = new ImmediateMesh();
+        lines.SurfaceBegin(Mesh.PrimitiveType.Lines, LineMaterial);
+        lines.SurfaceSetColor(new Color(1, 0.9f, 0.3f, 1));
+        var corners = Enumerable.Range(0, 8).Select(whole.GetEndpoint).ToArray();
+        foreach (var (a, b) in new[] { (0, 1), (0, 2), (0, 4), (1, 3), (1, 5), (2, 3), (2, 6), (3, 7), (4, 5), (4, 6), (5, 7), (6, 7) })
+        {
+            lines.SurfaceAddVertex(corners[a]);
+            lines.SurfaceAddVertex(corners[b]);
+        }
+        lines.SurfaceEnd();
+        return new MeshInstance3D { Mesh = lines, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
     }
 
     // ---- Editing --------------------------------------------------------------------------------
@@ -979,6 +1021,8 @@ public partial class MapSetView : VBoxContainer
                 child.QueueFree();
             _selection.AddChild(Points([updated.Position], Colors.White, 18, 0.98f));
             _selection.AddChild(Points([updated.Position], MapObjects.KindOf(o).Colour, 12, 0.97f));
+            if (SelectionBox(updated) is { } box)
+                _selection.AddChild(box);
             _filling = true;
             for (var i = 0; i < 3; i++)
                 _position[i].Value = o.Position[i];

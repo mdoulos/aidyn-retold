@@ -76,6 +76,8 @@ public partial class Game
             BattleFromCommandLine(battle);
         if (options.Radar == "box")
             _battleScreen!.Radar = Core.Ui.RadarAnchor.LogBox;
+        if (options.Poses is { } poses)
+            AddChild(PoseCircleView.Build(_plugins!, _models!, _world, poses, _session!.Trek.Player.Feet.ToGodot()));
         if (options.Screenshot is { } png)
             _ = Screenshot(png, hold, options.Frames, options.UiScreenshot);
     }

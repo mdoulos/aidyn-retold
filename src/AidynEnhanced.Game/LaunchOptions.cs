@@ -67,7 +67,7 @@ public sealed class LaunchOptions(Dictionary<string, string> values)
         "on" => true,
         "off" => false,
         _ => !values.Keys.Any(k => k is "save" or "set" or "chunk" or "at" or "fly" or "flags" or "hold" or "press" or "menu"
-            or "cutscene" or "cinematic" or "battle" or "screenshot" or "ui-screenshot" or "frames"),
+            or "cutscene" or "cinematic" or "battle" or "poses" or "screenshot" or "ui-screenshot" or "frames"),
     };
 
     /// <summary>
@@ -199,6 +199,9 @@ public sealed class LaunchOptions(Dictionary<string, string> values)
 
     /// <summary>A battle to start, as a monster party's ID, then optionally <c>,&lt;arena&gt;</c> and <c>,ambush</c>.</summary>
     public string? Battle => Text("battle");
+
+    /// <summary>A ring of actors around the player, playing their states in turn: <c>members</c> or entity IDs (<see cref="PoseCircleView"/>).</summary>
+    public string? Poses => Text("poses");
 
     /// <summary>Where the battle screen's radar sits: <c>--radar box</c> for the log box, as the original has it, rather than the screen's corner.</summary>
     public string? Radar => Text("radar");

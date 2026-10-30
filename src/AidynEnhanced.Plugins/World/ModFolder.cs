@@ -52,6 +52,18 @@ public sealed class ModFolder
         return new ModFolder(directory, manifest);
     }
 
+    /// <summary>
+    /// <paramref name="plugins"/> without this mod, loaded again in the same order, or <paramref name="plugins"/> itself when
+    /// the mod isn't among them: what a patch of the mod's is made against, since it replaces the mod's own.
+    /// </summary>
+    public PluginSet Without(PluginSet plugins)
+    {
+        var mine = Path.GetFullPath(Directory).TrimEnd('/', '\\');
+        var others = plugins.Plugins.Where(p => !string.Equals(Path.GetFullPath(p.Directory).TrimEnd('/', '\\'), mine, StringComparison.OrdinalIgnoreCase))
+            .Select(p => p.Directory).ToList();
+        return others.Count == plugins.Plugins.Count ? plugins : PluginSet.Load(others);
+    }
+
     /// <summary>A record ID in the mod's namespace.</summary>
     public RecordId Own(string type, string key) => RecordId.Parse($"{Id}:{type}/{key}");
 

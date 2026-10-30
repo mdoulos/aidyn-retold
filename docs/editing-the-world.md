@@ -17,6 +17,18 @@ The first writes the chunk as a single `.glb`, which Blender opens. You edit it 
 
 In a release, the commands are `aidyn-enhanced chunk export` and `aidyn-enhanced chunk import`, with the tool beside the game.
 
+## In the editor
+
+The editor's map view edits the objects on its own, without Blender. Open a map set or a chunk, and click an object's marker, or a placed model such as a tree or a house, to pick it. Then:
+
+- **Drag it** along the ground. It keeps its height over the ground as it goes, so a lantern stays a lantern's height up. Hold Shift and drag up or down to raise or lower it.
+- **Set its numbers** in the panel: its position, and for a placed model its rotation in degrees and its scale.
+- **Drop to ground** puts it on the collision under it. **Duplicate** (Ctrl+D) makes a copy beside it with the next free number, and **Delete** takes it out.
+- **Edit fields…** shows its fields as JSON to change and apply: a chest's loot, a light's colours, a door's destination. A value the game can't read is refused with what was wrong.
+- **Save … to mod…** at the top writes everything changed into a mod, asking the mod's ID, and loads the plugins again so the view shows the mod. **Discard edits** throws them away. Edits are kept until one or the other, even through a reload.
+
+The editor writes the same patches the chunk import does, so a chunk edited here and one edited in Blender make the same kind of mod, and both can be used on one mod. The ground and the collision are Blender's: the editor moves what stands on them.
+
 ## Finding a chunk
 
 The export names a map set and a chunk. The sets are the seventeen worlds the game loads one at a time: `Overworld`, `GwerniaInteriors`, `GwerniaCastle`, `PortSaiid`, `Terminor`, `Erromon`, `Ugarit`, `Ugarit2`, `JundarInteriors`, `MiscInteriors`, `Lighthouse`, `RoogCave`, `GoblinCamp`, `Barrows`, `EhudUnder`, `ChaosIsle` and `Battlefields`. A chunk is named by row letter and column, so `M07` is row M, column 7; Gwernia is the Overworld's M07.

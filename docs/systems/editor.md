@@ -51,7 +51,7 @@ It loads the plugins folder as the runtime does (`PluginSet.LoadInstalled`: `aid
 
 ## Editing the world
 
-The editor shows the world and doesn't yet edit it. A chunk is edited in Blender through the CLI's `chunk export` and `chunk import` ([editing the world](../editing-the-world.md), ADR 0035), whose `ModFolder` writer is what in-editor placement, Phase 5's, will write through too.
+The map view edits map objects ([editing the world](../editing-the-world.md#in-the-editor), ADR 0035): a picked object (its marker, or a placed model by its meshes' bounds, `PlacedAt`) is dragged along the collision keeping its height over it, or up and down with Shift, set by its position, rotation and scale spin boxes, dropped to the ground, duplicated (Ctrl+D), deleted (Delete) or given new fields as JSON, read strictly as the game reads them. The edits are a `WorldEdits` (Plugins' `World`), a working copy of each touched map's objects that the view shows in place of the record's and reapplies to the chunks' scenery (`ApplyEdits`, moving, placing or removing scene objects' nodes through `ChunkScenery.Place` and `Remove`); they outlive a reload of the plugins until saved or discarded. **Save … to mod…** asks a mod ID, writes each map's patch with `MapPatch` against the plugins below the mod and `ModFolder`, and has the browser load the plugins again, so the view shows the mod's records. Terrain and collision are edited in Blender through the CLI's `chunk export` and `chunk import`, which write through the same `ModFolder`.
 
 ## The command line
 

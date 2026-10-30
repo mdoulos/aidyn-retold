@@ -305,6 +305,7 @@ public partial class RecordBrowser : Control
         };
         _fields.Opened += FollowLink;
         _map.Opened += FollowLink;
+        _map.Saved += () => _ = Report(LoadAsync(_pluginsDirectory));
 
         _back.Pressed += () => Step(-1);
         _forward.Pressed += () => Step(1);

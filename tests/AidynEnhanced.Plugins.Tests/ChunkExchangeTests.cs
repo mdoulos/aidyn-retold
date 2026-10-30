@@ -173,6 +173,32 @@ public sealed class ChunkExchangeTests : IDisposable
     }
 
     [Fact]
+    public void A_second_import_into_an_installed_mod_keeps_the_first_s_edits()
+    {
+        // The chest moves, into a mod that's then installed.
+        var glb = ChunkExport.Export(_base, _set, _chunk);
+        var json = TestGlb.Json(glb);
+        JsonObject Node(JsonObject root, string name) => root["nodes"]!.AsArray().OfType<JsonObject>().Single(n => n["name"]?.GetValue<string>() == name);
+        Node(json, "container 0")["translation"] = new JsonArray(7f, 0f, 2f);
+        var mod = ModFolder.OpenOrCreate(_temp.Root, "twice");
+        ChunkImport.Import(_base, TestGlb.WithJson(glb, json), mod);
+        var installed = PluginSet.Load([Path.Combine(_temp.Root, "aidyn"), mod.Directory]);
+        Assert.Equal(7f, installed.Get<MapRecord>(_chunk.Map).Objects.Single(o => o.Index == 0).Position.X);
+
+        // Exported from the installed set, the light moves, and the import goes into the same mod.
+        var again = ChunkExport.Export(installed, _set, _chunk);
+        var json2 = TestGlb.Json(again);
+        Node(json2, "light 2")["translation"] = new JsonArray(8f, 5f, 8f);
+        var result = ChunkImport.Import(installed, TestGlb.WithJson(again, json2), mod);
+        Assert.Equal(2, result.Patch!["objects"]!.AsArray().Count);
+
+        var loaded = PluginSet.Load([Path.Combine(_temp.Root, "aidyn"), mod.Directory]);
+        var map = loaded.Get<MapRecord>(_chunk.Map);
+        Assert.Equal(7f, map.Objects.Single(o => o.Index == 0).Position.X);
+        Assert.Equal(5f, map.Objects.Single(o => o.Index == 2).Position.Y);
+    }
+
+    [Fact]
     public void A_field_the_game_can_t_read_names_its_node()
     {
         var glb = ChunkExport.Export(_base, _set, _chunk);

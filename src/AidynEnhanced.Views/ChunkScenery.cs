@@ -120,22 +120,25 @@ public sealed class ChunkScenery
         placed.Node.QueueFree();
     }
 
+    /// <summary>The transform a scene object's node has under its chunk: scaled, turned, then moved to its position.</summary>
+    public static Transform3D TransformOf(SceneObject o)
+    {
+        var q = o.Orientation();
+        return new Transform3D(new Basis(new Quaternion(q.X, q.Y, q.Z, q.W)) * Basis.FromScale(o.Scale.ToGodot()), o.Position.ToGodot());
+    }
+
     /// <summary>The placed scene object at an index in the chunk's map, if it's placed.</summary>
     public PlacedObject? Find(int index) => Objects.FirstOrDefault(p => p.Object.Index == index);
 
     /// <summary>
-    /// A scene object's levels of detail, each hidden, the nearest showing model <paramref name="first"/>. The core's
-    /// <see cref="Core.Chunks.ChunkSurfaces"/>, which rain lands on, places the nearest level the same way.
+    /// A scene object's levels of detail, each hidden, the nearest showing model <paramref name="first"/>, added to
+    /// <see cref="Objects"/> but not to the tree: the caller adds its node under <see cref="Root"/>'s scenery. The core's
+    /// <see cref="Core.Chunks.ChunkSurfaces"/>, which rain lands on, places the nearest level the same way. The editor places
+    /// an object it adds with it.
     /// </summary>
-    private PlacedObject Place(PluginSet plugins, Models models, SceneObject o, int first, bool particles)
+    public PlacedObject Place(PluginSet plugins, Models models, SceneObject o, int first = 0, bool particles = true)
     {
-        var q = o.Orientation();
-        var node = new Node3D
-        {
-            Name = $"Object {o.Index}",
-            Transform = new Transform3D(new Basis(new Quaternion(q.X, q.Y, q.Z, q.W)) * Basis.FromScale(o.Scale.ToGodot()),
-                o.Position.ToGodot()),
-        };
+        var node = new Node3D { Name = $"Object {o.Index}", Transform = TransformOf(o) };
         var levels = new Level?[Math.Min(o.Lods, o.Models.Count)];
         for (var i = 0; i < levels.Length; i++)
         {

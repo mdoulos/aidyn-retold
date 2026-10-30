@@ -42,6 +42,9 @@ public static class ChunkImport
         var chunk = set.Chunk(entry.Row, entry.Column)
             ?? throw new InvalidDataException($"{set.Label} has no chunk {entry.Name}. Adding chunks to a set isn't supported yet: export a chunk the set has.");
         var map = plugins.TryGet<MapRecord>(chunk.Map) ?? new MapRecord(chunk.Map, []);
+        // The patch replaces the mod's own for this map, so it's made against the record as the plugins below the mod have it.
+        var below = mod.Without(plugins);
+        var baseMap = below.TryGet<MapRecord>(chunk.Map) ?? new MapRecord(chunk.Map, []);
         report.Add($"{set.Label} {chunk.Name}: map {chunk.Map}");
 
         // The root may have been moved; everything is read relative to it, so its own transform doesn't count.
@@ -94,15 +97,10 @@ public static class ChunkImport
             }
         }
 
-        var patch = Objects(map, objectNodes, report, out var objects);
-        var grid = CollisionRules.Grid(collision ?? baseCollision, objects);
-        if ((patch is not null || collision is not null) && !SameGrid(map.Grid, grid))
-        {
-            patch ??= new JsonObject { ["patch"] = map.Id.ToString() };
-            patch["grid"] = grid is null ? null : JsonSerializer.SerializeToNode(grid, PluginJson.Options);
-            report.Add("  grid: worked out again");
-        }
-
+        var objects = Objects(map, objectNodes, report);
+        var result = MapPatch.Build(baseMap, objects, collision ?? baseCollision, collisionChanged: collision is not null);
+        report.Add($"  objects: {result.Summary}");
+        var patch = result.Patch;
         var patchFile = Path.Combine("maps", set.Label + ".json");
         if (patch is not null)
         {
@@ -218,21 +216,15 @@ public static class ChunkImport
     }
 
     /// <summary>
-    /// The objects the nodes hold, each read from its node's name, transform and extras, as a patch to the map's list: the
-    /// fields that differ from the base's object of that index, a whole object where the base has none, and a removal where
-    /// the base has one no node is. Null if nothing differs. <paramref name="objects"/> is the list as the nodes have it.
+    /// The objects the nodes hold, each read from its node's name, transform and extras, as the map's list: a copy (a node
+    /// named with a suffix, or a second node of one index) is a new object with the next free index.
     /// </summary>
-    private static JsonObject? Objects(MapRecord map, List<(JsonElement Node, Matrix4x4 World)> nodes, List<string> report, out List<MapObject> objects)
+    private static List<MapObject> Objects(MapRecord map, List<(JsonElement Node, Matrix4x4 World)> nodes, List<string> report)
     {
         var baseObjects = map.Objects.ToDictionary(o => o.Index);
-        var baseJson = map.Objects.ToDictionary(o => o.Index, ToJson);
         var nextIndex = map.Objects.Count == 0 ? 0 : map.Objects.Max(o => o.Index) + 1;
-        var patches = new JsonArray();
         var seen = new HashSet<int>();
-        objects = [];
-        var moved = 0;
-        var changed = 0;
-        var added = 0;
+        var objects = new List<MapObject>();
         foreach (var (node, world) in nodes.OrderBy(n => ObjectName(CollisionMaterials.StripCopySuffix(Name(n.Node)))?.Index ?? int.MaxValue))
         {
             var rawName = Name(node);
@@ -273,80 +265,15 @@ public static class ChunkImport
                 throw new InvalidDataException($"{rawName}: {ex.Message.Split(" Path:")[0]}", ex);
             }
             if (!copy && baseObjects.TryGetValue(index, out var before))
-                o = KeepUnmoved(o, before);
+                o = MapPatch.KeepUnmoved(o, before);
             objects.Add(o);
-
-            var after = ToJson(o);
-            if (!copy && baseJson.TryGetValue(index, out var was))
-            {
-                var diff = Diff(was, after);
-                if (diff.Count > 0)
-                {
-                    diff["index"] = index;
-                    patches.Add(diff);
-                    if (diff.Count == 2 && diff.ContainsKey("position"))
-                        moved++;
-                    else
-                        changed++;
-                }
-            }
-            else
-            {
-                patches.Add(after);
-                added++;
+            if (copy)
                 report.Add($"  {rawName}: added as {ChunkExport.Discriminator(o)} {index}");
-            }
         }
-        var removed = 0;
         foreach (var index in baseObjects.Keys.Where(i => !seen.Contains(i)).Order())
-        {
-            patches.Add(new JsonObject { ["index"] = index, [MergePatch.RemoveField] = true });
-            removed++;
             report.Add($"  {ChunkExport.ObjectName(baseObjects[index])}: removed");
-        }
-        objects = [.. objects.OrderBy(o => o.Index)];
-        report.Add($"  objects: {moved} moved, {changed} changed, {added} added, {removed} removed");
-        return patches.Count == 0 ? null : new JsonObject { ["patch"] = map.Id.ToString(), ["objects"] = patches };
+        return [.. objects.OrderBy(o => o.Index)];
     }
-
-    /// <summary>An object as the plugin writes it, for comparing and patching.</summary>
-    private static JsonObject ToJson(MapObject o) => JsonSerializer.SerializeToNode(o, typeof(MapObject), PluginJson.Options)!.AsObject();
-
-    /// <summary>The object with the base's position, rotation and scale where its own are within a hair of them, so a float's drift doesn't patch.</summary>
-    private static MapObject KeepUnmoved(MapObject o, MapObject before)
-    {
-        if (Vector3.Distance(o.Position, before.Position) < Epsilon)
-            o = o with { Position = before.Position };
-        if (o is SceneObject s && before is SceneObject b)
-        {
-            if (MathF.Abs(Quaternion.Dot(s.Orientation(), b.Orientation())) > 1 - 1e-6f)
-                s = s with { Rotation = b.Rotation };
-            if (Vector3.Distance(s.Scale, b.Scale) < Epsilon)
-                s = s with { Scale = b.Scale };
-            o = s;
-        }
-        return o;
-    }
-
-    /// <summary>A JSON Merge Patch from <paramref name="was"/> to <paramref name="now"/>: the fields that differ, null for those gone.</summary>
-    private static JsonObject Diff(JsonObject was, JsonObject now)
-    {
-        var diff = new JsonObject();
-        foreach (var (field, value) in now)
-        {
-            if (!was.TryGetPropertyValue(field, out var old) || !JsonNode.DeepEquals(old, value))
-                diff[field] = value?.DeepClone();
-        }
-        foreach (var (field, _) in was)
-        {
-            if (!now.ContainsKey(field))
-                diff[field] = null;
-        }
-        return diff;
-    }
-
-    private static bool SameGrid(ObjectGrid? a, ObjectGrid? b) =>
-        a is null ? b is null : b is not null && JsonNode.DeepEquals(JsonSerializer.SerializeToNode(a, PluginJson.Options), JsonSerializer.SerializeToNode(b, PluginJson.Options));
 
     /// <summary>A map object node's name read: its kind's discriminator and its index, or null for any other name.</summary>
     public static (string Discriminator, int Index)? ObjectName(string name)

@@ -22,3 +22,6 @@ src/*/*.sln
 # Godot writes a .uid beside each C# script when its editor scans a project. Nothing here
 # refers to a script by UID: the scenes name them by path.
 *.cs.uid
+
+# Local launchers and scratch, such as debug/party-animation-ring.cmd (docs/systems/runtime.md).
+debug/

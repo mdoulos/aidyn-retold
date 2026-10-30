@@ -742,6 +742,8 @@ public partial class RecordBrowser : Control
         }
         if (content != _model)
             _model.Clear();
+        // The map view's panel says what's picked, so the header over it is only in the way.
+        _header.Visible = content != _map;
         _preview.AddChild(content);
     }
 }

@@ -101,6 +101,7 @@ public partial class MapSetView : VBoxContainer
     private readonly CollisionLayer _collisionLayer = new();
     private readonly VBoxContainer _panel = new() { Visible = false, CustomMinimumSize = new Vector2(380, 0) };
     private readonly Label _title = new() { AutowrapMode = TextServer.AutowrapMode.WordSmart };
+    private readonly ModelThumb _thumb = new() { Visible = false };
     private readonly Button _open = new()
     {
         Text = "Open it in the loot window",
@@ -189,6 +190,7 @@ public partial class MapSetView : VBoxContainer
         };
         _split.AddChild(_container);
         _panel.AddChild(_title);
+        _panel.AddChild(_thumb);
         _open.Pressed += Roll;
         _panel.AddChild(_open);
         _lookThrough.Pressed += LookThrough;
@@ -408,9 +410,14 @@ public partial class MapSetView : VBoxContainer
             if (!Edits.IsEdited(map.Id, o.Index))
                 continue;
             if (scenery.Find(o.Index) is { } placed)
+            {
                 placed.Node.Transform = ChunkScenery.TransformOf(o);
+                Billboards.Face(Billboards.Facings(placed.Node), _camera.GlobalPosition);
+            }
             else
+            {
                 PlaceNew(scenery, o);
+            }
         }
         var present = edited.Select(o => o.Index).ToHashSet();
         foreach (var o in map.Objects.OfType<SceneObject>().Where(o => !present.Contains(o.Index)))
@@ -423,6 +430,9 @@ public partial class MapSetView : VBoxContainer
         scenery.Root.GetNodeOrNull<Node3D>("Scenery")?.AddChild(placed.Node);
         placed.Levels.FirstOrDefault(l => l is not null)?.Show(0xFF);
         placed.Node.Visible = Shown(o);
+        var facings = Billboards.Facings(placed.Node);
+        scenery.Billboards.AddRange(facings);
+        Billboards.Face(facings, _camera.GlobalPosition);
     }
 
     private CollisionLayer.Colouring Colouring => (CollisionLayer.Colouring)_collision.GetSelectedId();
@@ -848,7 +858,11 @@ public partial class MapSetView : VBoxContainer
             child.QueueFree();
         _panel.Visible = marked is not null;
         if (marked is null || _catalog is not { } catalog)
+        {
+            _thumb.Clear();
             return;
+        }
+        _thumb.Show(catalog.Plugins, _models!, (marked.Object as SceneObject)?.Models.Take(Math.Max(1, ((SceneObject)marked.Object).Lods)).FirstOrDefault(m => !m.Empty)?.Model);
 
         var o = marked.Object;
         var kind = MapObjects.KindOf(o);
@@ -1006,6 +1020,7 @@ public partial class MapSetView : VBoxContainer
             if (scenery.Find(o.Index) is { } placed)
             {
                 placed.Node.Transform = ChunkScenery.TransformOf(scene);
+                Billboards.Face(Billboards.Facings(placed.Node), _camera.GlobalPosition);
                 _bounds.Remove(placed);
             }
             else

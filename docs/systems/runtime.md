@@ -71,7 +71,7 @@ Traps:
 
 ## Stand-ins
 
-- Alaron's head follows his neck, where the game keeps it upright and turns it toward nearby objects.
+- Alaron's head follows his neck, hung from locator 3 (`Models.InstantiateActor`). The game keeps it upright and turns it toward the nearest usable map object by 3° a tick, up to 80° from the neck ([rendering](rendering.md)); the port doesn't turn it yet.
 - **The spawn point.** A rock stands in a hole in the terrain in front of it, with collision walls and no top. The original drops the player from a height of 10; the runtime puts him on the highest ground below the spawn instead.
 
 ## Controls

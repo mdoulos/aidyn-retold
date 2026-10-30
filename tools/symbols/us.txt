@@ -102,7 +102,7 @@ Bodies.SetLights = 0x80013798; // coined; docs/systems/rendering.md: a body's pr
 MapObjects.SetActorLights = 0x80013ac4; // coined; docs/systems/rendering.md: a map's actor's tint or lights
 Bodies.Render = 0x80013dcc; // coined; docs/systems/cameras.md: draws the bodies; skips a hidden body's scene (+0x1e & 0x2000) only while CutScene.Playing, never what it holds
 Body.ClampToGoal = 0x80014518; // coined; docs/systems/combat.md: a body at or past Body.SetGoal's radius, in 3D from its centre, has its x and z put back on the sphere (Body.KeepInField)
-Bodies.LoadActor = 0x800147e8; // coined; docs/systems/rendering.md: loads a body's actor scene, with room for 4 lights
+Bodies.LoadActor = 0x800147e8; // coined; docs/systems/rendering.md: loads a body's actor scene, with room for 4 lights; sets +0x70b for actor 0x25F9 (0x80014828) and loads Player.HeadScene into +0x8 for that body
 Bodies.SetFlag = 0x80014a2c; // coined; a body's flags (+0x1e) |= x
 Bodies.ClearFlag = 0x80014a3c; // coined; a body's flags (+0x1e) &= ~x
 CutScene.Unhide = 0x80014dfc; // docs/systems/cameras.md
@@ -1643,6 +1643,7 @@ Vec3.Distance = 0x800a1108; // coined; |a - b|
 Vec3.Dot = 0x800a1158; // coined; 
 Vec2.Normalize = 0x800a11ec; // coined; normalises an (x, z) pair, its length at least 1e-6
 Vec3.Normalize = 0x800a125c; // coined; returns the length, floored at 1e-6
+Vec3.TurnToward = 0x800a15ac; // coined; docs/systems/rendering.md: (heading, goal, max angle): Facing.Turn of the two on the ground, by at most the angle; the player's head's 3° a tick and 80°
 Facing.Turn = 0x800a13f8; // the port's (Facing.Turn); docs/systems/combat.md: (heading, goal, max angle): 1 and the goal when within sin(angle), else rotates by the angle toward the nearer side
 Vec2.Rotate = 0x800a16f0; // coined; (v, sin, cos): (c x + s z, c z - s x)
 Vec2.Copy = 0x800a17b8; // coined; (a, b)
@@ -2097,6 +2098,7 @@ Player.Actor = 0x800d8134; // coined; docs/hardcoded-content.md: the trek player
 TrekLoop.Restoring = 0x800d813e; // coined; u16, 1 after the first build: InitGameTrek puts the player on Zones.SavedPosition
 TrekLoop.State = 0x800d8164; // coined; docs/systems/audio.md: 3 is trek running, 5 and 7 leave for a menu, 0xb a cut-scene cue
 Collision.World = 0x800d81f4; // coined; docs/systems/combat.md: the loaded chunks' collision world (HasSight sweeps [0x800d81f4] + 8)
+Player.HeadScene = 0x800da4a0; // coined; docs/systems/rendering.md: 0x25AA, the head scene Bodies.LoadActor gives the body whose actor is 0x25F9
 Zones.PlayerMap = 0x800d8288; // coined; docs/systems/rendering.md: the Borg9 data of the chunk the player is in
 Camera.Listener = 0x800d829c; // coined; docs/systems/audio.md: the camera's eye at +0 and the point it looks at, the target, at +0xC (0x800A681C puts the eye behind the target); Audio.Attenuation measures to the target
 FollowCamera.LookXZ = 0x800d82cc; // FollowCamera.cs: the camera's look in X and Z (Camera.Listener + 0x30), which the chunks' view, the clouds and the rain's centre read
@@ -2405,6 +2407,8 @@ Body.FreeAllAttachments = 0x80014b48; // coined; docs/systems/combat.md: the thr
 Body.AttachmentDefaultLocators = 0x800cdc0c; // coined; docs/systems/combat.md: 3 u16, the locator each attachment slot starts on: 0, 2, 3 (Combatant.DefaultLocators)
 Combat.FreeQueue = 0x800d96b0; // coined; docs/systems/combat.md: AllocFreeQueueItem's queue of scenes freed later
 Scene.HasLocator = 0x8009eae8; // coined; docs/systems/combat.md: (scene, i): i < 8 and the scene's locator table (+0x1d4 + 4i) isn't -1; Bodies.Render skips an attachment without one
+Scene.Align = 0x8009dca0; // coined; docs/systems/rendering.md: (scene, direction, roll): the scene's matrix by guAlignF, facing the direction with the roll; Bodies.Render sets the player's head upright by it
+Scene.GetLocatorDir = 0x8009efcc; // coined; docs/systems/rendering.md: (scene, out, i): the locator's rotation applied to (0, 0, -1.0) (0x800d56c8): the way locator i faces; the player's head's
 Scene.SetPosition = 0x8009d960; // coined; docs/systems/combat.md: scene +0xb8..+0xc0 = x, y, z
 Scene.Translate = 0x8009d970; // coined; docs/systems/combat.md: adds x, y, z to scene +0xb8..+0xc0: the Troubadour's notes' +1.0 in Y (Combatant.NotesRaise)
 Scene.SetMatrix = 0x8009f1c8; // coined; docs/systems/combat.md: copies a 4x4 into scene +0x88: an attachment's locator matrix

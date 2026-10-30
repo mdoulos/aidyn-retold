@@ -4,25 +4,48 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace AidynEnhanced.Rom.Graphics;
+namespace AidynEnhanced.Plugins.Assets;
 
 /// <summary>
 /// Builds a binary glTF 2.0 file (<c>.glb</c>): JSON plus one embedded buffer. It has no
 /// dependencies, and its output depends only on what's added, in order, as the importer
-/// requires (ADR 0001).
+/// requires (ADR 0001). The importer's <c>SceneGltf</c> and <c>CollisionGltf</c> write with it, and so does
+/// <see cref="World.GltfCopy"/>, which carries whole files' contents into another.
 /// </summary>
 public sealed class GltfBuilder
 {
     public const int Float = 5126;
     public const int UnsignedShort = 5123;
     public const int UnsignedInt = 5125;
-    private const int ArrayBuffer = 34962;
-    private const int ElementArrayBuffer = 34963;
+    public const int ArrayBuffer = 34962;
+    public const int ElementArrayBuffer = 34963;
 
     private readonly MemoryStream _buffer = new();
     private readonly JsonArray _bufferViews = [], _accessors = [], _images = [], _samplers = [], _textures = [];
-    private readonly JsonArray _materials = [], _meshes = [], _nodes = [], _cameras = [], _lights = [], _animations = [];
+    private readonly JsonArray _materials = [], _meshes = [], _nodes = [], _cameras = [], _lights = [], _animations = [], _skins = [];
     private readonly SortedSet<string> _extensionsUsed = new(StringComparer.Ordinal);
+
+    /// <summary>What the file's <c>asset.generator</c> says wrote it.</summary>
+    public string Generator { get; init; } = "aidyn-enhanced";
+
+    /// <summary>A view of raw bytes in the buffer, for an accessor or an image added as JSON (<see cref="AddAccessor"/>, <see cref="AddImage"/>).</summary>
+    public int AddBufferView(byte[] data, int? target, int? byteStride = null)
+    {
+        var view = AddBufferView(data, target);
+        if (byteStride is { } stride)
+            _bufferViews[view]!["byteStride"] = stride;
+        return view;
+    }
+
+    /// <summary>An accessor as JSON, whose <c>bufferView</c> the caller has already added.</summary>
+    public int AddAccessor(JsonObject accessor) => Add(_accessors, accessor);
+
+    /// <summary>An image as JSON, whose <c>bufferView</c> the caller has already added.</summary>
+    public int AddImage(JsonObject image) => Add(_images, image);
+
+    public int AddSampler(JsonObject sampler) => Add(_samplers, sampler);
+    public int AddTexture(JsonObject texture) => Add(_textures, texture);
+    public int AddSkin(JsonObject skin) => Add(_skins, skin);
 
     public int AddPositions(IReadOnlyList<Vector3> values)
     {
@@ -120,7 +143,7 @@ public sealed class GltfBuilder
         if (sceneExtras is not null)
             scene["extras"] = sceneExtras;
 
-        var root = new JsonObject { ["asset"] = new JsonObject { ["version"] = "2.0", ["generator"] = "aidyn-enhanced AidynEnhanced.Rom" } };
+        var root = new JsonObject { ["asset"] = new JsonObject { ["version"] = "2.0", ["generator"] = Generator } };
         if (_extensionsUsed.Count > 0)
             root["extensionsUsed"] = new JsonArray(_extensionsUsed.Select(e => (JsonNode)e).ToArray());
         if (_lights.Count > 0)
@@ -130,8 +153,8 @@ public sealed class GltfBuilder
         foreach (var (name, array) in new[]
                  {
                      ("nodes", _nodes), ("meshes", _meshes), ("materials", _materials), ("textures", _textures),
-                     ("images", _images), ("samplers", _samplers), ("cameras", _cameras), ("animations", _animations), ("accessors", _accessors),
-                     ("bufferViews", _bufferViews),
+                     ("images", _images), ("samplers", _samplers), ("cameras", _cameras), ("skins", _skins), ("animations", _animations),
+                     ("accessors", _accessors), ("bufferViews", _bufferViews),
                  })
             if (array.Count > 0)
                 root[name] = array;

@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Text.Json.Nodes;
 
 namespace AidynEnhanced.Plugins.Assets;
 
@@ -78,6 +79,62 @@ public static class CollisionMesh
     public const string FlagsAttribute = "_FLAGS";
     /// <summary><see cref="CollisionTriangle.Target"/>; a file without it has none.</summary>
     public const string TargetAttribute = "_TARGET";
+
+    /// <summary>
+    /// Writes triangles as a collision asset in the importer's layout: one node and one mesh, the triangles' vertices
+    /// unshared, each carrying its triangle's attributes. <paramref name="name"/> names the node and mesh.
+    /// </summary>
+    public static byte[] Write(IReadOnlyList<CollisionTriangle> triangles, string name, string generator = "aidyn-enhanced")
+    {
+        var gltf = new GltfBuilder { Generator = generator };
+        var node = new JsonObject { ["name"] = name };
+        if (triangles.Count > 0)
+            node["mesh"] = gltf.AddMesh(new JsonObject { ["name"] = name, ["primitives"] = new JsonArray(Primitive(gltf, triangles, Material(gltf))) });
+        return gltf.ToGlb([gltf.AddNode(node)]);
+    }
+
+    /// <summary>The flat grey material the importer gives collision, so that viewers shade it.</summary>
+    public static int Material(GltfBuilder gltf) => gltf.AddMaterial(new JsonObject
+    {
+        ["name"] = "collision",
+        ["doubleSided"] = true,
+        ["pbrMetallicRoughness"] = new JsonObject { ["metallicFactor"] = 0, ["roughnessFactor"] = 1 },
+    });
+
+    /// <summary>
+    /// A primitive of <paramref name="triangles"/> in the layout <see cref="Read"/> reads: unshared vertices, each with its
+    /// triangle's <see cref="SurfaceAttribute"/>, <see cref="RoleAttribute"/>, <see cref="FlagsAttribute"/> and <see cref="TargetAttribute"/>.
+    /// </summary>
+    public static JsonObject Primitive(GltfBuilder gltf, IReadOnlyList<CollisionTriangle> triangles, int material)
+    {
+        var positions = new List<Vector3>(triangles.Count * 3);
+        List<float> surfaces = new(triangles.Count * 3), roles = new(triangles.Count * 3), flags = new(triangles.Count * 3), targets = new(triangles.Count * 3);
+        foreach (var t in triangles)
+        {
+            positions.Add(t.A);
+            positions.Add(t.B);
+            positions.Add(t.C);
+            for (var i = 0; i < 3; i++)
+            {
+                surfaces.Add(t.Surface);
+                roles.Add((float)t.Role);
+                flags.Add((float)t.Flags);
+                targets.Add(t.Target);
+            }
+        }
+        return new JsonObject
+        {
+            ["attributes"] = new JsonObject
+            {
+                ["POSITION"] = gltf.AddPositions(positions),
+                [SurfaceAttribute] = gltf.AddScalars(surfaces),
+                [RoleAttribute] = gltf.AddScalars(roles),
+                [FlagsAttribute] = gltf.AddScalars(flags),
+                [TargetAttribute] = gltf.AddScalars(targets),
+            },
+            ["material"] = material,
+        };
+    }
 
     /// <summary>A map's collision, from the plugin that provides its asset, or none if no plugin has one.</summary>
     public static IReadOnlyList<CollisionTriangle> For(PluginSet plugins, RecordId map) =>

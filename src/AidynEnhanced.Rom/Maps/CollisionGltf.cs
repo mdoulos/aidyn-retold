@@ -1,7 +1,6 @@
 using System.Numerics;
 using System.Text.Json.Nodes;
 using AidynEnhanced.Plugins.Assets;
-using AidynEnhanced.Rom.Graphics;
 
 namespace AidynEnhanced.Rom.Maps;
 
@@ -17,13 +16,8 @@ public static class CollisionGltf
 {
     public static byte[] Export(IEnumerable<(MapChunk Chunk, Borg9Map Map)> chunks, bool placeInSet = true)
     {
-        var gltf = new GltfBuilder();
-        var material = gltf.AddMaterial(new JsonObject
-        {
-            ["name"] = "collision",
-            ["doubleSided"] = true,
-            ["pbrMetallicRoughness"] = new JsonObject { ["metallicFactor"] = 0, ["roughnessFactor"] = 1 },
-        });
+        var gltf = new GltfBuilder { Generator = "aidyn-enhanced AidynEnhanced.Rom" };
+        var material = CollisionMesh.Material(gltf);
 
         var roots = new List<int>();
         foreach (var (chunk, map) in chunks)
@@ -39,34 +33,12 @@ public static class CollisionGltf
 
             if (map.Triangles.Count > 0)
             {
-                var positions = new List<Vector3>();
-                List<float> surfaces = [], roles = [], flags = [], targets = [];
-                foreach (var t in map.Triangles)
-                {
-                    positions.AddRange([map.Vertices[t.A], map.Vertices[t.B], map.Vertices[t.C]]);
-                    for (var i = 0; i < 3; i++)
-                    {
-                        surfaces.Add((float)t.Surface);
-                        roles.Add((float)t.Role);
-                        flags.Add((float)t.Flags);
-                        targets.Add(t.ToggleId ?? t.TriggerObject ?? 0);
-                    }
-                }
+                var triangles = map.Triangles.Select(t => new CollisionTriangle(map.Vertices[t.A], map.Vertices[t.B], map.Vertices[t.C],
+                    (int)t.Surface, t.Role, t.Flags, t.ToggleId ?? t.TriggerObject ?? 0)).ToList();
                 node["mesh"] = gltf.AddMesh(new JsonObject
                 {
                     ["name"] = $"collision {chunk.Collision}",
-                    ["primitives"] = new JsonArray(new JsonObject
-                    {
-                        ["attributes"] = new JsonObject
-                        {
-                            ["POSITION"] = gltf.AddPositions(positions),
-                            [CollisionMesh.SurfaceAttribute] = gltf.AddScalars(surfaces),
-                            [CollisionMesh.RoleAttribute] = gltf.AddScalars(roles),
-                            [CollisionMesh.FlagsAttribute] = gltf.AddScalars(flags),
-                            [CollisionMesh.TargetAttribute] = gltf.AddScalars(targets),
-                        },
-                        ["material"] = material,
-                    }),
+                    ["primitives"] = new JsonArray(CollisionMesh.Primitive(gltf, triangles, material)),
                 });
             }
             roots.Add(gltf.AddNode(node));

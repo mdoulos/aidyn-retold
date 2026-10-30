@@ -90,6 +90,14 @@ public sealed class GlbReader : IDisposable
         return values;
     }
 
+    /// <summary>The bytes of a buffer view, for carrying it into another file (<see cref="World.GltfCopy"/>).</summary>
+    public byte[] BufferViewBytes(int viewIndex)
+    {
+        var view = Root.GetProperty("bufferViews")[viewIndex];
+        var offset = _bin + (view.TryGetProperty("byteOffset", out var o) ? o.GetInt32() : 0);
+        return _glb.AsSpan(offset, view.GetProperty("byteLength").GetInt32()).ToArray();
+    }
+
     public void Dispose() => _json.Dispose();
 
     /// <summary>Where an accessor's first element is in the file, and the step between elements (<paramref name="packed"/> when its view has no stride).</summary>

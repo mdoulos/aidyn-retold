@@ -1,6 +1,6 @@
-using AidynEnhanced.Core.Physics;
+using AidynEnhanced.Plugins.Assets;
 
-namespace AidynEnhanced.Core.Tests;
+namespace AidynEnhanced.Plugins.Tests;
 
 public sealed class SurfaceNamesTests
 {

@@ -1,6 +1,6 @@
-namespace AidynEnhanced.Core.Physics;
+namespace AidynEnhanced.Plugins.Assets;
 
-/// <summary>The collision surfaces' names, for the debug overlay and the editor's collision view.</summary>
+/// <summary>The collision surfaces' names, for the debug overlay, the editor's collision view and the collision materials a chunk is edited with (<c>CollisionMaterials</c>).</summary>
 public static class SurfaceNames
 {
     /// <summary>The 26 surfaces' names, as <c>String/Common</c> gives them, by surface number.</summary>

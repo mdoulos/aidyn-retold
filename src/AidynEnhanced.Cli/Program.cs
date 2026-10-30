@@ -2,7 +2,9 @@ using System.Globalization;
 using System.Text;
 using AidynEnhanced.Core;
 using AidynEnhanced.Plugins;
+using AidynEnhanced.Plugins.Records;
 using AidynEnhanced.Plugins.Saves;
+using AidynEnhanced.Plugins.World;
 using AidynEnhanced.Rom;
 using AidynEnhanced.Rom.Borg;
 using AidynEnhanced.Rom.Db;
@@ -34,6 +36,16 @@ const string Usage = """
                                            Borg11 samples as WAV, and Borg12 sequences rendered to WAV
                                            (all, or the given archive indices), each played n times
                                            (default 1); default dir: out/<version>/audio
+      aidyn-enhanced chunk export <map set> <chunk> [--out <file>]
+                                           one chunk of the installed plugins as a glTF to edit in Blender: its scenery,
+                                           its collision with a material per surface, and its map objects
+                                           (docs/editing-the-world.md); the set by label, number or ID, the chunk as
+                                           M07; default file: out/chunks/<set> <chunk>.glb
+      aidyn-enhanced chunk import <file> --mod <id> [--force]
+                                           the edited glTF back into the mod <id> in the plugins folder, made if it
+                                           isn't there: the scenery and collision that changed as assets, and the map
+                                           objects that did as a patch; --force writes the scenery and collision even
+                                           when they look unchanged
       aidyn-enhanced flag <flag>...                   what sets, clears and reads each flag, in the installed plugins
       aidyn-enhanced conflicts                        the fields more than one installed plugin patches, and which wins (ADR 0005)
       aidyn-enhanced schema <dir>                     a JSON Schema per record type, for records (<type>.schema.json) and for
@@ -72,6 +84,8 @@ try
         ["scenes", var rom, .. var rest] => Scenes(rom, rest),
         ["dialogue", var rom, .. var rest] => Dialogue(rom, rest),
         ["audio", var rom, .. var rest] => Audio(rom, rest),
+        ["chunk", "export", var mapSet, var chunk, .. var rest] when OutOnly(rest, out var file) => ChunkExportCommand(mapSet, chunk, file),
+        ["chunk", "import", var file, "--mod", var mod, .. var rest] when rest is [] or ["--force"] => ChunkImportCommand(file, mod, rest.Length > 0),
         ["flag", .. var flags] when flags.Length > 0 => Flags(flags),
         ["conflicts"] => Conflicts(),
         ["schema", var dir] => Schema(dir),
@@ -433,6 +447,32 @@ static string Summary(BorgArchive archive)
 }
 
 static PluginSet InstalledPlugins() => PluginSet.LoadInstalledChecked(DataPaths.Plugins);
+
+static int ChunkExportCommand(string mapSetName, string chunkName, string? file)
+{
+    var plugins = InstalledPlugins();
+    var set = ChunkExport.FindMapSet(plugins, mapSetName);
+    if (set is null)
+        return Fail($"No map set is \"{mapSetName}\". The sets: {string.Join(", ", plugins.All<MapSetRecord>(RecordTypes.MapSet).Select(s => s.Label))}.");
+    var chunk = ChunkExport.FindChunk(set, chunkName);
+    if (chunk is null)
+        return Fail($"{set.Label} has no chunk {chunkName}. Its chunks: {string.Join(" ", set.Chunks.Select(c => c.Name))}.");
+    file ??= Path.Combine("out", "chunks", $"{set.Label} {chunk.Name}.glb");
+    Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(file))!);
+    File.WriteAllBytes(file, ChunkExport.Export(plugins, set, chunk));
+    Console.WriteLine($"{set.Label} {chunk.Name}: {Path.GetFullPath(file)}");
+    return 0;
+}
+
+static int ChunkImportCommand(string file, string mod, bool force)
+{
+    var plugins = InstalledPlugins();
+    var folder = ModFolder.OpenOrCreate(DataPaths.Plugins, mod);
+    var result = ChunkImport.Import(plugins, File.ReadAllBytes(file), folder, force);
+    foreach (var line in result.Report)
+        Console.WriteLine(line);
+    return 0;
+}
 
 static int Schema(string dir)
 {

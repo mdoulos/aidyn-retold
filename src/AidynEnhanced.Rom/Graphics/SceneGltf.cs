@@ -28,7 +28,7 @@ public static class SceneGltf
     public static byte[] Export(Borg5Scene scene, Func<int, byte[]> read, int index,
         IReadOnlyList<(int Index, Borg6Animation Animation)>? animations = null)
     {
-        var gltf = new GltfBuilder();
+        var gltf = new GltfBuilder { Generator = "aidyn-enhanced AidynEnhanced.Rom" };
         var models = scene.Models.Select(m => new Lazy<Borg2Geometry>(() => Borg2Geometry.Parse(read(m)))).ToArray();
         var textures = scene.Textures.Select(t => new Lazy<Borg1Texture>(() => Borg1Texture.Parse(read(t)))).ToArray();
         var images = new Dictionary<int, int>();

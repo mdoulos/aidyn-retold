@@ -335,6 +335,21 @@ public sealed record SceneObject(
     /// <summary><see cref="Rotation"/> as a quaternion.</summary>
     public Quaternion Orientation() => Quaternion.Normalize(Quaternion.CreateFromRotationMatrix(
         Matrix4x4.CreateRotationX(Rotation.X) * Matrix4x4.CreateRotationY(Rotation.Y) * Matrix4x4.CreateRotationZ(Rotation.Z)));
+
+    /// <summary>
+    /// The <see cref="Rotation"/> that <see cref="Orientation"/> turns into <paramref name="orientation"/>: roll about X, then
+    /// pitch about Y, then heading about Z, each in (−π, π]. With the pitch at ±90° the roll and heading turn about one axis,
+    /// so the roll is 0 and the heading carries both. A chunk's import takes an object's rotation back from its node's.
+    /// </summary>
+    public static Vector3 RotationOf(Quaternion orientation)
+    {
+        var m = Matrix4x4.CreateFromQuaternion(Quaternion.Normalize(orientation));
+        // Row vectors: M = Rx(a) · Ry(b) · Rz(c) has M13 = −sin b, M23 = sin a cos b, M33 = cos a cos b, M11 = cos b cos c, M12 = cos b sin c.
+        var pitch = MathF.Asin(Math.Clamp(-m.M13, -1, 1));
+        if (MathF.Abs(MathF.Cos(pitch)) < 1e-6f)
+            return new Vector3(0, pitch, MathF.Atan2(-m.M21, m.M22));
+        return new Vector3(MathF.Atan2(m.M23, m.M33), pitch, MathF.Atan2(m.M12, m.M11));
+    }
 }
 
 /// <summary>What a container is, which decides its sound and what it gives (the original's <c>TreasureType</c>).</summary>

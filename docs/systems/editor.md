@@ -49,6 +49,10 @@ It loads the plugins folder as the runtime does (`PluginSet.LoadInstalled`: `aid
 - **Many objects at once.** Every mesh the N64 material draws has instance uniforms, so the project raises Godot's global shader variable buffer (`rendering/limits/global_shader_variables/buffer_size`) for a whole map set's worth.
 - **Freeing what's out of the tree.** Godot frees only what's in the tree when it quits, and reports everything else leaked, one by one, slow enough after a map set to look like a hang. The browser swaps the model view and the map view in and out of the preview rather than rebuilding them, and `Models` keeps each scene's parsed template out of the tree, so `RecordBrowser` frees the view not showing and disposes the models when it's deleted, as `Game` disposes its models. Anything else kept out of the tree needs the same.
 
+## Editing the world
+
+The editor shows the world and doesn't yet edit it. A chunk is edited in Blender through the CLI's `chunk export` and `chunk import` ([editing the world](../editing-the-world.md), ADR 0035), whose `ModFolder` writer is what in-editor placement, Phase 5's, will write through too.
+
 ## The command line
 
 `tools/godot.ps1 --path src/AidynEnhanced.Editor -- --record aidyn:mapset/0 --tab preview --screenshot out/shot.png` opens a record, saves the window and quits. It gives up after a minute, so a hang can't block a script. `Editor` parses the options and takes the screenshot with the views' `CommandLine`, as the runtime does.

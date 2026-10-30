@@ -12,6 +12,12 @@ public static class PngHeader
         using var file = File.OpenRead(path);
         if (file.ReadAtLeast(header, header.Length, throwOnEndOfStream: false) < header.Length || header[12..16].SequenceCompareTo("IHDR"u8) != 0)
             return null;
-        return (BinaryPrimitives.ReadInt32BigEndian(header[16..]), BinaryPrimitives.ReadInt32BigEndian(header[20..]));
+        return Size(header);
     }
+
+    /// <summary>A PNG's width and height from its bytes, or null if they aren't a PNG's.</summary>
+    public static (int Width, int Height)? Size(ReadOnlySpan<byte> png) =>
+        png.Length < 24 || png[12..16].SequenceCompareTo("IHDR"u8) != 0
+            ? null
+            : (BinaryPrimitives.ReadInt32BigEndian(png[16..]), BinaryPrimitives.ReadInt32BigEndian(png[20..]));
 }

@@ -184,4 +184,4 @@ Replacing assets is part of the mod tools in the [roadmap](roadmap.md)'s Phase 5
 1. **Textures on models from a mod's PNG.** When the game builds a model's materials, it would look for a mod's `texture` file with that texture's number and use it instead of the copy inside the model. Every material already records its texture's number, so this is a small change. A texture pack would then be a folder of PNGs at any resolution, with no models to touch.
 2. **Higher-resolution UI images.** The game would lay out each image at the original's size and draw a larger replacement scaled into it, so a sharper menu stays the same size on screen.
 
-The editor will eventually make and preview mods for you. For now, mods are made by hand as this guide describes.
+The editor will eventually make and preview mods for you. For now, mods are made by hand as this guide describes, except the world: a chunk's scenery, collision and objects go out to Blender and back in with two commands ([editing the world](editing-the-world.md)).

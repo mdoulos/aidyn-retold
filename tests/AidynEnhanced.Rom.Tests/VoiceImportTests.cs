@@ -64,7 +64,7 @@ public sealed class VoiceImportTests(Na10Import fixture)
         Assert.Equal("sultry", entities.Single(e => e.Name == "Keelin").VoiceTone);
         Assert.Null(entities.Single(e => e.Name == "Baird").VoiceTone);
         Assert.Equal("old", entities.Single(e => e.Name == "Godric").VoiceTone);
-        Assert.Equal("soldier+old", entities.Single(e => e.Name == "Becan").VoiceTone);
+        Assert.Equal("old", entities.Single(e => e.Name == "Becan").VoiceTone);
         Assert.Equal("sly", entities.Single(e => e.Name == "Dougal").VoiceTone);
         Assert.Equal("sly", entities.Single(e => e.Name == "Farris").VoiceTone);
         Assert.Equal("grand", entities.Single(e => e.Name == "Donovan").VoiceTone);
@@ -79,6 +79,7 @@ public sealed class VoiceImportTests(Na10Import fixture)
         Assert.Equal(BlipCadence.Talkative, entities.Single(e => e.Name == "Godric").VoiceCadence);
         Assert.Equal(BlipCadence.Reserved, entities.Single(e => e.Name == "Becan").VoiceCadence);
         Assert.Equal(BlipCadence.Reserved, entities.Single(e => e.Name == "Brenna").VoiceCadence);
+        Assert.Equal(BlipCadence.Reserved, entities.Single(e => e.Name == "Farris").VoiceCadence);
         Assert.Null(entities.Single(e => e.Name == "Rheda").VoiceCadence);
         Assert.Null(entities.Single(e => e.Name == "Alaron").VoiceCadence);
     }

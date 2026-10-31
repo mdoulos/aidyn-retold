@@ -139,12 +139,12 @@ public static class TextReveal
 
     /// <summary>
     /// How many ticks pass at least between a speaker's blips (<see cref="DbRecord.VoiceCadence"/>): a talkative one chatters at 30 a
-    /// second, a reserved one at 12, the rest at <see cref="TicksBetweenBlips"/>'s 20.
+    /// second, a reserved one at 15, the rest at <see cref="TicksBetweenBlips"/>'s 20.
     /// </summary>
     public static int BlipSpacing(BlipCadence? cadence) => cadence switch
     {
         BlipCadence.Talkative => 2,
-        BlipCadence.Reserved => 5,
+        BlipCadence.Reserved => 4,
         _ => TicksBetweenBlips,
     };
 

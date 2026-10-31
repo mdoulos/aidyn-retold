@@ -394,7 +394,7 @@ public class DialogueBoxTests
     [Theory]
     [InlineData(BlipCadence.Talkative, new[] { 1, 0, 1, 0, 1, 0, 1, 0 })]
     [InlineData(BlipCadence.Normal, new[] { 1, 0, 0, 1, 0, 0, 1, 0 })]
-    [InlineData(BlipCadence.Reserved, new[] { 1, 0, 0, 0, 0, 1, 0, 0 })]
+    [InlineData(BlipCadence.Reserved, new[] { 1, 0, 0, 0, 1, 0, 0, 0 })]
     public void ASpeakersCadenceSpacesItsBlips(BlipCadence cadence, int[] expected)
     {
         var box = new DialogueBox(new TextLayout(TextLayoutTests.Font()), 52, 52, Player) { SpeakerCadence = _ => cadence };

@@ -142,7 +142,7 @@ public static class Voices
         [0x010B] = "bright", // Arturo
         [0x0135] = "sly", // Farris
         [0x0164] = "bright", // Rheda
-        [0x0113] = "soldier+old", // Becan: the soldier's blip with the old tremble
+        [0x0113] = "old", // Becan
         [0x0140] = "old", // Godric
         [0x012D] = "grand", // Donovan, a touch pompous
         [0x012E] = "sly", // Dougal, a touch mischievous
@@ -156,6 +156,7 @@ public static class Voices
         [0x0140] = BlipCadence.Talkative, // Godric
         [0x0113] = BlipCadence.Reserved, // Becan
         [0x0116] = BlipCadence.Reserved, // Brenna
+        [0x0135] = BlipCadence.Reserved, // Farris
     }.ToDictionary(p => RecordId.Hex(RecordTypes.Image, p.Key), p => p.Value);
 
     /// <summary>The cadence of a speaker with this portrait, or none for the normal one.</summary>

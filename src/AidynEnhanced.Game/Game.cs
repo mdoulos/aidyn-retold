@@ -55,8 +55,12 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
     private ChunkStreamerView? _chunks;
     /// <summary>Trek's scenery beyond the 3×3 under Draw Distance's Extended, which only the runtime holds.</summary>
     private SceneryRing? _ring;
-    /// <summary>The drawn chunks' cells as last handed to the shader (<see cref="N64Material.SetCells"/>), all 0 for none.</summary>
-    private (int Row, int Column, int Reach, int Drawn) _cells;
+    /// <summary>
+    /// The drawn chunks' cells as last handed to the shader (<see cref="N64Material.SetCells"/>), all 0 for none, starting at a
+    /// value never handed: the shader's global parameters outlive a reload of the scene, so the first chunks after a load or a
+    /// return to the title set them afresh, or the last game's 5 × 5 would clip the new one's land.
+    /// </summary>
+    private (int Row, int Column, int Reach, int Drawn) _cells = (-1, -1, -1, -1);
     /// <summary>What builds trek's chunks' scenery off the main thread (docs/adr/0025-chunks-load-off-the-main-thread.md).</summary>
     private ChunkBuilder? _builder;
     private bool _extendedDrawDistance;
@@ -560,6 +564,13 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
         _models?.Dispose();
     }
 
+    public override void _Notification(int what)
+    {
+        // Switching away lets go of what's held without an event to say so (MenuStick.ReleaseAll).
+        if (what == NotificationApplicationFocusOut)
+            _stick.ReleaseAll();
+    }
+
     /// <summary>One 60 Hz tick: the game's, which steps the pause menu too, then the menu's view on what it left.</summary>
     public override void _PhysicsProcess(double delta)
     {
@@ -607,6 +618,9 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
         var step = session.Tick(_playing, ReadInput, _camera.Flying,
             actor => _actorViews.TryGetValue(actor, out var view) ? view.Motion : null,
             combatant => _combatantViews.TryGetValue(combatant, out var view) ? view.Motion : null, _spellFxView);
+        // The mouse's drag is the tick's to read (ReadInput takes it); one the tick didn't read, through a fade, a popup, a
+        // conversation or an enemy's turn, is let go, so it doesn't turn the camera all at once when the controls come back.
+        _camera.TakeDrag();
         _backdrop!.Draw(session.Backdrop);
         SoundTextVoice(session);
         _voiceRing?.LabelWanderers(session.Trek.Wanderers.All);
@@ -1260,9 +1274,10 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
     private void Say(string text)
     {
         _message.Text = text;
+        // The tree's timer outlives a reload of the scene (a load, a defeat, the title), and the label with it.
         GetTree().CreateTimer(4).Timeout += () =>
         {
-            if (_message.Text == text)
+            if (IsInstanceValid(_message) && _message.Text == text)
                 _message.Text = "";
         };
     }

@@ -97,6 +97,18 @@ public sealed class MenuStick
         }
     }
 
+    /// <summary>
+    /// Lets go of everything held, as the window loses focus: Godot lets go of its actions then without sending an event, so a
+    /// direction held as the player switched away would go on repeating in the core until it was pressed and let go again.
+    /// </summary>
+    public void ReleaseAll()
+    {
+        _held.Clear();
+        _pressed.Clear();
+        _released.Clear();
+        Repeat?.Clear();
+    }
+
     /// <summary>Whether an event presses an action, a key's repeats among them: for the axes, as <see cref="Track"/> found it.</summary>
     public bool Pressed(InputEvent e, string action) =>
         e is InputEventJoypadMotion ? _pressed.Contains(action) : e.IsActionPressed(action, allowEcho: true);

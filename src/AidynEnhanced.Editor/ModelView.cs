@@ -153,6 +153,8 @@ public partial class ModelView : VBoxContainer
         _ground = null;
         _animations.Clear();
         _animations.Visible = _play.Visible = _time.Visible = _tick.Visible = false;
+        // Driving an actor locks the scrub (SetDrive), and the next actor's panel turns Drive off without saying so.
+        _time.Editable = true;
         _emitters.Visible = _sceneCamera.Visible = false;
         _actorPanel.Visible = false;
         _note.Text = "";

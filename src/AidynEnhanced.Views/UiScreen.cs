@@ -152,12 +152,13 @@ public partial class UiScreen : Control
 
     /// <summary>
     /// Whether the mouse reaches the views on the screen, its position mapped into the screen's
-    /// pixels. Off by default, so the screen doesn't take the mouse from what's under it.
+    /// pixels. Off by default, so the screen doesn't take the mouse from what's under it. On, it passes rather than stops: Godot
+    /// stops every pointer event at a control that stops whether or not it was taken, and what the views pass over is the game's.
     /// </summary>
     public bool ForwardsMouse
     {
         get => MouseFilter != MouseFilterEnum.Ignore;
-        set => MouseFilter = value ? MouseFilterEnum.Stop : MouseFilterEnum.Ignore;
+        set => MouseFilter = value ? MouseFilterEnum.Pass : MouseFilterEnum.Ignore;
     }
 
     public override void _GuiInput(InputEvent @event)
@@ -171,7 +172,10 @@ public partial class UiScreen : Control
         copy.Position = (mouse.Position - rect.Position) / rect.Size * (Vector2)CanvasSize;
         copy.GlobalPosition = copy.Position;
         _viewport.PushInput(copy, true);
-        AcceptEvent();
+        // Only what the screen's views took stops here: a click or the wheel they pass over goes on to the game's unhandled input,
+        // where the Controls page's prompt binds it and a menu control bound to it acts.
+        if (_viewport.IsInputHandled())
+            AcceptEvent();
     }
 
     /// <summary>The screen as it's drawn, in its own pixels, before it's scaled up.</summary>

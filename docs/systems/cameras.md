@@ -20,7 +20,7 @@ Ported as `AidynEnhanced.Core.Cameras.FollowCamera`, from `Camera::Mode0` and th
 - `Mode0` doesn't avoid walls at all. Only the R orbit pulls in. It moves an eighth of the way a frame toward a point 0.25 *past* the wall (the ROM has the −0.25), while still easing out toward 5. The two settle about 3.1 from the player, so with a wall any closer, the camera ends up behind it.
 - **The port keeps it off walls,** following and orbiting, as Aidyn ReChronicled does (its ee46dde), the user's choice: before `Mode0`'s last orient, a sphere of 0.25 is swept from the aim to the camera, skipping see-through triangles, and a wall on the way puts the camera 0.3 off it on the player's side (`FollowCamera.KeepOffWalls`). The original's checks of its view and its swing see where the camera would have gone that tick, so it still swings behind him as it did. A wall within 0.5 of the aim, with him backed against it, leaves the camera where it is, as on its aim it would have no look.
 - Interiors use `Mode1`, which does keep the camera off walls (below).
-- Loading and dialogue set a quick swing (`+0x80`), but the first tick after a load cancels it, because the anchor starts at the origin.
+- Loading and dialogue set a quick swing (`+0x80`), but the first tick after a load cancels it, because the anchor starts at the origin. `Mode0` runs once a frame (`Camera.Update`, `0x800a7690`, from `Bodies.Process`), counting the swing down by one a frame while its goal is within 0.5 of where it swings to (`0x800a70c8`–`0x800a70e0`), and ending it at 0 (`Camera.EndSwing`, `0x800a67fc`). The port counts it at the 30 fps cadence's frames (`FollowCamera.Snap`); counting it a tick, it ended twice as soon.
 
 ## Which mode
 

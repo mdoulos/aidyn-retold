@@ -82,8 +82,15 @@ public sealed partial class FollowCamera
     /// <summary>Set until the player first moves or stands (<c>+0x7c</c>): swing at the fastest.</summary>
     private bool _unanchored = true;
 
-    /// <summary>Frames left to swing round quickly (<c>+0x80</c>). Loading and dialogue set it.</summary>
+    /// <summary>
+    /// Frames left to swing round quickly (<c>+0x80</c>). Loading and dialogue set it. <c>Camera::Mode0</c> runs once a frame and counts
+    /// it down by one while the camera's goal is within half a unit of where it swings to (<c>0x800a70d8</c>), so the port counts it at
+    /// the 30 fps cadence's frames (<see cref="_frame"/>).
+    /// </summary>
     public int Snap;
+
+    /// <summary>The 30 fps frames <see cref="Snap"/> counts down by.</summary>
+    private readonly FrameGate _frame = new(Cadence.FrameTicks);
 
     /// <summary>Whether it could see the aim last time it looked (<c>+0x82</c>).</summary>
     private bool _clearView = true;
@@ -125,6 +132,7 @@ public sealed partial class FollowCamera
     /// </summary>
     public void Step(CollisionWorld world, Vector3 target, Vector2 heading, bool checkView = true)
     {
+        var frameEnds = _frame.Tick();
         if (Held)
         {
             Held = false;
@@ -172,7 +180,7 @@ public sealed partial class FollowCamera
         if (Snap != 0)
         {
             rate = 5;
-            if (Vector3.Distance(PositionGoal, goal) < 0.5f && --Snap < 1)
+            if (frameEnds && Vector3.Distance(PositionGoal, goal) < 0.5f && --Snap < 1)
                 ResetOrbit();
         }
         Approach(ref PositionGoal, goal, GoalRate(rate), 5);

@@ -116,7 +116,7 @@ public sealed class UiImages(PluginSet plugins)
         void Piece(RecordId image, Rect2 rect)
         {
             if (rect.Size.X > 0 && rect.Size.Y > 0 && Get(image) is { } texture)
-                canvas.DrawTextureRect(texture, rect, false, tint);
+                canvas.DrawTextureRect(UiPainter.Filtered(texture, rect.Size, new Rect2(Vector2.Zero, texture.GetSize())), rect, false, tint);
         }
     }
 }

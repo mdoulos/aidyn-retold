@@ -36,7 +36,7 @@ public sealed class Settings
     public int UiLines { get; set; } = 240;
 
     /// <summary>How the UI screen is scaled up to the window.</summary>
-    public UiFilter UiFilter { get; set; } = UiFilter.VideoOut;
+    public UiFilter UiFilter { get; set; } = UiFilter.Pixels;
 
     /// <summary>
     /// How many lines the 3D world is drawn at, scaled up to the window: the original's 240 or its Expansion Pak's 480, or 0 to draw

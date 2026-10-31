@@ -88,7 +88,7 @@ public class SystemMenuTests(BarterPlugins fixture) : IClassFixture<BarterPlugin
             options.Rows.Rows.Select(r => r.Label));
         // A new player's are the original's, and the original's video out; Surface Detail's Full and Animation Blending's Smooth show only on a
         // mod's model, he can jump, the text prints at Normal with its voice on, and the intro logos are skipped, the user's choice.
-        Assert.Equal(["Original", "Original", "Original", "Full", "Smooth", "Original", "Original", "Video Out", "Original", "On", "Normal", "On", "Original", "Skip"],
+        Assert.Equal(["Original", "Original", "Original", "Full", "Smooth", "Original", "Original", "Sharp", "Original", "On", "Normal", "On", "Original", "Skip"],
             options.Rows.Rows.Select(r => r.ValueName));
     }
 
@@ -197,7 +197,7 @@ public class SystemMenuTests(BarterPlugins fixture) : IClassFixture<BarterPlugin
         options.Change(-1);
         Assert.Equal(3, settings.ObjectDistance);
         options.Point(options.Rows.Rows.ToList().FindIndex(r => r.Label == "Menu Filter"));
-        Assert.Equal("Video Out", options.Rows.Current!.ValueName);
+        Assert.Equal("Sharp", options.Rows.Current!.ValueName);
     }
 
     [Fact]

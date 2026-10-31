@@ -179,7 +179,8 @@ public sealed class UiPainter
         }
         // A rectangle of negative width draws its texture flipped, in the same place.
         var rect = new Rect2(x, y, mirror ? -drawn.X : drawn.X, drawn.Y);
-        canvas.DrawTextureRectRegion(texture, rect, Sampled(new Rect2(Vector2.Zero, texture.GetSize()), drawn), tint);
+        var source = new Rect2(Vector2.Zero, texture.GetSize());
+        canvas.DrawTextureRectRegion(Filtered(texture, drawn, source), rect, Sampled(source, drawn), tint);
     }
 
     /// <summary>A whole texture stretched over a rectangle, filtered as the console's are, and cut to a clip if there's one.</summary>
@@ -202,7 +203,7 @@ public sealed class UiPainter
             source = new Rect2(source.Position + (cut.Position - rect.Position) * texels, cut.Size * texels);
             rect = cut;
         }
-        canvas.DrawTextureRectRegion(texture, rect, sampled ? Sampled(source, rect.Size) : source, color);
+        canvas.DrawTextureRectRegion(Filtered(texture, rect.Size, source), rect, sampled ? Sampled(source, rect.Size) : source, color);
     }
 
     /// <summary>
@@ -235,7 +236,7 @@ public sealed class UiPainter
             source = new Rect2((cut.Position - rect.Position) * texels, cut.Size * texels);
             rect = cut;
         }
-        canvas.DrawTextureRectRegion(texture, rect, Sampled(source, rect.Size), Tint(sprite.Color));
+        canvas.DrawTextureRectRegion(Filtered(texture, rect.Size, source), rect, Sampled(source, rect.Size), Tint(sprite.Color));
     }
 
     /// <summary>
@@ -249,6 +250,22 @@ public sealed class UiPainter
         return new Rect2(source.Position + (Vector2.One - step) / 2, source.Size);
     }
 
+    private static readonly Dictionary<Texture2D, CanvasTexture> Smooth = [];
+
+    /// <summary>
+    /// The texture to draw a source rectangle of over a rectangle so big with: as it is where it's drawn at its own size, so a screen
+    /// drawn finer than its pixels magnifies it pixel for pixel (<see cref="UiScreen.Oversampling"/>), and filtered linearly where it's
+    /// scaled, as the console filters it.
+    /// </summary>
+    public static Texture2D Filtered(Texture2D texture, Vector2 drawn, Rect2 source)
+    {
+        if ((drawn.Abs() - source.Size).LengthSquared() < 1e-6f)
+            return texture;
+        if (!Smooth.TryGetValue(texture, out var smooth))
+            Smooth[texture] = smooth = new CanvasTexture { DiffuseTexture = texture, TextureFilter = CanvasItem.TextureFilterEnum.Linear };
+        return smooth;
+    }
+
     /// <summary>
     /// Draws part of an image: <paramref name="source"/>, in the image's pixels, at (x, y) at its own
     /// size or scaled to <paramref name="size"/>. The journal cuts its parchment's faded edges from the book's image with it.
@@ -258,7 +275,7 @@ public sealed class UiPainter
         if (Images.Get(image) is not { } texture)
             return;
         var drawn = size ?? source.Size;
-        canvas.DrawTextureRectRegion(texture, new Rect2(x, y, mirror ? -drawn.X : drawn.X, drawn.Y), Sampled(source, drawn),
+        canvas.DrawTextureRectRegion(Filtered(texture, drawn, source), new Rect2(x, y, mirror ? -drawn.X : drawn.X, drawn.Y), Sampled(source, drawn),
             color is { } c ? Tint(c) : White);
     }
 
@@ -271,8 +288,8 @@ public sealed class UiPainter
         if (Images.Get(image) is not { } texture || right <= x)
             return;
         var shown = Math.Min(right - x, size.X);
-        var source = texture.GetSize();
-        canvas.DrawTextureRectRegion(texture, new Rect2(x, y, shown, size.Y), new Rect2(0, 0, source.X * shown / size.X, source.Y),
+        var source = new Rect2(0, 0, texture.GetSize().X * shown / size.X, texture.GetSize().Y);
+        canvas.DrawTextureRectRegion(Filtered(texture, new Vector2(shown, size.Y), source), new Rect2(x, y, shown, size.Y), source,
             color is { } c ? Tint(c) : White);
     }
 

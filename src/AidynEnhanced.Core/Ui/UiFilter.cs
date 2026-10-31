@@ -3,7 +3,11 @@ namespace AidynEnhanced.Core.Ui;
 /// <summary>How the runtime's UI screen (<c>UiScreen</c>) scales the original's 320 × 240 screen up to the window.</summary>
 public enum UiFilter
 {
-    /// <summary>Sharp pixels.</summary>
+    /// <summary>
+    /// Sharp: drawn at the window's resolution, each image the screen draws at its own size magnified pixel for pixel and
+    /// each it scales filtered there, so text and pictures are as crisp as their pixels allow, and a larger replacement shows
+    /// its detail. The default.
+    /// </summary>
     Pixels,
 
     /// <summary>

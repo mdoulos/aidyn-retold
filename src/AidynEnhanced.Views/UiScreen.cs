@@ -11,8 +11,11 @@ namespace AidynEnhanced.Views;
 /// <remarks>
 /// The original draws its UI images pixel for pixel: they're texture rectangles with bilinear
 /// filtering on, which at 1:1 samples each texel exactly, and only a scaled image, such as the
-/// conversation box's gradient, is filtered. So the canvas filters linearly, as the console does,
-/// and the screen is drawn at its own size and scaled up afterwards by <see cref="Filter"/>.
+/// conversation box's gradient, is filtered. Under the Smooth and Video Out filters the canvas
+/// filters linearly, as the console does, and the screen is drawn at its own size and scaled up
+/// afterwards by <see cref="Filter"/>. Under Sharp it's drawn at the window's resolution
+/// (<see cref="Oversampling"/>), each of its pixels as a square of the window's, where an image drawn
+/// at its own size is magnified pixel for pixel and a scaled one is filtered (<see cref="UiPainter"/>).
 /// <see cref="Lines"/> sets its height: 240 is the original's, and 480 draws everything half the
 /// size, with room for twice as much. It's never narrower than 4:3; a narrower control shows it
 /// letterboxed.
@@ -65,6 +68,7 @@ public partial class UiScreen : Control
     private readonly ColorRect _backdrop = new() { Name = "Backdrop", Size = new Vector2(Width, Height), Visible = false, MouseFilter = MouseFilterEnum.Ignore };
     private UiFilter _filter;
     private int _lines = Height;
+    private Vector2I _size = new(Width, Height);
 
     public UiScreen()
     {
@@ -76,7 +80,7 @@ public partial class UiScreen : Control
         Canvas.AddChild(_backdrop);
         _viewport.AddChild(Canvas);
         AddChild(_viewport);
-        Filter = UiFilter.VideoOut;
+        Filter = UiFilter.Pixels;
     }
 
     /// <summary>What views draw in, in the screen's pixels.</summary>
@@ -94,7 +98,14 @@ public partial class UiScreen : Control
     }
 
     /// <summary>The screen's size in its pixels.</summary>
-    public Vector2I CanvasSize => _viewport.Size;
+    public Vector2I CanvasSize => _size;
+
+    /// <summary>
+    /// How many of the window's pixels across and down each of the screen's is drawn with: under Sharp, the least whole number
+    /// that fills the control's height on the window, and else 1. The views draw in the screen's pixels whatever it is; what draws
+    /// a picture of its own for the screen, as the pause menu's scroll does, draws it this much finer.
+    /// </summary>
+    public int Oversampling { get; private set; } = 1;
 
     public UiFilter Filter
     {
@@ -102,7 +113,7 @@ public partial class UiScreen : Control
         set
         {
             _filter = value;
-            _material.SetShaderParameter("mode", (int)value);
+            Fit();
         }
     }
 
@@ -117,7 +128,7 @@ public partial class UiScreen : Control
         }
     }
 
-    /// <summary>Where the screen is drawn: as large as fits, centred.</summary>
+    /// <summary>Where the screen is drawn: as large as fits, centred on whole pixels, so a screen drawn at the window's resolution is drawn 1:1.</summary>
     public Rect2 ScreenRect
     {
         get
@@ -125,28 +136,38 @@ public partial class UiScreen : Control
             var canvas = (Vector2)CanvasSize;
             var scale = Math.Min(Size.X / canvas.X, Size.Y / canvas.Y);
             var size = canvas * scale;
-            return new Rect2((Size - size) / 2, size);
+            return new Rect2(((Size - size) / 2).Round(), size);
         }
     }
 
     public override void _Notification(int what)
     {
-        if (what == NotificationResized)
+        if (what == NotificationResized || what == NotificationEnterTree)
             Fit();
     }
 
-    /// <summary>Sizes the screen to <see cref="Lines"/> and this control's shape.</summary>
+    /// <summary>
+    /// Sizes the screen to <see cref="Lines"/> and this control's shape, and its viewport to <see cref="Oversampling"/> times that,
+    /// its 2D drawn at the screen's size stretched over it. Drawn finer than the window, it's shrunk to fit smoothly.
+    /// </summary>
     private void Fit()
     {
         var minimum = (int)Math.Round(_lines * 4 / 3.0);
         var width = Size.Y > 0 ? Math.Max(minimum, (int)Math.Round(_lines * Size.X / Size.Y)) : minimum;
         var size = new Vector2I(width, _lines);
-        if (_viewport.Size != size)
+        var window = IsInsideTree() ? Size.Y * GetGlobalTransformWithCanvas().Scale.Y : Size.Y;
+        Oversampling = _filter == UiFilter.Pixels ? Math.Max(1, (int)Math.Ceiling(window / _lines - 0.01f)) : 1;
+        if (_size != size || _viewport.Size != size * Oversampling)
         {
-            _viewport.Size = size;
+            _size = size;
+            _viewport.Size = size * Oversampling;
+            _viewport.Size2DOverride = size;
+            _viewport.Size2DOverrideStretch = true;
             Canvas.Size = size;
             _backdrop.Size = size;
         }
+        _viewport.CanvasItemDefaultTextureFilter = Oversampling > 1 ? Viewport.DefaultCanvasItemTextureFilter.Nearest : Viewport.DefaultCanvasItemTextureFilter.Linear;
+        _material.SetShaderParameter("mode", (int)(Oversampling > 1 ? UiFilter.Smooth : _filter));
         QueueRedraw();
     }
 
@@ -199,8 +220,14 @@ public partial class UiScreen : Control
             AcceptEvent();
     }
 
-    /// <summary>The screen as it's drawn, in its own pixels, before it's scaled up.</summary>
-    public Image Capture() => _viewport.GetTexture().GetImage();
+    /// <summary>The screen as it's drawn, in its own pixels, before it's scaled up: drawn finer, each square's top-left pixel.</summary>
+    public Image Capture()
+    {
+        var image = _viewport.GetTexture().GetImage();
+        if (Oversampling > 1)
+            image.Resize(_size.X, _size.Y, Image.Interpolation.Nearest);
+        return image;
+    }
 
     public override void _Draw() => DrawTextureRect(_viewport.GetTexture(), ScreenRect, false);
 }

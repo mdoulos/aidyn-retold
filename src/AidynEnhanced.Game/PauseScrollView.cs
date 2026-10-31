@@ -160,16 +160,21 @@ public partial class PauseScrollView : Control
             _world.Draw(this, tint);
     }
 
-    /// <summary>The viewports at this control's size, with 45° across the frame's 240 lines, wherever they are on a taller screen.</summary>
+    /// <summary>
+    /// The viewports at this control's size, as finely as the screen draws (<see cref="UiScreen.Oversampling"/>), with 45° across
+    /// the frame's 240 lines, wherever they are on a taller screen.
+    /// </summary>
     private void Fit()
     {
         var size = new Vector2I(Math.Max((int)Size.X, 1), Math.Max((int)Size.Y, 1));
+        var fine = UiScreen.Of(this)?.Oversampling ?? 1;
         var fov = Mathf.RadToDeg(2 * MathF.Atan(MathF.Tan(Mathf.DegToRad(FieldOfView / 2)) * size.Y / UiScreen.Height));
         foreach (var end in new[] { _system, _world })
         {
-            if (end.View.Size != size)
-                end.View.Size = size;
+            if (end.View.Size != size * fine)
+                end.View.Size = size * fine;
             end.Camera.Fov = fov;
+            end.Fine = fine;
         }
     }
 
@@ -220,6 +225,9 @@ public partial class PauseScrollView : Control
         public Camera3D Camera { get; }
         public MeshInstance3D? Roller { get; set; }
 
+        /// <summary>How many of the viewport's pixels make one of the screen's.</summary>
+        public int Fine { get; set; } = 1;
+
         /// <summary>The roller's x, along its axis, in its first state with the scroll at 0: open.</summary>
         public float Open { get; set; }
 
@@ -240,7 +248,7 @@ public partial class PauseScrollView : Control
         }
 
         /// <summary>Where a point of the scene is drawn across the control.</summary>
-        public float Column(Vector3 point) => Camera.UnprojectPosition(point).X + _shift;
+        public float Column(Vector3 point) => Camera.UnprojectPosition(point).X / Fine + _shift;
 
         public void Draw(Control control, Color tint) =>
             control.DrawTextureRect(View.GetTexture(), new Rect2(new Vector2(_shift, 0), control.Size), false, tint);

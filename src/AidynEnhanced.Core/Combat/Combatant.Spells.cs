@@ -102,7 +102,6 @@ public sealed partial class Combatant
             HeldAction = Action;
         Action = CombatAction.Flask;
         Potion = potion;
-        Drawn = Potions.IsFlask(potion);
         EquipVisuals(battle.Rules);
         if (Performing)
             StopPerforming(battle);
@@ -112,7 +111,7 @@ public sealed partial class Combatant
     /// <summary>
     /// Puts its action back (<c>Combatant.RevertAction</c>, <c>0x8006679C</c>): the healing modes go; a flask stays in hand while the
     /// party has another, else the hand is emptied (action 0); a potion's goes back to the action kept. The hands hold what the
-    /// action now does (<see cref="EquipVisuals"/>).
+    /// action now does, and a bow aims freely again (<see cref="EquipVisuals"/>).
     /// </summary>
     internal void RevertAction(PartyInventory? inventory, CombatRecord? rules)
     {
@@ -130,7 +129,6 @@ public sealed partial class Combatant
             Action = HeldAction;
         }
         Potion = null;
-        Drawn = false;
         EquipVisuals(rules);
     }
 

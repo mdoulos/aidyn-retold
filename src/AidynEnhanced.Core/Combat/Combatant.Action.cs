@@ -63,10 +63,16 @@ public sealed partial class Combatant
     /// learn the shield skill (<c>Combatant.CannotUseShield</c>, <c>0x80066C18</c>). With no action the hand holds nothing; a flask or
     /// a potion in hand holds the flask; a bow holds its arrow in the hand and the bow itself in the arm in place of the shield, at
     /// locators 0 and 1, or 1 and 0 for <see cref="CombatRecord.OtherHand"/>; any other weapon holds its own model, none for a bite
-    /// or a claw. The hand stays empty for <see cref="CombatRecord.UndrawnWeapons"/>, whose models have their weapons.
+    /// or a claw. The hand stays empty for <see cref="CombatRecord.UndrawnWeapons"/>, whose models have their weapons. Whether it
+    /// aims freely is worked out again too (<see cref="Drawn"/>, <c>Combatant.UpdateDrawnFlag</c>, <c>0x80066A2C</c>, which it calls
+    /// every time), so a bow drawn again after a potion is put back aims and flies as before.
     /// </summary>
     internal void EquipVisuals(CombatRecord? rules)
     {
+        // Combatant.UpdateDrawnFlag: a flask in hand, or else a weapon that flies, whatever the action.
+        Drawn = Action == CombatAction.Flask
+            ? Potion is { } potion && Items.Potions.IsFlask(potion)
+            : Sheet.Equipment.Weapon?.Item.Weapon is { } held && rules?.Missiles?.Any(m => m.Weapon == held.Id) == true;
         _held[HandSlot] = _held[ArmSlot] = null;
         var handLocator = DefaultLocators[HandSlot];
         var armLocator = DefaultLocators[ArmSlot];
@@ -197,7 +203,6 @@ public sealed partial class Combatant
     internal void SetDefaultAction(CombatRecord? rules)
     {
         var item = Sheet.Equipment.Weapon;
-        Drawn = false;
         if (item?.Item.Weapon is not { } weapon)
         {
             Action = CombatAction.None;
@@ -210,7 +215,6 @@ public sealed partial class Combatant
             Action = CombatAction.MeleeOrRanged;
         else
             Action = CombatAction.Ranged;
-        Drawn = rules?.Missiles?.Any(m => m.Weapon == weapon.Id) == true;
         EquipVisuals(rules);
     }
 }

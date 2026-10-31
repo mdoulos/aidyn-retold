@@ -662,7 +662,6 @@ public sealed partial class Battle
         if (equipment.EquipWeapon(spare) != Items.EquipRefusal.None)
             equipment.Restore(spare);
         ai.Spare = held;
-        c.Drawn = _rules.Missiles?.Any(m => m.Weapon == spare.Id) == true;
         Write(Line(ChangesWeaponsLine, c));
         EnterRest();
         if (spare.Item.Weapon is { } w && AllowsMelee(w) && w.Range != 0)

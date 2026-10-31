@@ -99,6 +99,25 @@ public sealed class HeldModelTests
     }
 
     [Fact]
+    public void ABowAimsFreelyAgainOnceAPotionIsPutBack()
+    {
+        // Combatant.EquipVisuals works out the drawn flag every time (Combatant.UpdateDrawnFlag), so RevertAction's brings it back.
+        var c = Holding(Bow);
+        c.SetDefaultAction(Rules());
+        Assert.True(c.Drawn);
+
+        c.HeldAction = c.Action;
+        c.Action = CombatAction.Flask;
+        c.Potion = Item.From(PotionData.Of(BasePotion.Healing));
+        c.EquipVisuals(Rules());
+        Assert.False(c.Drawn);
+
+        c.RevertAction(null, Rules());
+        Assert.Equal(CombatAction.Ranged, c.Action);
+        Assert.True(c.Drawn);
+    }
+
+    [Fact]
     public void TheNotesAreOnTheHeadsLocatorRaisedAndGoWhenThePerformanceStops()
     {
         var c = Holding(Sword);

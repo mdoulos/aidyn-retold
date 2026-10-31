@@ -174,7 +174,7 @@ Beside it: the combatants' bodies, `Combat.Bodies` (`0x800D9488`, 14 by slot, 0x
 | `+0x44` | the AI record, enemies only | checked |
 | `+0x84` | u32, the bow's hand: 0 for `EntityBody.Hand`'s eleven (`0x8006C8BC`), else 1 ([What the bodies hold](#what-the-bodies-hold)) | checked 1 |
 | `+0x88`, `+0x89` | the locators of the hand's slot and the arm's: 0 and 2, or a bow's | checked 0, 2 |
-| `+0x8A` | the attack is aimed freely and flies (`Combatant.UpdateDrawnFlag`, `0x80066A2C`, the port's `Drawn`): a flask, a bow or a thrown weapon | |
+| `+0x8A` | the attack is aimed freely and flies (`Combatant.UpdateDrawnFlag`, `0x80066A2C`, the port's `Drawn`): a flask in hand, or else a bow or a thrown weapon wielded, whatever the action; `Combatant.EquipVisuals` (`0x80066AEC`) works it out every time it's called, so putting a potion back (`RevertAction`) draws a bow again | |
 
 **The AI record** (0x1C, `EnemyAI.Init`, `0x8005BA7C`) is [The AI](#the-ai)'s. Checked in 02, 08, 09, 10 and 11, where the fleeing rat's flags went from 8 to 9.
 

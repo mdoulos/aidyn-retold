@@ -132,7 +132,7 @@ public partial class PartyTabView : Control
         _overlay.Draw += DrawOverlay;
         // The veil's image is made now, as the menu first opens, rather than as a tab is first slid from.
         _ui.Images.Plain(MenuImages.PartyTab, PlainPatches);
-        _ui.Images.WarmParchment(PauseTab.Party, PlainPatches, UiPainter.FullHeight);
+        _ui.Images.WarmParchment(PauseTab.Party, UiPainter.FullHeight);
     }
 
     /// <summary>What the tab shows and takes the presses: the tab, the barter state or the training state, which the runtime's menu starts afresh each time it opens.</summary>

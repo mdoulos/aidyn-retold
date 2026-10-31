@@ -51,42 +51,4 @@ public class ParchmentSwapTests
         Assert.False(ParchmentSwap.Mirrored(PauseTab.System));
         Assert.False(ParchmentSwap.Mirrored(PauseTab.World));
     }
-
-    /// <summary>A tab of plain parchment, opaque throughout, and the same with a dark rule painted across row 7.</summary>
-    private static (byte[] Image, byte[] Plain) Tab()
-    {
-        var plain = new byte[40 * 30 * 4];
-        for (var i = 0; i < 40 * 30; i++)
-            new byte[] { 220, 200, 170, 255 }.CopyTo(plain, i * 4);
-        var image = (byte[])plain.Clone();
-        for (var x = 10; x < 30; x++)
-            new byte[] { 90, 60, 50, 255 }.CopyTo(image, (7 * 40 + x) * 4);
-        return (image, plain);
-    }
-
-    [Fact]
-    public void WhatsPaintedDarkensTheNewParchmentAsItDidTheOld()
-    {
-        var (image, plain) = Tab();
-
-        var paint = ParchmentSwap.Paint(image, plain, 40, 30);
-
-        // On the rule, the parchment is darkened as the rule darkened the old: 90 of 220 in red.
-        Assert.Equal(90.5f / 220.5f, paint[(7 * 40 + 20) * 3], 2);
-        Assert.Equal(60.5f / 200.5f, paint[(7 * 40 + 20) * 3 + 1], 2);
-        // Beside it and away from it, the new parchment is left alone.
-        Assert.Equal(1, paint[(6 * 40 + 20) * 3]);
-        Assert.Equal(1, paint[(20 * 40 + 5) * 3]);
-    }
-
-    [Fact]
-    public void ATabWithNothingPaintedLeavesTheParchmentAlone()
-    {
-        var (_, plain) = Tab();
-        var laid = ParchmentSwap.Lay(Parchment(), ParchmentWidth, ParchmentHeight, 40, 30, 2, 28);
-
-        var swapped = ParchmentSwap.Apply(laid, ParchmentSwap.Paint(plain, plain, 40, 30), 40, 30);
-
-        Assert.Equal(laid, swapped);
-    }
 }

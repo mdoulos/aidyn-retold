@@ -241,17 +241,16 @@ public sealed class UiPainter
 
     /// <summary>
     /// Draws a pause menu tab's image at the frame's top left, times a colour, or its plain version (<see cref="Plain"/>), as a tab
-    /// beside the one showing is veiled. On a mod's parchment (<see cref="UiImages.OnParchment"/>) when there's one, with its own
-    /// torn edges where the menu's height puts them; else made taller when the menus run the screen's height
-    /// (<see cref="FullHeight"/>, <see cref="UiImages.Tall"/>), its torn edges past the original's screen. Either way everything
-    /// painted in is where it was.
+    /// beside the one showing is veiled: made taller when the menus run the screen's height (<see cref="FullHeight"/>,
+    /// <see cref="UiImages.Tall"/>), its torn edges past the original's screen and everything painted in where it was. A mod's
+    /// blank parchment, when there's one, is drawn instead, with nothing painted in (<see cref="UiImages.OnParchment"/>).
     /// </summary>
-    /// <param name="patches">What covers the painted layout in the plain version, which the paint is told from the parchment by.</param>
+    /// <param name="patches">What covers the painted layout in the plain version, which the taller image's gaps are filled from.</param>
     public void Tab(CanvasItem canvas, PauseTab tab, IReadOnlyList<PlainImage.Patch> patches, Rgba? color = null, bool plain = false)
     {
         var image = MenuImages.Tab(tab);
         var tint = color is { } c ? Tint(c) : White;
-        if (Images.OnParchment(tab, patches, plain, FullHeight) is { } laid)
+        if (Images.OnParchment(tab, FullHeight) is { } laid)
             canvas.DrawTextureRect(laid, new Rect2(Vector2.Zero, laid.GetSize() / ParchmentSwap.Scale), false, tint);
         else if (FullHeight && Images.Tall(image, patches, plain) is { } tall)
             canvas.DrawTextureRect(tall, new Rect2(0, -TallImage.Above, tall.GetSize()), false, tint);

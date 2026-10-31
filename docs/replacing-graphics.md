@@ -115,7 +115,7 @@ The parchment behind the pause menu's System, Party and World tabs can be replac
 
 - **Put the PNG beside the scroll's model:** `assets\aidyn\scene\0x0E63.parchment.png` in your mod. The torn top and bottom edges should be transparent. The left and right edges go under the scroll's rolls, so they can be cut straight.
 - **It's stretched to fit the screen.** Its width spans the screen. Its torn edges reach almost the screen's top and bottom, or the original tabs' edges if the Enhancements page's **Menu Height** says Original. Any proportions work, but a 4:3 picture is stretched least.
-- **The tabs' painted layout is kept.** The silhouette, the slots' frames, the labels, the knotwork, the map's coasts and the calendar are lifted off the original's parchment and laid on yours. They're darker or lighter than your paper by as much as they were than the original's. The original's parchment is heavily stained, so a few faint stains come through with them, and the World tab's faint sea wash is left out.
+- **It replaces everything painted into the tabs.** The original paints some of the menus into its parchment rather than drawing them: the Party tab's HitPoints, Level and Gold labels, the slots' frames, the silhouette, the knotwork and "Details", and the World tab's map backdrop, compass and the calendar's days and moons. On your parchment they're gone, and only what the game draws over the tabs remains: names, numbers, items, portraits, the world map and the menus' text.
 - **The middle tab's copy is mirrored,** so the paper runs on from tab to tab without a seam. A picture whose left and right edges differ still joins up.
 
 ## Fonts

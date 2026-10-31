@@ -57,7 +57,7 @@ public partial class WorldTabView : Control
         MouseFilter = MouseFilterEnum.Ignore;
         SetAnchorsPreset(LayoutPreset.FullRect);
         _ui.Images.Plain(MenuImages.WorldTab, PlainPatches);
-        _ui.Images.WarmParchment(PauseTab.World, PlainPatches, UiPainter.FullHeight);
+        _ui.Images.WarmParchment(PauseTab.World, UiPainter.FullHeight);
     }
 
     public WorldMenu Menu { get; set; }

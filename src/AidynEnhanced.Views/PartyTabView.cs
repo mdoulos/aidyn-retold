@@ -71,7 +71,7 @@ public partial class PartyTabView : Control
     /// the bar's frame, the labels, the two rules over the list, the knotwork in three, and "Details". Each piece's
     /// source was picked for grain like the parchment round it, and nothing painted or torn is in it or a pixel round it.
     /// </summary>
-    private static readonly PlainImage.Patch[] PlainPatches =
+    public static readonly PlainImage.Patch[] PlainPatches =
     [
         new(new(64, 35, 153, 67), 214, 140), new(new(18, 22, 66, 70), 181, 148),
         new(new(23, 70, 59, 118), 282, 143), new(new(59, 70, 94, 118), 277, 128), new(new(94, 70, 129, 118), 171, 164),

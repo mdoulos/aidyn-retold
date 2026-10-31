@@ -114,14 +114,16 @@ public partial class PauseScrollView : Control
     }
 
     /// <summary>
-    /// Aims each roller's camera for the scroll as it is now, and returns the columns of this control where the rollers
-    /// are drawn, along their middles, which the tabs are cut at.
+    /// Aims each roller's camera for the scroll as it is now, and returns where on this control the rollers are drawn: the
+    /// columns of their middles, which the tabs are cut at; the rows their ends reach between them, which the parchment
+    /// behind the tabs is cut to (<see cref="ScrollParchmentView"/>); and how upright they stand, from 0 seen end on, as
+    /// the Party scroll comes up from below, to 1 across the screen.
     /// </summary>
-    public (float System, float World) Arrange()
+    public (float System, float World, float Top, float Bottom, float Upright) Arrange()
     {
         Fit();
         if (!_measured)
-            return (float.NegativeInfinity, float.PositiveInfinity);
+            return (float.NegativeInfinity, float.PositiveInfinity, float.NegativeInfinity, float.PositiveInfinity, 1);
         _system.Aim(Axis(_system));
         _world.Aim(Axis(_world));
         // Near enough, both are drawn by one camera, so they hide each other as they should where they meet.
@@ -129,8 +131,31 @@ public partial class PauseScrollView : Control
         _system.Camera.CullMask = _apart ? SystemLayer : SystemLayer | WorldLayer;
         _world.Camera.CullMask = _apart ? WorldLayer : 0;
         QueueRedraw();
-        return (_system.Column(Axis(_system)), _world.Column(Axis(_world)));
+        var (systemTop, systemBottom) = _system.Rows(Ends(_system.Roller!), Radius(_system.Roller!));
+        var (worldTop, worldBottom) = _world.Rows(Ends(_world.Roller!), Radius(_world.Roller!));
+        var upright = Math.Min(Upright(Ends(_system.Roller!)), Upright(Ends(_world.Roller!)));
+        return (_system.Column(Axis(_system)), _world.Column(Axis(_world)), Math.Min(systemTop, worldTop), Math.Max(systemBottom, worldBottom), upright);
     }
+
+    /// <summary>The ends of a roller's axis in the scene: its mesh's middle, out either way along its longest side.</summary>
+    private static (Vector3 A, Vector3 B) Ends(MeshInstance3D roller)
+    {
+        var box = roller.GetAabb();
+        var half = box.Size / 2;
+        var along = half.X >= half.Y && half.X >= half.Z ? new Vector3(half.X, 0, 0) : half.Y >= half.Z ? new Vector3(0, half.Y, 0) : new Vector3(0, 0, half.Z);
+        var middle = box.GetCenter();
+        return (roller.GlobalTransform * (middle - along), roller.GlobalTransform * (middle + along));
+    }
+
+    /// <summary>A roller's radius in the scene: the middle of its mesh's three half-sizes, the two across it being the smaller.</summary>
+    private static float Radius(MeshInstance3D roller)
+    {
+        var half = roller.GetAabb().Size / 2 * roller.GlobalTransform.Basis.Scale;
+        return half.X + half.Y + half.Z - Math.Max(half.X, Math.Max(half.Y, half.Z)) - Math.Min(half.X, Math.Min(half.Y, half.Z));
+    }
+
+    /// <summary>How nearly a roller lies across the screen rather than toward the camera, which looks down the scene's −Y.</summary>
+    private static float Upright((Vector3 A, Vector3 B) ends) => 1 - Math.Abs((ends.B - ends.A).Normalized().Y);
 
     public override void _Process(double delta)
     {
@@ -204,6 +229,13 @@ public partial class PauseScrollView : Control
         _measured = _system.Roller is not null && _world.Roller is not null;
     }
 
+    /// <summary>
+    /// How much of a roller's length is its torn ends, either way, which the parchment behind the tabs stops short of: 4%,
+    /// 10 lines of the remodelled rollers standing across the screen, whose ends reach 10 lines past it, so the parchment's
+    /// torn edges, on lines 6 and 234, are still within.
+    /// </summary>
+    private const float TornEnds = 0.04f;
+
     /// <summary>One end of the scroll: its roller, and the viewport and camera that draw it.</summary>
     private sealed class End
     {
@@ -252,6 +284,21 @@ public partial class PauseScrollView : Control
 
         /// <summary>Where a point of the scene is drawn across the control.</summary>
         public float Column(Vector3 point) => Camera.UnprojectPosition(point).X / Fine + _shift;
+
+        /// <summary>
+        /// The rows of the control a roller's ends are drawn at, the higher first, each drawn in by its torn end, the last
+        /// <see cref="TornEnds"/> of its length, and by the height its round end shows across the screen as it leans toward
+        /// the camera, its radius times the lean: between the two rollers the round ends dip, and a parchment cut at their
+        /// middles would stand above them.
+        /// </summary>
+        public (float Top, float Bottom) Rows((Vector3 A, Vector3 B) ends, float radius)
+        {
+            var (a, b) = (Camera.UnprojectPosition(ends.A).Y / Fine, Camera.UnprojectPosition(ends.B).Y / Fine);
+            var middle = (ends.A + ends.B) / 2;
+            var across = Math.Abs(Camera.UnprojectPosition(middle + new Vector3(radius, 0, 0)).X - Camera.UnprojectPosition(middle).X) / Fine;
+            var inside = across * Math.Abs((ends.B - ends.A).Normalized().Y) + TornEnds * Math.Abs(b - a);
+            return (Math.Min(a, b) + inside, Math.Max(a, b) - inside);
+        }
 
         public void Draw(Control control, Color tint) =>
             control.DrawTextureRect(View.GetTexture(), new Rect2(new Vector2(_shift, 0), control.Size), false, tint);

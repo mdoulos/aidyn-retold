@@ -57,6 +57,8 @@ public partial class PauseMenuView : CanvasLayer
     };
     /// <summary>The tabs, cut to what the scroll has unrolled.</summary>
     private readonly Control _tabs = new() { Name = "Tabs", ClipContents = true, MouseFilter = Control.MouseFilterEnum.Ignore };
+    /// <summary>The parchment behind the tabs, between the rollers.</summary>
+    private readonly ScrollParchmentView _parchment;
     private readonly Models _models;
     private readonly PauseScrollView? _scrollView;
     /// <summary>The World tab's journal, over the tabs and the scroll, which fade out under it.</summary>
@@ -78,6 +80,8 @@ public partial class PauseMenuView : CanvasLayer
         AddChild(_darkness);
         _screen.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         AddChild(_screen);
+        _parchment = new ScrollParchmentView(plugins);
+        _screen.Canvas.AddChild(_parchment);
         _screen.Canvas.AddChild(_tabs);
         _scrollView = PauseScrollView.Create(plugins, _models);
         if (_scrollView is not null)
@@ -219,6 +223,7 @@ public partial class PauseMenuView : CanvasLayer
         var alpha = scroll.Alpha * (1 - _journal.Shown);
         _tabs.Visible = scroll.ShowsMenu && alpha > 0;
         _tabs.Modulate = new Color(1, 1, 1, alpha);
+        _parchment.Visible = _tabs.Visible && _scrollView is not null;
         if (_scrollView is { } view)
         {
             view.Visible = scroll.ShowsMenu && alpha > 0;
@@ -230,8 +235,9 @@ public partial class PauseMenuView : CanvasLayer
     /// <summary>
     /// Lays the tabs side by side, 320 apart, with the one at the menu's position showing at the screen's centre and
     /// those beside it at the screen's edges, faded, and cuts them to what the scroll has unrolled: within the
-    /// original's clip, and between the scroll's rollers, so that its parchment never shows past them. Barter and
-    /// training show the Party tab alone. The scroll moves with them.
+    /// original's clip, and between the scroll's rollers, so that its parchment never shows past them. The parchment
+    /// behind them is cut at the rollers alone, and to their ends. Barter and training show the Party tab alone. The
+    /// scroll moves with them.
     /// </summary>
     private void Place()
     {
@@ -242,19 +248,32 @@ public partial class PauseMenuView : CanvasLayer
         var (left, right) = _menu.Scroll.Clip is var (l, r)
             ? (l <= 0 ? float.NegativeInfinity : frameLeft + l, r >= UiScreen.Width ? float.PositiveInfinity : frameLeft + r)
             : (float.NegativeInfinity, float.PositiveInfinity);
+        var (paperLeft, paperRight, paperTop, paperBottom) = (0f, screen.X, 0f, screen.Y);
         if (_scrollView is { } view)
         {
             view.X = position <= 1
                 ? Mathf.Lerp(PauseScroll.TabX[0], PauseScroll.TabX[1], position)
                 : Mathf.Lerp(PauseScroll.TabX[1], PauseScroll.TabX[2], position - 1);
-            var (systemEnd, worldEnd) = view.Arrange();
+            var (systemEnd, worldEnd, top, bottom, upright) = view.Arrange();
+            // Fading in as the rollers stand up across the screen: seen end on, as the Party scroll comes up from below, a
+            // flat strip between them would stand out of them like a card.
+            var t = Math.Clamp((upright - ScrollParchmentView.UprightFrom) / (ScrollParchmentView.UprightTo - ScrollParchmentView.UprightFrom), 0, 1);
+            _parchment.Modulate = _tabs.Modulate with { A = _tabs.Modulate.A * t * t * (3 - 2 * t) };
             left = Math.Max(left, Mathf.Round(systemEnd));
             right = Math.Min(right, Mathf.Round(worldEnd));
+            paperLeft = Math.Clamp(Mathf.Round(systemEnd), 0, screen.X);
+            paperRight = Math.Clamp(Mathf.Round(worldEnd), 0, screen.X);
+            paperTop = Math.Clamp(Mathf.Round(top), 0, screen.Y);
+            paperBottom = Math.Clamp(Mathf.Round(bottom), 0, screen.Y);
         }
         left = Math.Clamp(left, 0, screen.X);
         right = Math.Clamp(right, 0, screen.X);
         _tabs.Position = new Vector2(left, 0);
         _tabs.Size = new Vector2(Math.Max(right - left, 0), screen.Y);
+        _parchment.Position = new Vector2(paperLeft, paperTop);
+        _parchment.Size = new Vector2(Math.Max(paperRight - paperLeft, 0), Math.Max(paperBottom - paperTop, 0));
+        _parchment.Screen = (Vector2I)screen;
+        var paper = new List<(PauseTab, Vector2)>();
         foreach (var (control, tab) in Tabs)
         {
             var offset = ((int)tab - position) * UiScreen.Width;
@@ -262,6 +281,10 @@ public partial class PauseMenuView : CanvasLayer
             control.Size = screen;
             control.Visible = Math.Abs(offset) < (screen.X + UiScreen.Width) / 2 && (!_menu.TabsLocked || tab == PauseTab.Party) && tab <= _menu.LastTab;
             ((IPauseTab)control).Veil = Math.Min(1, Math.Abs((int)tab - position)) * NeighbourVeil;
+            if (control.Visible)
+                paper.Add((tab, new Vector2(Mathf.Round(offset) - paperLeft, -paperTop)));
         }
+        _parchment.Tabs = paper;
+        _parchment.QueueRedraw();
     }
 }

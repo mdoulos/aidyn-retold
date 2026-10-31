@@ -31,7 +31,7 @@ public partial class WorldTabView : Control
     /// only plain parchment as large, so several sources serve more than once; each was picked for the least stain and
     /// overlaps its neighbours' little if at all, and nothing painted or torn is in it or a pixel round it.
     /// </summary>
-    private static readonly PlainImage.Patch[] PlainPatches =
+    public static readonly PlainImage.Patch[] PlainPatches =
     [
         new(new(155, 58, 265, 94), 155, 28), new(new(155, 94, 265, 130), 155, 28), new(new(155, 130, 265, 144), 155, 28),
         new(new(133, 30, 154, 64), 270, 150), new(new(112, 29, 133, 64), 4, 52),

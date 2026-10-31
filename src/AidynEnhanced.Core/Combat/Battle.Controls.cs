@@ -11,7 +11,7 @@ public sealed partial class Battle
     /// (the left trigger) skips a turn the player plays or puts an aimed attack away (<see cref="Skip"/>), A attacks in a turn,
     /// confirms an aimed attack's target and skips the AI's walk (state 5, <c>Combat.InputMoving</c>), B puts an aim away, left and
     /// right step an attack's or a spell's cursor (state 9), and C-left and C-right a bow's or thrown weapon's (state 18). Whether
-    /// the press did anything.
+    /// the press did anything. Nothing does while "Enemy reinforcements flee" holds the battle.
     /// </summary>
     public bool Press(MenuAction action)
     {
@@ -20,6 +20,10 @@ public sealed partial class Battle
         // Combat.DismissPopup: any press closes Sense Aura's popup, and ends the turn.
         if (action is not (MenuAction.DetailsRelease or MenuAction.AppraiseRelease) && DismissAura())
             return true;
+        // Combat.HoldForMessage: while "Enemy reinforcements flee" holds the battle, Combat.Controls doesn't run, so no press
+        // skips or aims in the turn the player hasn't yet seen.
+        if (Lines.Hold is not null)
+            return false;
         // A held menu (states 22 and 23): up and down move its cursor, and letting its button go chooses; nothing else does anything.
         if (Menu is { } menu)
         {

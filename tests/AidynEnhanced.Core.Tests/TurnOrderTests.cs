@@ -181,4 +181,17 @@ public sealed class TurnOrderTests
     private static uint Below4(int value) => Below(4, value);
 
     private static uint Below(int n, int value) => BattleDice.Below(n, value);
+
+    [Fact]
+    public void NoPressActsWhileReinforcementsFleeingHoldTheBattle()
+    {
+        // Combat.HoldForMessage: Combat.Controls doesn't run for the hold's 60 ticks.
+        var battle = BattleFixtures.Create(1, 0, BattleFixtures.Fighter(0, 15));
+        battle.Lines.HoldOn("Enemy reinforcements flee");
+        Assert.False(battle.Press(AidynEnhanced.Core.Ui.MenuAction.Start));
+        while (battle.Lines.StepHold())
+        {
+        }
+        Assert.True(battle.Press(AidynEnhanced.Core.Ui.MenuAction.Start));
+    }
 }

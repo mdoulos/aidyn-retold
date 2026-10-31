@@ -267,33 +267,37 @@ The user laid this out, and it isn't the original's ([ADR 0013](../adr/0013-sett
 
 The port's own page ([ADR 0026](../adr/0026-controls-are-bound-by-situation.md), [ADR 0027](../adr/0027-conversations-take-the-menus-controls.md)): every control can be rebound, on the keyboard with the mouse and on a controller apart. `OptionsMenu.Controls.cs` holds the page over `Settings.Controls` (`ControlBindings`), and `SystemTabView.Controls.cs` draws it; the runtime turns the bindings into Godot's input actions as the game starts and whenever they change (`InputBindings`, [runtime](runtime.md#controls)).
 
-- **The controls** are what the player does in each situation, not the N64's buttons (`GameControls`), so C-down is both the menus' Details and combat's Spell Menu, which share a default. The defaults are the bindings the runtime had before the page, but for the mouse, which looks by default (Oct 31, 2026, the user's choice, moving toward the controls of PC games such as Fortnite), where it dragged the camera with the right button held:
+- **The controls** are what the player does in each situation, not the N64's buttons (`GameControls`), so C-down is both the menus' Details and combat's Spell Menu, which share a default. The defaults are the bindings the runtime had before the page, but for the keyboard and mouse's, which are a PC game's since Oct 31, 2026, as Fortnite's, the user's choice: the mouse looks, Ctrl sneaks, E uses, Tab or I, M and J open the menu's tabs, the wheel zooms and targets, and a right click goes back. The controller's are the N64's as before:
 
   | Situation | Control | Keyboard | Controller | What it is |
   | --- | --- | --- | --- | --- |
   | Trek | Move | WASD, Arrows | Left Stick | the stick: walks under 80% tilt, runs above |
   | | Camera | Mouse | Both Sticks | what steers the camera ([cameras](cameras.md#the-follow-camera-cameramode0)) |
   | | Camera Hold | None | RB | the N64's R: steers with what moves |
-  | | Camera Left, Camera Right | Q, E | None | turn the camera |
-  | | Walk | Ctrl | None | the stick at half tilt |
+  | | Camera Left, Camera Right | None | None | turn the camera |
+  | | Walk | C | None | the stick at half tilt |
   | | Run | Shift | LS | a port addition: runs in full where he'd run, if his actor can ([movement](movement.md#the-full-run)) |
-  | | Sneak | C | LT | Z |
-  | | Use | Space | A | A: uses the map object reached |
+  | | Sneak | Ctrl | LT | Z |
+  | | Use | E, Space | A | A: uses the map object reached |
   | | Portraits | Backspace | B | B: raises or lowers the portraits |
   | | Menu | Enter, Escape | Start | Start: opens the pause menu |
+  | | Inventory, Map, Journal | Tab and I, M, J | None | the port's: open the pause menu on the Party tab, the World tab, or the World tab's journal, where Start would open it |
+  | | Zoom In, Zoom Out | Wheel Up, Wheel Down | None | the port's: the camera's distance while the mouse looks ([cameras](cameras.md#the-follow-camera-cameramode0)) |
   | Menus | Move Cursor | WASD, Arrows | Left Stick, D-Pad | the stick and the D-pad |
-  | | Accept, Back | Space, Backspace | A, B | A, B |
+  | | Accept, Back | Space; Backspace, Right Click | A, B | A, B |
   | | Close Menu | Enter, Escape | Start | Start |
   | | Details | Tab | Y | C-down, held |
   | | Appraise | R | X | C-up, in a shop; on this page it clears a binding |
   | | Next Member, Previous Member | Q, E | LB, RB | C-left, C-right |
   | | Previous Tab, Next Tab | Z, X | LT, RT | Z or L, R |
   | Combat | Target | WASD, Arrows | Left Stick, D-Pad | steps an attack's or a spell's target, moves a held menu's cursor |
-  | | Attack, Cancel | Space, Backspace | A, B | A, B |
+  | | Attack, Cancel | Space and Left Click, Backspace and Right Click | A, B | A, B |
   | | Skip Turn | Z | LT | Z |
   | | Spell Menu, Item Menu | Tab, R | Y, X | C-down, C-up, held |
-  | | Ranged Left, Ranged Right | Q, E | LB, RB | C-left, C-right: a bow's or thrown weapon's target |
+  | | Previous Target, Next Target | Q and Wheel Up, E and Wheel Down | LB, RB | C-left, C-right: a bow's or thrown weapon's target, and in the port an attack's or a spell's too |
   | | Pause | Enter, Escape | Start | Start |
+
+  **The mouse in the menus and conversations** is the port's, on a PC. Hovering a row of the System and Party tabs, the title's menu and the quit box puts the cursor on it, the wheel moves it, and a click on a row chooses it, as A does (`UiScreen.Clicked`, which the runtime presses as A); a click that misses the rows chooses nothing, so a stray click can't camp or quit. The World tab, the shops and the other popups take no clicks yet. In a conversation, a cut-scene's box, a popup and a backdrop's page, the mouse over the box's choices points at them (`DialogueBox.PointAt`) and a click anywhere moves on, as A does; a right click is Back everywhere, as a binding.
 
   **Cut-scenes and conversations take the menus' controls** ([ADR 0027](../adr/0027-conversations-take-the-menus-controls.md)), as do trek's popups, a backdrop's and the help menu's page, a cinematic and the credits: Move Cursor moves the choices, Accept continues, Back closes a popup, goes back on the help menu's page or skips a cinematic, and Close Menu skips a cut-scene, a cinematic or the credits. They're live in both situations (`Situation.Talking` is still what those modes are), so a rebound Accept is a conversation's too and the page can't say one thing while a conversation does another; the menus' other controls don't reach them. A battle's turn walks and turns the camera with trek's controls; Sneak still acts there, as it always has, but isn't checked against combat's buttons, since the left trigger is also Skip Turn. The debug keys (the F-keys, F and the free camera's Space and C, fast-forward on either stick's click) aren't on the page and stay fixed.
 - **The layout:** the Device row (Keyboard, Controller) at y 70, then the list from y 88, nine lines 12 apart, a situation's heading taking a line of its own, centred in a darker brown. Labels are at x 72 and values at x 188, clear of the longest label, Previous Member, to 304; a value longer than that is printed in the slim font, as a save's long name is. The list scrolls to keep the cursor's row in the middle, with the System list's arrow `0x3757` turned up or down at the right where there's more. Under the list, at y 202, the last change's message for three seconds, or on a binding what clears it ("R: Clear"). A table with a column for each device was tried first, but it doesn't fit the 320-pixel frame: the longest label (104 pixels in the main font) and two cells as wide as "Left Stick, D-Pad" (101) need over 300 of the 238 between the roller and the frame's edge. Mouse Sensitivity (0.25x to 4x, the drag the runtime had at 1x) is on the keyboard's page, then Reset to Defaults, which resets both devices.

@@ -27,19 +27,26 @@ public class ControlBindingsTests : IDisposable
     // looks, where the right button held let it drag (the user's choice, Oct 31, 2026).
     [InlineData("camera", "Source:Mouse", "Source:LeftStick Source:RightStick")]
     [InlineData("camera_hold", "", "Joy:RB")]
-    [InlineData("camera_left", "Key:Q", "")]
-    [InlineData("camera_right", "Key:E", "")]
-    [InlineData("walk", "Key:Ctrl", "")]
+    // The keyboard's are a PC game's since Oct 31, 2026 (the user's choice): the mouse looks, Ctrl sneaks, E uses, and the menus'
+    // tabs and the wheel's zoom are the port's own; the controller's are as they were.
+    [InlineData("camera_left", "", "")]
+    [InlineData("camera_right", "", "")]
+    [InlineData("walk", "Key:C", "")]
     [InlineData("run", "Key:Shift", "Joy:LS")]
-    [InlineData("sneak", "Key:C", "Axis:LeftTrigger+")]
+    [InlineData("sneak", "Key:Ctrl", "Axis:LeftTrigger+")]
     // pause: Enter, Escape, Start; menu_accept Space, A; menu_back Backspace, B.
-    [InlineData("use", "Key:Space", "Joy:A")]
+    [InlineData("use", "Key:E Key:Space", "Joy:A")]
     [InlineData("portraits", "Key:Backspace", "Joy:B")]
     [InlineData("pause", "Key:Enter Key:Escape", "Joy:Start")]
+    [InlineData("inventory", "Key:Tab Key:I", "")]
+    [InlineData("map", "Key:M", "")]
+    [InlineData("journal", "Key:J", "")]
+    [InlineData("zoom_in", "Mouse:WheelUp", "")]
+    [InlineData("zoom_out", "Mouse:WheelDown", "")]
     // The menus' directions: the movement keys, the left stick, and the D-pad (menu_up and so on).
     [InlineData("menu_cursor", "Source:WASD Source:Arrows", "Source:LeftStick Source:DPad")]
     [InlineData("menu_accept", "Key:Space", "Joy:A")]
-    [InlineData("menu_back", "Key:Backspace", "Joy:B")]
+    [InlineData("menu_back", "Key:Backspace Mouse:Right", "Joy:B")]
     [InlineData("menu_close", "Key:Enter Key:Escape", "Joy:Start")]
     [InlineData("menu_details", "Key:Tab", "Joy:Y")]
     [InlineData("menu_appraise", "Key:R", "Joy:X")]
@@ -49,13 +56,13 @@ public class ControlBindingsTests : IDisposable
     [InlineData("menu_tab_next", "Key:X", "Axis:RightTrigger+")]
     // Combat read the same actions as the menus.
     [InlineData("battle_target", "Source:WASD Source:Arrows", "Source:LeftStick Source:DPad")]
-    [InlineData("battle_attack", "Key:Space", "Joy:A")]
-    [InlineData("battle_cancel", "Key:Backspace", "Joy:B")]
+    [InlineData("battle_attack", "Key:Space Mouse:Left", "Joy:A")]
+    [InlineData("battle_cancel", "Key:Backspace Mouse:Right", "Joy:B")]
     [InlineData("battle_skip", "Key:Z", "Axis:LeftTrigger+")]
     [InlineData("battle_spells", "Key:Tab", "Joy:Y")]
     [InlineData("battle_items", "Key:R", "Joy:X")]
-    [InlineData("battle_ranged_left", "Key:Q", "Joy:LB")]
-    [InlineData("battle_ranged_right", "Key:E", "Joy:RB")]
+    [InlineData("battle_ranged_left", "Key:Q Mouse:WheelUp", "Joy:LB")]
+    [InlineData("battle_ranged_right", "Key:E Mouse:WheelDown", "Joy:RB")]
     [InlineData("battle_pause", "Key:Enter Key:Escape", "Joy:Start")]
     public void TheDefaultsAreTheBindingsTheRuntimeAlwaysHad(string control, string keyboard, string controller)
     {
@@ -69,7 +76,7 @@ public class ControlBindingsTests : IDisposable
     [Fact]
     public void EveryControlIsListedOnceAndTheDefaultsDontConflict()
     {
-        Assert.Equal(30, GameControls.All.Count);
+        Assert.Equal(35, GameControls.All.Count);
         Assert.Equal(GameControls.All.Count, GameControls.All.Select(c => c.Id).Distinct().Count());
         Assert.Empty(new ControlBindings().Conflicts());
         Assert.All(GameControls.All.SelectMany(c => c.Keyboard.Concat(c.Controller)), b => Assert.True(Binding.IsValid(b), b));
@@ -132,13 +139,15 @@ public class ControlBindingsTests : IDisposable
     {
         var bindings = new ControlBindings();
 
-        // Q is the menus' Next Member and the camera's turn; in trek it's free of the menus.
-        var result = bindings.Rebind(GameControls.Use, Keys, "Key:Q");
+        // C is Walk's, which trek and a battle's turn share; Q is the menus' Next Member and the aim's Previous Target, which leave trek's free.
+        var result = bindings.Rebind(GameControls.Use, Keys, "Key:C");
         Assert.True(result.Done);
-        Assert.Equal(["Camera Left"], result.TakenFrom);
-        Assert.Empty(bindings.Get(GameControls.CameraLeft, Keys));
+        Assert.Equal(["Walk"], result.TakenFrom);
+        Assert.Empty(bindings.Get(GameControls.Walk, Keys));
+        result = bindings.Rebind(GameControls.Use, Keys, "Key:Q");
+        Assert.Empty(result.TakenFrom);
         Assert.Equal(["Key:Q"], bindings.Get(GameControls.MenuMemberLeft, Keys));
-        Assert.Equal(["Key:Q"], bindings.Get(GameControls.BattleRangedLeft, Keys));
+        Assert.Equal(["Key:Q", "Mouse:WheelUp"], bindings.Get(GameControls.BattleRangedLeft, Keys));
         Assert.Empty(bindings.Conflicts());
 
         // A key in a source takes the source off the direction that had it.
@@ -181,7 +190,7 @@ public class ControlBindingsTests : IDisposable
         Assert.False(bindings.SetSources(GameControls.MenuCursor, Pad, []).Done);
         // Taking Accept's only key refuses the change.
         Assert.Equal("Accept Needs It", bindings.Rebind(GameControls.MenuBack, Keys, "Key:Space").Refusal);
-        Assert.Equal(["Key:Backspace"], bindings.Get(GameControls.MenuBack, Keys));
+        Assert.Equal(["Key:Backspace", "Mouse:Right"], bindings.Get(GameControls.MenuBack, Keys));
         // The rest can be left with nothing.
         Assert.True(bindings.Clear(GameControls.MenuDetails, Keys).Done);
         Assert.Empty(bindings.Get(GameControls.MenuDetails, Keys));

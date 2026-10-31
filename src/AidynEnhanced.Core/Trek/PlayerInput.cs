@@ -13,8 +13,10 @@ namespace AidynEnhanced.Core.Trek;
 /// orbiting stops him; this is a port addition.
 /// </param>
 /// <param name="Run">Run held: run in full where he'd run, if his actor can (<see cref="Body.FullRun"/>); a port addition.</param>
+/// <param name="Look">The mouse looks, a port addition (<see cref="Cameras.FollowCamera.Looking"/>).</param>
+/// <param name="Zoom">The wheel's notches this tick, in for negative (<see cref="Cameras.FollowCamera.ZoomBy"/>); a port addition.</param>
 public readonly record struct PlayerInput(Vector2 Stick, bool Sneak = false, bool Orbit = false, Vector2 OrbitStick = default, bool Free = false,
-    bool Run = false)
+    bool Run = false, bool Look = false, int Zoom = 0)
 {
     /// <summary>Orbiting holds him still, as in the original.</summary>
     public bool Locked => Orbit && !Free;

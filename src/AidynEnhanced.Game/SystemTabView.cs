@@ -96,7 +96,17 @@ public partial class SystemTabView : Control
             return;
         if (Menu.Quitting is { } quitting)
         {
-            // The quit box takes the mouse as the stick: hovering points at a choice.
+            // The quit box takes the mouse as the stick: hovering points at a choice, and clicking one chooses it.
+            if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } chose)
+            {
+                if (_ui.ChoiceAt(new Vector2I((int)Size.X, (int)Size.Y), quitting, chose.Position) is { } clicked)
+                {
+                    Menu.PointQuit(clicked);
+                    UiScreen.Of(this)?.Click(MenuAction.Accept);
+                }
+                AcceptEvent();
+                return;
+            }
             if (@event is InputEventMouseMotion over && _ui.ChoiceAt(new Vector2I((int)Size.X, (int)Size.Y), quitting, over.Position) is { } choice)
                 Menu.PointQuit(choice);
             else if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.WheelUp or MouseButton.WheelDown } scroll)
@@ -104,6 +114,18 @@ public partial class SystemTabView : Control
             else
                 return;
             QueueRedraw();
+            AcceptEvent();
+            return;
+        }
+        // A click on a row chooses it, as A does; anywhere else it chooses nothing.
+        if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } click)
+        {
+            if (RowAt(click.Position - _origin) is { } clicked)
+            {
+                Menu.Point(clicked);
+                QueueRedraw();
+                UiScreen.Of(this)?.Click(MenuAction.Accept);
+            }
             AcceptEvent();
             return;
         }

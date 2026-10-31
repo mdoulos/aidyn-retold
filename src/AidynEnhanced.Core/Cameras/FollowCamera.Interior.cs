@@ -54,7 +54,10 @@ public sealed partial class FollowCamera
         Approach(ref Aim, AimGoal, aimRate, aimMost);
         if (_hold != HoldState.None)
         {
-            Orbiting(world, back, behindBy, orbitLow, orbitHigh);
+            OrbitTick(world, back, behindBy, orbitLow, orbitHigh);
+            // The mouse holds the orbit always, so letting go doesn't bring it back inside as R's does: it's kept off walls instead.
+            if (Looking && KeepOffWalls(world))
+                Orient();
             return;
         }
 

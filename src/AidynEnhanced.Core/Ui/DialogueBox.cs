@@ -297,6 +297,28 @@ public sealed class DialogueBox(TextLayout font, int borderWidth, int borderHeig
 
     private static void Run(Action advance) => advance();
 
+    /// <summary>
+    /// Puts the cursor on the choice under a point of the screen, as the mouse over the box does (the port's): true if there was one.
+    /// </summary>
+    public bool PointAt(int x, int y)
+    {
+        if (Layout is not { Choices.Count: > 0 } layout)
+            return false;
+        // A choice's row runs from its top to the next's, the last's to the menu's bottom; its bounds are the menu's, which all share.
+        var choices = layout.Choices;
+        for (var i = 0; i < choices.Count; i++)
+        {
+            var bounds = choices[i].Bounds;
+            var bottom = i + 1 < choices.Count ? choices[i + 1].Y : bounds.Bottom;
+            if (x < bounds.Left - ChoiceIndent || x >= bounds.Right || y < choices[i].Y || y >= bottom)
+                continue;
+            Highlight = i;
+            Layout = layout with { Highlight = i };
+            return true;
+        }
+        return false;
+    }
+
     /// <summary>Moves the cursor, which stops at the first and last choice.</summary>
     public void MoveCursor(int by)
     {

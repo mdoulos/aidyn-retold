@@ -39,8 +39,11 @@ public abstract record Transition
     /// <summary>A container's loot opens, with any gold in it: the pause menu in its barter state (<see cref="IMapObjectHost.OpenLoot"/>).</summary>
     public sealed record OpenLoot(ItemPile Loot, int Gold) : Transition;
 
-    /// <summary>The pause menu opens in trek, as Start asks (<see cref="GameSession.OpenMenu"/>), on a tab or the one it last showed.</summary>
-    public sealed record OpenMenu(PauseTab? Tab = null) : Transition;
+    /// <summary>
+    /// The pause menu opens in trek, as Start asks (<see cref="GameSession.OpenMenu"/>), on a tab or the one it last showed, or on the
+    /// World tab's journal, opened, as the port's Journal key asks.
+    /// </summary>
+    public sealed record OpenMenu(PauseTab? Tab = null, bool Journal = false) : Transition;
 
     /// <summary>
     /// A battle is to start, as a script's end or a map object decides it. Trek cues it (<see cref="TrekLoop.CueBattle"/>),

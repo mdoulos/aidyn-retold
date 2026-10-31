@@ -89,6 +89,42 @@ public sealed partial class FollowCamera
     /// </summary>
     public int Snap;
 
+    /// <summary>
+    /// Whether the mouse looks, as each orbit's tick says (<see cref="Orbit"/>), the port's for a PC's mouse look: the orbit then goes
+    /// from <see cref="LookBelow"/> under level to <see cref="LookAbove"/> over it, coming in as it rises, and the wheel's
+    /// <see cref="Zoom"/> applies.
+    /// </summary>
+    public bool Looking { get; private set; }
+
+    /// <summary>How far the mouse's orbit goes below and above level, in degrees, where the original's goes from level to 45°.</summary>
+    public const float LookBelow = 20, LookAbove = 70;
+
+    /// <summary>The wheel's zoom while the mouse looks: a multiple of the orbit's distance, from <see cref="MinZoom"/> to <see cref="MaxZoom"/>.</summary>
+    public float Zoom { get; private set; } = 1;
+
+    public const float MinZoom = 0.6f, MaxZoom = 2f;
+
+    /// <summary>A notch of the wheel's zoom, as a multiple.</summary>
+    private const float ZoomStep = 1.15f;
+
+    /// <summary>
+    /// Zooms by the wheel's notches, in for negative: the orbit's distance, and its height with it while the mouse looks, so it looks
+    /// down at him at the same angle.
+    /// </summary>
+    public void ZoomBy(int notches)
+    {
+        if (notches == 0)
+            return;
+        var zoom = Math.Clamp(Zoom * MathF.Pow(ZoomStep, notches), MinZoom, MaxZoom);
+        if (Looking && _hold == HoldState.Holding)
+        {
+            var by = zoom / Zoom;
+            PositionGoal.Y = Aim.Y + (PositionGoal.Y - Aim.Y) * by;
+            Pitch *= by;
+        }
+        Zoom = zoom;
+    }
+
     /// <summary>The 30 fps frames <see cref="Snap"/> counts down by.</summary>
     private readonly FrameGate _frame = new(Cadence.FrameTicks);
 
@@ -157,7 +193,7 @@ public sealed partial class FollowCamera
                 Pitch = 0;
             AimGoal = target + new Vector3(0, Height, 0);
             Approach(ref Aim, AimGoal, 16, 0.25f);
-            Orbiting(world, back, Distance, 0, 5);
+            OrbitTick(world, back, Distance, 0, 5);
             if (KeepOffWalls(world))
                 Orient();
             return;
@@ -222,11 +258,13 @@ public sealed partial class FollowCamera
     /// R held with the stick at <paramref name="stick"/>, for the player at <paramref name="player"/>
     /// (<c>Actor::Move</c>). Right turns it one way at 3° a frame, and up raises it.
     /// </summary>
-    public void Orbit(Vector3 player, Vector2 stick, bool moving = false)
+    /// <param name="look">The mouse looks (<see cref="Looking"/>).</param>
+    public void Orbit(Vector3 player, Vector2 stick, bool moving = false, bool look = false)
     {
         if (_hold == HoldState.None)
             _hold = HoldState.Starting;
         _carry = moving;
+        Looking = look;
         Anchor(player);
         OrbitAngle -= Cadence.PerTick(stick.X * 3);
         Pitch += Cadence.PerTick(stick.Y);
@@ -250,6 +288,7 @@ public sealed partial class FollowCamera
         if (_hold != HoldState.None)
             _hold = HoldState.Releasing;
         _carry = false;
+        Looking = false;
         OrbitAngle = 0;
         Pitch = Mode == CameraMode.Outdoor ? DefaultPitch : 0;
     }
@@ -429,7 +468,7 @@ public sealed partial class FollowCamera
     /// went down, easing to <paramref name="distance"/> away, and between
     /// <paramref name="low"/> and <paramref name="high"/> above the aim.
     /// </summary>
-    private void Orbiting(CollisionWorld world, Vector2 back, float distance, float low, float high)
+    private void Orbiting(CollisionWorld world, Vector2 back, float distance, float low, float high, bool round = false)
     {
         if (_hold is HoldState.Starting or HoldState.Releasing)
         {
@@ -443,7 +482,16 @@ public sealed partial class FollowCamera
         _orbitAim = Aim;
         var reach = new Vector2(Position.X - Aim.X, Position.Z - Aim.Z).Length();
         reach = MathF.Max(reach, 1e-6f);
-        reach -= (reach - distance) / 32;
+        if (round)
+        {
+            // The mouse's orbit is round: the higher above the aim it is, the less far across, and it gets there quickly.
+            var height = Position.Y - Aim.Y;
+            reach -= (reach - MathF.Sqrt(MathF.Max(distance * distance - height * height, 0))) / 4;
+        }
+        else
+        {
+            reach -= (reach - distance) / 32;
+        }
 
         var way = new Vector2(PositionGoal.X - Aim.X, PositionGoal.Z - Aim.Z);
         way /= MathF.Max(way.Length(), 1e-6f);
@@ -480,6 +528,22 @@ public sealed partial class FollowCamera
             Pitch = (Position.Y - PositionGoal.Y) * 10;
         }
         Orient();
+    }
+
+    /// <summary>
+    /// The orbit's tick: the original's (<see cref="Orbiting"/>), or while the mouse looks (<see cref="Looking"/>) the port's, zoomed,
+    /// from <see cref="LookBelow"/> under level to <see cref="LookAbove"/> over it, and round.
+    /// </summary>
+    private void OrbitTick(CollisionWorld world, Vector2 back, float distance, float low, float high)
+    {
+        if (!Looking)
+        {
+            Orbiting(world, back, distance, low, high);
+            return;
+        }
+        var reach = distance * Zoom;
+        Orbiting(world, back, reach, -reach * MathF.Sin(Degrees.ToRadians(LookBelow)), reach * MathF.Sin(Degrees.ToRadians(LookAbove)),
+            round: true);
     }
 
     /// <summary>

@@ -161,6 +161,27 @@ public partial class UiScreen : Control
         set => MouseFilter = value ? MouseFilterEnum.Pass : MouseFilterEnum.Ignore;
     }
 
+    /// <summary>
+    /// A click on a row of a view on the screen, which the view has put the cursor on (<see cref="Click"/>): the button it presses, A,
+    /// for whoever plays the menu to send on as if pressed. A click elsewhere presses nothing.
+    /// </summary>
+    public event Action<MenuAction>? Clicked;
+
+    /// <summary>A view on the screen was clicked on a row (<see cref="Clicked"/>).</summary>
+    public void Click(MenuAction action) => Clicked?.Invoke(action);
+
+    /// <summary>The screen a view draws on, for it to report a click by (<see cref="Click"/>), or null.</summary>
+    public static UiScreen? Of(Node view) => view.GetViewport()?.GetParent() as UiScreen;
+
+    /// <summary>A point in the screen's own coordinates as the screen's pixels, or null off it.</summary>
+    public Vector2? ToCanvas(Vector2 local)
+    {
+        var rect = ScreenRect;
+        if (rect.Size.X <= 0 || rect.Size.Y <= 0 || !rect.HasPoint(local))
+            return null;
+        return (local - rect.Position) / rect.Size * (Vector2)CanvasSize;
+    }
+
     public override void _GuiInput(InputEvent @event)
     {
         if (@event is not InputEventMouse mouse)

@@ -87,8 +87,22 @@ public partial class CameraRig : Node3D
         return drag;
     }
 
+    /// <summary>The wheel's notches since the last call, in for negative (Zoom In and Zoom Out).</summary>
+    public int TakeZoom()
+    {
+        var zoom = _zoom;
+        _zoom = 0;
+        return zoom;
+    }
+
+    private int _zoom;
+
     public override void _UnhandledInput(InputEvent e)
     {
+        if (e.IsActionPressed(Core.Controls.GameControls.ZoomIn))
+            _zoom--;
+        else if (e.IsActionPressed(Core.Controls.GameControls.ZoomOut))
+            _zoom++;
         if (e is not InputEventMouseMotion m)
             return;
         if (Flying)

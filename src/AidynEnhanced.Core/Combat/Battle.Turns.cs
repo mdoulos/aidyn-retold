@@ -100,7 +100,7 @@ public sealed partial class Battle
         }
         var body = current.Body;
         if (input.Orbit)
-            Camera.Orbit(body.Sphere.Position, input.OrbitStick, moving: input.Free && input.Pushed);
+            Camera.Orbit(body.Sphere.Position, input.OrbitStick, moving: input.Free && input.Pushed, look: input.Look);
         else
             Camera.Follow();
         if (!input.Locked && !input.Pushed)

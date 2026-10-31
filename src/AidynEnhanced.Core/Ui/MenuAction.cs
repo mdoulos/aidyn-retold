@@ -40,6 +40,12 @@ public enum MenuAction
     TabPrevious,
     /// <summary>The right trigger (or X): the next tab.</summary>
     TabNext,
+    /// <summary>The port's: opens the pause menu on the Party tab, from trek, as a PC game's inventory key does.</summary>
+    Inventory,
+    /// <summary>The port's: opens the pause menu on the World tab's map, from trek.</summary>
+    Map,
+    /// <summary>The port's: opens the pause menu on the World tab's journal, from trek.</summary>
+    Journal,
 }
 
 /// <summary>What the actions mean to a cursor.</summary>

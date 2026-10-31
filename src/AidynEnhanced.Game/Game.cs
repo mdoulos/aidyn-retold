@@ -397,6 +397,7 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
     {
         var session = _session!;
         var menu = _menu = new PauseMenuView(plugins, session.Menu);
+        menu.Clicked += Clicked;
         AddChild(menu);
         // The core's menu steps by the scroll actor's clock, and the held directions are the session's.
         session.ScrollClock = () => (menu.ScrollFrame, menu.ScrollLength);
@@ -408,7 +409,41 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
         _credits = new CreditsLayer(plugins);
         AddChild(_credits);
         _titleLayer = new TitleLayer(plugins, _models!);
+        _titleLayer.Clicked += Clicked;
         AddChild(_titleLayer);
+    }
+
+    /// <summary>A click on a menu's row, which its view has put the cursor on: pressed as the button it stands for.</summary>
+    private void Clicked(MenuAction action)
+    {
+        if (_session is not { } session)
+            return;
+        if (session.Press(action) != PressOutcome.Ignored)
+            ShowPressed(session);
+        else
+        {
+            _menu?.Redraw();
+            _titleLayer?.Redraw();
+        }
+    }
+
+    /// <summary>
+    /// The mouse in what reads presses as a conversation does, the port's on a PC: over a conversation box's choices it points at
+    /// them, and a click moves the conversation on, a cut-scene's box, a popup and a backdrop's page too, as A does. Whether the
+    /// event was a click, which <see cref="_UnhandledInput"/> then presses as A.
+    /// </summary>
+    private bool ConversationMouse(GameSession session, InputEvent e)
+    {
+        if (session.Mode is not (GameMode.Conversation or GameMode.CutScene or GameMode.Popup or GameMode.Backdrop))
+            return false;
+        if (e is InputEventMouseMotion && _box is { Visible: true } box
+            && _trekScreen.ToCanvas(((InputEventMouse)_trekScreen.MakeInputLocal(e)).Position) is { } at
+            && box.Box.PointAt((int)at.X, (int)at.Y))
+        {
+            box.QueueRedraw();
+            return false;
+        }
+        return e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left };
     }
 
     /// <summary>
@@ -618,9 +653,11 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
         var step = session.Tick(_playing, ReadInput, _camera.Flying,
             actor => _actorViews.TryGetValue(actor, out var view) ? view.Motion : null,
             combatant => _combatantViews.TryGetValue(combatant, out var view) ? view.Motion : null, _spellFxView);
-        // The mouse's drag is the tick's to read (ReadInput takes it); one the tick didn't read, through a fade, a popup, a
-        // conversation or an enemy's turn, is let go, so it doesn't turn the camera all at once when the controls come back.
+        // The mouse's drag and the wheel's zoom are the tick's to read (ReadInput takes them); what the tick didn't read, through a
+        // fade, a popup, a conversation or an enemy's turn, is let go, so it doesn't turn the camera all at once when the controls
+        // come back.
         _camera.TakeDrag();
+        _camera.TakeZoom();
         _backdrop!.Draw(session.Backdrop);
         SoundTextVoice(session);
         _voiceRing?.LabelWanderers(session.Trek.Wanderers.All);
@@ -934,6 +971,8 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
             return;
         }
         var action = _stick.Translate(e);
+        if (action == MenuAction.None && ConversationMouse(session, e))
+            action = MenuAction.Accept;
         // The debug voice ring: A beside a ring member has it say its lines (--voices).
         if (action == MenuAction.Accept && session.Mode == GameMode.Trek && session.Trek.Conversation is null
             && _voiceRing?.Nearest(session.Trek.Player.Feet.ToGodot()) is { } member)

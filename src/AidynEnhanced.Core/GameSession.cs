@@ -479,6 +479,14 @@ public sealed class GameSession
             case GameMode.CutScene:
                 return Scene!.Press(action) ? PressOutcome.Taken : PressOutcome.Ignored;
             default:
+                // The port's keys for the menu's tabs open it as Start does, where Start would, on their tab.
+                if (action is MenuAction.Inventory or MenuAction.Map or MenuAction.Journal)
+                {
+                    if (!Trek.MenuMayOpen || Trek.Press(MenuAction.Start, _frozen) != PressOutcome.MenuOpened)
+                        return PressOutcome.Ignored;
+                    OpenMenu(action == MenuAction.Inventory ? PauseTab.Party : PauseTab.World, journal: action == MenuAction.Journal);
+                    return PressOutcome.MenuOpened;
+                }
                 var outcome = Trek.Press(action, _frozen);
                 if (outcome == PressOutcome.MenuOpened)
                     OpenMenu();
@@ -925,11 +933,11 @@ public sealed class GameSession
     /// trek is going through a teleporter or fading into a cut-scene or a battle, when the press is dead
     /// (<c>Actor::Move</c>), or something else runs.
     /// </summary>
-    public void OpenMenu(PauseTab? tab = null)
+    public void OpenMenu(PauseTab? tab = null, bool journal = false)
     {
         if (Mode != GameMode.Trek || Trek.Teleporting || Trek.Cued is not null || Trek.CutSceneFade.Fading)
             return;
-        Send(new Transition.OpenMenu(tab));
+        Send(new Transition.OpenMenu(journal ? PauseTab.World : tab, journal));
     }
 
     /// <summary>The loot window opens on a pile, as a container's does (<see cref="Transition.OpenLoot"/>).</summary>
@@ -998,6 +1006,8 @@ public sealed class GameSession
         {
             case Transition.OpenMenu open:
                 Menu.Open(open.Tab);
+                if (open.Journal)
+                    Menu.World.ShowJournal();
                 break;
             case Transition.OpenLoot loot:
                 Menu.OpenLoot(loot.Loot, loot.Gold);

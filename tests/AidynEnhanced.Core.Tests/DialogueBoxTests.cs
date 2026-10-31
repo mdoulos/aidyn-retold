@@ -178,6 +178,20 @@ public class DialogueBoxTests
     }
 
     [Fact]
+    public void TheMouseOverAChoicePutsTheCursorOnIt()
+    {
+        var box = Box();
+        box.Show(Page("a", "a", "b", "c"));
+        var third = box.Layout!.Choices[2];
+
+        Assert.True(box.PointAt(third.X + 1, third.Y + 1));
+        Assert.Equal((2, 2), (box.Highlight, box.Layout!.Highlight));
+        // Off every choice, it stays where it is.
+        Assert.False(box.PointAt(0, 0));
+        Assert.Equal(2, box.Highlight);
+    }
+
+    [Fact]
     public void TheCursorDoesNothingWithoutChoices()
     {
         var box = Box();

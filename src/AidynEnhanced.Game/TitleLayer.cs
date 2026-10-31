@@ -15,6 +15,13 @@ namespace AidynEnhanced.Game;
 public partial class TitleLayer : CanvasLayer
 {
     private readonly UiScreen _screen = new() { ForwardsMouse = true };
+
+    /// <summary>A click on a row of the title's menu, which its view has put the cursor on: the button to press (<see cref="UiScreen.Clicked"/>).</summary>
+    public event Action<Core.Ui.MenuAction>? Clicked
+    {
+        add => _screen.Clicked += value;
+        remove => _screen.Clicked -= value;
+    }
     private readonly ColorRect _black = new() { Name = "Cards' black", Color = Colors.Black, MouseFilter = Control.MouseFilterEnum.Ignore };
     private readonly ColorRect _fade = new() { Name = "Fade", Color = Colors.Transparent, MouseFilter = Control.MouseFilterEnum.Ignore };
     private readonly TitleView _view;

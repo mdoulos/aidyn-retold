@@ -105,6 +105,13 @@ public sealed class WorldMenu
 
     public JournalMenu? Journal { get; private set; }
 
+    /// <summary>The journal opened at once, its choice under the cursor, as the port's Journal key asks (<see cref="MenuAction.Journal"/>).</summary>
+    public void ShowJournal()
+    {
+        Cursor = WorldChoice.Journal;
+        Journal ??= OpenJournal();
+    }
+
     /// <summary>Up or down: Camp or Journal. Left and right do nothing.</summary>
     public void MoveCursor(int by)
     {

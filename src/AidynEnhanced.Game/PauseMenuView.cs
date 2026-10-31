@@ -38,6 +38,13 @@ public partial class PauseMenuView : CanvasLayer
     private readonly PluginSet _plugins;
     private readonly Core.Ui.PauseMenu _menu;
     private readonly UiScreen _screen = new() { ForwardsMouse = true };
+
+    /// <summary>A click on a row of the menu, which its view has put the cursor on: the button to press (<see cref="UiScreen.Clicked"/>).</summary>
+    public event Action<Core.Ui.MenuAction>? Clicked
+    {
+        add => _screen.Clicked += value;
+        remove => _screen.Clicked -= value;
+    }
     /// <summary>
     /// What darkens the world behind the menu, still as the game stops it (<c>GetSnapShot</c>,
     /// <c>PauseMenu.DrawBackdrop</c>): black at one less the tint, over everything under the menu.

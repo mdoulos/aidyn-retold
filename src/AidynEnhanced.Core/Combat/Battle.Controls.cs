@@ -10,7 +10,8 @@ public sealed partial class Battle
     /// otherwise C-up and C-down open the item and spell menus, Start asks for the pause menu (combat's state 27, then 14), Z
     /// (the left trigger) skips a turn the player plays or puts an aimed attack away (<see cref="Skip"/>), A attacks in a turn,
     /// confirms an aimed attack's target and skips the AI's walk (state 5, <c>Combat.InputMoving</c>), B puts an aim away, left and
-    /// right step an attack's or a spell's cursor (state 9), and C-left and C-right a bow's or thrown weapon's (state 18). Whether
+    /// right step an attack's or a spell's cursor (state 9), and C-left and C-right a bow's or thrown weapon's (state 18), and in the
+    /// port an attack's or a spell's too. Whether
     /// the press did anything. Nothing does while "Enemy reinforcements flee" holds the battle.
     /// </summary>
     public bool Press(MenuAction action)
@@ -51,7 +52,10 @@ public sealed partial class Battle
                 return Cancel();
             case MenuAction.Left or MenuAction.Right when State is CombatState.TargetAttack or CombatState.TargetSpell:
                 return StepTarget(action == MenuAction.Left ? 1 : -1);
-            case MenuAction.MemberLeft or MenuAction.MemberRight when State == CombatState.TargetThrown:
+            // C-left and C-right step a bow's or thrown weapon's target, and in the port an attack's or a spell's too, as the
+            // mouse's wheel is bound to them by default.
+            case MenuAction.MemberLeft or MenuAction.MemberRight when State is CombatState.TargetThrown or CombatState.TargetAttack
+                or CombatState.TargetSpell:
                 return StepTarget(action == MenuAction.MemberLeft ? 1 : -1);
             default:
                 return false;

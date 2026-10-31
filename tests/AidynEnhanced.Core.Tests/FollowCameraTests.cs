@@ -134,6 +134,49 @@ public class FollowCameraTests
         Assert.InRange(camera.Position.X, -1.75f, -1.65f);
     }
 
+    /// <summary>
+    /// The mouse's orbit (the port's mouse look) goes from 20° under level to 70° over it, coming in as it rises so it stays its
+    /// distance from the aim, where the original's goes from level to 45° and only rises; and the wheel zooms that distance.
+    /// </summary>
+    [Fact]
+    public void TheMouseLooksFromUnderLevelToNearlyOverheadAndTheWheelZooms()
+    {
+        var world = new Physics.CollisionWorld();
+        var target = new Vector3(0, 0.5f, 0);
+        var camera = new FollowCamera(target + new Vector3(0, 1.05f, 0), new Vector2(0, 1));
+        void Look(Vector2 stick, int ticks)
+        {
+            for (var i = 0; i < ticks; i++)
+            {
+                camera.Orbit(target, stick, look: true);
+                camera.Step(world, target, new Vector2(0, 1));
+            }
+        }
+
+        Look(new Vector2(0, 5), 10 * TicksPerSecond);
+        Assert.InRange(Elevation(camera), 69.5, 70.01);
+        Assert.InRange(Vector3.Distance(camera.Position, camera.Aim), 4.95, 5.05);
+        Look(new Vector2(0, -5), 10 * TicksPerSecond);
+        Assert.InRange(Elevation(camera), -20.01, -19.5);
+        Assert.InRange(Vector3.Distance(camera.Position, camera.Aim), 4.95, 5.05);
+
+        // Three notches out is 1.15 cubed as far, at the same angle; the most is twice as far.
+        camera.ZoomBy(3);
+        Look(Vector2.Zero, 2 * TicksPerSecond);
+        Assert.InRange(Vector3.Distance(camera.Position, camera.Aim), 5 * MathF.Pow(1.15f, 3) - 0.05f, 5 * MathF.Pow(1.15f, 3) + 0.05f);
+        Assert.InRange(Elevation(camera), -20.01, -19.5);
+        camera.ZoomBy(20);
+        Look(Vector2.Zero, 2 * TicksPerSecond);
+        Assert.Equal(FollowCamera.MaxZoom, camera.Zoom);
+        Assert.InRange(Vector3.Distance(camera.Position, camera.Aim), 9.9, 10.1);
+
+        static double Elevation(FollowCamera c)
+        {
+            var flat = new Vector2(c.Position.X - c.Aim.X, c.Position.Z - c.Aim.Z).Length();
+            return Math.Atan2(c.Position.Y - c.Aim.Y, flat) * 180 / Math.PI;
+        }
+    }
+
     /// <summary>A flat world with a wall at X = -2, facing the player at the origin.</summary>
     private static Physics.CollisionWorld WalledBehind()
     {

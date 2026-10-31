@@ -195,6 +195,12 @@ public sealed partial class TrekLoop : IMapObjectHost
     /// <summary>Whether a teleport is fading out, before the player goes through.</summary>
     public bool Teleporting => _pending is not null;
 
+    /// <summary>
+    /// Whether nothing is up in trek that takes Start before the pause menu would: a backdrop's page, a popup or a conversation. The
+    /// port's keys for the menu's tabs open it only then (<see cref="GameSession.Press"/>).
+    /// </summary>
+    public bool MenuMayOpen => Backdrop is null && Use.Popup is null && Conversation is null;
+
     /// <summary>A cut-scene waiting for trek to fade out, or for its host to start it.</summary>
     public CutSceneLaunch? Cued { get; private set; }
 
@@ -408,9 +414,10 @@ public sealed partial class TrekLoop : IMapObjectHost
     public static void StepPlayer(CollisionWorld world, PlayerMotion player, PlayerInput input, FollowCamera camera, IRootMotion animation)
     {
         if (input.Orbit)
-            camera.Orbit(player.Sphere.Position, input.OrbitStick, moving: input.Free && input.Pushed);
+            camera.Orbit(player.Sphere.Position, input.OrbitStick, moving: input.Free && input.Pushed, look: input.Look);
         else
             camera.Follow();
+        camera.ZoomBy(input.Zoom);
         if (!input.Locked && !input.Pushed)
             camera.Anchor(player.Sphere.Position);
         player.Step(world, input.Move, camera.LookXZ, animation);

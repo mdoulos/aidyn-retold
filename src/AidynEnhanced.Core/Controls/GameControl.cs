@@ -91,7 +91,8 @@ public static class GameControls
     private static readonly string[] Lookable = [.. Walkable, InputSource.Mouse];
 
     public const string Move = "move", Camera = "camera", CameraHold = "camera_hold", CameraLeft = "camera_left", CameraRight = "camera_right",
-        Walk = "walk", Run = "run", Sneak = "sneak", Use = "use", Portraits = "portraits", Pause = "pause";
+        Walk = "walk", Run = "run", Sneak = "sneak", Use = "use", Portraits = "portraits", Pause = "pause", Inventory = "inventory", Map = "map",
+        Journal = "journal", ZoomIn = "zoom_in", ZoomOut = "zoom_out";
 
     public const string MenuCursor = "menu_cursor", MenuAccept = "menu_accept", MenuBack = "menu_back", MenuClose = "menu_close",
         MenuDetails = "menu_details", MenuAppraise = "menu_appraise", MenuMemberLeft = "menu_member_left", MenuMemberRight = "menu_member_right",
@@ -115,21 +116,31 @@ public static class GameControls
         // than while the right button is held, which is free.
         Sources(Camera, "Camera", Situation.Trek, Walking, [InputSource.Mouse], [InputSource.LeftStick, InputSource.RightStick], Lookable),
         Button(CameraHold, "Camera Hold", Situation.Trek, Walking, null, [], ["Joy:RB"]),
-        Button(CameraLeft, "Camera Left", Situation.Trek, Walking, null, ["Key:Q"], []),
-        Button(CameraRight, "Camera Right", Situation.Trek, Walking, null, ["Key:E"], []),
-        Button(Walk, "Walk", Situation.Trek, Walking, null, ["Key:Ctrl"], []),
+        // The keyboard and mouse's defaults are a PC game's, as Fortnite's (the user's choice, Oct 31, 2026): the mouse looks, so the
+        // camera keys are free; Ctrl crouches into Sneak, E uses, Shift runs, Tab or I, M and J open the menu's tabs, and the wheel
+        // zooms. The controller's stay the N64's.
+        Button(CameraLeft, "Camera Left", Situation.Trek, Walking, null, [], []),
+        Button(CameraRight, "Camera Right", Situation.Trek, Walking, null, [], []),
+        Button(Walk, "Walk", Situation.Trek, Walking, null, ["Key:C"], []),
         Button(Run, "Run", Situation.Trek, Situation.Trek, null, ["Key:Shift"], ["Joy:LS"]),
         // Sneak acts in a battle's turn too, as it always has, but isn't checked there: the left trigger is also Skip Turn.
-        Button(Sneak, "Sneak", Situation.Trek, Situation.Trek, null, ["Key:C"], ["Axis:LeftTrigger+"]),
-        Button(Use, "Use", Situation.Trek, Situation.Trek, MenuAction.Accept, ["Key:Space"], ["Joy:A"]),
+        Button(Sneak, "Sneak", Situation.Trek, Situation.Trek, null, ["Key:Ctrl"], ["Axis:LeftTrigger+"]),
+        Button(Use, "Use", Situation.Trek, Situation.Trek, MenuAction.Accept, ["Key:E", "Key:Space"], ["Joy:A"]),
         Button(Portraits, "Portraits", Situation.Trek, Situation.Trek, MenuAction.Back, ["Key:Backspace"], ["Joy:B"]),
         Button(Pause, "Menu", Situation.Trek, Situation.Trek, MenuAction.Start, ["Key:Enter", "Key:Escape"], ["Joy:Start"], essential: true),
+        Button(Inventory, "Inventory", Situation.Trek, Situation.Trek, MenuAction.Inventory, ["Key:Tab", "Key:I"], []),
+        Button(Map, "Map", Situation.Trek, Situation.Trek, MenuAction.Map, ["Key:M"], []),
+        Button(Journal, "Journal", Situation.Trek, Situation.Trek, MenuAction.Journal, ["Key:J"], []),
+        Button(ZoomIn, "Zoom In", Situation.Trek, Situation.Trek, null, ["Mouse:WheelUp"], []),
+        Button(ZoomOut, "Zoom Out", Situation.Trek, Situation.Trek, null, ["Mouse:WheelDown"], []),
 
         // A conversation's choices, its next line, closing it and skipping a cut-scene are the menus' cursor, Accept, Back and Close Menu.
         Sources(MenuCursor, "Move Cursor", Situation.Menus, MenusAndTalking, [InputSource.Wasd, InputSource.Arrows],
             [InputSource.LeftStick, InputSource.DPad], Walkable, essential: true),
+        // A right click goes back, as on a PC. A click on a menu's row chooses it, and a click moves a conversation on, as the runtime's
+        // views and the conversation box take them, so a click elsewhere on a menu chooses nothing (UiScreen.Clicked).
         Button(MenuAccept, "Accept", Situation.Menus, MenusAndTalking, MenuAction.Accept, ["Key:Space"], ["Joy:A"], essential: true),
-        Button(MenuBack, "Back", Situation.Menus, MenusAndTalking, MenuAction.Back, ["Key:Backspace"], ["Joy:B"], essential: true),
+        Button(MenuBack, "Back", Situation.Menus, MenusAndTalking, MenuAction.Back, ["Key:Backspace", "Mouse:Right"], ["Joy:B"], essential: true),
         Button(MenuClose, "Close Menu", Situation.Menus, MenusAndTalking, MenuAction.Start, ["Key:Enter", "Key:Escape"], ["Joy:Start"]),
         Button(MenuDetails, "Details", Situation.Menus, Situation.Menus, MenuAction.Details, ["Key:Tab"], ["Joy:Y"], release: MenuAction.DetailsRelease),
         Button(MenuAppraise, "Appraise", Situation.Menus, Situation.Menus, MenuAction.Appraise, ["Key:R"], ["Joy:X"], release: MenuAction.AppraiseRelease),
@@ -141,13 +152,14 @@ public static class GameControls
 
         // A battle's own: the stick, the D-pad and the keys choose a target and move a held menu's cursor.
         Sources(BattleTarget, "Target", Situation.Combat, Battle, [InputSource.Wasd, InputSource.Arrows], [InputSource.LeftStick, InputSource.DPad], Walkable),
-        Button(BattleAttack, "Attack", Situation.Combat, Battle, MenuAction.Accept, ["Key:Space"], ["Joy:A"]),
-        Button(BattleCancel, "Cancel", Situation.Combat, Battle, MenuAction.Back, ["Key:Backspace"], ["Joy:B"]),
+        Button(BattleAttack, "Attack", Situation.Combat, Battle, MenuAction.Accept, ["Key:Space", "Mouse:Left"], ["Joy:A"]),
+        Button(BattleCancel, "Cancel", Situation.Combat, Battle, MenuAction.Back, ["Key:Backspace", "Mouse:Right"], ["Joy:B"]),
         Button(BattleSkip, "Skip Turn", Situation.Combat, Battle, MenuAction.TabPrevious, ["Key:Z"], ["Axis:LeftTrigger+"]),
         Button(BattleSpells, "Spell Menu", Situation.Combat, Situation.Combat, MenuAction.Details, ["Key:Tab"], ["Joy:Y"], release: MenuAction.DetailsRelease),
         Button(BattleItems, "Item Menu", Situation.Combat, Situation.Combat, MenuAction.Appraise, ["Key:R"], ["Joy:X"], release: MenuAction.AppraiseRelease),
-        Button(BattleRangedLeft, "Ranged Left", Situation.Combat, Situation.Aiming, MenuAction.MemberLeft, ["Key:Q"], ["Joy:LB"]),
-        Button(BattleRangedRight, "Ranged Right", Situation.Combat, Situation.Aiming, MenuAction.MemberRight, ["Key:E"], ["Joy:RB"]),
+        // C-left and C-right step a bow's or thrown weapon's target, and the port's step an attack's or a spell's too, so the wheel can.
+        Button(BattleRangedLeft, "Previous Target", Situation.Combat, Situation.Aiming, MenuAction.MemberLeft, ["Key:Q", "Mouse:WheelUp"], ["Joy:LB"]),
+        Button(BattleRangedRight, "Next Target", Situation.Combat, Situation.Aiming, MenuAction.MemberRight, ["Key:E", "Mouse:WheelDown"], ["Joy:RB"]),
         Button(BattlePause, "Pause", Situation.Combat, Situation.Combat, MenuAction.Start, ["Key:Enter", "Key:Escape"], ["Joy:Start"], essential: true),
     ];
 

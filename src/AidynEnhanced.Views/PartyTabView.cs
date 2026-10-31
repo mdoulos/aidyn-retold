@@ -187,6 +187,17 @@ public partial class PartyTabView : Control
 
     public override void _GuiInput(InputEvent @event)
     {
+        // A click on a row chooses it, as A does; anywhere else it chooses nothing.
+        if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } click)
+        {
+            if (Hover(click.Position))
+            {
+                QueueRedraw();
+                UiScreen.Of(this)?.Click(MenuAction.Accept);
+            }
+            AcceptEvent();
+            return;
+        }
         // Hovering a row puts the cursor on it, and the wheel moves it.
         if (@event is InputEventMouseMotion motion && Hover(motion.Position))
         {

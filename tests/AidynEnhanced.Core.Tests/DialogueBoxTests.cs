@@ -455,6 +455,11 @@ public class DialogueBoxTests
         Assert.Equal("plain", TextReveal.ToneOf(null).Name);
         Assert.True(TextReveal.Tones["soldier"].Attack < TextReveal.Tones["soft"].Attack);
         Assert.True(TextReveal.Tones["soldier"].Decay < TextReveal.Tones["soft"].Decay);
+        // Feminine is soft at a quarter of its strength: its attack, ring and gain a quarter of the way from plain to soft.
+        var (plain, soft, feminine) = (TextReveal.Tones["plain"], TextReveal.Tones["soft"], TextReveal.Tones["feminine"]);
+        Assert.Equal(plain.Attack + (soft.Attack - plain.Attack) / 4, feminine.Attack, 1e-6f);
+        Assert.Equal(0.25f, feminine.Mix);
+        Assert.False(TextReveal.Tones.ContainsKey("buzzy"));
     }
 
     [Fact]

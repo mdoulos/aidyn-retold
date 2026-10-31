@@ -51,7 +51,8 @@ public enum Waveform
 /// <param name="Gain">Its loudness, as a multiple of the usual.</param>
 /// <param name="Mix">How much of the blip is the waveform, the rest the plain soft square: 1 for all of it.</param>
 /// <param name="Lilt">How far every other blip is raised and the ones between lowered, as a share of the pitch: a sing-song.</param>
-public sealed record VoiceTone(string Name, Waveform Waveform, float Attack, float Decay, float Noise, float Gain, float Mix = 1, float Lilt = 0);
+/// <param name="Pitch">A multiple on the speaker's pitch: a tone can sit lower or higher than the voice and height give.</param>
+public sealed record VoiceTone(string Name, Waveform Waveform, float Attack, float Decay, float Noise, float Gain, float Mix = 1, float Lilt = 0, float Pitch = 1);
 
 /// <summary>
 /// The port's typewriter reveal and its voice, the user's choice (docs/systems/ui.md, the conversation box): a line prints
@@ -146,22 +147,24 @@ public static class TextReveal
     public const float DeepPitch = 0.5f;
 
     /// <summary>
-    /// The named tones a record's <c>voiceTone</c> picks from. Plain is the blip as it was; soldier is clipped and precise, the guards'
-    /// and Abrecan's; soft is gentle, Brenna's; sly is short and perky with a sing-song, Dougal's; grand swells and rings, a touch
-    /// loud, Donovan's; the rest are tried on the party for comparing, the user's choice (Oct 30, 2026: the buzz and the gravel at
-    /// half what they were).
+    /// The named tones a record's <c>voiceTone</c> picks from, the user's choice by ear (Oct 30, 2026). Plain is the blip as it was.
+    /// Soldier is clipped and precise, the guards' and Abrecan's. Soft is gentle; feminine is soft at a quarter of its strength,
+    /// Brenna's. Sultry is smooth, slow, a little breathy and lower, Keelin's. Sly is short and perky with a sing-song, Dougal's.
+    /// Grand is big: full, loud, lower and ringing long, Donovan's. Bright, hollow and gravel (a twelfth noise) are tried on the
+    /// rest of the party for comparing.
     /// </summary>
     public static readonly IReadOnlyDictionary<string, VoiceTone> Tones = new[]
     {
         new VoiceTone("plain", Waveform.Soft, Attack: 0.003f, Decay: 1, Noise: 0, Gain: 1),
         new VoiceTone("soldier", Waveform.Square, Attack: 0.0004f, Decay: 0.65f, Noise: 0, Gain: 0.9f),
         new VoiceTone("soft", Waveform.Sine, Attack: 0.009f, Decay: 1.35f, Noise: 0, Gain: 0.85f),
+        new VoiceTone("feminine", Waveform.Sine, Attack: 0.0045f, Decay: 1.09f, Noise: 0, Gain: 0.96f, Mix: 0.25f),
+        new VoiceTone("sultry", Waveform.Sine, Attack: 0.012f, Decay: 1.6f, Noise: 0.06f, Gain: 0.9f, Mix: 0.9f, Lilt: 0.02f, Pitch: 0.9f),
         new VoiceTone("sly", Waveform.Square, Attack: 0.001f, Decay: 0.6f, Noise: 0, Gain: 0.85f, Mix: 0.6f, Lilt: 0.07f),
-        new VoiceTone("grand", Waveform.Triangle, Attack: 0.014f, Decay: 1.7f, Noise: 0, Gain: 1.15f, Mix: 0.8f),
+        new VoiceTone("grand", Waveform.Square, Attack: 0.002f, Decay: 1.9f, Noise: 0, Gain: 1.7f, Mix: 0.7f, Pitch: 0.88f),
         new VoiceTone("bright", Waveform.Square, Attack: 0.002f, Decay: 1, Noise: 0, Gain: 0.8f),
-        new VoiceTone("buzzy", Waveform.Saw, Attack: 0.002f, Decay: 1.1f, Noise: 0, Gain: 0.75f, Mix: 0.5f),
         new VoiceTone("hollow", Waveform.Triangle, Attack: 0.004f, Decay: 1.2f, Noise: 0, Gain: 1),
-        new VoiceTone("gravel", Waveform.Soft, Attack: 0.003f, Decay: 0.9f, Noise: 0.175f, Gain: 1),
+        new VoiceTone("gravel", Waveform.Soft, Attack: 0.003f, Decay: 0.9f, Noise: 0.09f, Gain: 1),
     }.ToDictionary(t => t.Name);
 
     /// <summary>The tone every speaker has unless its record names another.</summary>

@@ -20,8 +20,11 @@ public sealed partial class TextVoicePlayer : Node
     /// <summary>The decay's time constant at a decay of 1, in seconds.</summary>
     private const float Decay = 0.02f;
 
-    /// <summary>The blip's loudness at full sound volume and a tone gain of 1, so it sits under the game's own sounds: halved Oct 30, 2026, the user's choice.</summary>
-    private const float Gain = 0.25f;
+    /// <summary>
+    /// The blip's loudness at full sound volume and a tone gain of 1, so it sits well under the game's own sounds: about −22 dB,
+    /// the user's choice (Oct 30, 2026, after a half and then a third of what it was still read as loud).
+    /// </summary>
+    private const float Gain = 0.08f;
 
     private const int Rate = 44100;
 
@@ -48,7 +51,7 @@ public sealed partial class TextVoicePlayer : Node
         _liltUp = !_liltUp;
         var lilt = tone.Lilt * (_liltUp ? 1 : -1);
         player.VolumeDb = Mathf.LinearToDb(volume * Gain * tone.Gain);
-        player.PitchScale = Mathf.Max(0.1f, pitch * (1 + jitter * stray + lilt));
+        player.PitchScale = Mathf.Max(0.1f, pitch * tone.Pitch * (1 + jitter * stray + lilt));
         player.Play();
     }
 

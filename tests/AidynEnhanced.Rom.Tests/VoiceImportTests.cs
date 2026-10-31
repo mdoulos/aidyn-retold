@@ -55,7 +55,9 @@ public sealed class VoiceImportTests(Na10Import fixture)
         var entities = fixture.Data.Set.All<EntityRecord>(RecordTypes.Entity).ToList();
         foreach (var e in entities.Where(e => e.Name is "Town Guard" or "Jundar Guard" or "Abrecan"))
             Assert.Equal("soldier", e.VoiceTone);
-        Assert.Equal("soft", entities.Single(e => e.Name == "Brenna").VoiceTone);
+        Assert.Equal("feminine", entities.Single(e => e.Name == "Brenna").VoiceTone);
+        Assert.Equal("sultry", entities.Single(e => e.Name == "Keelin").VoiceTone);
+        Assert.Null(entities.Single(e => e.Name == "Baird").VoiceTone);
         Assert.Equal("sly", entities.Single(e => e.Name == "Dougal").VoiceTone);
         Assert.Equal("grand", entities.Single(e => e.Name == "Donovan").VoiceTone);
         Assert.Null(entities.Single(e => e.Name == "Alaron").VoiceTone);

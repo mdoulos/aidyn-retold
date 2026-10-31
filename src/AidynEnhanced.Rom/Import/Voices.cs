@@ -122,7 +122,8 @@ public static class Voices
 
     /// <summary>
     /// The speakers whose blips have a tone of their own (<c>TextReveal.Tones</c>), by portrait, the user's choice (Oct 30, 2026): the
-    /// guards and Abrecan clipped and precise, Brenna gentle, and the rest of the party given the other tones to compare.
+    /// guards and Abrecan clipped and precise, Brenna feminine, Keelin sultry, Dougal sly, Donovan grand, and the rest of the party given
+    /// the other tones to compare.
     /// </summary>
     private static readonly Dictionary<RecordId, string> ToneById = new Dictionary<int, string>
     {
@@ -131,14 +132,13 @@ public static class Voices
         [0x0146] = "soldier", // Town Guard
         [0x014D] = "soldier", // Jundar Guard
         [0x0106] = "soldier", // Abrecan
-        [0x0116] = "soft", // Brenna
+        [0x0116] = "feminine", // Brenna
         [0x010B] = "bright", // Arturo
         [0x0135] = "bright", // Farris
         [0x0164] = "bright", // Rheda
-        [0x010C] = "buzzy", // Baird
         [0x012D] = "grand", // Donovan, a touch pompous
         [0x012E] = "sly", // Dougal, a touch mischievous
-        [0x014F] = "hollow", // Keelin
+        [0x014F] = "sultry", // Keelin
         [0x016B] = "hollow", // Sholeh
         [0x0113] = "gravel", // Becan
         [0x0140] = "gravel", // Godric

@@ -63,13 +63,13 @@ public sealed class PartyInventory(ItemCatalog catalog, FlagNetwork? flags = nul
         if (!item.Traits.OwnSlot && GeneralSlotsUsed >= Catalog.Rules.GeneralSlots)
             return false;
         if (item.KeyItem is { Region: { } region })
-            flags?.Set(region, true);
+            flags?.TrySet(region, true);
         var instance = new ItemInstance(item);
         if (state is not null)
             instance.TakeStateOf(state);
         _stacks.Add(new ItemStack(instance, quantity));
         if (item.KeyItem is { } key)
-            flags?.Set(key.Held, true);
+            flags?.TrySet(key.Held, true);
         return true;
     }
 
@@ -101,7 +101,7 @@ public sealed class PartyInventory(ItemCatalog catalog, FlagNetwork? flags = nul
             return;
         _stacks.Remove(stack);
         if (stack.Item.KeyItem is { } key)
-            flags?.Set(key.Held, false);
+            flags?.TrySet(key.Held, false);
     }
 
     internal static Item Replace(ItemCatalog catalog, Item item) =>

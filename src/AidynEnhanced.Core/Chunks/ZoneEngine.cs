@@ -145,8 +145,8 @@ public sealed class ZoneEngine
     {
         if (chunk.RegionFound(Game.Plugins, Chunks.MapSet.Id) is not { } region)
             return false;
-        Game.Flags.Set(region, true);
-        return true;
+        // A mod may have taken out the region's flag that another plugin's chunk still names (FlagNetwork.TrySet).
+        return Game.Flags.TrySet(region, true);
     }
 
     /// <summary>

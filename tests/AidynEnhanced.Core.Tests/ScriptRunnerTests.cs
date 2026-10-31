@@ -259,6 +259,21 @@ public class ScriptRunnerTests
     }
 
     [Fact]
+    public void ACaseShownAloneRunsItsEffectOnce()
+    {
+        // A case's effect runs as it's reached, so leaving it for its one match doesn't run it again (no base case has one).
+        var run = Start(Script(DialogueMode.Conversation,
+            new DialogueNode(0, DialogueNodeKind.Case, "How much have you got?",
+                [Op(DialogueCommand.SetSpeaker, target: Alaron), Op(DialogueCommand.CheckGold), Op(DialogueCommand.AddExp, 100)], [1, 2]),
+            Choice(1, "Nothing at all.", null, new(0, 0), End),
+            Choice(2, "Some.", null, new(1, null), End)), new World { Gold = 10, Members = { Alaron } });
+        Assert.Equal("How much have you got?", Text(run.Runner));
+        run.Runner.Continue();
+        Assert.Equal("Some.", Text(run.Runner));
+        Assert.Equal([(Alaron, 100)], run.World.Experience);
+    }
+
+    [Fact]
     public void ACaseWithSeveralMatchesOffersThem()
     {
         var run = Start(Haggle(), new World { Gold = 70 });

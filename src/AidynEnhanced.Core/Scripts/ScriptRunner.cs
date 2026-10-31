@@ -436,11 +436,12 @@ public sealed class ScriptRunner
 
     /// <summary>
     /// Runs a node's effect as it's left, unless it's the node that was waiting, whose effect has
-    /// run. True when the walk stops here: the effect waits, or the script has ended.
+    /// run, or a case shown alone, whose effect ran as it was reached (<see cref="ShowCase"/>). True when
+    /// the walk stops here: the effect waits, or the script has ended.
     /// </summary>
     private bool Leave(int node)
     {
-        if (_waitingNode is null)
+        if (_waitingNode is null && Node(node).Kind != DialogueNodeKind.Case)
         {
             Effect(node);
             if (_waitingNode is not null)

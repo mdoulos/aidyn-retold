@@ -10,11 +10,23 @@ namespace AidynEnhanced.Plugins.Records;
 /// for other records.
 /// </param>
 /// <param name="Body">How an entity or a dialogue entity stands in the world. None for other records.</param>
-/// <param name="VoicePitch">
-/// The pitch of the blips the port's conversation box sounds as this speaker's lines print, as a multiple of the blip's own
-/// (<c>AidynEnhanced.Core.Ui.TextReveal</c>): the port's own, which a mod sets; none, as the importer writes, pitches by the body's height.
+/// <param name="Voice">
+/// Whether the speaker is a man or a woman, for the pitch of the port's text voice (<c>AidynEnhanced.Core.Ui.TextReveal</c>): the
+/// port's own, which the importer judges by the portrait (<c>AidynEnhanced.Rom.Import.Voices</c>) and a mod can patch. None for a
+/// creature, which is pitched by its height alone.
 /// </param>
-public sealed record DbRecord(RecordId Id, string Name, RecordId? Portrait = null, EntityBody? Body = null, float? VoicePitch = null);
+/// <param name="VoicePitch">
+/// The pitch of the blips the port's conversation box sounds as this speaker's lines print, as a multiple of the blip's own: the port's
+/// own, which a mod sets outright in place of the voice and height; none, as the importer writes.
+/// </param>
+public sealed record DbRecord(RecordId Id, string Name, RecordId? Portrait = null, EntityBody? Body = null, Voice? Voice = null, float? VoicePitch = null);
+
+/// <summary>A speaker's voice, for the port's text voice: a man's or a woman's. A creature has none.</summary>
+public enum Voice
+{
+    Male,
+    Female,
+}
 
 /// <summary>
 /// How an entity or a dialogue entity stands in the world, as a wanderer or a cut-scene's actor

@@ -32,6 +32,9 @@ public static class TextReveal
     /// <summary>The pitch a speaker's height gives at most and at least, as a multiple of the blip's own.</summary>
     public const float LowestPitch = 0.7f, HighestPitch = 1.5f;
 
+    /// <summary>A man's and a woman's base pitch, which the height then scales (<see cref="PitchOf"/>), the user's choice: men well below the blip's own.</summary>
+    public const float MalePitch = 0.72f, FemalePitch = 1.15f;
+
     /// <summary>How many glyphs a tick a speed prints: 0 for the whole line at once.</summary>
     public static float GlyphsPerTick(TextSpeed speed) => speed switch
     {
@@ -43,15 +46,24 @@ public static class TextReveal
 
     /// <summary>
     /// A speaker's voice's pitch, as a multiple of the blip's own: the record's <see cref="DbRecord.VoicePitch"/> if a mod gave it
-    /// one, else by its body's height, the taller the deeper, as the square root of <see cref="ReferenceHeight"/> over its scaled
-    /// height, within <see cref="LowestPitch"/> and <see cref="HighestPitch"/>; 1 for no speaker or one without a body.
+    /// one; else its <see cref="DbRecord.Voice"/>'s base, <see cref="MalePitch"/> or <see cref="FemalePitch"/>, or 1 for a creature,
+    /// times its body's height's factor, the taller the deeper: the square root of <see cref="ReferenceHeight"/> over its scaled
+    /// height, within <see cref="LowestPitch"/> and <see cref="HighestPitch"/>, or 1 without a body. 1 for no speaker.
     /// </summary>
     public static float PitchOf(DbRecord? speaker)
     {
-        if (speaker?.VoicePitch is { } pitch)
-            return pitch;
-        if (speaker?.Body is not { } body || body.Height * body.Scale <= 0)
+        if (speaker is null)
             return 1;
-        return Math.Clamp(MathF.Sqrt(ReferenceHeight / (body.Height * body.Scale)), LowestPitch, HighestPitch);
+        if (speaker.VoicePitch is { } pitch)
+            return pitch;
+        var voice = speaker.Voice switch
+        {
+            Voice.Male => MalePitch,
+            Voice.Female => FemalePitch,
+            _ => 1,
+        };
+        if (speaker.Body is not { } body || body.Height * body.Scale <= 0)
+            return voice;
+        return voice * Math.Clamp(MathF.Sqrt(ReferenceHeight / (body.Height * body.Scale)), LowestPitch, HighestPitch);
     }
 }

@@ -414,9 +414,21 @@ public class DialogueBoxTests
     }
 
     [Fact]
+    public void AMansVoiceIsDeepAndAWomansHighBeforeTheirHeight()
+    {
+        var body = new EntityBody(RecordId.Hex(RecordTypes.Actor, 1), 0.5f, 1, 1.8f);
+
+        Assert.Equal(0.72f, TextReveal.PitchOf(new DbRecord(Trahern, "Trahern", Body: body, Voice: Voice.Male)), 1e-5f);
+        Assert.Equal(1.15f, TextReveal.PitchOf(new DbRecord(Brenna, "Brenna", Body: body, Voice: Voice.Female)), 1e-5f);
+        // A short woman is higher still, and a man without a body keeps his base.
+        Assert.Equal(1.15f * 1.3416408f, TextReveal.PitchOf(new DbRecord(Brenna, "Brenna", Body: body with { Height = 1 }, Voice: Voice.Female)), 1e-5f);
+        Assert.Equal(0.72f, TextReveal.PitchOf(new DbRecord(Trahern, "Trahern", Voice: Voice.Male)), 1e-5f);
+    }
+
+    [Fact]
     public void AModsPitchWinsAndNoBodyIsMiddling()
     {
-        var speaker = new DbRecord(Trahern, "Trahern", Body: new EntityBody(RecordId.Hex(RecordTypes.Actor, 1), 0.5f, 1, 4), VoicePitch: 1.25f);
+        var speaker = new DbRecord(Trahern, "Trahern", Body: new EntityBody(RecordId.Hex(RecordTypes.Actor, 1), 0.5f, 1, 4), Voice: Voice.Male, VoicePitch: 1.25f);
 
         Assert.Equal(1.25f, TextReveal.PitchOf(speaker));
         Assert.Equal(1, TextReveal.PitchOf(new DbRecord(Trahern, "Trahern")));

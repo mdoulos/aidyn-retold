@@ -275,15 +275,17 @@ public sealed class CutScene
 
         if (!_ending)
         {
-            // Bodies.Process counts the ticks since an actor was steered, and a walk's wait ends at 30.
-            _still = steered ? 0 : _still + 1;
-            if (_still >= StillTicks && Runner.Wait == ScriptWait.Move && !Cameras.Busy)
-                Runner.Resume();
+            // An animation cued since the last tick is measured now its actor has stepped into it, before anything below can cue
+            // another this tick, as a walk's wait ending onto a PlayAnimation does: that one is measured on the next tick.
             if (_animating is { } animating)
             {
                 _animationTimer = motion(animating).StateLength;
                 _animating = null;
             }
+            // Bodies.Process counts the ticks since an actor was steered, and a walk's wait ends at 30.
+            _still = steered ? 0 : _still + 1;
+            if (_still >= StillTicks && Runner.Wait == ScriptWait.Move && !Cameras.Busy)
+                Runner.Resume();
             if (_animationTimer is { } left)
             {
                 _animationTimer = left > 1 ? left - 1 : null;

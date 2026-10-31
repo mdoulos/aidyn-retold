@@ -242,6 +242,36 @@ public sealed class CutSceneTests(Na10Import fixture)
         Assert.Equal("Done.", scene.Page!.Line.Text);
     }
 
+    /// <summary>A walk as <see cref="Walking"/>, and animation 7's state lasting 50 ticks to the rest's 20.</summary>
+    private sealed class Gesturing : IActorMotion
+    {
+        private int _request;
+
+        public int StateLength => _request == 7 ? 50 : 20;
+
+        public float Tick(int request)
+        {
+            _request = request;
+            return request is Body.Walk or Body.Run ? 0.05f : 0;
+        }
+    }
+
+    [Fact]
+    public void An_animation_a_walks_wait_ends_onto_waits_for_its_own_state()
+    {
+        var (scene, _) = Play(ConversationPlugins.CutWalksThenAnimates);
+        var motion = new Gesturing();
+        for (var i = 0; i < 3000 && scene.Runner.Wait != ScriptWait.Animation; i++)
+            scene.Tick(_ => motion);
+        Assert.Equal(ScriptWait.Animation, scene.Runner.Wait);
+
+        // Measured after Alaron has stepped into it, not by the state he stood in as the walk's wait ended.
+        var waited = 0;
+        for (; waited < 1000 && scene.Runner.Wait == ScriptWait.Animation; waited++)
+            scene.Tick(_ => motion);
+        Assert.Equal(50, waited);
+    }
+
     [Fact]
     public void The_end_fades_out_and_then_its_over()
     {

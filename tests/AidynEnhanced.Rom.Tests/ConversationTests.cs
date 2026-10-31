@@ -29,7 +29,8 @@ internal static class ConversationPlugins
     public static RecordId Script(int n) => RecordId.Parse($"convtest:dialogue/0x{n:x4}");
 
     public static readonly RecordId Talk = Script(1), Animates = Script(2), Waits = Script(3), Joins = Script(4), Menus = Script(5),
-        Ends = Script(6), Starts = Script(7), CutSpawns = Script(8), CutCameras = Script(9), CutItems = Script(10), CutAnimates = Script(11);
+        Ends = Script(6), Starts = Script(7), CutSpawns = Script(8), CutCameras = Script(9), CutItems = Script(10), CutAnimates = Script(11),
+        CutWalksThenAnimates = Script(12);
 
     public static readonly RecordId ShortSword = RecordId.Hex(RecordTypes.Weapon, 0x072C), ASpell = RecordId.Hex(RecordTypes.Spell, 0x03EB);
 
@@ -112,6 +113,12 @@ internal static class ConversationPlugins
             Line(0, "", 1, Says(GameState.Alaron), Op(DialogueCommand.CreateActor, 1), Op(DialogueCommand.CameraCutTo, 3), Op(DialogueCommand.CameraOn, 4)),
             Line(1, "", 2, Op(DialogueCommand.PlayAnimation, 7)),
             Line(2, "", 3, Op(DialogueCommand.FadeOut)),
+            Line(3, "Done.", null, End)),
+        // Alaron walks to 4, and with the walk's wait over plays animation 7 at once, as Edur's scene in I08 does (0x0391, 79 to 80).
+        Cut(CutWalksThenAnimates,
+            Line(0, "", 1, Says(GameState.Alaron), Op(DialogueCommand.CreateActor, 1), Op(DialogueCommand.CameraCutTo, 3), Op(DialogueCommand.CameraOn, 4)),
+            Line(1, "", 2, Op(DialogueCommand.WalkTo, 4)),
+            Line(2, "", 3, Op(DialogueCommand.PlayAnimation, 7)),
             Line(3, "Done.", null, End)),
         // Checks a skill, which a map object remembers, and cuts the camera to reference point 2 from the script's own.
         Record(Starts,

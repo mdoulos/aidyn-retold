@@ -226,11 +226,23 @@ public sealed partial class GameSessionTests(Na10Import fixture)
         session.OpenMenu(PauseTab.World);
         Assert.Equal(new Transition.OpenMenu(PauseTab.World), Assert.Single(host.Transitions));
         session.MenuClosed(PauseExit.Close);
+
+        // The port's keys for the tabs open it as Start does, on the Party tab, the World tab, or the World tab's journal open.
+        host.Transitions.Clear();
+        Assert.Equal(PressOutcome.MenuOpened, session.Press(MenuAction.Inventory));
+        Assert.Equal(new Transition.OpenMenu(PauseTab.Party), Assert.Single(host.Transitions));
+        session.MenuClosed(PauseExit.Close);
+        host.Transitions.Clear();
+        Assert.Equal(PressOutcome.MenuOpened, session.Press(MenuAction.Journal));
+        Assert.Equal(new Transition.OpenMenu(PauseTab.World, Journal: true), Assert.Single(host.Transitions));
+        Assert.NotNull(session.Menu.World.Journal);
+        session.MenuClosed(PauseExit.Close);
         host.Transitions.Clear();
         var ambush = Data.Set.Get<DialogueRecord>(RecordId.Parse("aidyn:dialogue/0x0365"));
         var (_, map, dialogue) = Data.Of<DialogueObject>().First(d => d.Object.Script == ambush.Id && d.Object.Stage is not null);
         session.Cue(ambush, new ScriptStart(dialogue.RefPointBase, MapRecord.VoxelId(map.Id, dialogue.Index)), dialogue.Stage!);
         session.OpenMenu();
+        Assert.Equal(PressOutcome.Ignored, session.Press(MenuAction.Map));
         Assert.Empty(host.Transitions);
         Assert.False(session.MenuOpen);
     }

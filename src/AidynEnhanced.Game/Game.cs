@@ -658,6 +658,7 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
         // come back.
         _camera.TakeDrag();
         _camera.TakeZoom();
+        TakeJump();
         _backdrop!.Draw(session.Backdrop);
         SoundTextVoice(session);
         _voiceRing?.LabelWanderers(session.Trek.Wanderers.All);
@@ -961,6 +962,8 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
     {
         _stick.Situation = _session is { } playing ? Core.Controls.Situations.Of(playing.Mode) : Core.Controls.Situation.Trek;
         _stick.Track(e);
+        if (e.IsActionPressed(Core.Controls.GameControls.Jump))
+            _jumpPressed = true;
         if (_session is not { } session || BindPrompted(session, e))
             return;
         var names = session.Title is { NameEntryOpen: true } title ? title.Menu : session.Menu.NameEntryOpen ? session.Menu.System : null;

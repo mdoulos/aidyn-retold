@@ -11,6 +11,12 @@ public partial class Game
     /// <summary>Mouse drag in pixels to stick units at Mouse Sensitivity 1x: about 0.3° of orbit, and 0.02 of height, a pixel.</summary>
     private static readonly Vector2 DragToStick = new(0.2f, 0.4f);
 
+    /// <summary>
+    /// Mouse look's, two fifths of the drag's: about 0.12° of orbit a pixel at 1x, the user's choice (Oct 31, 2026), as the drag's
+    /// turned the camera too fast to look with.
+    /// </summary>
+    private static readonly Vector2 LookToStick = DragToStick * 0.4f;
+
     /// <summary>The bindings' version the input actions were last made from (<see cref="ControlBindings.Version"/>).</summary>
     private int? _controlsApplied;
 
@@ -98,16 +104,26 @@ public partial class Game
         if (_camera.MouseSteers)
         {
             orbit = true;
-            var scale = DragToStick * _settings.MouseSensitivity;
+            var scale = (_camera.MouseLook ? LookToStick : DragToStick) * _settings.MouseSensitivity;
             orbitStick += new System.Numerics.Vector2(drag.X * scale.X, drag.Y * scale.Y);
         }
         // He stands still only while what would move him steers, as with R; a source of Move's alone still walks him.
         var free = !(hold && shared != Vector2.Zero) || own != Vector2.Zero;
         return new PlayerInput(stick, Input.IsActionPressed(GameControls.Sneak), orbit, orbitStick, Free: free, Run: Input.IsActionPressed(GameControls.Run),
-            Look: _camera.MouseLook, Zoom: _camera.TakeZoom(), Jump: Input.IsActionJustPressed(GameControls.Jump));
+            Look: _camera.MouseLook, Zoom: _camera.TakeZoom(), Jump: TakeJump());
 
         // Up, down, left and right as Godot's vector: up is negative y.
         static Vector2 Vector(string[] actions) => Input.GetVector(actions[2], actions[3], actions[0], actions[1]);
+    }
+
+    /// <summary>Whether Jump was pressed since the last tick read it: counted from its events, so a tap within a frame isn't missed.</summary>
+    private bool _jumpPressed;
+
+    private bool TakeJump()
+    {
+        var jump = _jumpPressed;
+        _jumpPressed = false;
+        return jump;
     }
 
     /// <summary>

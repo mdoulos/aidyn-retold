@@ -46,6 +46,28 @@ public sealed class JumpTests
         Assert.InRange(Vector3.Distance(player.Sphere.Position, start), 0, 0.02f);
     }
 
+    [Theory]
+    [InlineData(Worlds.Grass)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void HeJumpsOffEveryKindOfGround(int surface)
+    {
+        // Plain collision (1 and 2) keeps velocity and presses him down each frame, so he can stand there falling by his velocity.
+        var world = new CollisionWorld();
+        world.Add(Worlds.Chunk(), Worlds.Floor(0, -50, 60, -50, 60, surface), Vector3.Zero);
+        var motion = new SteadyMotion(0.06f);
+        var player = new PlayerMotion(new Vector3(0, 0.5f, 0), East);
+        for (var i = 0; i < 60; i++)
+            player.Step(world, new MoveInput(Vector2.Zero), East, motion);
+        var jumped = false;
+        for (var i = 0; i < 4 && !jumped; i++)
+        {
+            player.Step(world, new MoveInput(Vector2.Zero, Jump: i == 0), East, motion);
+            jumped = player.Jumping;
+        }
+        Assert.True(jumped);
+    }
+
     [Fact]
     public void ARunningJumpCarriesItsSpeedAndTheFallingRuleDoesntStopIt()
     {

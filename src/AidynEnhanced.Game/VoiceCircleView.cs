@@ -16,8 +16,11 @@ namespace AidynEnhanced.Game;
 /// </summary>
 public sealed partial class VoiceCircleView : Node3D
 {
-    /// <summary>How near the player's feet must be to a ring member's for A to talk to it, in scene units.</summary>
-    public const float Reach = 2f;
+    /// <summary>
+    /// How near the player's feet must be to a ring member's for A to talk to it, in scene units: generous, since the ring can land
+    /// on a statue's plinth or in a hedge the player can't get beside.
+    /// </summary>
+    public const float Reach = 4.5f;
 
     /// <summary>A couple of feet over the head, in scene units.</summary>
     private const float LabelAbove = 0.6f;
@@ -141,16 +144,24 @@ public sealed partial class VoiceCircleView : Node3D
         }
     }
 
-    /// <summary>The ring member whose feet are within <see cref="Reach"/> of <paramref name="feet"/>, the nearest of them, or none.</summary>
-    public EntityRecord? Nearest(Vector3 feet)
+    /// <summary>
+    /// The ring member within <see cref="Reach"/> of <paramref name="feet"/> that the player faces best, or none: each is scored by
+    /// its distance less how squarely it's ahead, so the one looked at wins over a nearer one behind.
+    /// </summary>
+    public EntityRecord? Nearest(Vector3 feet, System.Numerics.Vector2 heading)
     {
         Member? nearest = null;
-        var best = Reach;
+        var best = float.MaxValue;
+        var ahead = new Vector2(heading.X, heading.Y).Normalized();
         foreach (var m in _members)
         {
-            var distance = new Vector2(m.Node.Position.X - feet.X, m.Node.Position.Z - feet.Z).Length();
-            if (distance < best)
-                (nearest, best) = (m, distance);
+            var to = new Vector2(m.Node.Position.X - feet.X, m.Node.Position.Z - feet.Z);
+            var distance = to.Length();
+            if (distance > Reach)
+                continue;
+            var score = distance - 2 * to.Normalized().Dot(ahead);
+            if (score < best)
+                (nearest, best) = (m, score);
         }
         return nearest?.Entity;
     }

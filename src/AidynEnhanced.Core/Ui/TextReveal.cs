@@ -49,7 +49,9 @@ public enum Waveform
 /// <param name="Decay">How long it rings, as a multiple of the usual, which the mood's multiplies further.</param>
 /// <param name="Noise">How much of the blip is noise, 0 to 1.</param>
 /// <param name="Gain">Its loudness, as a multiple of the usual.</param>
-public sealed record VoiceTone(string Name, Waveform Waveform, float Attack, float Decay, float Noise, float Gain);
+/// <param name="Mix">How much of the blip is the waveform, the rest the plain soft square: 1 for all of it.</param>
+/// <param name="Lilt">How far every other blip is raised and the ones between lowered, as a share of the pitch: a sing-song.</param>
+public sealed record VoiceTone(string Name, Waveform Waveform, float Attack, float Decay, float Noise, float Gain, float Mix = 1, float Lilt = 0);
 
 /// <summary>
 /// The port's typewriter reveal and its voice, the user's choice (docs/systems/ui.md, the conversation box): a line prints
@@ -145,17 +147,21 @@ public static class TextReveal
 
     /// <summary>
     /// The named tones a record's <c>voiceTone</c> picks from. Plain is the blip as it was; soldier is clipped and precise, the guards'
-    /// and Abrecan's; soft is gentle, Brenna's; the rest are tried on the party for comparing, the user's choice (Oct 30, 2026).
+    /// and Abrecan's; soft is gentle, Brenna's; sly is short and perky with a sing-song, Dougal's; grand swells and rings, a touch
+    /// loud, Donovan's; the rest are tried on the party for comparing, the user's choice (Oct 30, 2026: the buzz and the gravel at
+    /// half what they were).
     /// </summary>
     public static readonly IReadOnlyDictionary<string, VoiceTone> Tones = new[]
     {
         new VoiceTone("plain", Waveform.Soft, Attack: 0.003f, Decay: 1, Noise: 0, Gain: 1),
         new VoiceTone("soldier", Waveform.Square, Attack: 0.0004f, Decay: 0.65f, Noise: 0, Gain: 0.9f),
         new VoiceTone("soft", Waveform.Sine, Attack: 0.009f, Decay: 1.35f, Noise: 0, Gain: 0.85f),
+        new VoiceTone("sly", Waveform.Square, Attack: 0.001f, Decay: 0.6f, Noise: 0, Gain: 0.85f, Mix: 0.6f, Lilt: 0.07f),
+        new VoiceTone("grand", Waveform.Triangle, Attack: 0.014f, Decay: 1.7f, Noise: 0, Gain: 1.15f, Mix: 0.8f),
         new VoiceTone("bright", Waveform.Square, Attack: 0.002f, Decay: 1, Noise: 0, Gain: 0.8f),
-        new VoiceTone("buzzy", Waveform.Saw, Attack: 0.002f, Decay: 1.1f, Noise: 0, Gain: 0.75f),
+        new VoiceTone("buzzy", Waveform.Saw, Attack: 0.002f, Decay: 1.1f, Noise: 0, Gain: 0.75f, Mix: 0.5f),
         new VoiceTone("hollow", Waveform.Triangle, Attack: 0.004f, Decay: 1.2f, Noise: 0, Gain: 1),
-        new VoiceTone("gravel", Waveform.Soft, Attack: 0.003f, Decay: 0.9f, Noise: 0.35f, Gain: 1),
+        new VoiceTone("gravel", Waveform.Soft, Attack: 0.003f, Decay: 0.9f, Noise: 0.175f, Gain: 1),
     }.ToDictionary(t => t.Name);
 
     /// <summary>The tone every speaker has unless its record names another.</summary>

@@ -922,7 +922,7 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
         var action = _stick.Translate(e);
         // The debug voice ring: A beside a ring member has it say its lines (--voices).
         if (action == MenuAction.Accept && session.Mode == GameMode.Trek && session.Trek.Conversation is null
-            && _voiceRing?.Nearest(session.Trek.Player.Feet.ToGodot()) is { } member)
+            && _voiceRing?.Nearest(session.Trek.Player.Feet.ToGodot(), session.Trek.Player.Heading) is { } member)
         {
             session.Trek.ShowScript(_voiceRing.ScriptFor(member));
             return;

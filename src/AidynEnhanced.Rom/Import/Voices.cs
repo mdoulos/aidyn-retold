@@ -110,13 +110,14 @@ public static class Voices
     /// <summary>
     /// The speakers whose pitch is set outright rather than by their voice and height, by portrait, the user's choice by ear
     /// (Oct 30, 2026): Abrecan 0.69 halfway between Alaron's 0.72 and Baird's 0.667 by height, then a tenth lower; Baird 0.57;
-    /// Becan 0.60, 15% under his 0.70 by height.
+    /// Becan 0.60, 15% under his 0.70 by height; Brenna 1.01, 15% under her 1.18.
     /// </summary>
     private static readonly Dictionary<RecordId, float> PitchById = new()
     {
         [RecordId.Hex(RecordTypes.Image, 0x0106)] = 0.62f, // Abrecan
         [RecordId.Hex(RecordTypes.Image, 0x010C)] = 0.57f, // Baird
         [RecordId.Hex(RecordTypes.Image, 0x0113)] = 0.60f, // Becan
+        [RecordId.Hex(RecordTypes.Image, 0x0116)] = 1.01f, // Brenna: 15% under her 1.18 by height
     };
 
     /// <summary>
@@ -135,7 +136,8 @@ public static class Voices
         [0x0135] = "bright", // Farris
         [0x0164] = "bright", // Rheda
         [0x010C] = "buzzy", // Baird
-        [0x012D] = "hollow", // Donovan
+        [0x012D] = "grand", // Donovan, a touch pompous
+        [0x012E] = "sly", // Dougal, a touch mischievous
         [0x014F] = "hollow", // Keelin
         [0x016B] = "hollow", // Sholeh
         [0x0113] = "gravel", // Becan

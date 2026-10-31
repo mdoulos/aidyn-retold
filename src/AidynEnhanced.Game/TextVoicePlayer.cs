@@ -20,13 +20,14 @@ public sealed partial class TextVoicePlayer : Node
     /// <summary>The decay's time constant at a decay of 1, in seconds.</summary>
     private const float Decay = 0.02f;
 
-    /// <summary>The blip's loudness at full sound volume and a tone gain of 1, so it sits under the game's own sounds.</summary>
-    private const float Gain = 0.5f;
+    /// <summary>The blip's loudness at full sound volume and a tone gain of 1, so it sits under the game's own sounds: halved Oct 30, 2026, the user's choice.</summary>
+    private const float Gain = 0.25f;
 
     private const int Rate = 44100;
 
     private readonly Dictionary<(string Tone, float Decay), AudioStreamPlayer> _players = [];
     private uint _seed = 0x2545F491;
+    private bool _liltUp;
 
     public TextVoicePlayer()
     {
@@ -44,8 +45,10 @@ public sealed partial class TextVoicePlayer : Node
         _seed = _seed * 1664525u + 1013904223u;
         var stray = ((_seed >> 8) & 0xFFFF) / 65535f * 2 - 1;
         var player = PlayerFor(tone, decay);
+        _liltUp = !_liltUp;
+        var lilt = tone.Lilt * (_liltUp ? 1 : -1);
         player.VolumeDb = Mathf.LinearToDb(volume * Gain * tone.Gain);
-        player.PitchScale = Mathf.Max(0.1f, pitch * (1 + jitter * stray));
+        player.PitchScale = Mathf.Max(0.1f, pitch * (1 + jitter * stray + lilt));
         player.Play();
     }
 
@@ -72,7 +75,7 @@ public sealed partial class TextVoicePlayer : Node
         {
             var t = (float)i / Rate;
             var phase = Mathf.Tau * BaseFrequency * t;
-            var wave = Wave(tone.Waveform, phase);
+            var wave = tone.Mix >= 1 ? Wave(tone.Waveform, phase) : Wave(Waveform.Soft, phase) * (1 - tone.Mix) + Wave(tone.Waveform, phase) * tone.Mix;
             if (tone.Noise > 0)
             {
                 noise = noise * 1664525u + 1013904223u;

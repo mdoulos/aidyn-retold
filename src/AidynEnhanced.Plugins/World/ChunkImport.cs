@@ -380,7 +380,8 @@ public static class JsonShape
                 {
                     for (var i = 0; i < a.Count; i++)
                     {
-                        if (a[i] is JsonValue c && c.TryGetValue(out double channel) && Math.Floor(channel) != channel)
+                        // A whole channel written as a float, 255.0, wouldn't read as an int either.
+                        if (a[i] is JsonValue c && c.TryGetValue(out double channel))
                             a[i] = JsonValue.Create((long)Math.Round(channel));
                     }
                     return a;

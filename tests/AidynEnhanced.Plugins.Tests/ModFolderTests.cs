@@ -31,6 +31,19 @@ public sealed class ModFolderTests
     }
 
     [Fact]
+    public void Keeps_a_hand_written_file_of_one_record_when_writing_beside_it()
+    {
+        using var temp = new TempPlugins();
+        var mod = ModFolder.OpenOrCreate(temp.Root, "m");
+        var path = Path.Combine(mod.Directory, "records", "maps", "Overworld.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, """{ "patch": "aidyn:map/0x0E96", "drawnNeighbours": "North" }""");
+        mod.WriteRecord("maps/Overworld.json", new JsonObject { ["patch"] = "aidyn:map/0x0E97", ["grid"] = null });
+        var written = (JsonArray)JsonNode.Parse(File.ReadAllText(path))!;
+        Assert.Equal(["aidyn:map/0x0E96", "aidyn:map/0x0E97"], written.Select(o => o!["patch"]!.GetValue<string>()));
+    }
+
+    [Fact]
     public void Writes_a_patch_in_place_of_the_one_for_the_same_record_and_keeps_the_others()
     {
         using var temp = new TempPlugins();

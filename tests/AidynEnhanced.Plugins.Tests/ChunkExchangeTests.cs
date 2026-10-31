@@ -227,4 +227,13 @@ public sealed class ChunkExchangeTests : IDisposable
         Assert.True(changes.Single(c => c["index"]!.GetValue<int>() == 0)["reachable"]!.GetValue<bool>());
         Assert.Equal(10, changes.Single(c => c["index"]!.GetValue<int>() == 2)["from"]![0]!.GetValue<int>());
     }
+
+    [Fact]
+    public void ATintWrittenInFloatsReadsAsWholeChannels()
+    {
+        // As a tool writes them, whole or not: 255.0 doesn't read as an int any more than 127.6 does.
+        var json = new System.Text.Json.Nodes.JsonObject { ["tint"] = System.Text.Json.Nodes.JsonNode.Parse("[255.0, 127.6, 0, 255]") };
+        JsonShape.Normalise(json, typeof(Records.SceneObject));
+        Assert.Equal("[255,128,0,255]", json["tint"]!.ToJsonString());
+    }
 }

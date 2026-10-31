@@ -76,7 +76,7 @@ public sealed class ModFolder
     {
         var path = Path.Combine(Directory, "records", file);
         var target = (record["patch"] ?? record["id"])?.GetValue<string>() ?? throw new ArgumentException("A record names what it patches or its ID.");
-        var array = File.Exists(path) ? JsonNode.Parse(File.ReadAllBytes(path), documentOptions: PluginJson.DocumentOptions) as JsonArray ?? [] : [];
+        var array = File.Exists(path) ? ReadRecords(path) : [];
         var at = -1;
         for (var i = 0; i < array.Count && at < 0; i++)
         {
@@ -96,8 +96,9 @@ public sealed class ModFolder
     public void RemoveRecord(string file, RecordId id)
     {
         var path = Path.Combine(Directory, "records", file);
-        if (!File.Exists(path) || JsonNode.Parse(File.ReadAllBytes(path), documentOptions: PluginJson.DocumentOptions) is not JsonArray array)
+        if (!File.Exists(path))
             return;
+        var array = ReadRecords(path);
         var text = id.ToString();
         for (var i = array.Count - 1; i >= 0; i--)
         {
@@ -109,6 +110,18 @@ public sealed class ModFolder
         else
             File.WriteAllBytes(path, JsonSerializer.SerializeToUtf8Bytes(array, PluginJson.Options));
     }
+
+    /// <summary>
+    /// A record file's objects: its array, or the one object a hand-written file may hold, as <see cref="PluginSet"/> reads
+    /// either, so writing beside it keeps it.
+    /// </summary>
+    private static JsonArray ReadRecords(string path) =>
+        JsonNode.Parse(File.ReadAllBytes(path), documentOptions: PluginJson.DocumentOptions) switch
+        {
+            JsonArray array => array,
+            JsonObject one => [one],
+            _ => throw new InvalidDataException($"{path} holds neither a record nor a list of them."),
+        };
 
     /// <summary>Where the asset of <paramref name="id"/> goes: <c>assets/&lt;namespace&gt;/&lt;type&gt;/&lt;key&gt;.&lt;extension&gt;</c>, as <see cref="PluginSet.FindAsset"/> looks.</summary>
     public string AssetPath(RecordId id, string extension) =>

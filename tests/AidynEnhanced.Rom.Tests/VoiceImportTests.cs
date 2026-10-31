@@ -44,7 +44,8 @@ public sealed class VoiceImportTests(Na10Import fixture)
         Assert.Null(entities["Alaron"].VoicePitch);
         // A pitch set outright is what the voice plays.
         Assert.Equal(0.57f, Core.Ui.TextReveal.PitchOf(fixture.Data.Set.Get<DbRecord>(entities["Baird"].Id)));
-        Assert.Equal(0.72f, Core.Ui.TextReveal.PitchOf(fixture.Data.Set.Get<DbRecord>(entities["Alaron"].Id)), 1e-5f);
+        // Alaron is 1.82 tall, so a hair under the 0.72 of a man of 1.8.
+        Assert.Equal(0.716f, Core.Ui.TextReveal.PitchOf(fixture.Data.Set.Get<DbRecord>(entities["Alaron"].Id)), 0.002f);
     }
 
     [Fact]

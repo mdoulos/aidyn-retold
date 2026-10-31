@@ -5,8 +5,8 @@ using Godot;
 
 namespace AidynEnhanced.Views;
 
-/// <summary>A font's layout and its sheet, to print with.</summary>
-public sealed record UiFont(TextLayout Layout, Texture2D? Sheet)
+/// <summary>A font's layout and its sheet, to print with, and the typeface its letters are drawn in instead, if one is (<see cref="TextFace"/>).</summary>
+public sealed record UiFont(TextLayout Layout, Texture2D? Sheet, FaceSheet? Face = null)
 {
     public int LineHeight => Layout.LineHeight();
 
@@ -23,24 +23,36 @@ public sealed class UiPainter
     /// <summary>The colour of the arrows beside a list's title.</summary>
     public static readonly Rgba ArrowColor = new(225, 225, 225, 255);
 
+    private readonly PluginSet _plugins;
+    private readonly UiFont?[] _fonts = new UiFont?[2];
+    private TextFace? _face;
+
     public UiPainter(PluginSet plugins)
     {
+        _plugins = plugins;
         Images = new UiImages(plugins);
-        Main = Font(plugins, 0);
-        Slim = Font(plugins, 1);
     }
 
     public UiImages Images { get; }
 
-    /// <summary>The main font, and the slim one the lists and details use (<c>SlimFont</c>).</summary>
-    public UiFont Main { get; }
+    /// <summary>The main font, and the slim one the lists and details use (<c>SlimFont</c>), as the game's text is drawn now.</summary>
+    public UiFont Main => Font(0);
 
-    public UiFont Slim { get; }
+    public UiFont Slim => Font(1);
 
-    private UiFont Font(PluginSet plugins, int n)
+    /// <summary>Font <paramref name="n"/> in its sheet, or in the typeface the Text Font setting draws text in (<see cref="TextFace.Current"/>).</summary>
+    private UiFont Font(int n)
     {
-        var record = plugins.Get<FontRecord>(RecordId.Decimal(RecordTypes.Font, n));
-        return new UiFont(new TextLayout(record), Images.Get(record.Image));
+        if (TextFace.Current != _face)
+        {
+            _face = TextFace.Current;
+            Array.Clear(_fonts);
+        }
+        if (_fonts[n] is { } font)
+            return font;
+        var record = _plugins.Get<FontRecord>(RecordId.Decimal(RecordTypes.Font, n));
+        var face = _face?.Sheet(record);
+        return _fonts[n] = new UiFont(new TextLayout(face?.Record ?? record), Images.Get(record.Image), face);
     }
 
     /// <summary>
@@ -51,15 +63,23 @@ public sealed class UiPainter
     public int Text(CanvasItem canvas, UiFont font, string text, int x, int y, ScreenRect bounds, Rgba color, Rect2I? clip = null)
     {
         var run = font.Layout.Print(text, x, y, bounds, color);
-        if (font.Sheet is { } sheet)
-        {
-            foreach (var glyph in run.Glyphs)
-            {
-                DrawCut(canvas, sheet, new Rect2(glyph.X, glyph.Y, glyph.Width, glyph.Height),
-                    new Rect2(glyph.SourceX, glyph.SourceY, glyph.Width, glyph.Height), clip, Tint(glyph.Color), sampled: false);
-            }
-        }
+        foreach (var glyph in run.Glyphs)
+            Glyph(canvas, font, glyph, clip, Tint(glyph.Color));
         return run.Height;
+    }
+
+    /// <summary>
+    /// Draws a placed glyph, cut to a clip if there's one: from the typeface's sheet where it draws the glyph's cell, its texels
+    /// <see cref="TextFace.Density"/> a pixel, and else from the font's own sheet, pixel for pixel.
+    /// </summary>
+    public static void Glyph(CanvasItem canvas, UiFont font, PlacedGlyph glyph, Rect2I? clip, Color color)
+    {
+        var rect = new Rect2(glyph.X, glyph.Y, glyph.Width, glyph.Height);
+        var source = new Rect2(glyph.SourceX, glyph.SourceY, glyph.Width, glyph.Height);
+        if (font.Face is { } face && face.Draws(glyph.SourceX, glyph.SourceY))
+            DrawCut(canvas, face.Texture, rect, new Rect2(source.Position * TextFace.Density, source.Size * TextFace.Density), clip, color, sampled: false);
+        else if (font.Sheet is { } sheet)
+            DrawCut(canvas, sheet, rect, source, clip, color, sampled: false);
     }
 
     /// <summary>
@@ -259,7 +279,8 @@ public sealed class UiPainter
     /// </summary>
     public static Texture2D Filtered(Texture2D texture, Vector2 drawn, Rect2 source)
     {
-        if ((drawn.Abs() - source.Size).LengthSquared() < 1e-6f)
+        // A canvas texture brings its own filter, as a typeface's sheet does.
+        if (texture is CanvasTexture || (drawn.Abs() - source.Size).LengthSquared() < 1e-6f)
             return texture;
         if (!Smooth.TryGetValue(texture, out var smooth))
             Smooth[texture] = smooth = new CanvasTexture { DiffuseTexture = texture, TextureFilter = CanvasItem.TextureFilterEnum.Linear };

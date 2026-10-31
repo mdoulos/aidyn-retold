@@ -37,11 +37,15 @@ public sealed class GameState : IScriptWorld
         Party = new Party(Items, Flags);
         _saves = new CharacterSaves(plugins, Rules, Items, Flags, _problems);
         Minimaps = new MinimapSeen(plugins);
+        Fonts = new Ui.TextFonts(plugins);
         _problems.AddRange(Rules.Magic.Problems);
         Weather = new Weather(plugins.Singleton<WeatherRecord>());
     }
 
     public PluginSet Plugins { get; }
+
+    /// <summary>The fonts text is laid out in, as it's drawn (<see cref="Ui.TextFonts"/>).</summary>
+    public Ui.TextFonts Fonts { get; }
 
     public CharacterRules Rules { get; }
 

@@ -103,8 +103,6 @@ public sealed partial class TrekLoop : IMapObjectHost
     private RecordId? _lastScript;
     /// <summary>The frames scene objects are drawn in, which <see cref="PutOut"/> goes by.</summary>
     private readonly FrameGate _drawFrame = new(Cadence.FrameTicks);
-    /// <summary>The main font, which a backdrop's page is laid out in.</summary>
-    private TextLayout? _font;
 
     /// <param name="zone">
     /// The zone engine trek's world is loaded in, about the player. Its rain lands on the solid surfaces every loaded chunk
@@ -874,7 +872,7 @@ public sealed partial class TrekLoop : IMapObjectHost
         {
             // Backdrop.Start: the page opens over the world, in its picture's style, as the script starts; a page still fading out is replaced.
             if (Backdrop is null or { Closing: true })
-                Backdrop = new BackdropPage(_font ??= new TextLayout(Game.Plugins.Get<FontRecord>(RecordId.Decimal(RecordTypes.Font, 0))),
+                Backdrop = new BackdropPage(Game.Fonts.Main,
                     BackdropStyle.For(runner.Script.Backdrop));
             if (runner is { Status: ScriptStatus.Showing, Page: { } page })
                 Backdrop.Show(page);

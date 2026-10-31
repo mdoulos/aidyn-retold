@@ -129,6 +129,9 @@ public sealed class Settings
     /// <summary>Whether a blip sounds as a line prints, pitched by the speaker (<see cref="Ui.TextReveal"/>). On, the user's choice.</summary>
     public bool TextVoice { get; set; } = true;
 
+    /// <summary>What the UI's text is drawn in (<see cref="Ui.TextFont"/>): a typeface at the screen's resolution, the user's choice.</summary>
+    public Ui.TextFont TextFont { get; set; } = Ui.TextFont.HighResolution;
+
     /// <summary>
     /// Whether the title starts with the original's intro cards (<see cref="Ui.IntroCards"/>): the Expansion Pak's, the legal text and
     /// the N64's, THQ's and H2O's logos. Off, the user's choice, it starts at its logo and menu.

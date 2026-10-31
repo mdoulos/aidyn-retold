@@ -192,7 +192,7 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
         options.SetFlags(game);
         // The command line's settings are for this run, over the player's, and never kept.
         _launch = new LaunchSettings(options, _settings);
-        _playing = _launch.Session(_settings);
+        _playing = Playing();
 
         var session = BuildWorld(plugins, game, start);
         // After the first terrain and the time, which can change the weather.
@@ -458,13 +458,24 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
     }
 
     /// <summary>
+    /// What the core plays by of the settings, with the command line's over the player's, and the typeface the UI's text is drawn
+    /// in by the Text Font setting (<see cref="TextFace.Current"/>), whose widths the core lays text out by.
+    /// </summary>
+    private SessionSettings Playing()
+    {
+        var playing = _launch?.Session(_settings) ?? SessionSettings.From(_settings);
+        TextFace.Current = _settings.TextFont == Core.Ui.TextFont.HighResolution && _plugins is { } plugins ? TextFace.For(plugins) : null;
+        return playing with { TextWidths = TextFace.Current?.Widths };
+    }
+
+    /// <summary>
     /// Carries out the settings, with the command line's over the player's: what the core plays by from the next tick
     /// (<see cref="SessionSettings"/>), and what's only drawn, the window, the 3D view, the draw distance and the UI screens.
     /// </summary>
     private void ApplySettings()
     {
         var s = _launch?.Over(_settings) ?? _settings;
-        _playing = _launch?.Session(_settings) ?? SessionSettings.From(_settings);
+        _playing = Playing();
         ApplyWindow(s);
         DisplayServer.WindowSetVsyncMode(s.VSync ? DisplayServer.VSyncMode.Enabled : DisplayServer.VSyncMode.Disabled);
         // V-Sync holds the frames to the screen's rate already, and a limit at it as well only beats against it, losing frames.

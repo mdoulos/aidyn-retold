@@ -368,6 +368,7 @@ public sealed partial class OptionsMenu
             Choice("Jump", ["Original", "On"], () => s.Jump ? 1 : 0, v => s.Jump = v == 1),
             Choice("Text Speed", ["Original", "Slow", "Normal", "Fast"], () => (int)s.TextSpeed, v => s.TextSpeed = (TextSpeed)v),
             Choice("Text Voice", ["Off", "On"], () => s.TextVoice ? 1 : 0, v => s.TextVoice = v == 1),
+            Choice("Text Font", ["Original", "High Resolution"], () => (int)s.TextFont, v => s.TextFont = (TextFont)v),
             Choice("Status Auras", ["Original", "More Often"], () => s.SpellAuras == Combat.AuraTurns.EachCharacter ? 1 : 0,
                 v => s.SpellAuras = v == 1 ? Combat.AuraTurns.EachCharacter : Combat.AuraTurns.Battle),
             Choice("Intro Logos", ["Original", "Skip"], () => s.IntroCards ? 0 : 1, v => s.IntroCards = v == 0),

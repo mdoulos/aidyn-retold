@@ -17,4 +17,9 @@
     <ProjectReference Include="..\AidynEnhanced.Plugins\AidynEnhanced.Plugins.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The text's typeface (TextFace), Marcellus SC under the SIL Open Font License (assets/fonts/OFL.txt), carried in the assembly. -->
+    <EmbeddedResource Include="..\..\assets\fonts\MarcellusSC-Regular.ttf" LogicalName="MarcellusSC-Regular.ttf" />
+  </ItemGroup>
+
 </Project>

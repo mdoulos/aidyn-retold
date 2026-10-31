@@ -46,7 +46,6 @@ public sealed class PauseMenu
     private readonly IPauseMenuHost _host;
     private readonly StickRepeat _stick;
     private readonly FrameGate _frame = new(Cadence.MenuFrameTicks);
-    private TextLayout? _mainFont;
     /// <summary>In combat, whether it has the Party tab and Flee (<see cref="OpenCombat"/>); null in trek.</summary>
     private (bool PartyTab, bool CanFlee)? _combat;
     /// <summary>How the menu ends once the scroll has rolled up (<c>PauseMenu.Exit</c>).</summary>
@@ -271,7 +270,7 @@ public sealed class PauseMenu
         System = new SystemMenu(_game.Plugins, _settings, _game.Party, _savesFolder, isSet: _game.Flags.Get, combat: _combat?.CanFlee,
             screen: () => _host.Screen, unsaved: () => Unsaved);
         var (place, outdoors) = _where();
-        World = new WorldMenu(_game.Plugins, _game, _mainFont ??= new TextLayout(_game.Plugins.Get<FontRecord>(RecordId.Decimal(RecordTypes.Font, 0))),
+        World = new WorldMenu(_game.Plugins, _game, _game.Fonts.Main,
             place, outdoors);
         Tab = tab;
         Position = (float)tab;

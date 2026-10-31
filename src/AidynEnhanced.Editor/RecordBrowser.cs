@@ -148,6 +148,9 @@ public partial class RecordBrowser : Control
         });
         if (generation != _generation)
             return;
+        // Text is drawn in the typeface, as the runtime's Text Font setting does by default, and the game lays it out by its widths.
+        TextFace.Current = TextFace.For(catalog.Plugins);
+        game?.TextWidths = TextFace.Current.Widths;
         _catalog = catalog;
         _models = new Models(catalog.Plugins);
         _model.Plugins = catalog.Plugins;

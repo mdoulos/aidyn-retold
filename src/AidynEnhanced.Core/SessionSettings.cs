@@ -52,6 +52,13 @@ public sealed record SessionSettings
     /// <summary>Whether the player can jump in trek (<see cref="Movement.PlayerMotion.Jumping"/>); the original has no jump.</summary>
     public bool Jump { get; init; }
 
+    /// <summary>
+    /// The widths each font's glyphs take in the typeface its text is drawn in, by font record, when the Text Font setting draws
+    /// it in one (<see cref="Ui.TextFont.HighResolution"/>), which the runtime measures and hands over; none for the sheets' own
+    /// (<see cref="Ui.TextFonts.Widths"/>).
+    /// </summary>
+    public IReadOnlyDictionary<AidynEnhanced.Plugins.RecordId, IReadOnlyList<int>>? TextWidths { get; init; }
+
     /// <summary>What the core plays by of these settings: the pace is Brisk's or the original's.</summary>
     public static SessionSettings From(Settings settings) => new()
     {

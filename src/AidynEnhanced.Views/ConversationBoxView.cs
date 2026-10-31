@@ -18,23 +18,21 @@ public partial class ConversationBoxView : Control
     private static readonly RecordId FallbackPortrait = RecordId.Hex(RecordTypes.Image, 0x0125);
 
     private readonly PluginSet _plugins;
+    private readonly UiPainter _painter;
     private readonly UiImages _images;
-    private readonly TextLayout _text;
-    private readonly Texture2D? _sheet, _border;
+    private readonly Texture2D? _border;
 
     public ConversationBoxView(PluginSet plugins)
     {
         _plugins = plugins;
-        _images = new UiImages(plugins);
+        _painter = new UiPainter(plugins);
+        _images = _painter.Images;
         Name = "Conversation";
         MouseFilter = MouseFilterEnum.Ignore;
         SetAnchorsPreset(LayoutPreset.FullRect);
-        var font = plugins.Get<FontRecord>(RecordId.Decimal(RecordTypes.Font, 0));
-        _text = new TextLayout(font);
-        _sheet = _images.Get(font.Image);
         _border = _images.Get(BorderImage);
         var border = _border?.GetSize() ?? new Vector2(52, 52);
-        Box = new DialogueBox(_text, (int)border.X, (int)border.Y, GameState.Alaron);
+        Box = new DialogueBox(_painter.Main.Layout, (int)border.X, (int)border.Y, GameState.Alaron);
     }
 
     /// <summary>
@@ -95,8 +93,12 @@ public partial class ConversationBoxView : Control
 
     public override void _PhysicsProcess(double delta)
     {
+        // Its own box is laid out in the font as it's drawn, as the session hands the game's theirs.
         if (StepsBox)
+        {
+            Box.Font = _painter.Main.Layout;
             Box.Step();
+        }
         if (Visible && (Box.Layout is { Choices.Count: > 0 } || !Box.LineComplete))
             QueueRedraw();
     }
@@ -122,13 +124,9 @@ public partial class ConversationBoxView : Control
 
     private void Print(TextBlock block, Rgba color, int? glyphs = null)
     {
-        if (_sheet is null)
-            return;
-        foreach (var glyph in _text.Print(block.Text, block.X, block.Y, block.Bounds, color).Glyphs.Take(glyphs ?? int.MaxValue))
-        {
-            DrawTextureRectRegion(_sheet, new Rect2(glyph.X, glyph.Y, glyph.Width, glyph.Height),
-                new Rect2(glyph.SourceX, glyph.SourceY, glyph.Width, glyph.Height), UiPainter.Color8(glyph.Color));
-        }
+        var font = _painter.Main;
+        foreach (var glyph in font.Layout.Print(block.Text, block.X, block.Y, block.Bounds, color).Glyphs.Take(glyphs ?? int.MaxValue))
+            UiPainter.Glyph(this, font, glyph, null, UiPainter.Color8(glyph.Color));
     }
 
     /// <summary>A speaker's portrait, or the code's fallback for one without.</summary>

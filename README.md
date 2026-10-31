@@ -118,6 +118,9 @@ Aidyn Renewed until October 28, 2026
   and restored sound are this project's to carry in mods and releases
   ([ADR 0032](docs/adr/0032-rechronicled-is-read-for-its-findings.md),
   [ADR 0034](docs/adr/0034-enhanced-and-rechronicled-collaborate.md)).
+- [Marcellus SC](https://fonts.google.com/specimen/Marcellus+SC) by Astigmatic (Brian J. Bonislawsky), under the SIL Open Font
+  License 1.1 ([assets/fonts/OFL.txt](assets/fonts/OFL.txt)): the typeface the text is drawn in, as ReChronicled's HD text
+  pack draws it.
 - Early in HBHT's life, a community decompilation of the game served as a map
   to the ROM's machine code. No code was copied from it, HBHT stopped reading
   it on October 4, 2026
@@ -128,5 +131,6 @@ Aidyn Renewed until October 28, 2026
 ## License
 
 This software is [MIT licensed](LICENSE). This license covers this repository's
-code and docs. Any imported game content remains the property of its rights
+code and docs. The typeface in `assets/fonts` is under its own license, the SIL Open Font
+License 1.1. Any imported game content remains the property of its rights
 holders.

@@ -31,6 +31,20 @@ public sealed class EditorGame
     public GameState Game { get; private set; }
 
     /// <summary>
+    /// The widths the fonts' glyphs take in the typeface the editor draws text in (<see cref="Views.TextFace"/>), which every game it
+    /// holds lays its text out by, as the runtime's session does.
+    /// </summary>
+    public IReadOnlyDictionary<RecordId, IReadOnlyList<int>>? TextWidths
+    {
+        get;
+        set
+        {
+            field = value;
+            Game.Fonts.Widths = value;
+        }
+    }
+
+    /// <summary>
     /// The sky over where the game stands, at its time of day, which lights the previews' lit display lists as the RSP does
     /// (<see cref="Views.N64Material.SetSkyLight"/>), as trek's sky lights the runtime's.
     /// </summary>
@@ -119,6 +133,7 @@ public sealed class EditorGame
     private void Start(GameState game, string name, bool isNew)
     {
         Game = game;
+        game.Fonts.Widths = TextWidths;
         Sky = SkyOver(game);
         _loadedParty = game.SaveParty();
         (Name, IsNewGame, Console) = (name, isNew, null);

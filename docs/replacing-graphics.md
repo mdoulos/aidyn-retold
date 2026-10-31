@@ -19,6 +19,7 @@ This keeps your work safe and separate:
 | What it is | Where it's drawn | Can you replace it? |
 | --- | --- | --- |
 | UI images | Menus, the HUD, portraits, the title screen, the sky's gradients | Yes, at the original pixel size |
+| Fonts | The text in menus, conversations, books and the battle screen | Yes: a typeface file, or the original's letter sheets at their size |
 | Engine sprites | Particles such as fire and smoke, body shadows, the damage numbers in battle | Yes |
 | Models | Props, buildings, characters, creatures and the scenery of each area | Yes, with care |
 | Textures on models | The walls, ground, faces and clothes painted onto models | Not directly yet |
@@ -106,6 +107,14 @@ UI images and sprites are plain PNG files, and any PNG an image editor saves wil
 - **Transparency comes from the alpha channel.** Keep the transparent areas transparent, or a portrait or icon gets a box around it.
 - **Colours are drawn as you paint them.** The game shows the image's colours as they are, the way the N64 did, before any lighting or tint the game applies.
 - **The title's logo isn't one of them.** The title screen shows Aidyn Chronicles Enhanced's own logo, which is part of the game rather than an image in a plugin, so replacing the original's logo, image `0x0103`, or its shadow, `0x0104`, changes nothing. PRESS START and the title's menu are images as usual.
+
+## Fonts
+
+The game draws its text in Marcellus SC, a typeface drawn sharp at any screen size, unless the Enhancements page's **Text Font** says Original, which uses the original's two letter sheets, UI images `0x001C` (the main font) and `0x001D` (the slim one the lists use).
+
+- **To give the text another typeface,** put a `.ttf` file in your mod named for the font: `assets\aidyn\font\0.ttf` for the main font and `assets\aidyn\font\1.ttf` for the slim one. The game sizes its capitals to the sheet's, 8 pixels of the original's screen in the main font and 7 in the slim, and spaces the letters by the typeface's own widths. Your typeface's licence must let it be shipped in a mod; fonts under the SIL Open Font License, as Marcellus SC is, do.
+- **The typeface draws letters, digits and the common punctuation marks.** The sheets also hold the controller buttons and a few icons (the skull, the heart, infinity), which some characters draw in place of themselves. Those always come from the sheet, so a repainted sheet changes them under either setting.
+- **A repainted sheet** works as any UI image does, at its original size. Under Original it draws every character, with the original's widths.
 
 ## Models
 

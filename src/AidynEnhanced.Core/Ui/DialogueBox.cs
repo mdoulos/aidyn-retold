@@ -83,6 +83,9 @@ public sealed class DialogueBox(TextLayout font, int borderWidth, int borderHeig
     /// <summary>Where the box's bottom part starts, before it grows to fit.</summary>
     public const int BaseTop = 180;
 
+    /// <summary>The font the box's text is laid out in, as it's drawn: the session hands the game's boxes theirs (<see cref="TextFonts"/>).</summary>
+    public TextLayout Font { get; set; } = font;
+
     /// <summary>The original's screen, which the box is laid out in.</summary>
     public const int FrameWidth = 320, FrameHeight = 240;
 
@@ -213,10 +216,10 @@ public sealed class DialogueBox(TextLayout font, int borderWidth, int borderHeig
             // clipped, so a line too tall for the box completes a little early, which the view's Take hides.
             foreach (var c in line.Text)
             {
-                if (c != '\n' && c != ' ' && font.Glyph(c) is not null)
+                if (c != '\n' && c != ' ' && Font.Glyph(c) is not null)
                     _glyphChars.Add(c);
             }
-            _totalGlyphs = Math.Min(_glyphChars.Count, font.Print(line.Text, line.X, line.Y, line.Bounds, LineColor).Glyphs.Count);
+            _totalGlyphs = Math.Min(_glyphChars.Count, Font.Print(line.Text, line.X, line.Y, line.Bounds, LineColor).Glyphs.Count);
         }
         else
         {
@@ -384,7 +387,7 @@ public sealed class DialogueBox(TextLayout font, int borderWidth, int borderHeig
         {
             var left = textLeft + ChoiceIndent;
             var menuBottom = BaseTop - 4 + borderHeight;
-            var heights = page.Choices.Select(c => font.Height(c.Text, left, textRight)).ToList();
+            var heights = page.Choices.Select(c => Font.Height(c.Text, left, textRight)).ToList();
             top = menuBottom - (heights.Sum() + ChoiceSpacing * (heights.Count - 1));
             var y = top;
             for (var i = 0; i < heights.Count; i++)
@@ -399,7 +402,7 @@ public sealed class DialogueBox(TextLayout font, int borderWidth, int borderHeig
         {
             // The original works in u16s, so a line too tall for the screen wraps around and sits at the base.
             var textBottom = top - 2;
-            var lineTop = textBottom - font.Height(page.Line.Text, textLeft, textRight) - 4;
+            var lineTop = textBottom - Font.Height(page.Line.Text, textLeft, textRight) - 4;
             if (lineTop is < 0 or > BaseTop)
                 lineTop = BaseTop;
             line = new TextBlock(page.Line.Text, textLeft, lineTop + 4, new ScreenRect(textLeft, lineTop + 4, textRight, textBottom));

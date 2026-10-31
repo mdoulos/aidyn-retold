@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AidynEnhanced.Core.Ui;
 using AidynEnhanced.Plugins;
 using AidynEnhanced.Plugins.Records;
@@ -240,5 +241,21 @@ public class TextLayoutTests
         var run = new TextLayout(Font(buttonColors: false)).Print("\u007F", 0, 0, Screen, White);
 
         Assert.Equal([White], run.Glyphs.Select(g => g.Color));
+    }
+
+    [Fact]
+    public void TheFontsLayTextOutInTheWidthsOfTheTypefaceItsDrawnIn()
+    {
+        using var temp = new TempPlugins();
+        var font = Font();
+        var fonts = new TextFonts(temp.Aidyn(("fonts.json", JsonSerializer.Serialize(new[] { font }, PluginJson.Options))));
+        Assert.Equal(5 + 6, fonts.Main.Width("ab"));
+
+        // A typeface whose ' ' is 2 wide, 'a' 3 and 'b' 4; and taken away, the font goes back to its sheet's.
+        fonts.Widths = new Dictionary<RecordId, IReadOnlyList<int>> { [font.Id] = [2, 3, 4, 7, 1, 4, 1, 8] };
+        Assert.Equal(3 + 4, fonts.Main.Width("ab"));
+        Assert.Equal(2, fonts.Main.Advance(' '));
+        fonts.Widths = null;
+        Assert.Equal(5 + 6, fonts.Main.Width("ab"));
     }
 }

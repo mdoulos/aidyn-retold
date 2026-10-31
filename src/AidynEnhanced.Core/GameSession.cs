@@ -274,10 +274,8 @@ public sealed class GameSession
     /// <summary>Whether a backdrop's or the help menu's page shows, or is still fading out.</summary>
     public bool BackdropShowing => Backdrop is not null;
 
-    private TextLayout? _font;
-
-    /// <summary>The main font, which a backdrop's page is laid out in.</summary>
-    private TextLayout Font => _font ??= new TextLayout(Game.Plugins.Get<FontRecord>(RecordId.Decimal(RecordTypes.Font, 0)));
+    /// <summary>The main font, which the credits are laid out in.</summary>
+    private TextLayout Font => Game.Fonts.Main;
 
     /// <summary>The credits rolling (<see cref="Transition.PlayCredits"/>), stepped each tick until they end (<see cref="CreditsEnded"/>).</summary>
     public CreditsShowing? Credits { get; private set; }
@@ -353,6 +351,7 @@ public sealed class GameSession
     private void Apply()
     {
         var settings = _settings;
+        Game.Fonts.Widths = settings.TextWidths;
         Zone.Audio.Settings = settings;
         var density = PrecipitationDensity;
         Zone.Precipitation?.Density = density;
@@ -368,9 +367,10 @@ public sealed class GameSession
             SetReveal(scene.Box, settings);
     }
 
-    /// <summary>How a box prints its lines (<see cref="Ui.TextReveal"/>): the settings' text rate and voice.</summary>
-    private static void SetReveal(Ui.DialogueBox box, SessionSettings settings)
+    /// <summary>How a box prints its lines (<see cref="Ui.TextReveal"/>): in the main font as it's drawn, at the settings' text rate and with their voice.</summary>
+    private void SetReveal(Ui.DialogueBox box, SessionSettings settings)
     {
+        box.Font = Game.Fonts.Main;
         box.GlyphsPerTick = settings.TextRate;
         box.Voice = settings.TextVoice;
     }

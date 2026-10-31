@@ -461,6 +461,10 @@ public class DialogueBoxTests
         Assert.Equal(0.25f, feminine.Mix);
         Assert.False(TextReveal.Tones.ContainsKey("buzzy"));
         Assert.False(TextReveal.Tones.ContainsKey("gravel"));
+        // Old is plain with a tremble: as loud, the same waveform, a wobble within each blip.
+        var old = TextReveal.Tones["old"];
+        Assert.Equal((plain.Gain, plain.Waveform), (old.Gain, old.Waveform));
+        Assert.True(old.Vibrato > 0 && plain.Vibrato == 0);
     }
 
     [Fact]

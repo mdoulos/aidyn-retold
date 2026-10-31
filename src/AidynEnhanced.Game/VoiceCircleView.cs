@@ -161,7 +161,8 @@ public sealed partial class VoiceCircleView : Node3D
         var index = _members.FindIndex(m => m.Entity.Id == entity.Id);
         var speak = new DialogueOp(DialogueCommand.SetSpeaker, Target: entity.Id);
         var end = new DialogueOp(DialogueCommand.EndDialogue);
-        return new DialogueRecord(RecordId.Parse($"debug:dialogue/0x{index + 1:X4}"), index + 1, DialogueMode.Sign,
+        // A mod's key is lowercase: 0x000A on threw, and the tenth member on, Keelin to Trahern, couldn't be talked to.
+        return new DialogueRecord(RecordId.Parse($"debug:dialogue/0x{index + 1:x4}"), index + 1, DialogueMode.Sign,
         [
             new DialogueNode(0, DialogueNodeKind.Line, Lines[0].Replace("{name}", entity.Name), [speak], [1]),
             new DialogueNode(1, DialogueNodeKind.Line, Lines[1].Replace("{name}", entity.Name), [end]),

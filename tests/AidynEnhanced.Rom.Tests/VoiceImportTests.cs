@@ -58,7 +58,8 @@ public sealed class VoiceImportTests(Na10Import fixture)
         Assert.Equal("feminine", entities.Single(e => e.Name == "Brenna").VoiceTone);
         Assert.Equal("sultry", entities.Single(e => e.Name == "Keelin").VoiceTone);
         Assert.Null(entities.Single(e => e.Name == "Baird").VoiceTone);
-        Assert.Null(entities.Single(e => e.Name == "Godric").VoiceTone);
+        Assert.Equal("old", entities.Single(e => e.Name == "Godric").VoiceTone);
+        Assert.Equal("old", entities.Single(e => e.Name == "Becan").VoiceTone);
         Assert.Equal("sly", entities.Single(e => e.Name == "Dougal").VoiceTone);
         Assert.Equal("grand", entities.Single(e => e.Name == "Donovan").VoiceTone);
         Assert.Null(entities.Single(e => e.Name == "Alaron").VoiceTone);

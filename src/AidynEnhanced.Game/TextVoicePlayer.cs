@@ -74,10 +74,13 @@ public sealed partial class TextVoicePlayer : Node
         var samples = (int)((tone.Attack + decay * 2.8f) * Rate);
         var data = new byte[samples * 2];
         uint noise = 0x9E3779B9;
+        var phase = 0f;
         for (var i = 0; i < samples; i++)
         {
             var t = (float)i / Rate;
-            var phase = Mathf.Tau * BaseFrequency * t;
+            // The vibrato bends the frequency as it goes, so the phase is summed rather than taken from the time.
+            var frequency = BaseFrequency * (1 + tone.Vibrato * Mathf.Sin(Mathf.Tau * tone.VibratoRate * t));
+            phase += Mathf.Tau * frequency / Rate;
             var wave = tone.Mix >= 1 ? Wave(tone.Waveform, phase) : Wave(Waveform.Soft, phase) * (1 - tone.Mix) + Wave(tone.Waveform, phase) * tone.Mix;
             if (tone.Noise > 0)
             {

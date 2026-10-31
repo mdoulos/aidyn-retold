@@ -52,7 +52,10 @@ public enum Waveform
 /// <param name="Mix">How much of the blip is the waveform, the rest the plain soft square: 1 for all of it.</param>
 /// <param name="Lilt">How far every other blip is raised and the ones between lowered, as a share of the pitch: a sing-song.</param>
 /// <param name="Pitch">A multiple on the speaker's pitch: a tone can sit lower or higher than the voice and height give.</param>
-public sealed record VoiceTone(string Name, Waveform Waveform, float Attack, float Decay, float Noise, float Gain, float Mix = 1, float Lilt = 0, float Pitch = 1);
+/// <param name="Vibrato">How far the pitch wobbles within each blip, as a share of it: a tremble in the voice. 0 for none.</param>
+/// <param name="VibratoRate">How fast it wobbles, in cycles a second.</param>
+public sealed record VoiceTone(string Name, Waveform Waveform, float Attack, float Decay, float Noise, float Gain, float Mix = 1, float Lilt = 0, float Pitch = 1,
+    float Vibrato = 0, float VibratoRate = 7);
 
 /// <summary>
 /// The port's typewriter reveal and its voice, the user's choice (docs/systems/ui.md, the conversation box): a line prints
@@ -150,12 +153,14 @@ public static class TextReveal
     /// The named tones a record's <c>voiceTone</c> picks from, the user's choice by ear (Oct 30, 2026). Plain is the blip as it was.
     /// Soldier is clipped and precise, the guards' and Abrecan's. Soft is gentle; feminine is soft at a quarter of its strength,
     /// Brenna's. Sultry is smooth, slow, a little breathy and lower, Keelin's. Sly is short and perky with a sing-song, Dougal's.
-    /// Grand is big: full, lower and ringing long, Donovan's. Bright and hollow are tried on the rest of the party for comparing.
-    /// Plain's gain is 3.16, 10 dB over the others, which read as louder than it, the user's choice.
+    /// Grand is big: full, lower and ringing long, Donovan's. Old is plain with a tremble, a slow wobble of the pitch within each blip
+    /// and a touch of breath, Becan's and Godric's. Bright and hollow are tried on the rest of the party for comparing. Plain's gain
+    /// is 3.16, 10 dB over the others, which read as louder than it, the user's choice; old keeps it.
     /// </summary>
     public static readonly IReadOnlyDictionary<string, VoiceTone> Tones = new[]
     {
         new VoiceTone("plain", Waveform.Soft, Attack: 0.003f, Decay: 1, Noise: 0, Gain: 3.16f),
+        new VoiceTone("old", Waveform.Soft, Attack: 0.003f, Decay: 1.25f, Noise: 0.03f, Gain: 3.16f, Vibrato: 0.06f, VibratoRate: 7),
         new VoiceTone("soldier", Waveform.Square, Attack: 0.0004f, Decay: 0.65f, Noise: 0, Gain: 0.9f),
         new VoiceTone("soft", Waveform.Sine, Attack: 0.009f, Decay: 1.35f, Noise: 0, Gain: 0.85f),
         new VoiceTone("feminine", Waveform.Sine, Attack: 0.0045f, Decay: 1.09f, Noise: 0, Gain: 0.96f, Mix: 0.25f),

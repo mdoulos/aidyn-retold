@@ -136,6 +136,8 @@ public static class Voices
         [0x010B] = "bright", // Arturo
         [0x0135] = "bright", // Farris
         [0x0164] = "bright", // Rheda
+        [0x0113] = "old", // Becan
+        [0x0140] = "old", // Godric
         [0x012D] = "grand", // Donovan, a touch pompous
         [0x012E] = "sly", // Dougal, a touch mischievous
         [0x014F] = "sultry", // Keelin

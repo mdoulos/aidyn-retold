@@ -20,8 +20,9 @@ namespace AidynEnhanced.Plugins.Records;
 /// own, which a mod sets outright in place of the voice and height; none, as the importer writes for most.
 /// </param>
 /// <param name="VoiceTone">
-/// The tone of those blips, one of the port's named tones (<c>AidynEnhanced.Core.Ui.TextReveal.Tones</c>: plain, soldier, soft, bright,
-/// buzzy, hollow, gravel): the port's own, which the importer sets for a few and a mod can patch; none is plain.
+/// The tone of those blips, one of the port's named tones (<c>AidynEnhanced.Core.Ui.TextReveal.Tones</c>: plain, soldier, soft, feminine,
+/// sultry, sly, grand, old, bright, hollow), or several joined with <c>+</c>, the first the blip and the rest traits laid over it
+/// (<c>soldier+old</c>): the port's own, which the importer sets for a few and a mod can patch; none is plain.
 /// </param>
 public sealed record DbRecord(RecordId Id, string Name, RecordId? Portrait = null, EntityBody? Body = null, Voice? Voice = null, float? VoicePitch = null,
     string? VoiceTone = null);

@@ -174,9 +174,37 @@ public static class TextReveal
     /// <summary>The tone every speaker has unless its record names another.</summary>
     public static VoiceTone PlainTone => Tones["plain"];
 
-    /// <summary>A speaker's tone: its record's <see cref="DbRecord.VoiceTone"/> if it names one of <see cref="Tones"/>, else plain.</summary>
-    public static VoiceTone ToneOf(DbRecord? speaker) =>
-        speaker?.VoiceTone is { } name && Tones.TryGetValue(name, out var tone) ? tone : PlainTone;
+    /// <summary>
+    /// A speaker's tone: its record's <see cref="DbRecord.VoiceTone"/>, else plain. Tones joined with <c>+</c> are layered
+    /// (<see cref="Layer"/>): <c>soldier+old</c> is the soldier's blip with the old tremble.
+    /// </summary>
+    public static VoiceTone ToneOf(DbRecord? speaker)
+    {
+        if (speaker?.VoiceTone is not { } names)
+            return PlainTone;
+        VoiceTone? tone = null;
+        foreach (var name in names.Split('+', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (!Tones.TryGetValue(name, out var next))
+                continue;
+            tone = tone is null ? next : Layer(tone, next);
+        }
+        return tone ?? PlainTone;
+    }
+
+    /// <summary>
+    /// A tone with another's traits over it: the base keeps its waveform, mix, attack, ring and gain, which say what the blip is,
+    /// and takes the other's tremble, lilt and breath where they're stronger, and its pitch shift on top.
+    /// </summary>
+    public static VoiceTone Layer(VoiceTone tone, VoiceTone over) => tone with
+    {
+        Name = $"{tone.Name}+{over.Name}",
+        Vibrato = Math.Max(tone.Vibrato, over.Vibrato),
+        VibratoRate = over.Vibrato > tone.Vibrato ? over.VibratoRate : tone.VibratoRate,
+        Lilt = Math.Max(tone.Lilt, over.Lilt),
+        Noise = Math.Max(tone.Noise, over.Noise),
+        Pitch = tone.Pitch * over.Pitch,
+    };
 
     /// <summary>How many glyphs a tick a speed prints: 0 for the whole line at once.</summary>
     public static float GlyphsPerTick(TextSpeed speed) => speed switch

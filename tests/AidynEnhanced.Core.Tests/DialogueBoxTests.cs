@@ -465,6 +465,12 @@ public class DialogueBoxTests
         var old = TextReveal.Tones["old"];
         Assert.Equal((plain.Gain, plain.Waveform), (old.Gain, old.Waveform));
         Assert.True(old.Vibrato > 0 && plain.Vibrato == 0);
+        // Layered: the soldier's blip with the old tremble, and an unknown name in the chain is skipped.
+        var layered = TextReveal.ToneOf(new DbRecord(Trahern, "Becan", VoiceTone: "soldier+old"));
+        var soldier = TextReveal.Tones["soldier"];
+        Assert.Equal(("soldier+old", soldier.Waveform, soldier.Attack, soldier.Decay, soldier.Gain, old.Vibrato, old.Noise),
+            (layered.Name, layered.Waveform, layered.Attack, layered.Decay, layered.Gain, layered.Vibrato, layered.Noise));
+        Assert.Equal("old", TextReveal.ToneOf(new DbRecord(Trahern, "Becan", VoiceTone: "nasal+old")).Name);
     }
 
     [Fact]

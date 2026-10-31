@@ -26,7 +26,8 @@ public sealed class SkyDirector
     private readonly IRandom _twinkle;
     private readonly FrameGate _twinkleFrame = new(Cadence.FrameTicks);
     private readonly Dictionary<RecordId, SkyGradient?> _gradients = [];
-    private (int Row, int Column)? _chunk;
+    /// <summary>The chunk whose sky is chosen, null after <see cref="ClearSky"/>: the entry whole, map and all, so a teleport to another map set's chunk at the same row and column chooses again.</summary>
+    private ChunkEntry? _chunk;
     private ChunkEntry? _entered;
     /// <summary>The sky of the terrain last entered (<c>Weather.Data</c> + 0x10), and the rain sky.</summary>
     private SkyGradient? _terrain, _rain;
@@ -149,10 +150,10 @@ public sealed class SkyDirector
     /// </summary>
     public void Enter(ChunkEntry? chunk)
     {
-        if (chunk is null || (chunk.Row, chunk.Column) == _chunk)
+        if (chunk is null || chunk == _chunk)
             return;
         var first = _chunk is null;
-        _chunk = (chunk.Row, chunk.Column);
+        _chunk = chunk;
         _entered = chunk;
         if (TerrainRecord.Find(_plugins, chunk.Terrain) is not { } terrain ||
             Gradient(terrain.Sky) is not { } gradient)

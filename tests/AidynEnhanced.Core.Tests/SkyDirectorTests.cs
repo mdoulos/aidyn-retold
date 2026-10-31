@@ -112,6 +112,17 @@ public sealed class SkyDirectorTests : IDisposable
     }
 
     [Fact]
+    public void ATeleportToAnotherSetsChunkAtTheSameRowAndColumnChoosesItsSky()
+    {
+        // Through a door from the plains to a cave of another map set that happens to sit at the same row and column.
+        var sky = Director();
+        sky.Enter(Plains);
+        Assert.True(sky.Drawn);
+        sky.Enter(Plains with { Map = RecordId.Hex(RecordTypes.Map, 0x7777), Terrain = 2 });
+        Assert.False(sky.Drawn);
+    }
+
+    [Fact]
     public void TheWeatherBringsTheRainSkyOverSixHundredTicksAndHoldsItAgainstChunks()
     {
         var weather = Weather();

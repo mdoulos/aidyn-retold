@@ -199,7 +199,7 @@ public class PotionTests
 
 public class PartyMenuActionTests
 {
-    private static readonly WeaponRecord Sword = ItemData.NewWeapon(1, WeaponClass.Sword);
+    private static readonly WeaponRecord Sword = ItemData.NewWeapon(1, WeaponClass.Sword) with { Icon = RecordId.Hex(RecordTypes.Image, 0x0042) };
     private static readonly WeaponRecord Heavy = ItemData.NewWeapon(2, WeaponClass.Sword, strength: 40);
     private static readonly WeaponRecord Staff = ItemData.NewWeapon(3, WeaponClass.Sword, isFixed: true);
     private static readonly SpellRecord Fireball = Characters.Fireball;
@@ -291,6 +291,27 @@ public class PartyMenuActionTests
         menu.Combat = new CombatPause(alaron, _ => { }, _ => { });
         OpenSkill(menu, Skill.Healer);
         Assert.Null(menu.Crafting);
+    }
+
+    /// <summary>A flask taken in hand in a battle's pause crossfades into the weapon's slot, which shows it.</summary>
+    [Fact]
+    public void AFlaskTakenInHandCrossfadesIntoTheWeaponSlot()
+    {
+        var (party, member) = Setup();
+        party.Inventory.Add(Sword.Id);
+        party.Inventory.Add(PotionId(BasePotion.FireFlask));
+        var menu = Menu(party);
+        PointAt(menu, r => r.Item.Id == Sword.Id);
+        menu.Accept();
+        Item? held = null;
+        menu.Combat = new CombatPause(member, flask => held = flask, _ => { }, m => m == member ? held : null);
+
+        PointAt(menu, r => r.Item.Id == PotionId(BasePotion.FireFlask));
+        menu.Accept();
+        Assert.NotNull(held);
+        Assert.NotEqual(party.Inventory.Catalog[Sword.Id].Icon, held!.Icon);
+        Assert.Equal(party.Inventory.Catalog[Sword.Id].Icon, menu.PreviousSlots![(int)EquipmentSlot.Weapon]);
+        Assert.True(menu.SlotCrossfades(EquipmentSlot.Weapon));
     }
 
     /// <summary>Equipping from a stack leaves the cursor on what's left of it.</summary>

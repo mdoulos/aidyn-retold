@@ -62,11 +62,13 @@ public sealed partial class PartyMenu
     /// <summary>
     /// Whether a slot crossfades from <see cref="PreviousSlots"/> in the change under way. After an item is put on or taken
     /// off, each slot whose item differs, as the original's <c>EquipmentChange</c>. After a member change, only a slot one
-    /// member wears something in and the other doesn't, one worn item changing to another at once: the user's choice.
+    /// member wears something in and the other doesn't, one worn item changing to another at once: the user's choice. A slot is
+    /// what it shows (<see cref="SlotImage(EquipmentSlot)"/>), so a flask taken in hand in a battle's pause crossfades into the
+    /// weapon's slot, as <see cref="PreviousSlots"/> holds the slots as they showed.
     /// </summary>
     public bool SlotCrossfades(EquipmentSlot slot) => PreviousSlots is { } before && (_slotsFromMember
-        ? (before[(int)slot] is null) != (Worn(slot) is null)
-        : before[(int)slot] != Worn(slot)?.Item.Icon);
+        ? (before[(int)slot] is null) != (ShownIcon(slot) is null)
+        : before[(int)slot] != ShownIcon(slot));
 
     /// <summary>The list sliding out as another slides in, with the way the lists move (1 right, −1 left), or null.</summary>
     public MenuSlide<PartyList>? Slide { get; private set; }

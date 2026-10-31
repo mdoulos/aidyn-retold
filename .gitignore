@@ -25,3 +25,5 @@ src/*/*.sln
 
 # Local launchers and scratch, such as dev/party-animation-ring.cmd (docs/systems/runtime.md).
 dev/
+# The shortcut Launch ACE.cmd makes beside itself, with the ACE icon: absolute paths, so each clone makes its own.
+Launch ACE.lnk

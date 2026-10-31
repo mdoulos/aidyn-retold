@@ -140,9 +140,6 @@ public static class Voices
         [0x012E] = "sly", // Dougal, a touch mischievous
         [0x014F] = "sultry", // Keelin
         [0x016B] = "hollow", // Sholeh
-        [0x0113] = "gravel", // Becan
-        [0x0140] = "gravel", // Godric
-        [0x015D] = "gravel", // Niesen
     }.ToDictionary(p => RecordId.Hex(RecordTypes.Image, p.Key), p => p.Value);
 
     /// <summary>The tone of a speaker with this portrait, or none for the plain one.</summary>

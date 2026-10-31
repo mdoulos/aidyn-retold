@@ -150,21 +150,20 @@ public static class TextReveal
     /// The named tones a record's <c>voiceTone</c> picks from, the user's choice by ear (Oct 30, 2026). Plain is the blip as it was.
     /// Soldier is clipped and precise, the guards' and Abrecan's. Soft is gentle; feminine is soft at a quarter of its strength,
     /// Brenna's. Sultry is smooth, slow, a little breathy and lower, Keelin's. Sly is short and perky with a sing-song, Dougal's.
-    /// Grand is big: full, loud, lower and ringing long, Donovan's. Bright, hollow and gravel (a twelfth noise) are tried on the
-    /// rest of the party for comparing.
+    /// Grand is big: full, lower and ringing long, Donovan's. Bright and hollow are tried on the rest of the party for comparing.
+    /// Plain's gain is 3.16, 10 dB over the others, which read as louder than it, the user's choice.
     /// </summary>
     public static readonly IReadOnlyDictionary<string, VoiceTone> Tones = new[]
     {
-        new VoiceTone("plain", Waveform.Soft, Attack: 0.003f, Decay: 1, Noise: 0, Gain: 1),
+        new VoiceTone("plain", Waveform.Soft, Attack: 0.003f, Decay: 1, Noise: 0, Gain: 3.16f),
         new VoiceTone("soldier", Waveform.Square, Attack: 0.0004f, Decay: 0.65f, Noise: 0, Gain: 0.9f),
         new VoiceTone("soft", Waveform.Sine, Attack: 0.009f, Decay: 1.35f, Noise: 0, Gain: 0.85f),
         new VoiceTone("feminine", Waveform.Sine, Attack: 0.0045f, Decay: 1.09f, Noise: 0, Gain: 0.96f, Mix: 0.25f),
         new VoiceTone("sultry", Waveform.Sine, Attack: 0.012f, Decay: 1.6f, Noise: 0.06f, Gain: 0.9f, Mix: 0.9f, Lilt: 0.02f, Pitch: 0.9f),
         new VoiceTone("sly", Waveform.Square, Attack: 0.001f, Decay: 0.6f, Noise: 0, Gain: 0.85f, Mix: 0.6f, Lilt: 0.07f),
-        new VoiceTone("grand", Waveform.Square, Attack: 0.002f, Decay: 1.9f, Noise: 0, Gain: 1.7f, Mix: 0.7f, Pitch: 0.88f),
+        new VoiceTone("grand", Waveform.Square, Attack: 0.002f, Decay: 1.9f, Noise: 0, Gain: 1.1f, Mix: 0.7f, Pitch: 0.88f),
         new VoiceTone("bright", Waveform.Square, Attack: 0.002f, Decay: 1, Noise: 0, Gain: 0.8f),
         new VoiceTone("hollow", Waveform.Triangle, Attack: 0.004f, Decay: 1.2f, Noise: 0, Gain: 1),
-        new VoiceTone("gravel", Waveform.Soft, Attack: 0.003f, Decay: 0.9f, Noise: 0.09f, Gain: 1),
     }.ToDictionary(t => t.Name);
 
     /// <summary>The tone every speaker has unless its record names another.</summary>

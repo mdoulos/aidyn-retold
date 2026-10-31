@@ -460,6 +460,7 @@ public class DialogueBoxTests
         Assert.Equal(plain.Attack + (soft.Attack - plain.Attack) / 4, feminine.Attack, 1e-6f);
         Assert.Equal(0.25f, feminine.Mix);
         Assert.False(TextReveal.Tones.ContainsKey("buzzy"));
+        Assert.False(TextReveal.Tones.ContainsKey("gravel"));
     }
 
     [Fact]

@@ -16,14 +16,8 @@ namespace AidynEnhanced.Game;
 /// </summary>
 public sealed partial class VoiceCircleView : Node3D
 {
-    /// <summary>
-    /// How far a ring member can be for A to talk to it, in scene units: the ring can land on a statue's plinth or in a hedge the
-    /// player can't get beside, so A talks to the member looked at, within this, rather than one stood beside.
-    /// </summary>
-    public const float Reach = 12f;
-
-    /// <summary>How squarely ahead a member must be, as the cosine of the angle off the player's heading: within about 45°.</summary>
-    private const float Ahead = 0.7f;
+    /// <summary>How near the player's feet must be to a ring member's for A to talk to it, in scene units.</summary>
+    public const float Reach = 2.5f;
 
     /// <summary>A couple of feet over the head, in scene units.</summary>
     private const float LabelAbove = 0.6f;
@@ -147,28 +141,16 @@ public sealed partial class VoiceCircleView : Node3D
         }
     }
 
-    /// <summary>
-    /// The ring member the player looks at: within <see cref="Reach"/> of <paramref name="feet"/> and within about 45° of the
-    /// heading, the one most squarely ahead, its distance counting a little, or none.
-    /// </summary>
-    public EntityRecord? Nearest(Vector3 feet, System.Numerics.Vector2 heading)
+    /// <summary>The ring member whose feet are within <see cref="Reach"/> of <paramref name="feet"/>, the nearest of them, or none.</summary>
+    public EntityRecord? Nearest(Vector3 feet)
     {
         Member? nearest = null;
-        var best = float.MaxValue;
-        var ahead = new Vector2(heading.X, heading.Y).Normalized();
+        var best = Reach;
         foreach (var m in _members)
         {
-            var to = new Vector2(m.Node.Position.X - feet.X, m.Node.Position.Z - feet.Z);
-            var distance = to.Length();
-            if (distance > Reach || distance < 1e-3f)
-                continue;
-            var facing = to / distance;
-            var dot = facing.Dot(ahead);
-            if (dot < Ahead)
-                continue;
-            var score = (1 - dot) * 10 + distance * 0.2f;
-            if (score < best)
-                (nearest, best) = (m, score);
+            var distance = new Vector2(m.Node.Position.X - feet.X, m.Node.Position.Z - feet.Z).Length();
+            if (distance < best)
+                (nearest, best) = (m, distance);
         }
         return nearest?.Entity;
     }

@@ -102,6 +102,24 @@ public class GameAudioTests
     }
 
     [Fact]
+    public void TheRainLoopStartsAgainAfterACinematicStopsEverySound()
+    {
+        var audio = Audio();
+        var sounds = new SoundsRecord(RecordId.Decimal(RecordTypes.Sounds, 0), new MenuSounds(Other, Other, Other, Other, Other, Other, Other, Other, Other, Other),
+            [], Other, Other, Other, [], [], Tune, [Other, Other, Other, Other], Other, Other, []);
+        var rain = new WeatherSounds(audio, sounds);
+        var weather = new Core.Calendar.Weather(WeatherTests.Rules);
+        weather.Force(Core.Calendar.WeatherKind.Precipitation, Core.Calendar.Precipitation.Rain, 0.5f);
+        weather.Draw(skyDrawn: true);
+        rain.Step(weather);
+        audio.StopAll();
+        Assert.False(rain.RainPlaying);
+
+        rain.Step(weather);
+        Assert.True(rain.RainPlaying);
+    }
+
+    [Fact]
     public void TheRainLoopHushedPlaysOnUnheardUntilTheWeatherStepsItAgain()
     {
         var audio = Audio();

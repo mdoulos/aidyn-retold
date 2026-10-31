@@ -35,7 +35,9 @@ public sealed class WeatherSounds(GameAudio audio, SoundsRecord sounds)
 
     /// <summary>
     /// A tick of what's drawn, after <see cref="Weather.Draw"/>: the rain loop starts, keeps up its volume and stops
-    /// as the weather has it, and thunder plays if lightning flashed.
+    /// as the weather has it, and thunder plays if lightning flashed. A loop something else stopped while the weather kept
+    /// it, as a cinematic stops every sound, or one the sequencer had no player for, starts again: the original starts it
+    /// afresh as its zone engine is made again, which the port's weather outlives.
     /// </summary>
     public void Step(Weather weather)
     {
@@ -45,7 +47,7 @@ public sealed class WeatherSounds(GameAudio audio, SoundsRecord sounds)
         }
         else
         {
-            if (weather.RainLoopStarts != _starts)
+            if (weather.RainLoopStarts != _starts || !audio.IsPlaying(_rain))
             {
                 StopRain();
                 _starts = weather.RainLoopStarts;

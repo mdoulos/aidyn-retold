@@ -1319,8 +1319,15 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
             return;
         }
         var path = Path.Combine(DataPaths.Saves, "quick" + SaveFile.Extension);
-        SaveFile.Write(path, _session.Game.Save());
-        Say($"Saved to {path}");
+        try
+        {
+            SaveFile.Write(path, _session.Game.Save());
+            Say($"Saved to {path}");
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            Say($"Can't save: {e.Message}");
+        }
     }
 
     /// <summary>Shows a message for a few seconds.</summary>

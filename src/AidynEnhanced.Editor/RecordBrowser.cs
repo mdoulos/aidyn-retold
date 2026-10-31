@@ -135,16 +135,8 @@ public partial class RecordBrowser : Control
             var plugins = PluginSet.LoadInstalled(pluginsDirectory);
             // The game refuses a set with a record it can't read; the editor shows the report and loads anyway, to fix it by.
             var report = plugins.Validate();
-            EditorGame? game = null;
-            try
-            {
-                game = new EditorGame(plugins);
-            }
-            catch (Exception e) when (e is InvalidOperationException or InvalidDataException or KeyNotFoundException or ArgumentException)
-            {
-                GD.PrintErr($"No game: {e.Message}");
-            }
-            return (PluginCatalog.Build(plugins), QuestIndex.Build(plugins), game, EditorCharacters.Rules(plugins), EditorCharacters.Items(plugins), report);
+            return (PluginCatalog.Build(plugins), Partly(() => QuestIndex.Build(plugins), "No quest index"), Partly(() => new EditorGame(plugins), "No game"),
+                Partly(() => EditorCharacters.Rules(plugins), "No character rules"), Partly(() => EditorCharacters.Items(plugins), "No items"), report);
         });
         if (generation != _generation)
             return;
@@ -167,6 +159,24 @@ public partial class RecordBrowser : Control
             _types.AddItem($"{_typeNames[i]} ({catalog.Entries.Count(e => e.Id.Type == _typeNames[i]):N0})", i + 1);
         Populate();
         ShowNothing(report.IsClean ? Welcome(catalog) : $"{report.Describe(limit: 12)}\nThe game refuses to load these; the editor shows them as they are.\n{Welcome(catalog)}");
+    }
+
+    /// <summary>
+    /// What a part of the editor builds from the plugins, or none where a record it reads can't be read, which the validation report
+    /// shown as they load names: so a mod's bad record leaves the rest of the editor to fix it in.
+    /// </summary>
+    private static T? Partly<T>(Func<T?> build, string what) where T : class
+    {
+        try
+        {
+            return build();
+        }
+        catch (Exception e) when (e is InvalidOperationException or InvalidDataException or KeyNotFoundException or ArgumentException
+            or System.Text.Json.JsonException)
+        {
+            GD.PrintErr($"{what}: {e.Message}");
+            return null;
+        }
     }
 
     /// <summary>Loads a checkpoint's game, for scripts (<c>--checkpoint</c>).</summary>

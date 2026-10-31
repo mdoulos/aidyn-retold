@@ -106,7 +106,8 @@ catch (UnsupportedRomException e)
 {
     return Fail(e.Message);
 }
-catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or System.Text.Json.JsonException)
+catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or System.Text.Json.JsonException
+    or NotSupportedException)
 {
     return Fail(e.Message);
 }
@@ -242,6 +243,8 @@ static int Audio(string path, string[] args)
 
     var rom = RomImage.Load(path);
     var archive = BorgArchive.Open(rom);
+    if (indices.FirstOrDefault(i => !IsType(archive, i, BorgType.Sample) && !IsType(archive, i, BorgType.Sequence), -1) is var stray and >= 0)
+        return Fail($"Borg {stray} isn't a sample or a sequence.");
     outDir ??= OutDir(rom, "audio");
     var all = indices.Count == 0;
 
@@ -404,7 +407,7 @@ static bool IsType(BorgArchive archive, int index, BorgType type) =>
 
 static int Strings(string path, string tableName)
 {
-    if (!Enum.TryParse<RomStringTable>(tableName, ignoreCase: true, out var table))
+    if (!Enum.TryParse<RomStringTable>(tableName, ignoreCase: true, out var table) || !Enum.IsDefined(table))
         return Fail($"Unknown string table \"{tableName}\". Tables: {string.Join(", ", Enum.GetNames<RomStringTable>())}.");
 
     var strings = RomStringBlock.Read(RomImage.Load(path), table);
@@ -467,8 +470,20 @@ static int ChunkExportCommand(string mapSetName, string chunkName, string? file)
 static int ChunkImportCommand(string file, string mod, bool force)
 {
     var plugins = InstalledPlugins();
+    var bytes = File.ReadAllBytes(file);
+    // A mod made for this import goes again if the import fails, so a bad file or a mistyped ID leaves no empty mod installed.
+    var made = !Directory.Exists(Path.Combine(DataPaths.Plugins, mod));
     var folder = ModFolder.OpenOrCreate(DataPaths.Plugins, mod);
-    var result = ChunkImport.Import(plugins, File.ReadAllBytes(file), folder, force);
+    ChunkImportResult result;
+    try
+    {
+        result = ChunkImport.Import(plugins, bytes, folder, force);
+    }
+    catch when (made)
+    {
+        Directory.Delete(folder.Directory, recursive: true);
+        throw;
+    }
     foreach (var line in result.Report)
         Console.WriteLine(line);
     return 0;

@@ -1147,7 +1147,8 @@ public partial class MapSetView : VBoxContainer
                 UpdateSaveButton();
                 Saved?.Invoke();
             }
-            catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException)
+            catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException
+                or System.Text.Json.JsonException)
             {
                 SetStatus(summary: e.Message);
             }

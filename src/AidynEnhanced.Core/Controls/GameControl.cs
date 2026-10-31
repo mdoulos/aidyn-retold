@@ -111,8 +111,10 @@ public static class GameControls
     [
         // Trek, whose walking and camera a battle's turn shares.
         Sources(Move, "Move", Situation.Trek, Walking | Situation.Aiming, [InputSource.Wasd, InputSource.Arrows], [InputSource.LeftStick], Walkable),
-        Sources(Camera, "Camera", Situation.Trek, Walking, [], [InputSource.LeftStick, InputSource.RightStick], Lookable),
-        Button(CameraHold, "Camera Hold", Situation.Trek, Walking, null, ["Mouse:Right"], ["Joy:RB"]),
+        // The mouse looks, as in most games on a PC (the user's choice, Oct 31, 2026): it turns the camera always, captured, rather
+        // than while the right button is held, which is free.
+        Sources(Camera, "Camera", Situation.Trek, Walking, [InputSource.Mouse], [InputSource.LeftStick, InputSource.RightStick], Lookable),
+        Button(CameraHold, "Camera Hold", Situation.Trek, Walking, null, [], ["Joy:RB"]),
         Button(CameraLeft, "Camera Left", Situation.Trek, Walking, null, ["Key:Q"], []),
         Button(CameraRight, "Camera Right", Situation.Trek, Walking, null, ["Key:E"], []),
         Button(Walk, "Walk", Situation.Trek, Walking, null, ["Key:Ctrl"], []),

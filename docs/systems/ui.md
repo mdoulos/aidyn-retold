@@ -267,13 +267,13 @@ The user laid this out, and it isn't the original's ([ADR 0013](../adr/0013-sett
 
 The port's own page ([ADR 0026](../adr/0026-controls-are-bound-by-situation.md), [ADR 0027](../adr/0027-conversations-take-the-menus-controls.md)): every control can be rebound, on the keyboard with the mouse and on a controller apart. `OptionsMenu.Controls.cs` holds the page over `Settings.Controls` (`ControlBindings`), and `SystemTabView.Controls.cs` draws it; the runtime turns the bindings into Godot's input actions as the game starts and whenever they change (`InputBindings`, [runtime](runtime.md#controls)).
 
-- **The controls** are what the player does in each situation, not the N64's buttons (`GameControls`), so C-down is both the menus' Details and combat's Spell Menu, which share a default. The defaults are the bindings the runtime had before the page:
+- **The controls** are what the player does in each situation, not the N64's buttons (`GameControls`), so C-down is both the menus' Details and combat's Spell Menu, which share a default. The defaults are the bindings the runtime had before the page, but for the mouse, which looks by default (Oct 31, 2026, the user's choice, moving toward the controls of PC games such as Fortnite), where it dragged the camera with the right button held:
 
   | Situation | Control | Keyboard | Controller | What it is |
   | --- | --- | --- | --- | --- |
   | Trek | Move | WASD, Arrows | Left Stick | the stick: walks under 80% tilt, runs above |
-  | | Camera | None | Both Sticks | what steers the camera ([cameras](cameras.md#the-follow-camera-cameramode0)) |
-  | | Camera Hold | Right Click | RB | the N64's R: steers with what moves |
+  | | Camera | Mouse | Both Sticks | what steers the camera ([cameras](cameras.md#the-follow-camera-cameramode0)) |
+  | | Camera Hold | None | RB | the N64's R: steers with what moves |
   | | Camera Left, Camera Right | Q, E | None | turn the camera |
   | | Walk | Ctrl | None | the stick at half tilt |
   | | Run | Shift | LS | a port addition: runs in full where he'd run, if his actor can ([movement](movement.md#the-full-run)) |

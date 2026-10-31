@@ -23,9 +23,10 @@ public class ControlBindingsTests : IDisposable
     [Theory]
     // move_forward W/Up/LeftY-, move_back S/Down/LeftY+, move_left A/Left/LeftX-, move_right D/Right/LeftX+.
     [InlineData("move", "Source:WASD Source:Arrows", "Source:LeftStick")]
-    // camera_left Q and RightX-, camera_right E and RightX+, camera_up and down RightY; orbit (RB) with the left stick.
-    [InlineData("camera", "", "Source:LeftStick Source:RightStick")]
-    [InlineData("camera_hold", "Mouse:Right", "Joy:RB")]
+    // camera_left Q and RightX-, camera_right E and RightX+, camera_up and down RightY; orbit (RB) with the left stick. The mouse
+    // looks, where the right button held let it drag (the user's choice, Oct 31, 2026).
+    [InlineData("camera", "Source:Mouse", "Source:LeftStick Source:RightStick")]
+    [InlineData("camera_hold", "", "Joy:RB")]
     [InlineData("camera_left", "Key:Q", "")]
     [InlineData("camera_right", "Key:E", "")]
     [InlineData("walk", "Key:Ctrl", "")]
@@ -211,7 +212,7 @@ public class ControlBindingsTests : IDisposable
         var path = Path.Combine(_folder, "settings.json");
         var settings = new Settings { MouseSensitivity = 2 };
         settings.Controls.Rebind(GameControls.Use, Keys, "Key:F");
-        settings.Controls.SetSources(GameControls.Camera, Keys, [InputSource.Mouse]);
+        settings.Controls.SetSources(GameControls.Camera, Keys, [InputSource.Arrows, InputSource.Mouse]);
         settings.Controls.Clear(GameControls.Walk, Keys);
         settings.Save(path);
 
@@ -223,7 +224,7 @@ public class ControlBindingsTests : IDisposable
         Assert.Equal(2, read.MouseSensitivity);
         Assert.Equal(["Key:F"], read.Controls.Get(GameControls.Use, Keys));
         Assert.Equal(["Joy:A"], read.Controls.Get(GameControls.Use, Pad));
-        Assert.Equal([InputSource.Mouse], read.Controls.Get(GameControls.Camera, Keys));
+        Assert.Equal([InputSource.Arrows, InputSource.Mouse], read.Controls.Get(GameControls.Camera, Keys));
         Assert.Empty(read.Controls.Get(GameControls.Walk));
         Assert.Equal(["Key:Space", "Joy:A"], read.Controls.Get(GameControls.MenuAccept));
         // A copy's changes are its own.
@@ -308,7 +309,7 @@ public class ControlBindingsTests : IDisposable
         Assert.Equal(["Mouse Sensitivity", "Reset to Defaults"], rows.TakeLast(2).Select(r => r.Label));
         Assert.Equal("WASD, Arrows", rows[RowOf(options, "move")].ValueName);
         Assert.Equal("Enter, Escape", rows[RowOf(options, "pause")].ValueName);
-        Assert.Equal("None", rows[RowOf(options, "camera")].ValueName);
+        Assert.Equal("Mouse", rows[RowOf(options, "camera")].ValueName);
 
         // The Device row switches the page to the controller's bindings, which have no mouse.
         options.Point(0);

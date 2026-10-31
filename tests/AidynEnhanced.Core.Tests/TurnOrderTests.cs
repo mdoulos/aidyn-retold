@@ -194,4 +194,22 @@ public sealed class TurnOrderTests
         }
         Assert.True(battle.Press(AidynEnhanced.Core.Ui.MenuAction.Start));
     }
+
+    [Fact]
+    public void TeleportationPutsTheCasterAndItsBodyAtThePlacedPoint()
+    {
+        // Entity.Teleport: the point exactly, the body a scaled radius off it each way, its field let go.
+        var caster = BattleFixtures.Fighter(0, 15);
+        var battle = BattleFixtures.Create(1, 0, caster);
+        caster.Body.Field = (Vector3.Zero, 3);
+        var teleportation = MagicData.Spell(0x0337, "Teleportation", MagicSchool.Naming, [new TeleportEffect()], count: SpellTargetCount.One);
+        battle.Cast(caster, new AidynEnhanced.Core.Magic.SpellSource(teleportation), [], placed: new Vector2(10, 12));
+        Assert.True(((AidynEnhanced.Core.Magic.IMagicHost)battle).Teleport(caster));
+        Assert.Equal(new Vector2(10, 12), caster.Cell);
+        Assert.Equal((10.7f, 12.7f), (caster.Body.Sphere.Position.X, caster.Body.Sphere.Position.Z));
+        Assert.Null(caster.Body.Field);
+        // The next read of the body keeps it there.
+        caster.SyncFromBody(battle);
+        Assert.Equal(new Vector2(10.7f, 12.7f), caster.Cell);
+    }
 }

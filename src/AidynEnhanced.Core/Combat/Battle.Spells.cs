@@ -457,6 +457,8 @@ public sealed partial class Battle
             return 0;
         var prepared = a.Flags.HasFlag(CombatantFlags.Acted);
         var castMargin = prepared ? a.CastMargin : -1;
+        // Entity.Teleport reads the point a placed spell was put at, the focus state 11 moved (Combat+0x18, +0x1C).
+        _placed = AimCentre(a);
         var outcome = CastAt(a, source, t, ref prepared, ref castMargin);
         a.CastMargin = outcome.Result == CastResult.NotCast && outcome.Refusal is not (CastRefusal.Failed or CastRefusal.NeedsTrueName
             or CastRefusal.TooLarge or CastRefusal.NeedsSolar or CastRefusal.NeedsLunar or CastRefusal.WrongTime) ? -2 : castMargin;

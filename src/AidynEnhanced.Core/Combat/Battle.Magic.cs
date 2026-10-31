@@ -60,11 +60,24 @@ public sealed partial class Battle : IMagicHost
         return true;
     }
 
+    /// <summary>
+    /// Teleportation (<c>Entity.Teleport</c>, <c>0x80071978</c>): unless the footprint's block at the placed point is taken
+    /// (<c>ArenaGrid.IsOccupied</c>, cells off the grid free), the combatant is put at the point exactly
+    /// (<c>Combatant.SetPosition</c>), its body let go of its field (<c>TurnOrder.StopBody</c>, <c>Body.ClearGoal</c>) and put a
+    /// scaled radius off the point each way, set down from on high (<c>Combatant.PlaceBody</c>, <c>0x8005FE04</c>). The grid isn't
+    /// touched: the next read of the body (<see cref="Combatant.SyncFromBody"/>) takes its footprint from where the cell is now.
+    /// </summary>
     bool IMagicHost.Teleport(Combatant caster)
     {
-        if (_placed is not { } point || Grid.Inside((int)point.X, (int)point.Y) && (Grid[(int)point.X, (int)point.Y] & ArenaGrid.Taken) != 0)
+        if (_placed is not { } point || Grid.IsOccupied((int)point.X, (int)point.Y, caster.Footprint))
             return false;
         caster.Cell = point;
+        var body = caster.Body;
+        if (!caster.Sheet.IsDead && !caster.Gone)
+            body.Field = null;
+        var radius = body.ScaledRadius;
+        var at = new Vector3(Origin.X + point.X + radius, body.Sphere.Position.Y, Origin.Z + point.Y + radius);
+        body.Sphere.Position = Movement.Body.SetDown(World, at, body.Sphere.Radius, Game?.Random.Combat).Position;
         return true;
     }
 

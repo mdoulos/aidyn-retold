@@ -423,6 +423,9 @@ public class DialogueBoxTests
         // A short woman is higher still, and a man without a body keeps his base.
         Assert.Equal(1.15f * 1.3416408f, TextReveal.PitchOf(new DbRecord(Brenna, "Brenna", Body: body with { Height = 1 }, Voice: Voice.Female)), 1e-5f);
         Assert.Equal(0.72f, TextReveal.PitchOf(new DbRecord(Trahern, "Trahern", Voice: Voice.Male)), 1e-5f);
+        // A guard is as deep as a cyclops, whatever their heights.
+        Assert.Equal(0.5f, TextReveal.PitchOf(new DbRecord(Trahern, "Town Guard", Body: body, Voice: Voice.Deep)));
+        Assert.Equal(0.5f, TextReveal.PitchOf(new DbRecord(Trahern, "Cyclops", Body: body with { Height = 3.2f }, Voice: Voice.Deep)));
     }
 
     [Fact]

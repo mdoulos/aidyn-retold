@@ -117,6 +117,9 @@ public static class TextReveal
     /// <summary>A man's and a woman's base pitch, which the height then scales (<see cref="PitchOf"/>), the user's choice: men well below the blip's own.</summary>
     public const float MalePitch = 0.72f, FemalePitch = 1.15f;
 
+    /// <summary>A big man's pitch, the guards' and the giants', which the height doesn't scale: as deep as each other, the user's choice.</summary>
+    public const float DeepPitch = 0.5f;
+
     /// <summary>How many glyphs a tick a speed prints: 0 for the whole line at once.</summary>
     public static float GlyphsPerTick(TextSpeed speed) => speed switch
     {
@@ -128,9 +131,10 @@ public static class TextReveal
 
     /// <summary>
     /// A speaker's voice's pitch, as a multiple of the blip's own: the record's <see cref="DbRecord.VoicePitch"/> if a mod gave it
-    /// one; else its <see cref="DbRecord.Voice"/>'s base, <see cref="MalePitch"/> or <see cref="FemalePitch"/>, or 1 for a creature,
-    /// times its body's height's factor, the taller the deeper: the square root of <see cref="ReferenceHeight"/> over its scaled
-    /// height, within <see cref="LowestPitch"/> and <see cref="HighestPitch"/>, or 1 without a body. 1 for no speaker.
+    /// one; <see cref="DeepPitch"/> for a big man's voice, whatever his height; else its <see cref="DbRecord.Voice"/>'s base,
+    /// <see cref="MalePitch"/> or <see cref="FemalePitch"/>, or 1 for a creature, times its body's height's factor, the taller the
+    /// deeper: the square root of <see cref="ReferenceHeight"/> over its scaled height, within <see cref="LowestPitch"/> and
+    /// <see cref="HighestPitch"/>, or 1 without a body. 1 for no speaker.
     /// </summary>
     public static float PitchOf(DbRecord? speaker)
     {
@@ -138,6 +142,8 @@ public static class TextReveal
             return 1;
         if (speaker.VoicePitch is { } pitch)
             return pitch;
+        if (speaker.Voice == Voice.Deep)
+            return DeepPitch;
         var voice = speaker.Voice switch
         {
             Voice.Male => MalePitch,

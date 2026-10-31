@@ -21,11 +21,12 @@ namespace AidynEnhanced.Plugins.Records;
 /// </param>
 public sealed record DbRecord(RecordId Id, string Name, RecordId? Portrait = null, EntityBody? Body = null, Voice? Voice = null, float? VoicePitch = null);
 
-/// <summary>A speaker's voice, for the port's text voice: a man's or a woman's. A creature has none.</summary>
+/// <summary>A speaker's voice, for the port's text voice: a man's, a woman's, or a big man's, deep whatever his height. A creature has none.</summary>
 public enum Voice
 {
     Male,
     Female,
+    Deep,
 }
 
 /// <summary>

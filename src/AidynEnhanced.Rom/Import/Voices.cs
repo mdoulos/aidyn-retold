@@ -9,7 +9,8 @@ namespace AidynEnhanced.Rom.Import;
 /// split the party by sex, but the townsfolk, who do most of the talking, have no keys at all. Every entity and dialogue entity with a
 /// human face in its portrait is here, judged by eye from the portraits (Oct 30, 2026), the shared commoner and shopkeeper faces among
 /// them; creatures, elementals, the Chaos things, the signs and the animals have no voice and are pitched by their height alone. A mod
-/// patches a record's <c>voice</c> or sets its <c>voicePitch</c> outright.
+/// patches a record's <c>voice</c> or sets its <c>voicePitch</c> outright. The guards, the brutes and the giants are deep (<see cref="Voice.Deep"/>),
+/// as deep as each other whatever their height, the user's choice.
 /// </summary>
 public static class Voices
 {
@@ -48,12 +49,7 @@ public static class Voices
         [0x013B] = Voice.Male, // Gavinn
         [0x013D] = Voice.Male, // Gillek
         [0x0140] = Voice.Male, // Godric
-        [0x0144] = Voice.Male, // Town Guard
-        [0x0145] = Voice.Male, // Town Guard
-        [0x0146] = Voice.Male, // Town Guard
         [0x0149] = Voice.Male, // Herne
-        [0x014B] = Voice.Male, // the bandit brutes
-        [0x014D] = Voice.Male, // Jundar Guard
         [0x014E] = Voice.Male, // Male Jundar, Honza and Ugarit's shopkeepers
         [0x0150] = Voice.Male, // Kolokos
         [0x0155] = Voice.Male, // Mago
@@ -67,6 +63,20 @@ public static class Voices
         [0x0175] = Voice.Male, // the Chaos knights: Assim, Behrooz, Golnar, Ksathra, Mehrdad, Nasim, Shatrevar
         [0x017B] = Voice.Male, // Yuli
         [0x017C] = Voice.Male, // Zaratas
+        // Big men, deep whatever their height, the user's choice: the guards, and the brutes and giants that speak.
+        [0x0144] = Voice.Deep, // Town Guard
+        [0x0145] = Voice.Deep, // Town Guard
+        [0x0146] = Voice.Deep, // Town Guard
+        [0x014D] = Voice.Deep, // Jundar Guard
+        [0x014B] = Voice.Deep, // the bandit brutes: Bandit Brute, Goon and Thug
+        [0x011D] = Voice.Deep, // Chaos Mauler and Slayer
+        [0x0129] = Voice.Deep, // Cyclops
+        [0x014A] = Voice.Deep, // Hobgoblin, Hobgoblin Major and Kitarak
+        [0x0159] = Voice.Deep, // Minotaur Lord
+        [0x3846] = Voice.Deep, // Minotaur
+        [0x015E] = Voice.Deep, // Ogre and Ogre Guard
+        [0x015F] = Voice.Deep, // Ogre Boss
+        [0x0172] = Voice.Deep, // Troll
         // Women.
         [0x010A] = Voice.Female, // Ardra
         [0x0116] = Voice.Female, // Brenna

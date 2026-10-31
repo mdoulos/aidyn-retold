@@ -29,9 +29,18 @@ public sealed class VoiceImportTests(Na10Import fixture)
         foreach (var e in entities.Where(e => e.Category is EntityCategory.Named or EntityCategory.Generic or EntityCategory.Party))
             Assert.True(e.Voice is not null || e.Name is "Rooughah" or "Zaratas" or "Lugash", $"{e.Name} ({e.Id}) has no voice.");
         foreach (var e in entities.Where(e => e.Category is EntityCategory.Natural or EntityCategory.Chaos))
-            Assert.True(e.Voice is null || Faced.Contains(e.Portrait!.Value), $"{e.Name} ({e.Id}) has a voice.");
+            Assert.True(e.Voice is null or Voice.Deep || Faced.Contains(e.Portrait!.Value), $"{e.Name} ({e.Id}) has a voice.");
         Assert.Contains("Alaron", voiced);
         Assert.Contains("Brenna", voiced);
+    }
+
+    [Fact]
+    public void TheGuardsAndTheGiantsAreDeep()
+    {
+        var entities = fixture.Data.Set.All<EntityRecord>(RecordTypes.Entity).ToList();
+        foreach (var e in entities.Where(e => e.Name is "Town Guard" or "Jundar Guard" or "Ogre" or "Cyclops" or "Troll" or "Bandit Brute"))
+            Assert.Equal(Voice.Deep, e.Voice);
+        Assert.Equal(Voice.Male, entities.Single(e => e.Name == "Alaron").Voice);
     }
 
     [Fact]

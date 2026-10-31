@@ -154,14 +154,15 @@ public sealed class PluginSet
     /// <summary>
     /// Loads the base plugin and every other plugin in <paramref name="pluginsDirectory"/>: the base first, then the rest in
     /// <see cref="LoadOrder"/>. A plugin's folder must be named for its ID, as the ID is also its namespace; only the base
-    /// plugin's, <see cref="BasePlugin.Folder"/>, differs (it holds <c>aidyn</c>).
+    /// plugin's, <see cref="BasePlugin.Folder"/>, differs (it holds <c>aidyn</c>). The folders an import works in are skipped
+    /// (<see cref="BasePlugin.IsImportWork"/>).
     /// </summary>
     public static PluginSet LoadInstalled(string pluginsDirectory)
     {
         var baseDir = Path.Combine(pluginsDirectory, BasePlugin.Folder);
         var others = Directory.EnumerateDirectories(pluginsDirectory)
             .Where(d => !string.Equals(Path.GetFileName(d), BasePlugin.Folder, StringComparison.OrdinalIgnoreCase) &&
-                File.Exists(Path.Combine(d, PluginManifest.FileName)))
+                !BasePlugin.IsImportWork(Path.GetFileName(d)) && File.Exists(Path.Combine(d, PluginManifest.FileName)))
             .Select(Plugin.Open)
             .ToList();
         foreach (var plugin in others)

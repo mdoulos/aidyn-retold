@@ -44,6 +44,21 @@ public static class BasePlugin
     /// <summary>The folder it's imported to, under <see cref="DataPaths.Plugins"/>.</summary>
     public const string Folder = "aidyn.base";
 
+    /// <summary>What an import's folder is suffixed with while it's written, before it replaces the old one.</summary>
+    public const string StagingSuffix = ".importing";
+
+    /// <summary>What the old import's folder is suffixed with while the new one takes its place.</summary>
+    public const string ReplacedSuffix = ".old";
+
+    /// <summary>
+    /// Whether a folder of the plugins' is one an import of <see cref="Folder"/> works in (<see cref="StagingSuffix"/>,
+    /// <see cref="ReplacedSuffix"/>), which an import killed partway can leave behind, holding the base's manifest, and
+    /// which loading skips.
+    /// </summary>
+    public static bool IsImportWork(string folder) =>
+        string.Equals(folder, Folder + StagingSuffix, StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(folder, Folder + ReplacedSuffix, StringComparison.OrdinalIgnoreCase);
+
     /// <summary>
     /// Raised whenever the importer's output changes, so existing imports are redone. 1 was the
     /// first slice for M1: map sets, chunks, scene objects, actors, and scene and collision assets.

@@ -36,6 +36,18 @@ public sealed class PluginLoadOrderTests : IDisposable
     }
 
     [Fact]
+    public void AnImportKilledPartwayDoesntStopTheLoad()
+    {
+        // Its staging folder and the old import moved aside both hold the base's manifest.
+        Base();
+        _temp.AddRaw(BasePlugin.Folder + BasePlugin.StagingSuffix, Manifest("aidyn"));
+        _temp.AddRaw(BasePlugin.Folder + BasePlugin.ReplacedSuffix, Manifest("aidyn"));
+        Mod("alpha");
+
+        Assert.Equal(["aidyn", "alpha"], Order());
+    }
+
+    [Fact]
     public void ADependencyThatSortsLaterStillLoadsFirst()
     {
         Base();

@@ -12,7 +12,7 @@ The defaults leave the records as importer 61 wrote them, so recording the choic
 
 ## The flow
 
-`BaseImporter.Import` stages the plugin in a sibling folder (`<dir>.importing`) and moves it into place when it's done. An `ImportContext` holds what the families share: the ROM, its Borg archive and DB, each code-segment table read once on first use (`EngineTables`, `BodySoundTables`, `AudioTables` and the rest), and the writers for records and assets. An importer per family then builds its records, in this order:
+`BaseImporter.Import` stages the plugin in a sibling folder (`<dir>.importing`) and moves it into place when it's done, moving the old import aside to `<dir>.old` first and deleting it after, so a file held open can't leave it half deleted. A failed import deletes its staging folder and leaves the old one in place. One killed partway leaves its folders for the next import to clear, and loading skips them (`BasePlugin.IsImportWork`), as they hold the base's manifest and would otherwise stop every load as a plugin in a folder not named for its ID. An `ImportContext` holds what the families share: the ROM, its Borg archive and DB, each code-segment table read once on first use (`EngineTables`, `BodySoundTables`, `AudioTables` and the rest), and the writers for records and assets. An importer per family then builds its records, in this order:
 
 - `WorldImporter`: map sets, terrains, weather, the World tab's map, camping, the new game, the title, the sky.
 - `CombatImporter`: the combat record (`aidyn:combat/0`) and its `text` ([combat](combat.md), [hardcoded content](../hardcoded-content.md#bespoke-behaviours)).

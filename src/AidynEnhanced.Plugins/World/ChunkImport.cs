@@ -26,6 +26,20 @@ public static class ChunkImport
 
     public static ChunkImportResult Import(PluginSet plugins, byte[] glb, ModFolder mod, bool force = false)
     {
+        try
+        {
+            return Read(plugins, glb, mod, force);
+        }
+        catch (Exception e) when (e is ArgumentException or KeyNotFoundException or InvalidOperationException or IndexOutOfRangeException
+            or JsonException)
+        {
+            // What a hand-edited or cut-short file throws from deep in the reading, said as what it means.
+            throw new InvalidDataException($"The file isn't a chunk export the import can read: {e.Message}", e);
+        }
+    }
+
+    private static ChunkImportResult Read(PluginSet plugins, byte[] glb, ModFolder mod, bool force)
+    {
         using var file = GlbReader.Parse(glb);
         var root = file.Root;
         var nodes = root.GetProperty("nodes");
@@ -53,6 +67,7 @@ public static class ChunkImport
         var collisionWritten = false;
         IReadOnlyList<CollisionTriangle>? collision = null;
         var objectNodes = new List<(JsonElement Node, Matrix4x4 World)>();
+        var scenery = new List<(JsonElement Node, Matrix4x4 World, RecordId Scene, bool Alt)>();
 
         foreach (var (child, world) in Children(nodes, chunkNode.Node, Matrix4x4.Identity))
         {
@@ -60,10 +75,10 @@ public static class ChunkImport
             switch (name)
             {
                 case ChunkExport.SceneryNode when chunk.Scene is { } scene:
-                    sceneryWritten = Scenery(plugins, mod, file, child, world, scene, force, report);
+                    scenery.Add((child, world, scene, false));
                     break;
                 case ChunkExport.AltSceneryNode when chunk.AltScene is { } alt:
-                    altWritten = Scenery(plugins, mod, file, child, world, alt, force, report);
+                    scenery.Add((child, world, alt, true));
                     break;
                 case ChunkExport.CollisionNode:
                     collision = Collision(file, child, world, report);
@@ -78,6 +93,17 @@ public static class ChunkImport
                         report.Add($"  {Name(child)}: not part of a chunk, left alone");
                     break;
             }
+        }
+
+        // The objects are read before anything's written, so one the import can't read leaves the mod as it was.
+        var objects = Objects(map, objectNodes, report);
+        foreach (var (node, world, scene, alt) in scenery)
+        {
+            var written = Scenery(plugins, mod, file, node, world, scene, force, report);
+            if (alt)
+                altWritten = written;
+            else
+                sceneryWritten = written;
         }
 
         // The collision as the plugins have it, the mod's own if it has one already.
@@ -98,7 +124,6 @@ public static class ChunkImport
             }
         }
 
-        var objects = Objects(map, objectNodes, report);
         // The grid goes by the collision the mod gives, written now or before, against what's below it: a mod's collision
         // needs its grid however few objects changed, or the patch that carries it would be taken out below.
         var inEffect = collision ?? currentCollision;

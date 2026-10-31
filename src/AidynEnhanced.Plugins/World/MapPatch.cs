@@ -100,14 +100,17 @@ public static class MapPatch
         return o;
     }
 
-    /// <summary>A JSON Merge Patch from <paramref name="was"/> to <paramref name="now"/>: the fields that differ, null for those gone.</summary>
+    /// <summary>
+    /// A JSON Merge Patch from <paramref name="was"/> to <paramref name="now"/>: the fields that differ, null for those gone. A
+    /// changed object is a patch of its own, as the merge merges it into the old one, so a field gone from it is gone.
+    /// </summary>
     public static JsonObject Diff(JsonObject was, JsonObject now)
     {
         var diff = new JsonObject();
         foreach (var (field, value) in now)
         {
             if (!was.TryGetPropertyValue(field, out var old) || !JsonNode.DeepEquals(old, value))
-                diff[field] = value?.DeepClone();
+                diff[field] = old is JsonObject oldObject && value is JsonObject newObject ? Diff(oldObject, newObject) : value?.DeepClone();
         }
         foreach (var (field, _) in was)
         {

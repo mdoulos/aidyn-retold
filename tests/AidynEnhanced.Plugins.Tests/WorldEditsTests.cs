@@ -88,4 +88,16 @@ public sealed class WorldEditsTests
         Assert.Equal(2, twice.Objects[0].Position.X);
         Assert.Equal(9, twice.Objects[0].Radius);
     }
+
+    [Fact]
+    public void ADiffTakesAFieldOutOfANestedObject()
+    {
+        var was = JsonNode.Parse("""{ "index": 3, "camera": { "eye": [1, 2, 3], "roll": 5 }, "radius": 2 }""")!.AsObject();
+        var now = JsonNode.Parse("""{ "index": 3, "camera": { "eye": [1, 2, 4] }, "radius": 2 }""")!.AsObject();
+
+        var diff = MapPatch.Diff(was, now);
+
+        // Merged into the old object, the patch takes roll away rather than leaving it.
+        Assert.True(JsonNode.DeepEquals(JsonNode.Parse("""{ "camera": { "eye": [1, 2, 4], "roll": null } }"""), diff));
+    }
 }

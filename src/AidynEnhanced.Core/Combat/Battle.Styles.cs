@@ -446,12 +446,17 @@ public sealed partial class Battle
         TargetsA.Clear();
     }
 
-    /// <summary>The cells of the square about (cx, cz) out to <paramref name="r"/>, Z outer and X inner, as signed bytes.</summary>
-    private static IEnumerable<(int X, int Z)> Square(int cx, int cz, int r)
+    /// <summary>
+    /// The cells of the square about (cx, cz) out to <paramref name="r"/>, Z outer and X inner, as signed bytes. It ends at 127,
+    /// where a signed byte would wrap to −128 and never pass an edge beyond it: an area spell's reach (its range × the level)
+    /// can take the edge there, as Fireball's 3 × 10 from a cell of 97 does, and the AI's turn would hang. The arena's cells
+    /// go no further than 98, so nothing it scores is lost.
+    /// </summary>
+    internal static IEnumerable<(int X, int Z)> Square(int cx, int cz, int r)
     {
-        for (var z = (int)(sbyte)(cz - r); z <= cz + r; z = (sbyte)(z + 1))
+        for (var z = (int)(sbyte)(cz - r); z <= Math.Min(cz + r, sbyte.MaxValue); z++)
         {
-            for (var x = (int)(sbyte)(cx - r); x <= cx + r; x = (sbyte)(x + 1))
+            for (var x = (int)(sbyte)(cx - r); x <= Math.Min(cx + r, sbyte.MaxValue); x++)
                 yield return (x, z);
         }
     }

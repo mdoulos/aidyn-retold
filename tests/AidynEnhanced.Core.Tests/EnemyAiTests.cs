@@ -199,4 +199,16 @@ public sealed class EnemyAiTests
         foreach (var (ax, az, ad, tx, tz, td, flanking) in Flanks)
             Assert.Equal(flanking, Battle.IsFlanking(ax, az, ad, tx, tz, td));
     }
+
+    [Fact]
+    public void AnAreaSpellsScanEndsWhereASignedByteWouldWrap()
+    {
+        // Fireball's range of 3 at level 10 from cell 97 reaches 127, where the scan used to wrap to -128 and go on for ever.
+        var cells = Battle.Square(97, 97, 30).ToList();
+        Assert.Equal((67, 67), cells[0]);
+        Assert.Equal((127, 127), cells[^1]);
+        Assert.Equal(61 * 61, cells.Count);
+        // Short of the edge, it's the square as before.
+        Assert.Equal(25, Battle.Square(10, 10, 2).Count());
+    }
 }

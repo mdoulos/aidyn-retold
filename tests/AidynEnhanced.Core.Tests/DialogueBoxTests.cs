@@ -273,4 +273,153 @@ public class DialogueBoxTests
         Assert.Equal(small.Line.Bounds.Right - small.Line.Bounds.Left, large.Line.Bounds.Right - large.Line.Bounds.Left);
         Assert.Equal(small.Choices.Select(c => c.Y + 240), large.Choices.Select(c => c.Y));
     }
+
+    // The port's typewriter reveal and voice (TextReveal), off by default. The test font has glyphs for a, b, c and d alone.
+
+    [Fact]
+    public void ALineShowsWholeAndSilentByDefault()
+    {
+        var box = Box();
+        box.Show(new ScriptPage(Line("ab cd", Trahern), []));
+
+        Assert.True(box.LineComplete);
+        Assert.Equal(4, box.RevealedGlyphs);
+        box.Step();
+        Assert.Equal(0, box.TakeBlips());
+    }
+
+    [Fact]
+    public void ALinePrintsAGlyphATickAndItsChoicesWait()
+    {
+        var box = Box();
+        box.GlyphsPerTick = 1;
+        box.Show(Page("ab cd", "Yes", "No"));
+
+        Assert.False(box.LineComplete);
+        Assert.Equal(0, box.RevealedGlyphs);
+        box.Step();
+        box.Step();
+        Assert.Equal((2, false), (box.RevealedGlyphs, box.LineComplete));
+        box.Step();
+        box.Step();
+        Assert.Equal((4, true), (box.RevealedGlyphs, box.LineComplete));
+        box.Step();
+        Assert.Equal(4, box.RevealedGlyphs);
+    }
+
+    [Fact]
+    public void HalfAGlyphATickPrintsEveryOtherTick()
+    {
+        var box = Box();
+        box.GlyphsPerTick = 0.5f;
+        box.Show(new ScriptPage(Line("abcd", Trahern), []));
+
+        box.Step();
+        Assert.Equal(0, box.RevealedGlyphs);
+        box.Step();
+        Assert.Equal(1, box.RevealedGlyphs);
+        box.Step();
+        box.Step();
+        Assert.Equal(2, box.RevealedGlyphs);
+    }
+
+    [Fact]
+    public void CompletingPrintsTheRest()
+    {
+        var box = Box();
+        box.GlyphsPerTick = 1;
+        box.Show(new ScriptPage(Line("abcdab", Trahern), []));
+        box.Step();
+
+        box.CompleteLine();
+
+        Assert.Equal((6, true), (box.RevealedGlyphs, box.LineComplete));
+    }
+
+    [Fact]
+    public void TheSameLineShownAgainGoesOnPrinting()
+    {
+        var box = Box();
+        box.GlyphsPerTick = 1;
+        var page = new ScriptPage(Line("abcdab", Trahern), []);
+        box.Show(page);
+        box.Step();
+        box.Step();
+
+        box.Show(page);
+        Assert.Equal(2, box.RevealedGlyphs);
+
+        // A different line starts over.
+        box.Show(new ScriptPage(new ScriptLine(1, Trahern, "abcdab"), []));
+        Assert.Equal(0, box.RevealedGlyphs);
+    }
+
+    [Fact]
+    public void TheVoiceBlipsAtMostEveryThirdTick()
+    {
+        var box = Box();
+        box.GlyphsPerTick = 1;
+        box.Voice = true;
+        box.Show(new ScriptPage(Line("abcdabcd", Trahern), []));
+
+        var blips = new List<int>();
+        for (var i = 0; i < 8; i++)
+        {
+            box.Step();
+            blips.Add(box.TakeBlips());
+        }
+
+        // The first glyph blips, then every third: ticks 1, 4 and 7 of 8.
+        Assert.Equal([1, 0, 0, 1, 0, 0, 1, 0], blips);
+    }
+
+    [Fact]
+    public void TwoGlyphsATickBlipOnceATick()
+    {
+        var box = Box();
+        box.GlyphsPerTick = 2;
+        box.Voice = true;
+        box.Show(new ScriptPage(Line("abcdabcd", Trahern), []));
+
+        box.Step();
+        Assert.Equal((2, 1), (box.RevealedGlyphs, box.TakeBlips()));
+        box.Step();
+        Assert.Equal((4, 0), (box.RevealedGlyphs, box.TakeBlips()));
+    }
+
+    [Fact]
+    public void TheVoiceOffBlipsNothing()
+    {
+        var box = Box();
+        box.GlyphsPerTick = 1;
+        box.Show(new ScriptPage(Line("abcdabcd", Trahern), []));
+
+        for (var i = 0; i < 8; i++)
+            box.Step();
+
+        Assert.Equal(0, box.TakeBlips());
+    }
+
+    [Theory]
+    [InlineData(1.8f, 1f, 1f)]
+    [InlineData(0.9f, 2f, 1f)]
+    [InlineData(1.0f, 1f, 1.3416408f)]
+    [InlineData(0.5f, 1f, 1.5f)]
+    [InlineData(4f, 1f, 0.7f)]
+    public void ASpeakersPitchFallsWithItsHeight(float height, float scale, float pitch)
+    {
+        var speaker = new DbRecord(Trahern, "Trahern", Body: new EntityBody(RecordId.Hex(RecordTypes.Actor, 1), 0.5f, scale, height));
+
+        Assert.Equal(pitch, TextReveal.PitchOf(speaker), 1e-5f);
+    }
+
+    [Fact]
+    public void AModsPitchWinsAndNoBodyIsMiddling()
+    {
+        var speaker = new DbRecord(Trahern, "Trahern", Body: new EntityBody(RecordId.Hex(RecordTypes.Actor, 1), 0.5f, 1, 4), VoicePitch: 1.25f);
+
+        Assert.Equal(1.25f, TextReveal.PitchOf(speaker));
+        Assert.Equal(1, TextReveal.PitchOf(new DbRecord(Trahern, "Trahern")));
+        Assert.Equal(1, TextReveal.PitchOf(null));
+    }
 }

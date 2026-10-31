@@ -362,6 +362,16 @@ public sealed class GameSession
         Trek.Player.Pace = settings.Pace;
         Battle?.Fx.Turns = settings.SpellAuras;
         Battle?.Pace = settings.Pace;
+        SetReveal(Trek.Box, settings);
+        if (Scene is { } scene)
+            SetReveal(scene.Box, settings);
+    }
+
+    /// <summary>How a box prints its lines (<see cref="Ui.TextReveal"/>): the settings' text rate and voice.</summary>
+    private static void SetReveal(Ui.DialogueBox box, SessionSettings settings)
+    {
+        box.GlyphsPerTick = settings.TextRate;
+        box.Voice = settings.TextVoice;
     }
 
     /// <summary>
@@ -718,6 +728,7 @@ public sealed class GameSession
         if (_trekZones)
             zone.EnterRegion(stage.Chunk);
         var scene = Scene = new CutScene(Game, script, start, stage, _host);
+        SetReveal(scene.Box, _settings);
         zone.Camera = scene.Camera;
         scene.Start();
         Send(new Transition.StartCutScene(scene, zone));

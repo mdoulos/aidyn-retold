@@ -10,7 +10,11 @@ namespace AidynEnhanced.Plugins.Records;
 /// for other records.
 /// </param>
 /// <param name="Body">How an entity or a dialogue entity stands in the world. None for other records.</param>
-public sealed record DbRecord(RecordId Id, string Name, RecordId? Portrait = null, EntityBody? Body = null);
+/// <param name="VoicePitch">
+/// The pitch of the blips the port's conversation box sounds as this speaker's lines print, as a multiple of the blip's own
+/// (<c>AidynEnhanced.Core.Ui.TextReveal</c>): the port's own, which a mod sets; none, as the importer writes, pitches by the body's height.
+/// </param>
+public sealed record DbRecord(RecordId Id, string Name, RecordId? Portrait = null, EntityBody? Body = null, float? VoicePitch = null);
 
 /// <summary>
 /// How an entity or a dialogue entity stands in the world, as a wanderer or a cut-scene's actor

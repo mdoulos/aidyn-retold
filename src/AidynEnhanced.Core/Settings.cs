@@ -118,6 +118,15 @@ public sealed class Settings
     public bool BriskPace { get; set; }
 
     /// <summary>
+    /// How fast the conversation box prints a line (<see cref="Ui.TextReveal"/>): whole at once as the original's, or a few glyphs a
+    /// tick. Normal, the user's choice.
+    /// </summary>
+    public Ui.TextSpeed TextSpeed { get; set; } = Ui.TextSpeed.Normal;
+
+    /// <summary>Whether a blip sounds as a line prints, pitched by the speaker (<see cref="Ui.TextReveal"/>). On, the user's choice.</summary>
+    public bool TextVoice { get; set; } = true;
+
+    /// <summary>
     /// Whether the title starts with the original's intro cards (<see cref="Ui.IntroCards"/>): the Expansion Pak's, the legal text and
     /// the N64's, THQ's and H2O's logos. Off, the user's choice, it starts at its logo and menu.
     /// </summary>

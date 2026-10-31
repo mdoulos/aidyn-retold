@@ -544,7 +544,7 @@ public sealed partial class TrekLoop : IMapObjectHost
         switch (action)
         {
             case MenuAction.Accept:
-                if (Box.Accept(runner, conversation.Press) != DialogueAccept.ShowedChoices)
+                if (Box.Accept(runner, conversation.Press) is not (DialogueAccept.ShowedChoices or DialogueAccept.Revealed))
                     Refresh();
                 else
                     _host.ConversationChanged();

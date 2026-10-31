@@ -76,20 +76,26 @@ public class DialogueAcceptTests
         Line(0, "Hello.", 1),
         Line(1, "Goodbye.", null, End));
 
+    /// <summary>Lines in the letters the test font has glyphs for.</summary>
+    private static readonly DialogueRecord Printed = Script(
+        Line(0, "abcd abcd", 1),
+        Line(1, "dcba", null, End));
+
     private static readonly DialogueRecord Gossip = Script(
         Line(0, "", 1, Op(DialogueCommand.RandomLine, target: Rumours)),
         Line(1, "That's all I know.", null, End));
 
     private static readonly DialogueRecord RumourScript = new(Rumours, 1, DialogueMode.Conversation, [Line(0, "A rumour.", null, End)]);
 
-    private static (ScriptRunner Runner, DialogueBox Box) Open(DialogueRecord script)
+    /// <param name="glyphsPerTick">How fast the box prints its lines (<see cref="DialogueBox.GlyphsPerTick"/>): whole at once by default.</param>
+    private static (ScriptRunner Runner, DialogueBox Box) Open(DialogueRecord script, float glyphsPerTick = 0)
     {
         var flags = new FlagNetwork(Enumerable.Range(0, 10).Select(i => new FlagRecord(RecordId.Decimal(RecordTypes.Flag, i), Initial: false)),
             RecordId.Decimal(RecordTypes.Flag, 9));
         var scripts = new[] { script, RumourScript }.ToDictionary(s => s.Id);
         var runner = new ScriptRunner(script, flags, new World(), new Host(), new Lcg(), id => scripts.GetValueOrDefault(id));
         runner.Start();
-        var box = new DialogueBox(new TextLayout(TextLayoutTests.Font()), 52, 52, Player);
+        var box = new DialogueBox(new TextLayout(TextLayoutTests.Font()), 52, 52, Player) { GlyphsPerTick = glyphsPerTick };
         box.Show(runner.Page!);
         return (runner, box);
     }
@@ -184,5 +190,23 @@ public class DialogueAcceptTests
         Assert.False(DialogueBox.PicksChoice(runner));
         Assert.Equal(DialogueAccept.Continued, box.Accept(runner));
         Assert.Equal("That's all I know.", Text(runner));
+    }
+
+    [Fact]
+    public void AOnALineStillPrintingPrintsTheRestAndOnlyThenMovesOn()
+    {
+        var (runner, box) = Open(Printed, glyphsPerTick: 1);
+        box.Step();
+        Assert.Equal((1, false), (box.RevealedGlyphs, box.LineComplete));
+
+        Assert.Equal(DialogueAccept.Revealed, box.Accept(runner));
+        Assert.Equal((8, true), (box.RevealedGlyphs, box.LineComplete));
+        Assert.Equal("abcd abcd", runner.Page!.Line.Text);
+
+        Assert.Equal(DialogueAccept.Continued, box.Accept(runner));
+        Assert.Equal("dcba", runner.Page!.Line.Text);
+        // The new page, shown as trek's refresh shows it, starts printing from nothing.
+        box.Show(runner.Page);
+        Assert.Equal((0, false), (box.RevealedGlyphs, box.LineComplete));
     }
 }

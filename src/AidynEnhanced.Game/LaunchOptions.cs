@@ -173,6 +173,12 @@ public sealed class LaunchOptions(Dictionary<string, string> values)
     /// <summary><c>--ui-lines &lt;n&gt;</c>.</summary>
     public int? UiLines => Integer("ui-lines");
 
+    /// <summary><c>--text-speed original|slow|normal|fast</c>: the options' Text Speed.</summary>
+    public Core.Ui.TextSpeed? TextSpeed => Text("text-speed") is { } speed ? Enum.Parse<Core.Ui.TextSpeed>(speed, ignoreCase: true) : null;
+
+    /// <summary><c>--text-voice off|on</c>: the options' Text Voice.</summary>
+    public bool? TextVoice => Text("text-voice") is { } voice ? voice == "on" : null;
+
     /// <summary><c>--spell-auras each</c>: the options' Spell auras.</summary>
     public Core.Combat.AuraTurns? SpellAuras => Text("spell-auras") is { } auras
         ? auras == "each" ? Core.Combat.AuraTurns.EachCharacter : Core.Combat.AuraTurns.Battle

@@ -97,7 +97,7 @@ public partial class ConversationBoxView : Control
     {
         if (StepsBox)
             Box.Step();
-        if (Visible && Box.Layout is { Choices.Count: > 0 })
+        if (Visible && (Box.Layout is { Choices.Count: > 0 } || !Box.LineComplete))
             QueueRedraw();
     }
 
@@ -111,17 +111,20 @@ public partial class ConversationBoxView : Control
         if (_images.Get(PortraitOf(layout.Speaker)) is { } portrait)
             DrawTexture(portrait, new Vector2(layout.PortraitX, layout.PortraitY));
 
+        // A line still printing shows its first glyphs, and its choices wait for the rest (TextReveal).
         if (layout.Line is { } line)
-            Print(line, DialogueBox.LineColor);
+            Print(line, DialogueBox.LineColor, Box.RevealedGlyphs);
+        if (!Box.LineComplete)
+            return;
         for (var i = 0; i < layout.Choices.Count; i++)
             Print(layout.Choices[i], i == layout.Highlight ? Box.HighlightNow : DialogueBox.ChoiceColor);
     }
 
-    private void Print(TextBlock block, Rgba color)
+    private void Print(TextBlock block, Rgba color, int? glyphs = null)
     {
         if (_sheet is null)
             return;
-        foreach (var glyph in _text.Print(block.Text, block.X, block.Y, block.Bounds, color).Glyphs)
+        foreach (var glyph in _text.Print(block.Text, block.X, block.Y, block.Bounds, color).Glyphs.Take(glyphs ?? int.MaxValue))
         {
             DrawTextureRectRegion(_sheet, new Rect2(glyph.X, glyph.Y, glyph.Width, glyph.Height),
                 new Rect2(glyph.SourceX, glyph.SourceY, glyph.Width, glyph.Height), UiPainter.Color8(glyph.Color));

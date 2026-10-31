@@ -184,7 +184,7 @@ public sealed class CutScene
         switch (action)
         {
             case MenuAction.Accept:
-                if (Box.Accept(Runner, advance => Press(advance)) != DialogueAccept.ShowedChoices)
+                if (Box.Accept(Runner, advance => Press(advance)) is not (DialogueAccept.ShowedChoices or DialogueAccept.Revealed))
                     ShowPage(force: true);
                 return true;
             case MenuAction.Up or MenuAction.Down:

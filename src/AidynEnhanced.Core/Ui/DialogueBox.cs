@@ -41,6 +41,8 @@ public enum DialogueAccept
     Chose,
     /// <summary>The script moved on from a line.</summary>
     Continued,
+    /// <summary>It printed the rest of a line still printing (<see cref="TextReveal"/>). The script hasn't moved.</summary>
+    Revealed,
 }
 
 /// <summary>
@@ -64,6 +66,13 @@ public enum DialogueAccept
 /// Alaron's portrait. Then the portrait and its border stay where the line put them, since the
 /// original doesn't move them, but the box shrinks to the choices, never below its base. The cursor's choice pulses from
 /// tan to a dim brown and back, a step a frame (<c>WidgetScrollMenu::Tick</c>).
+/// </para>
+/// <para>
+/// The port can print a line a few glyphs a tick instead of showing it whole, with a blip for the runtime to sound as glyphs
+/// appear (<see cref="TextReveal"/>, the user's choice): <see cref="GlyphsPerTick"/> and <see cref="Voice"/>, which the
+/// session sets from the settings each tick, and at their defaults the line shows whole and silent as the original's does.
+/// While a line prints, its choices wait, A prints the rest (<see cref="DialogueAccept.Revealed"/>), and
+/// <see cref="RevealedGlyphs"/> is how many of the line's glyphs to draw.
 /// </para>
 /// </remarks>
 /// <param name="font">The font the box's text is in: the main font.</param>
@@ -102,6 +111,8 @@ public sealed class DialogueBox(TextLayout font, int borderWidth, int borderHeig
     private bool _choicesAlone;
     private int _borderY = BaseTop;
     private readonly MenuPulse _pulse = new(Cadence.FrameTicks, PulseFrames);
+    private int _totalGlyphs, _revealed, _blips, _ticksSinceBlip = TextReveal.TicksBetweenBlips;
+    private float _revealAccumulated;
 
     /// <summary>
     /// The portrait border's size (image 0x00DF, 52 × 52), which the layout is built
@@ -119,6 +130,29 @@ public sealed class DialogueBox(TextLayout font, int borderWidth, int borderHeig
     /// <summary>The choice the cursor is on.</summary>
     public int Highlight { get; private set; }
 
+    /// <summary>How many glyphs a tick a line prints (<see cref="TextReveal.GlyphsPerTick"/>): 0, the default, shows it whole at once.</summary>
+    public float GlyphsPerTick { get; set; }
+
+    /// <summary>Whether a blip is counted as glyphs print (<see cref="TakeBlips"/>). Off by default, as the original's box is silent.</summary>
+    public bool Voice { get; set; }
+
+    /// <summary>How many of the line's glyphs, in the order <see cref="TextLayout.Print"/> places them, are shown so far.</summary>
+    public int RevealedGlyphs => _revealed;
+
+    /// <summary>Whether the whole line is up, so its choices show and A moves on; always, with the line shown whole.</summary>
+    public bool LineComplete => _revealed >= _totalGlyphs;
+
+    /// <summary>
+    /// The blips counted since the last call, and clears them: one for a glyph printed while <see cref="Voice"/> is on, at most one
+    /// every <see cref="TextReveal.TicksBetweenBlips"/> ticks. The runtime sounds them at the speaker's pitch.
+    /// </summary>
+    public int TakeBlips()
+    {
+        var blips = _blips;
+        _blips = 0;
+        return blips;
+    }
+
     /// <summary>Whether A moves the box on by itself, bringing up the choices, rather than the script.</summary>
     public bool ShowsLineBeforeChoices => _page is { Choices.Count: > 0 } page && !_choicesAlone && page.Choices[0].Speaker == page.Line.Speaker;
 
@@ -133,14 +167,32 @@ public sealed class DialogueBox(TextLayout font, int borderWidth, int borderHeig
     /// <summary>Where the original's screen is on the UI screen: at the bottom, in the middle.</summary>
     public (int X, int Y) Frame => ((_screenWidth - FrameWidth) / 2, _screenHeight - FrameHeight);
 
-    /// <summary>Shows a new page, with the cursor on its first choice.</summary>
+    /// <summary>
+    /// Shows a new page, with the cursor on its first choice, and starts printing its line (<see cref="GlyphsPerTick"/>). The same
+    /// line shown again, as a conversation's refresh after a tick does, goes on printing where it was.
+    /// </summary>
     public DialogueBoxLayout Show(ScriptPage page)
     {
+        var sameLine = _page is not null && !_choicesAlone && page.Line == _page.Line;
         _page = page;
         _choicesAlone = false;
         Highlight = 0;
         _pulse.Restart();
-        return Lay();
+        var layout = Lay();
+        if (!sameLine)
+            StartReveal(layout);
+        return layout;
+    }
+
+    /// <summary>Prints the rest of the line, as A does on a line still printing.</summary>
+    public void CompleteLine() => _revealed = _totalGlyphs;
+
+    private void StartReveal(DialogueBoxLayout layout)
+    {
+        _totalGlyphs = layout.Line is { } line ? font.Print(line.Text, line.X, line.Y, line.Bounds, LineColor).Glyphs.Count : 0;
+        _revealed = GlyphsPerTick > 0 ? 0 : _totalGlyphs;
+        _revealAccumulated = 0;
+        _ticksSinceBlip = TextReveal.TicksBetweenBlips;
     }
 
     /// <summary>Brings up the choices under a line that showed alone first.</summary>
@@ -166,6 +218,11 @@ public sealed class DialogueBox(TextLayout font, int borderWidth, int borderHeig
     /// <param name="press">What moves the script on, as a mode takes the press: a conversation's or a cut-scene's, which ask the speaker to talk. None runs it as it is.</param>
     public DialogueAccept Accept(ScriptRunner runner, Action<Action>? press = null)
     {
+        if (!LineComplete)
+        {
+            CompleteLine();
+            return DialogueAccept.Revealed;
+        }
         if (!ShowsLineBeforeChoices)
             return Advance(runner, Highlight, press);
         (press ?? Run)(() => ShowChoices());
@@ -202,8 +259,25 @@ public sealed class DialogueBox(TextLayout font, int borderWidth, int borderHeig
         }
     }
 
-    /// <summary>Advances the cursor's pulse by one 60 Hz tick.</summary>
-    public void Step() => _pulse.Step();
+    /// <summary>Advances the cursor's pulse by one 60 Hz tick, and prints the line's next glyphs (<see cref="GlyphsPerTick"/>).</summary>
+    public void Step()
+    {
+        _pulse.Step();
+        _ticksSinceBlip++;
+        if (LineComplete)
+            return;
+        _revealAccumulated += GlyphsPerTick;
+        while (_revealAccumulated >= 1 && _revealed < _totalGlyphs)
+        {
+            _revealAccumulated -= 1;
+            _revealed++;
+            if (Voice && _ticksSinceBlip >= TextReveal.TicksBetweenBlips)
+            {
+                _blips++;
+                _ticksSinceBlip = 0;
+            }
+        }
+    }
 
     /// <summary>
     /// The cursor's choice's colour now. Each channel moves by a whole step a frame, the difference

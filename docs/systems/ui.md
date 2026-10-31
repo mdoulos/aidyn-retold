@@ -37,6 +37,8 @@ The original draws its UI on a 320 × 240 screen; the Expansion Pak's high-resol
 - **Choices** are in tan (200, 180, 100), from x 88, 4 pixels apart, and end at 228. The cursor's choice pulses toward (50, 45, 25, 63) and back over 24 frames each way, whole steps per channel (`WidgetScrollMenu::Tick`).
 - **A line before its own speaker's choices shows alone.** When a menu's first choice has the line's speaker, the line shows first, and A brings up the choices alone under Alaron's portrait. The box shrinks to the choices but never below 180, its four lines (Brenna's recruiting shows it); the portrait and its border stay where the line put them, since `Setup` doesn't move them on that path.
 
+- **The port prints a line as a typewriter does, with a voice, the user's choice** (Oct 30, 2026; `TextReveal`, the Enhancements page's Text Speed and Text Voice, `--text-speed` and `--text-voice`). The original shows a line whole and plays no sound for it. Under Slow, Normal or Fast the box prints the line half a glyph, one or two glyphs a tick, in the order `TextLayout.Print` places them, so a word is never half-wrapped; its choices wait, laid out where they'll be so the line doesn't move; and A prints the rest (`DialogueAccept.Revealed`), the next A moving on as always. The session hands the box the rate each tick (`SessionSettings.TextRate`, `DialogueBox.GlyphsPerTick`), so the editor's box and a headless run show lines whole. With the voice on, the box counts a blip for a glyph printed, at most one every 3 ticks (`DialogueBox.TakeBlips`), and the runtime sounds each (`TextVoicePlayer`): 55 ms of a soft square at 660 Hz, made in code, rising in 3 ms and dying away, jittered 4% either way, at half the sound volume, beside the core's mixer. Its pitch is the speaker's (`TextReveal.PitchOf`): the square root of 1.8 over the body's scaled height, the taller the deeper, kept between 0.7 and 1.5, so Alaron is about 1; a mod sets a speaker's outright with `voicePitch` on its entity or dialogue entity record. The same line shown again by a refresh goes on printing where it was. Backdrops and the help menu, which draw on a picture, show their pages whole as before.
+
 Not ported yet: the widgets' fade in and out (`fadeFloatMirror`) and scrolling a menu taller than its bounds.
 
 ## The pause menu
@@ -248,6 +250,8 @@ The user laid this out, and it isn't the original's ([ADR 0013](../adr/0013-sett
   | | Menu Size | Original (240 lines), Smaller (360), Smallest (480): the UI screen's height, for the menu and trek's popups and box |
   | | Menu Filter | Sharp, Smooth, Video Out (`UiFilter`) |
   | | Pace | Original, Brisk (1.3×) |
+  | | Text Speed | Original (a line shows whole), Slow, Normal, Fast (the box prints it half a glyph, one or two a tick: [the conversation box](#the-conversation-box)). Normal by default, the user's choice |
+  | | Text Voice | Off, On (a blip as glyphs print, pitched by the speaker). On by default, the user's choice |
   | | Status Auras | Original (the lasting spells' and potions' scenes over heads take turns one at a time across the battle), More Often (each character's in turn over its own head, all at once): see [combat](combat.md#what-spells-look-like) |
   | | Intro Logos | Original (the title starts with the intro cards: the Expansion Pak's, the legal text and the N64's, THQ's and H2O's logos), Skip (it starts at its logo and menu), Skip by default, the user's choice (`Settings.IntroCards`) |
 

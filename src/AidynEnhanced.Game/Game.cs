@@ -77,6 +77,7 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
     /// <summary>Chunks whose scenery changed this tick, built again before the frame is drawn.</summary>
     private readonly HashSet<LoadedMap> _changed = [];
     private ConversationBoxView? _box;
+    private TextVoicePlayer? _textVoice;
     /// <summary>A backdrop's or the help menu's page, over the world darkened, with the game paused.</summary>
     private BackdropLayer? _backdrop;
     /// <summary>The player's settings, which the options menu changes and <see cref="ApplySettings"/> carries out.</summary>
@@ -228,6 +229,7 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
         }
         _audio = new GameAudio(_bank, AudioOutput.MixRate) { Settings = _playing };
         AddChild(new AudioOutput(_audio));
+        AddChild(_textVoice = new TextVoicePlayer());
     }
 
     /// <summary>The game the System tab's Load asked for, else the save or the new game the options ask for.</summary>
@@ -565,6 +567,24 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
     }
 
     /// <summary>
+    /// Sounds the blips the boxes counted this tick as their lines printed (<see cref="DialogueBox.TakeBlips"/>, the Enhancements
+    /// page's Text Voice), at the speaker's pitch (<see cref="TextReveal.PitchOf"/>) and the sound volume.
+    /// </summary>
+    private void SoundTextVoice(GameSession session)
+    {
+        foreach (var box in new[] { session.Trek.Box, session.Scene?.Box })
+        {
+            if (box is null)
+                continue;
+            var blips = box.TakeBlips();
+            if (blips == 0)
+                continue;
+            var speaker = box.Layout?.Speaker is { } id ? _plugins!.TryGet<DbRecord>(id) : null;
+            _textVoice!.Blip(TextReveal.PitchOf(speaker), _audio!.SoundVolume);
+        }
+    }
+
+    /// <summary>
     /// One 60 Hz tick of the game (<see cref="GameSession.Tick"/>), and what draws the mode that ran: the cinematic or the
     /// credits; a cut-scene; or trek, with its popup's pulse stepped before it.
     /// </summary>
@@ -584,6 +604,7 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
             actor => _actorViews.TryGetValue(actor, out var view) ? view.Motion : null,
             combatant => _combatantViews.TryGetValue(combatant, out var view) ? view.Motion : null, _spellFxView);
         _backdrop!.Draw(session.Backdrop);
+        SoundTextVoice(session);
         switch (step)
         {
             case SessionStep.Title:

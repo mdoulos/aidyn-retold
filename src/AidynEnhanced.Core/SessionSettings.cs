@@ -7,7 +7,7 @@ namespace AidynEnhanced.Core;
 /// What the core plays by of the player's settings, for one tick (ADR 0022): the runtime makes it from <see cref="Settings"/>
 /// with the command line's for the run over them, and hands it to every <see cref="GameSession.Tick"/>, which hands it on to
 /// what reads a setting: the audio's volumes, the rain and snow, the sky's placement, the player's pace, a battle's spell
-/// auras and the credits' screen. Nothing in the core reads <see cref="Settings"/> for itself, so a setting changed between
+/// auras, the credits' screen and the conversation box's printing. Nothing in the core reads <see cref="Settings"/> for itself, so a setting changed between
 /// two ticks takes effect on the next, and a headless run plays by the one it's given, <see cref="Original"/> by default.
 /// What only the runtime draws, the window, the 3D view, the draw distance and the UI screens' filter, isn't here.
 /// </summary>
@@ -43,6 +43,12 @@ public sealed record SessionSettings
     /// <summary>How many lines tall the UI screen is, which the credits lay their cards out on: the console's 240.</summary>
     public int UiLines { get; init; } = 240;
 
+    /// <summary>How many glyphs a tick the conversation box prints a line (<see cref="Ui.DialogueBox.GlyphsPerTick"/>): 0, the original's, shows it whole.</summary>
+    public float TextRate { get; init; }
+
+    /// <summary>Whether a blip sounds as a line prints (<see cref="Ui.DialogueBox.Voice"/>); the original's box is silent.</summary>
+    public bool TextVoice { get; init; }
+
     /// <summary>What the core plays by of these settings: the pace is Brisk's or the original's.</summary>
     public static SessionSettings From(Settings settings) => new()
     {
@@ -53,5 +59,7 @@ public sealed record SessionSettings
         Pace = settings.BriskPace ? BriskPace : 1,
         SpellAuras = settings.SpellAuras,
         UiLines = Math.Max(settings.UiLines, 1),
+        TextRate = Ui.TextReveal.GlyphsPerTick(settings.TextSpeed),
+        TextVoice = settings.TextVoice,
     };
 }

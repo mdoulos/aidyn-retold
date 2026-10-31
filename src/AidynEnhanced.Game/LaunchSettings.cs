@@ -6,7 +6,7 @@ namespace AidynEnhanced.Game;
 
 /// <summary>
 /// The settings the command line sets for one run (<c>--sky</c>, <c>--object-distance</c>, <c>--draw-distance</c>, <c>--detail</c>,
-/// <c>--surface-detail</c>, <c>--blending</c>, <c>--precipitation</c>, <c>--ui-lines</c>, <c>--spell-auras</c> and <c>--pace</c>): a layer over the player's settings,
+/// <c>--surface-detail</c>, <c>--blending</c>, <c>--precipitation</c>, <c>--ui-lines</c>, <c>--spell-auras</c>, <c>--text-speed</c>, <c>--text-voice</c> and <c>--pace</c>): a layer over the player's settings,
 /// which the runtime draws by (<see cref="Over"/>) and makes each tick's <see cref="SessionSettings"/> from
 /// (<see cref="Session"/>), never written into them, so <c>settings.json</c> only ever holds the player's own. Each holds for
 /// the run until the player changes that setting, in the options menu or with a debug key (<see cref="Changed"/>), and then the
@@ -23,6 +23,8 @@ public sealed class LaunchSettings
     private float? _precipitation;
     private int? _uiLines;
     private AuraTurns? _spellAuras;
+    private Core.Ui.TextSpeed? _textSpeed;
+    private bool? _textVoice;
     private float? _pace;
 
     /// <summary>The player's settings as last seen, which a change is told from.</summary>
@@ -40,6 +42,8 @@ public sealed class LaunchSettings
         _precipitation = options.PrecipitationDensity;
         _uiLines = options.UiLines;
         _spellAuras = options.SpellAuras;
+        _textSpeed = options.TextSpeed;
+        _textVoice = options.TextVoice;
         _pace = options.Pace;
         _seen = player.Copy();
     }
@@ -66,6 +70,10 @@ public sealed class LaunchSettings
             settings.UiLines = lines;
         if (_spellAuras is { } auras)
             settings.SpellAuras = auras;
+        if (_textSpeed is { } textSpeed)
+            settings.TextSpeed = textSpeed;
+        if (_textVoice is { } textVoice)
+            settings.TextVoice = textVoice;
         return settings;
     }
 
@@ -97,6 +105,10 @@ public sealed class LaunchSettings
             _uiLines = null;
         if (player.SpellAuras != _seen.SpellAuras)
             _spellAuras = null;
+        if (player.TextSpeed != _seen.TextSpeed)
+            _textSpeed = null;
+        if (player.TextVoice != _seen.TextVoice)
+            _textVoice = null;
         if (player.BriskPace != _seen.BriskPace)
             _pace = null;
         _seen = player.Copy();

@@ -19,6 +19,8 @@ Two players run on libultra's synthesizer, each called every 1000 µs of audio (
 - **Pan:** a sequence also has a pan, 0x80 the middle. A track's pan is scaled into a window around it, `255 - 2|P - 0x80|` wide, so at the middle the track's own pan holds and towards either end every track narrows to the sequence's. The synthesizer takes `pan >> 1`, at most 127, and pans by equal power (`eqpower`, `0x800E5010`, `32767 × cos(k × π / 254)`).
 - **Where the port differs:** the sequencer's changes reach the voices at once rather than on the voice manager's next call, up to a millisecond sooner. libultra's four-tap resampler is approximated with cubic interpolation. And where the original reads past a sample's end (one instrument's loop runs past its sample), the port plays silence.
 
+- **The conversation box's voice** is the port's, the user's choice: a blip as a line prints, which `Game.SoundTextVoice` plays through `TextVoicePlayer` beside the mixer, not through the sequencer's one-shot slots, at the sound volume ([ui](ui.md#the-conversation-box)).
+
 ## Not played yet
 
 What makes a sound that the port doesn't do yet, each waiting for what plays it:

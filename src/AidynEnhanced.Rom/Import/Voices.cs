@@ -118,6 +118,12 @@ public static class Voices
         [RecordId.Hex(RecordTypes.Image, 0x010C)] = 0.57f, // Baird
         [RecordId.Hex(RecordTypes.Image, 0x0113)] = 0.60f, // Becan
         [RecordId.Hex(RecordTypes.Image, 0x0116)] = 1.01f, // Brenna: 15% under her 1.18 by height
+        [RecordId.Hex(RecordTypes.Image, 0x0135)] = 0.79f, // Farris: a tenth over his 0.72 by height
+        [RecordId.Hex(RecordTypes.Image, 0x010B)] = 0.65f, // Arturo: a twentieth under his 0.68 by height
+        [RecordId.Hex(RecordTypes.Image, 0x0144)] = 0.55f, // the Town Guards: a tenth over the deep 0.5
+        [RecordId.Hex(RecordTypes.Image, 0x0145)] = 0.55f,
+        [RecordId.Hex(RecordTypes.Image, 0x0146)] = 0.55f,
+        [RecordId.Hex(RecordTypes.Image, 0x014D)] = 0.55f, // the Jundar Guard
     };
 
     /// <summary>
@@ -134,7 +140,7 @@ public static class Voices
         [0x0106] = "soldier", // Abrecan
         [0x0116] = "feminine", // Brenna
         [0x010B] = "bright", // Arturo
-        [0x0135] = "bright", // Farris
+        [0x0135] = "sly", // Farris
         [0x0164] = "bright", // Rheda
         [0x0113] = "old", // Becan
         [0x0140] = "old", // Godric

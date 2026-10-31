@@ -42,6 +42,11 @@ public sealed class VoiceImportTests(Na10Import fixture)
         Assert.Equal(0.57f, entities["Baird"].VoicePitch);
         Assert.Equal(0.60f, entities["Becan"].VoicePitch);
         Assert.Equal(1.01f, fixture.Data.Set.All<EntityRecord>(RecordTypes.Entity).Single(e => e.Name == "Brenna").VoicePitch);
+        var all = fixture.Data.Set.All<EntityRecord>(RecordTypes.Entity).ToList();
+        Assert.Equal(0.79f, all.Single(e => e.Name == "Farris").VoicePitch);
+        Assert.Equal(0.65f, all.Single(e => e.Name == "Arturo").VoicePitch);
+        Assert.All(all.Where(e => e.Name is "Town Guard" or "Jundar Guard"), e => Assert.Equal(0.55f, e.VoicePitch));
+        Assert.All(all.Where(e => e.Name == "Ogre"), e => Assert.Null(e.VoicePitch));
         Assert.Null(entities["Alaron"].VoicePitch);
         // A pitch set outright is what the voice plays.
         Assert.Equal(0.57f, Core.Ui.TextReveal.PitchOf(fixture.Data.Set.Get<DbRecord>(entities["Baird"].Id)));
@@ -61,6 +66,7 @@ public sealed class VoiceImportTests(Na10Import fixture)
         Assert.Equal("old", entities.Single(e => e.Name == "Godric").VoiceTone);
         Assert.Equal("old", entities.Single(e => e.Name == "Becan").VoiceTone);
         Assert.Equal("sly", entities.Single(e => e.Name == "Dougal").VoiceTone);
+        Assert.Equal("sly", entities.Single(e => e.Name == "Farris").VoiceTone);
         Assert.Equal("grand", entities.Single(e => e.Name == "Donovan").VoiceTone);
         Assert.Null(entities.Single(e => e.Name == "Alaron").VoiceTone);
         Assert.Null(entities.Single(e => e.Name == "Oriana").VoiceTone);

@@ -29,7 +29,12 @@ The user needn't play to a check: a save is written into the Controller Pak besi
 
 ## Menus
 
+- **Binding a mouse button** (the runtime): Start, System, Options, Controls, then a keyboard row's binding and A, and click the middle button or turn the wheel. Does it bind, from the pause menu and from the title's options? The screens used to swallow the mouse before the prompt saw it. [ui](systems/ui.md#controls)
 - **A new game from the load menu** (the runtime, with a save from `aidyn-enhanced save new` or the editor's new game): load it from the System tab's Load. Does it play the opening cinematic, then the opening's script on its stage, then trek in Overworld I08, as a plain launch does? [saves](systems/saves.md#the-format)
+
+## The camera
+
+- **The outdoor camera against walls** (the runtime, Oct 31, 2026): walk Alaron along Gwernia's houses and with his back to the castle wall, orbit the camera into them, and walk the forest (K08). Does it stay on his side of a wall rather than showing the outside of the level, and do tree trunks passing between him and the camera pull it in too often? It's ReChronicled's fix, the user's choice to keep. [cameras](systems/cameras.md#the-follow-camera-cameramode0)
 
 ## Combat
 

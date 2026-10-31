@@ -49,6 +49,9 @@ public sealed record SessionSettings
     /// <summary>Whether a blip sounds as a line prints (<see cref="Ui.DialogueBox.Voice"/>); the original's box is silent.</summary>
     public bool TextVoice { get; init; }
 
+    /// <summary>Whether the player can jump in trek (<see cref="Movement.PlayerMotion.Jumping"/>); the original has no jump.</summary>
+    public bool Jump { get; init; }
+
     /// <summary>What the core plays by of these settings: the pace is Brisk's or the original's.</summary>
     public static SessionSettings From(Settings settings) => new()
     {
@@ -61,5 +64,6 @@ public sealed record SessionSettings
         UiLines = Math.Max(settings.UiLines, 1),
         TextRate = Ui.TextReveal.GlyphsPerTick(settings.TextSpeed),
         TextVoice = settings.TextVoice,
+        Jump = settings.Jump,
     };
 }

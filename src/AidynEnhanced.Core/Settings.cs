@@ -117,6 +117,9 @@ public sealed class Settings
     /// <summary>Whether trek runs at a faster pace than the original's, which feels slow on a PC.</summary>
     public bool BriskPace { get; set; }
 
+    /// <summary>Whether the player can jump in trek, a PC game's jump the original hasn't: on, the user's choice (Oct 31, 2026).</summary>
+    public bool Jump { get; set; } = true;
+
     /// <summary>
     /// How fast the conversation box prints a line (<see cref="Ui.TextReveal"/>): whole at once as the original's, or a few glyphs a
     /// tick. Normal, the user's choice.

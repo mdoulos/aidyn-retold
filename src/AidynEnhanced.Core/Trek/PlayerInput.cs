@@ -15,8 +15,9 @@ namespace AidynEnhanced.Core.Trek;
 /// <param name="Run">Run held: run in full where he'd run, if his actor can (<see cref="Body.FullRun"/>); a port addition.</param>
 /// <param name="Look">The mouse looks, a port addition (<see cref="Cameras.FollowCamera.Looking"/>).</param>
 /// <param name="Zoom">The wheel's notches this tick, in for negative (<see cref="Cameras.FollowCamera.ZoomBy"/>); a port addition.</param>
+/// <param name="Jump">The jump pressed this tick (<see cref="PlayerMotion.Jumping"/>); a port addition.</param>
 public readonly record struct PlayerInput(Vector2 Stick, bool Sneak = false, bool Orbit = false, Vector2 OrbitStick = default, bool Free = false,
-    bool Run = false, bool Look = false, int Zoom = 0)
+    bool Run = false, bool Look = false, int Zoom = 0, bool Jump = false)
 {
     /// <summary>Orbiting holds him still, as in the original.</summary>
     public bool Locked => Orbit && !Free;
@@ -25,5 +26,5 @@ public readonly record struct PlayerInput(Vector2 Stick, bool Sneak = false, boo
     public bool Pushed => Stick.Length() > Body.Deadzone;
 
     /// <summary>What moves him: the stick, Z and Run, unless the orbit holds him.</summary>
-    public MoveInput Move => new(Stick, Sneak, Locked, Run);
+    public MoveInput Move => new(Stick, Sneak, Locked, Run, Jump);
 }

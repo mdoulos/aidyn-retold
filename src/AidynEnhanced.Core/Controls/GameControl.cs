@@ -92,7 +92,7 @@ public static class GameControls
 
     public const string Move = "move", Camera = "camera", CameraHold = "camera_hold", CameraLeft = "camera_left", CameraRight = "camera_right",
         Walk = "walk", Run = "run", Sneak = "sneak", Use = "use", Portraits = "portraits", Pause = "pause", Inventory = "inventory", Map = "map",
-        Journal = "journal", ZoomIn = "zoom_in", ZoomOut = "zoom_out";
+        Journal = "journal", ZoomIn = "zoom_in", ZoomOut = "zoom_out", Jump = "jump";
 
     public const string MenuCursor = "menu_cursor", MenuAccept = "menu_accept", MenuBack = "menu_back", MenuClose = "menu_close",
         MenuDetails = "menu_details", MenuAppraise = "menu_appraise", MenuMemberLeft = "menu_member_left", MenuMemberRight = "menu_member_right",
@@ -125,7 +125,8 @@ public static class GameControls
         Button(Run, "Run", Situation.Trek, Situation.Trek, null, ["Key:Shift"], ["Joy:LS"]),
         // Sneak acts in a battle's turn too, as it always has, but isn't checked there: the left trigger is also Skip Turn.
         Button(Sneak, "Sneak", Situation.Trek, Situation.Trek, null, ["Key:Ctrl"], ["Axis:LeftTrigger+"]),
-        Button(Use, "Use", Situation.Trek, Situation.Trek, MenuAction.Accept, ["Key:E", "Key:Space"], ["Joy:A"]),
+        Button(Use, "Use", Situation.Trek, Situation.Trek, MenuAction.Accept, ["Key:E"], ["Joy:A"]),
+        Button(Jump, "Jump", Situation.Trek, Situation.Trek, null, ["Key:Space"], []),
         Button(Portraits, "Portraits", Situation.Trek, Situation.Trek, MenuAction.Back, ["Key:Backspace"], ["Joy:B"]),
         Button(Pause, "Menu", Situation.Trek, Situation.Trek, MenuAction.Start, ["Key:Enter", "Key:Escape"], ["Joy:Start"], essential: true),
         Button(Inventory, "Inventory", Situation.Trek, Situation.Trek, MenuAction.Inventory, ["Key:Tab", "Key:I"], []),

@@ -9,7 +9,8 @@ namespace AidynEnhanced.Core.Movement;
 /// <param name="Held">
 /// Something else has the stick, as the trek camera's orbit does with R held: he stands, and neither turns nor reads it.
 /// </param>
-public readonly record struct MoveInput(Vector2 Stick, bool Sneak = false, bool Held = false, bool Run = false);
+/// <param name="Jump">The jump pressed this tick (<see cref="PlayerMotion.Jumping"/>), a port addition.</param>
+public readonly record struct MoveInput(Vector2 Stick, bool Sneak = false, bool Held = false, bool Run = false, bool Jump = false);
 
 /// <summary>Plays an actor's animations and reports how far their root moves.</summary>
 public interface IRootMotion
@@ -71,6 +72,57 @@ public sealed class PlayerMotion
 
     /// <summary>Whether he was falling (<see cref="Falling"/>) on the last tick.</summary>
     private bool _fellLastTick;
+
+    /// <summary>
+    /// His upward speed a tick as he jumps: the original's own, its <c>!flea</c> cheat's jump's (<c>Body.ApplyInput</c>, the 0.084 at
+    /// <c>0x800CDC58</c>, added at <c>0x80015080</c>), which gravity brings to <see cref="JumpHeight"/> after 28 ticks, about 0.93 s in
+    /// the air on the flat.
+    /// </summary>
+    public const float JumpSpeed = 0.084f;
+
+    /// <summary>
+    /// How high a jump lifts his sphere's centre above where it left the ground, as each tick adds gravity and then moves: 1.134. His
+    /// feet clear about 1.1, and the edge of a ledge up to about 1.6 is under his middle at the top, so he climbs it, but every gate the
+    /// story shuts is 2 or more tall.
+    /// </summary>
+    public static readonly float JumpHeight = Rise(JumpSpeed);
+
+    private static float Rise(float speed)
+    {
+        var (height, v) = (0f, speed);
+        while ((v -= Body.Gravity) > 0)
+            height += v;
+        return height;
+    }
+
+    /// <summary>The ticks a jump pressed just before he lands is kept for, so it jumps as he does.</summary>
+    public const int JumpBufferTicks = 6;
+
+    /// <summary>
+    /// Whether he's in a jump, from leaving the ground until he's back on it (the port's, a PC game's jump, the user's choice): he
+    /// carries the speed he left the ground at along his heading, which the stick still turns; his pose holds as it was, or plays
+    /// <see cref="Body.Jump"/> if his actor has it; the falling rule's stop doesn't hold him; and plain collision doesn't press him
+    /// down. Trek treads the trigger floors he passes over (<see cref="SpherePhysics.TreadBelow"/>), and tests map objects from where
+    /// he left the ground (<see cref="TouchPoint"/>), so a hop skips none.
+    /// </summary>
+    public bool Jumping { get; private set; }
+
+    /// <summary>Whether he may jump: trek's, by the Jump setting and the map he's in (<see cref="Plugins.Records.MapRecord.NoJump"/>).</summary>
+    public bool CanJump { get; set; } = true;
+
+    private int _jumpBuffer;
+
+    /// <summary>His speed forward a tick on the ground, smoothed over the steps' unevenness, which a jump carries.</summary>
+    private float _groundForward;
+
+    /// <summary>The speed forward a tick the jump carries.</summary>
+    private float _carry;
+
+    /// <summary>His sphere's height as the jump left the ground.</summary>
+    private float _takeoff;
+
+    /// <summary>Where he counts as being for map objects: his sphere's centre, but in a jump at the height it left the ground.</summary>
+    public Vector3 TouchPoint => Jumping ? Sphere.Position with { Y = _takeoff } : Sphere.Position;
 
     public PlayerMotion(Vector3 position, Vector2 heading)
     {
@@ -136,9 +188,31 @@ public sealed class PlayerMotion
     public void Step(CollisionWorld world, MoveInput input, Vector2 look, IRootMotion animation)
     {
         Control(input, look);
+        StartJump(input);
 
         var height = Sphere.Position.Y;
         SpherePhysics.Step(world, Sphere);
+        if (Jumping)
+        {
+            // Back on the ground on the way down; until then, the trigger floors under him down to where he left the ground.
+            if (Sphere.Velocity.Y <= 0 && Grounded)
+                Jumping = false;
+            else
+                SpherePhysics.TreadBelow(world, Sphere, _takeoff - Radius - 0.25f);
+        }
+        if (Jumping)
+        {
+            // He carries the speed he left the ground at; his pose holds unless his actor has a jump.
+            if (animation is Actors.IActorMotion actor && actor.Knows(Body.Jump))
+            {
+                Body.Request = Body.Jump;
+                Body.Animate(animation);
+            }
+            Body.Advance(_carry);
+            EndStep();
+            return;
+        }
+
         // On plain collision, which keeps velocity, don't slide down when there's ground just below.
         if (Sphere.Surface is 1 or 2 && SpherePhysics.Ground(world, Sphere.Position, Radius, 0.05f) && Sphere.Position.Y < height)
             Sphere.Position.Y = height;
@@ -146,6 +220,7 @@ public sealed class PlayerMotion
         Body.Press();
 
         var forward = Body.Animate(animation);
+        _groundForward += (forward - _groundForward) * 0.2f;
         // Falling: no steering, unless he has been held where he is for a while, falling by his velocity alone.
         var falling = Sphere.Velocity.Y <= Falling;
         // A frame's push lands on one of its ticks, so a body held so can be falling on every other tick only.
@@ -161,9 +236,35 @@ public sealed class PlayerMotion
             Sphere.Velocity.X = Sphere.Velocity.Z = 0;
         else
             Body.Advance(forward);
+        EndStep();
+    }
+
+    /// <summary>A jump pressed, or kept from the last few ticks, leaves the ground if he's on it and may jump.</summary>
+    private void StartJump(MoveInput input)
+    {
+        if (input.Jump)
+            _jumpBuffer = JumpBufferTicks;
+        else if (_jumpBuffer > 0)
+            _jumpBuffer--;
+        if (_jumpBuffer == 0 || Jumping || !CanJump || input.Held || !Grounded)
+            return;
+        _jumpBuffer = 0;
+        Jumping = true;
+        _takeoff = Sphere.Position.Y;
+        _carry = _groundForward;
+        Sphere.Velocity.Y = JumpSpeed;
+        _fellLastTick = false;
+        Pinned = 0;
+    }
+
+    /// <summary>Whether he has fallen out of the world (<see cref="FellOut"/>), which stops him and ends a jump.</summary>
+    private void EndStep()
+    {
         FellOut = Sphere.Velocity.Y < -FallLimit || Sphere.Position.Y < Floor;
-        if (FellOut)
-            Sphere.Velocity = Vector3.Zero;
+        if (!FellOut)
+            return;
+        Sphere.Velocity = Vector3.Zero;
+        Jumping = false;
     }
 
     /// <summary>Reads the controls (<c>Actor::Move</c>, the trek parts).</summary>

@@ -35,6 +35,12 @@ public sealed class Body
     /// </summary>
     public const int FullRun = 26;
 
+    /// <summary>
+    /// The port's jump (<see cref="PlayerMotion.Jumping"/>), which the player's body is asked for in the air if its actor has a branch
+    /// for it: no original actor has, so the pose holds as it left the ground, and a mod's actor adds states for it.
+    /// </summary>
+    public const int Jump = 27;
+
     /// <summary>A body's gravity, a tick² (about 10.8 m/s²).</summary>
     public const float Gravity = 0.003f;
 

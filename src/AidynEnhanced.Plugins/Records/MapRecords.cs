@@ -102,6 +102,12 @@ public sealed record MapRecord(RecordId Id, [property: KeyedList(nameof(MapObjec
     /// </summary>
     public Neighbours? DrawnNeighbours { get; init; }
 
+    /// <summary>
+    /// Whether the player can't jump in this chunk, the port's (<c>PlayerMotion.Jumping</c>): for a mod whose puzzle or ledge a jump
+    /// would get round, as a patch (<c>{"patch": "aidyn:map/0x…", "noJump": true}</c>). The import sets it on none.
+    /// </summary>
+    public bool NoJump { get; init; }
+
     /// <summary>The ID of the object at <paramref name="index"/> in the map <paramref name="map"/>, such as <c>aidyn:voxel/0x1A20/12</c>.</summary>
     public static RecordId VoxelId(RecordId map, int index) =>
         RecordId.Parse(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{map.Namespace}:{RecordTypes.Voxel}/{map.Key}/{index}"));

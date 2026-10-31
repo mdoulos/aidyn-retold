@@ -251,6 +251,7 @@ The user laid this out, and it isn't the original's ([ADR 0013](../adr/0013-sett
   | | Menu Size | Original (240 lines), Smaller (360), Smallest (480): the UI screen's height, for the menu and trek's popups and box |
   | | Menu Filter | Sharp, Smooth, Video Out (`UiFilter`) |
   | | Pace | Original, Brisk (1.3×) |
+  | | Jump | Original (none), On: Space jumps in trek, the port's ([movement](movement.md)). On by default, the user's choice |
   | | Text Speed | Original (a line shows whole), Slow, Normal, Fast (the box prints it half a glyph, one or two a tick: [the conversation box](#the-conversation-box)). Normal by default, the user's choice |
   | | Text Voice | Off, On (a blip as glyphs print, pitched by the speaker). On by default, the user's choice |
   | | Status Auras | Original (the lasting spells' and potions' scenes over heads take turns one at a time across the battle), More Often (each character's in turn over its own head, all at once): see [combat](combat.md#what-spells-look-like) |
@@ -278,7 +279,8 @@ The port's own page ([ADR 0026](../adr/0026-controls-are-bound-by-situation.md),
   | | Walk | C | None | the stick at half tilt |
   | | Run | Shift | LS | a port addition: runs in full where he'd run, if his actor can ([movement](movement.md#the-full-run)) |
   | | Sneak | Ctrl | LT | Z |
-  | | Use | E, Space | A | A: uses the map object reached |
+  | | Use | E | A | A: uses the map object reached |
+  | | Jump | Space | None | the port's ([movement](movement.md)) |
   | | Portraits | Backspace | B | B: raises or lowers the portraits |
   | | Menu | Enter, Escape | Start | Start: opens the pause menu |
   | | Inventory, Map, Journal | Tab and I, M, J | None | the port's: open the pause menu on the Party tab, the World tab, or the World tab's journal, where Start would open it |

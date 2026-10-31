@@ -62,6 +62,41 @@ public static class SpherePhysics
     }
 
     /// <summary>
+    /// Treads the trigger triangles facing up under a sphere in the air (<see cref="CollisionSphere.Trod"/>), from its centre down to
+    /// <paramref name="floor"/>, as if it had come down on them: the port's, for the player's jump, as a trigger floor fires only while
+    /// the sphere touches it, and a hop would carry him over one unfired. Their part and target are added as a touch adds them.
+    /// </summary>
+    public static void TreadBelow(CollisionWorld world, CollisionSphere s, float floor)
+    {
+        var near = _below ??= [];
+        near.Clear();
+        var (x, z) = (s.Position.X, s.Position.Z);
+        world.Near(x - s.Radius, z - s.Radius, x + s.Radius, z + s.Radius, near);
+        foreach (var t in near)
+        {
+            if (t.Role != CollisionRole.Trigger || t.Normal.Y <= 0.5f || !Inside(t, x, z))
+                continue;
+            // The triangle's height under the centre, on its plane.
+            var y = t.A.Y - (t.Normal.X * (x - t.A.X) + t.Normal.Z * (z - t.A.Z)) / t.Normal.Y;
+            if (y <= s.Position.Y && y >= floor)
+                s.Trod.Add((t.Part, t.Target));
+        }
+
+        // Whether (x, z) is inside the triangle seen from above.
+        static bool Inside(CollisionWorld.Triangle t, float x, float z)
+        {
+            static float Side(float ax, float az, float bx, float bz, float x, float z) => (bx - ax) * (z - az) - (bz - az) * (x - ax);
+            var d1 = Side(t.A.X, t.A.Z, t.B.X, t.B.Z, x, z);
+            var d2 = Side(t.B.X, t.B.Z, t.C.X, t.C.Z, x, z);
+            var d3 = Side(t.C.X, t.C.Z, t.A.X, t.A.Z, x, z);
+            return !((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0));
+        }
+    }
+
+    [ThreadStatic]
+    private static List<CollisionWorld.Triangle>? _below;
+
+    /// <summary>
     /// Whether a sphere moving from <paramref name="from"/> to <paramref name="to"/> hits a
     /// triangle facing it, and where its front touches (<c>CheckCollision</c>). The camera uses
     /// this, skipping see-through triangles. The original sweeps one chunk's collision; the port

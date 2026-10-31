@@ -175,7 +175,7 @@ Cheats are typed as Alaron's name, in the title menu's name entry or the options
 | Code | Effect | Layer |
 | --- | --- | --- |
 | `!balloon`, `!bigw` | Toggle drawing heads, or weapons, at double size | 3: render options |
-| `!flea` | Toggles a quarter-size Alaron who jumps with A | 3: player option |
+| `!flea` | Toggles a quarter-size Alaron who jumps with A (`Cheats.ToggleFlea`, `0x8003ED08`, the word `0x800DA498`; the jump's numbers and the port's own jump are in [movement](systems/movement.md)) | 3: player option |
 | `!slashing` | Sets 3673, which shows the Hockey Stick and its container in Gwernia Castle E03 | 2: trigger, set flag |
 | `!darkside` | Sets 3675, which shows the Lightreaver and its container in Oriana's hut (MiscInteriors E03) | 2: trigger, set flag |
 | `!crawdaddy`, `!fatboy`, `!tweety` | Change the player's model to the chaos trooper, ogre or gryphon, or back to Alaron if it already is | 3: player model |

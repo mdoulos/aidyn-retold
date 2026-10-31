@@ -150,6 +150,17 @@ public static class Voices
         [0x016B] = "hollow", // Sholeh
     }.ToDictionary(p => RecordId.Hex(RecordTypes.Image, p.Key), p => p.Value);
 
+    /// <summary>The speakers whose blips come oftener or sparser than the usual, by portrait, the user's choice (Oct 30, 2026).</summary>
+    private static readonly Dictionary<RecordId, BlipCadence> CadenceById = new Dictionary<int, BlipCadence>
+    {
+        [0x0140] = BlipCadence.Talkative, // Godric
+        [0x0113] = BlipCadence.Reserved, // Becan
+        [0x0116] = BlipCadence.Reserved, // Brenna
+    }.ToDictionary(p => RecordId.Hex(RecordTypes.Image, p.Key), p => p.Value);
+
+    /// <summary>The cadence of a speaker with this portrait, or none for the normal one.</summary>
+    public static BlipCadence? CadenceOf(RecordId? portrait) => portrait is { } id && CadenceById.TryGetValue(id, out var cadence) ? cadence : null;
+
     /// <summary>The tone of a speaker with this portrait, or none for the plain one.</summary>
     public static string? ToneOf(RecordId? portrait) => portrait is { } id && ToneById.TryGetValue(id, out var tone) ? tone : null;
 

@@ -101,7 +101,8 @@ public sealed partial class VoiceCircleView : Node3D
     private static string Caption(DbRecord? speaker, string name)
     {
         var voice = speaker?.Voice is { } v ? v.ToString().ToLowerInvariant() : "no voice";
-        return $"{name}\n{voice}, pitch {TextReveal.PitchOf(speaker):0.00}, {TextReveal.ToneOf(speaker).Name}";
+        var cadence = speaker?.VoiceCadence is { } c and not BlipCadence.Normal ? $", {c.ToString().ToLowerInvariant()}" : "";
+        return $"{name}\n{voice}, pitch {TextReveal.PitchOf(speaker):0.00}, {TextReveal.ToneOf(speaker).Name}{cadence}";
     }
 
     /// <summary>

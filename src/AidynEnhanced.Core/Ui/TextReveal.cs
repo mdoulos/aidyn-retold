@@ -134,8 +134,19 @@ public static class TextReveal
         return words;
     }
 
-    /// <summary>How many ticks pass at least between two blips, so fast text doesn't buzz: 20 a second at most.</summary>
+    /// <summary>How many ticks pass at least between two blips at the normal cadence, so fast text doesn't buzz: 20 a second at most.</summary>
     public const int TicksBetweenBlips = 3;
+
+    /// <summary>
+    /// How many ticks pass at least between a speaker's blips (<see cref="DbRecord.VoiceCadence"/>): a talkative one chatters at 30 a
+    /// second, a reserved one at 12, the rest at <see cref="TicksBetweenBlips"/>'s 20.
+    /// </summary>
+    public static int BlipSpacing(BlipCadence? cadence) => cadence switch
+    {
+        BlipCadence.Talkative => 2,
+        BlipCadence.Reserved => 5,
+        _ => TicksBetweenBlips,
+    };
 
     /// <summary>The height, in scene units, of a speaker whose voice is pitched at 1: about Alaron's.</summary>
     public const float ReferenceHeight = 1.8f;

@@ -24,8 +24,20 @@ namespace AidynEnhanced.Plugins.Records;
 /// sultry, sly, grand, old, bright, hollow), or several joined with <c>+</c>, the first the blip and the rest traits laid over it
 /// (<c>soldier+old</c>): the port's own, which the importer sets for a few and a mod can patch; none is plain.
 /// </param>
+/// <param name="VoiceCadence">
+/// How often the blips come as this speaker's lines print (<c>AidynEnhanced.Core.Ui.TextReveal.BlipSpacing</c>): talkative, normal or
+/// reserved; the port's own, which the importer sets for a few and a mod can patch; none is normal.
+/// </param>
 public sealed record DbRecord(RecordId Id, string Name, RecordId? Portrait = null, EntityBody? Body = null, Voice? Voice = null, float? VoicePitch = null,
-    string? VoiceTone = null);
+    string? VoiceTone = null, BlipCadence? VoiceCadence = null);
+
+/// <summary>How often a speaker's blips come as its lines print: a chatter, the usual, or sparse.</summary>
+public enum BlipCadence
+{
+    Talkative,
+    Normal,
+    Reserved,
+}
 
 /// <summary>A speaker's voice, for the port's text voice: a man's, a woman's, or a big man's, deep whatever his height. A creature has none.</summary>
 public enum Voice

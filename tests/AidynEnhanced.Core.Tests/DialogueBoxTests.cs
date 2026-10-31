@@ -391,6 +391,27 @@ public class DialogueBoxTests
         Assert.Equal([1, 0, 0, 1, 0, 0, 1, 0], blips);
     }
 
+    [Theory]
+    [InlineData(BlipCadence.Talkative, new[] { 1, 0, 1, 0, 1, 0, 1, 0 })]
+    [InlineData(BlipCadence.Normal, new[] { 1, 0, 0, 1, 0, 0, 1, 0 })]
+    [InlineData(BlipCadence.Reserved, new[] { 1, 0, 0, 0, 0, 1, 0, 0 })]
+    public void ASpeakersCadenceSpacesItsBlips(BlipCadence cadence, int[] expected)
+    {
+        var box = new DialogueBox(new TextLayout(TextLayoutTests.Font()), 52, 52, Player) { SpeakerCadence = _ => cadence };
+        box.GlyphsPerTick = 1;
+        box.Voice = true;
+        box.Show(new ScriptPage(Line("abcdabcd", Trahern), []));
+
+        var blips = new List<int>();
+        for (var i = 0; i < 8; i++)
+        {
+            box.Step();
+            blips.Add(box.TakeBlips());
+        }
+
+        Assert.Equal(expected, blips);
+    }
+
     [Fact]
     public void TwoGlyphsATickBlipOnceATick()
     {

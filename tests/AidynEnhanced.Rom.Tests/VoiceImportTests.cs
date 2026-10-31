@@ -73,6 +73,17 @@ public sealed class VoiceImportTests(Na10Import fixture)
     }
 
     [Fact]
+    public void GodricChattersAndBecanAndBrennaAreSparing()
+    {
+        var entities = fixture.Data.Set.All<EntityRecord>(RecordTypes.Entity).ToList();
+        Assert.Equal(BlipCadence.Talkative, entities.Single(e => e.Name == "Godric").VoiceCadence);
+        Assert.Equal(BlipCadence.Reserved, entities.Single(e => e.Name == "Becan").VoiceCadence);
+        Assert.Equal(BlipCadence.Reserved, entities.Single(e => e.Name == "Brenna").VoiceCadence);
+        Assert.Null(entities.Single(e => e.Name == "Rheda").VoiceCadence);
+        Assert.Null(entities.Single(e => e.Name == "Alaron").VoiceCadence);
+    }
+
+    [Fact]
     public void TheGuardsAndTheGiantsAreDeep()
     {
         var entities = fixture.Data.Set.All<EntityRecord>(RecordTypes.Entity).ToList();

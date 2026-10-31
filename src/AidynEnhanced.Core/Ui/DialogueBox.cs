@@ -111,7 +111,7 @@ public sealed class DialogueBox(TextLayout font, int borderWidth, int borderHeig
     private bool _choicesAlone;
     private int _borderY = BaseTop;
     private readonly MenuPulse _pulse = new(Cadence.FrameTicks, PulseFrames);
-    private int _totalGlyphs, _revealed, _blips, _ticksSinceBlip = TextReveal.TicksBetweenBlips, _pause;
+    private int _totalGlyphs, _revealed, _blips, _ticksSinceBlip = TextReveal.TicksBetweenBlips, _pause, _blipSpacing = TextReveal.TicksBetweenBlips;
     private float _revealAccumulated;
     private readonly List<char> _glyphChars = [];
 
@@ -123,7 +123,10 @@ public sealed class DialogueBox(TextLayout font, int borderWidth, int borderHeig
 
     /// <summary>The box the game's conversations and cut-scenes show their pages in: in the main font, laid out around the portrait border.</summary>
     public static DialogueBox For(PluginSet plugins) =>
-        new(new TextLayout(plugins.Get<FontRecord>(RecordId.Decimal(RecordTypes.Font, 0))), BorderSize, BorderSize, GameState.Alaron);
+        new(new TextLayout(plugins.Get<FontRecord>(RecordId.Decimal(RecordTypes.Font, 0))), BorderSize, BorderSize, GameState.Alaron)
+        {
+            SpeakerCadence = speaker => speaker is { } id ? plugins.TryGet<DbRecord>(id)?.VoiceCadence : null,
+        };
 
     /// <summary>What the box shows now, or none before the first page.</summary>
     public DialogueBoxLayout? Layout { get; private set; }
@@ -136,6 +139,9 @@ public sealed class DialogueBox(TextLayout font, int borderWidth, int borderHeig
 
     /// <summary>Whether a blip is counted as glyphs print (<see cref="TakeBlips"/>). Off by default, as the original's box is silent.</summary>
     public bool Voice { get; set; }
+
+    /// <summary>A speaker's cadence (<see cref="TextReveal.BlipSpacing"/>), looked up as a line starts; none, the default, is the normal one.</summary>
+    public Func<RecordId?, BlipCadence?>? SpeakerCadence { get; init; }
 
     /// <summary>How many of the line's glyphs, in the order <see cref="TextLayout.Print"/> places them, are shown so far.</summary>
     public int RevealedGlyphs => _revealed;
@@ -154,7 +160,7 @@ public sealed class DialogueBox(TextLayout font, int borderWidth, int borderHeig
 
     /// <summary>
     /// The blips counted since the last call, and clears them: one for a glyph printed while <see cref="Voice"/> is on, at most one
-    /// every <see cref="TextReveal.TicksBetweenBlips"/> ticks. The runtime sounds them at the speaker's pitch.
+    /// every <see cref="TextReveal.BlipSpacing"/> ticks for the speaker's cadence. The runtime sounds them at the speaker's pitch.
     /// </summary>
     public int TakeBlips()
     {
@@ -217,10 +223,11 @@ public sealed class DialogueBox(TextLayout font, int borderWidth, int borderHeig
             _totalGlyphs = 0;
         }
         Mood = TextReveal.MoodOf(_page!.Line.Text, _page.Line.Mood);
+        _blipSpacing = TextReveal.BlipSpacing(SpeakerCadence?.Invoke(_page.Line.Speaker));
         _revealed = GlyphsPerTick > 0 ? 0 : _totalGlyphs;
         _revealAccumulated = 0;
         _pause = 0;
-        _ticksSinceBlip = TextReveal.TicksBetweenBlips;
+        _ticksSinceBlip = _blipSpacing;
     }
 
     /// <summary>How many ticks the printing holds after the glyph at <paramref name="i"/>: the mood's pause at a sentence's end or a comma.</summary>
@@ -321,7 +328,7 @@ public sealed class DialogueBox(TextLayout font, int borderWidth, int borderHeig
         {
             _revealAccumulated -= 1;
             _revealed++;
-            if (Voice && _ticksSinceBlip >= TextReveal.TicksBetweenBlips)
+            if (Voice && _ticksSinceBlip >= _blipSpacing)
             {
                 _blips++;
                 _ticksSinceBlip = 0;

@@ -169,7 +169,10 @@ public partial class PauseScrollView : Control
         var size = new Vector2I(Math.Max((int)Size.X, 1), Math.Max((int)Size.Y, 1));
         var fine = UiScreen.Of(this)?.Oversampling ?? 1;
         var fov = Mathf.RadToDeg(2 * MathF.Atan(MathF.Tan(Mathf.DegToRad(FieldOfView / 2)) * size.Y / UiScreen.Height));
-        foreach (var end in new[] { _system, _world })
+        FitEnd(_system);
+        FitEnd(_world);
+
+        void FitEnd(End end)
         {
             if (end.View.Size != size * fine)
                 end.View.Size = size * fine;

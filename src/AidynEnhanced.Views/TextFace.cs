@@ -34,7 +34,8 @@ public sealed class TextFace
     // the sheets' own icons.
     private const string Marks = ".,!-+=%/*'?:();@";
 
-    private static readonly Dictionary<PluginSet, TextFace> Loaded = [];
+    // Weakly, so the editor's plugins, loaded again, let their faces and sheets go.
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<PluginSet, TextFace> Loaded = [];
 
     private readonly PluginSet _plugins;
     private readonly Dictionary<RecordId, FaceSheet> _sheets = [];
@@ -43,12 +44,7 @@ public sealed class TextFace
     private TextFace(PluginSet plugins) => _plugins = plugins;
 
     /// <summary>The face for the plugins' fonts, made once.</summary>
-    public static TextFace For(PluginSet plugins)
-    {
-        if (!Loaded.TryGetValue(plugins, out var face))
-            Loaded[plugins] = face = new TextFace(plugins);
-        return face;
-    }
+    public static TextFace For(PluginSet plugins) => Loaded.GetValue(plugins, p => new TextFace(p));
 
     /// <summary>The widths each of the plugins' two fonts' glyphs take in the face, by font record, for the core's layouts.</summary>
     public IReadOnlyDictionary<RecordId, IReadOnlyList<int>> Widths =>
@@ -120,6 +116,8 @@ public sealed class TextFace
             DiffuseTexture = ImageTexture.CreateFromImage(sheet),
             TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps,
         };
+        // The font is only reached through its RID above, which a collected FontFile frees.
+        GC.KeepAlive(font);
         return new FaceSheet(record with { Widths = widths }, canvasTexture, drawn);
     }
 
@@ -144,7 +142,10 @@ public sealed class TextFace
         var glyphSize = new Vector2I(size, 0);
         var glyph = server.FontGetGlyphIndex(rid, size, c, 0);
         server.FontRenderGlyph(rid, glyphSize, glyph);
-        var image = server.FontGetTextureImage(rid, glyphSize, server.FontGetGlyphTextureIdx(rid, glyphSize, glyph));
+        var texture = server.FontGetGlyphTextureIdx(rid, glyphSize, glyph);
+        // A face without the character: its capitals taken as most faces' are, seven tenths of the size.
+        if (glyph == 0 || texture < 0 || server.FontGetTextureImage(rid, glyphSize, texture) is not { } image || image.IsEmpty())
+            return Math.Max(size * 7 / 10, 1);
         image.Convert(Image.Format.Rgba8);
         var uv = server.FontGetGlyphUVRect(rid, glyphSize, glyph);
         var rows = 0;
@@ -165,27 +166,30 @@ public sealed class TextFace
     /// <summary>The face for a font: a plugin's <c>.ttf</c> asset of its record, or the game's own, Marcellus SC (SIL Open Font License).</summary>
     private FontFile Load(FontRecord record)
     {
-        byte[] data;
+        // A plugin's that won't load, or has no letters, gives way to the game's own, with a warning, rather than stop the game.
         if (_plugins.FindAsset(record.Id, "ttf") is { } path)
-            data = File.ReadAllBytes(path);
-        else
         {
-            using var stream = typeof(TextFace).Assembly.GetManifestResourceStream("MarcellusSC-Regular.ttf")
-                ?? throw new InvalidOperationException("The views are built without their font.");
-            using var memory = new MemoryStream();
-            stream.CopyTo(memory);
-            data = memory.ToArray();
+            var font = Face(File.ReadAllBytes(path));
+            if (font.GetRids() is { Count: > 0 } rids && TextServerManager.GetPrimaryInterface().FontGetGlyphIndex(rids[0], 16, 'A', 0) != 0)
+                return font;
+            GD.PushWarning($"{path} isn't a typeface the text can be drawn in; it's drawn in the game's own.");
         }
-        return new FontFile
-        {
-            Data = data,
-            Antialiasing = TextServer.FontAntialiasing.Gray,
-            Hinting = TextServer.Hinting.None,
-            SubpixelPositioning = TextServer.SubpixelPositioning.Disabled,
-            Oversampling = 1,
-            GenerateMipmaps = false,
-        };
+        using var stream = typeof(TextFace).Assembly.GetManifestResourceStream("MarcellusSC-Regular.ttf")
+            ?? throw new InvalidOperationException("The views are built without their font.");
+        using var memory = new MemoryStream();
+        stream.CopyTo(memory);
+        return Face(memory.ToArray());
     }
+
+    private static FontFile Face(byte[] data) => new()
+    {
+        Data = data,
+        Antialiasing = TextServer.FontAntialiasing.Gray,
+        Hinting = TextServer.Hinting.None,
+        SubpixelPositioning = TextServer.SubpixelPositioning.Disabled,
+        Oversampling = 1,
+        GenerateMipmaps = false,
+    };
 }
 
 /// <summary>A font's sheet as a <see cref="TextFace"/> draws it: the record with the face's widths, and the cells the face drew.</summary>

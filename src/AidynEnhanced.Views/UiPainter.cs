@@ -270,7 +270,8 @@ public sealed class UiPainter
         return new Rect2(source.Position + (Vector2.One - step) / 2, source.Size);
     }
 
-    private static readonly Dictionary<Texture2D, CanvasTexture> Smooth = [];
+    // Weakly, so the editor's textures, loaded again with its plugins, let their filtered copies go.
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Texture2D, CanvasTexture> Smooth = [];
 
     /// <summary>
     /// The texture to draw a source rectangle of over a rectangle so big with: as it is where it's drawn at its own size, so a screen
@@ -282,9 +283,7 @@ public sealed class UiPainter
         // A canvas texture brings its own filter, as a typeface's sheet does.
         if (texture is CanvasTexture || (drawn.Abs() - source.Size).LengthSquared() < 1e-6f)
             return texture;
-        if (!Smooth.TryGetValue(texture, out var smooth))
-            Smooth[texture] = smooth = new CanvasTexture { DiffuseTexture = texture, TextureFilter = CanvasItem.TextureFilterEnum.Linear };
-        return smooth;
+        return Smooth.GetValue(texture, t => new CanvasTexture { DiffuseTexture = t, TextureFilter = CanvasItem.TextureFilterEnum.Linear });
     }
 
     /// <summary>

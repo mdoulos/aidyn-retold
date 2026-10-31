@@ -79,6 +79,8 @@ public partial class Game
             _battleScreen!.Radar = Core.Ui.RadarAnchor.LogBox;
         if (options.Poses is { } poses)
             AddChild(PoseCircleView.Build(_plugins!, _models!, _world, poses, _session!.Trek.Player.Feet.ToGodot()));
+        if (options.Voices is { } voices)
+            AddChild(_voiceRing = VoiceCircleView.Build(_plugins!, _models!, _world, voices, _session!.Trek.Player.Feet.ToGodot()));
         if (options.Screenshot is { } png)
             _ = Screenshot(png, hold, options.Frames, options.UiScreenshot);
     }

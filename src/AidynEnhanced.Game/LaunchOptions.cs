@@ -209,6 +209,9 @@ public sealed class LaunchOptions(Dictionary<string, string> values)
     /// <summary>A ring of actors around the player, playing their states in turn: <c>members</c> or entity IDs (<see cref="PoseCircleView"/>).</summary>
     public string? Poses => Text("poses");
 
+    /// <summary>A ring of actors around the player to talk to, for their voices: <c>members</c> or entity IDs (<see cref="VoiceCircleView"/>).</summary>
+    public string? Voices => Text("voices");
+
     /// <summary>Where the battle screen's radar sits: <c>--radar box</c> for the log box, as the original has it, rather than the screen's corner.</summary>
     public string? Radar => Text("radar");
 

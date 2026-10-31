@@ -906,6 +906,18 @@ public sealed partial class TrekLoop : IMapObjectHost
         TeleportFade.Out(TeleportFadeOutPerTick);
     }
 
+    /// <summary>
+    /// Shows a sign-mode script with no one to talk to (<see cref="Conversation.Show"/>), for the runtime's debug rings: nothing
+    /// while a conversation runs.
+    /// </summary>
+    public void ShowScript(DialogueRecord script)
+    {
+        if (Conversation is not null)
+            return;
+        Conversation = Conversation.Show(Game, script, new ScriptStart(), _host, Player);
+        Refresh();
+    }
+
     void IMapObjectHost.StartScript(LoadedMap map, DialogueObject dialogue)
     {
         // One script at a time (0x8004ff80).

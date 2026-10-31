@@ -105,7 +105,7 @@ internal static class CharacterImporter
         [
             .. db.Entities.Where(e => DbRecordIds.For(e.Id) is not null)
                 .Select(e => Entity(e, portraits.GetValueOrDefault(e.Id), e.Id == alaron) with { Body = bodies.GetValueOrDefault(e.Id, Fallback(EntityRadius)) })
-                .Select(e => e with { Voice = Voices.Of(e.Portrait) })
+                .Select(e => e with { Voice = Voices.Of(e.Portrait), VoicePitch = Voices.PitchOf(e.Portrait) })
                 .DistinctBy(e => e.Id).OrderBy(e => e.Id.Key, StringComparer.Ordinal),
         ];
     }
@@ -150,7 +150,7 @@ internal static class CharacterImporter
         return
         [
             ("dialogentities.json", [.. Names(db.DialogEntities.Select(e => (e.Id, e.Name)), portraits)
-                .Select(r => r with { Body = bodies.GetValueOrDefault(r.Id, fallback), Voice = Voices.Of(r.Portrait) })]),
+                .Select(r => r with { Body = bodies.GetValueOrDefault(r.Id, fallback), Voice = Voices.Of(r.Portrait), VoicePitch = Voices.PitchOf(r.Portrait) })]),
         ];
 
         static List<DbRecord> Names(IEnumerable<(ItemId Id, string Name)> records, IReadOnlyDictionary<ItemId, RecordId>? portraits = null) =>

@@ -78,6 +78,7 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
     private readonly HashSet<LoadedMap> _changed = [];
     private ConversationBoxView? _box;
     private TextVoicePlayer? _textVoice;
+    private VoiceCircleView? _voiceRing;
     /// <summary>A backdrop's or the help menu's page, over the world darkened, with the game paused.</summary>
     private BackdropLayer? _backdrop;
     /// <summary>The player's settings, which the options menu changes and <see cref="ApplySettings"/> carries out.</summary>
@@ -917,6 +918,13 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
             return;
         }
         var action = _stick.Translate(e);
+        // The debug voice ring: A beside a ring member has it say its lines (--voices).
+        if (action == MenuAction.Accept && session.Mode == GameMode.Trek && session.Trek.Conversation is null
+            && _voiceRing?.Nearest(session.Trek.Player.Feet.ToGodot()) is { } member)
+        {
+            session.Trek.ShowScript(_voiceRing.ScriptFor(member));
+            return;
+        }
         var outcome = session.Press(action, keyboard: e is InputEventKey);
         if (outcome != PressOutcome.Ignored)
             ShowPressed(session);

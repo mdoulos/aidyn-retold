@@ -35,6 +35,18 @@ public sealed class VoiceImportTests(Na10Import fixture)
     }
 
     [Fact]
+    public void AbrecanIsPitchedBetweenAlaronAndBaird()
+    {
+        var entities = fixture.Data.Set.All<EntityRecord>(RecordTypes.Entity).Where(e => e.Name is "Alaron" or "Baird" or "Abrecan").ToDictionary(e => e.Name);
+        var alaron = Core.Ui.TextReveal.PitchOf(fixture.Data.Set.Get<DbRecord>(entities["Alaron"].Id));
+        var baird = Core.Ui.TextReveal.PitchOf(fixture.Data.Set.Get<DbRecord>(entities["Baird"].Id));
+        var abrecan = Core.Ui.TextReveal.PitchOf(fixture.Data.Set.Get<DbRecord>(entities["Abrecan"].Id));
+        Assert.Equal(0.69f, entities["Abrecan"].VoicePitch);
+        Assert.Equal((alaron + baird) / 2, abrecan, 0.005f);
+        Assert.Null(entities["Alaron"].VoicePitch);
+    }
+
+    [Fact]
     public void TheGuardsAndTheGiantsAreDeep()
     {
         var entities = fixture.Data.Set.All<EntityRecord>(RecordTypes.Entity).ToList();

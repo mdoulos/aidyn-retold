@@ -132,6 +132,7 @@ public partial class PartyTabView : Control
         _overlay.Draw += DrawOverlay;
         // The veil's image is made now, as the menu first opens, rather than as a tab is first slid from.
         _ui.Images.Plain(MenuImages.PartyTab, PlainPatches);
+        _ui.Images.WarmParchment(PauseTab.Party, PlainPatches, UiPainter.FullHeight);
     }
 
     /// <summary>What the tab shows and takes the presses: the tab, the barter state or the training state, which the runtime's menu starts afresh each time it opens.</summary>
@@ -292,7 +293,7 @@ public partial class PartyTabView : Control
             return;
         }
         // The barter, training and post-battle states: the header here, and the window's own parts on their layer (DrawWindow).
-        _ui.Tab(_canvas, MenuImages.PartyTab, PlainPatches);
+        _ui.Tab(_canvas, PauseTab.Party, PlainPatches);
         Portraits(PortraitPiece.Position);
         Health(HealthPiece.Position, _ui.Main);
     }
@@ -383,14 +384,14 @@ public partial class PartyTabView : Control
         _canvas = _overlay;
         _overlay.DrawSetTransform(_origin);
         if (Veil > 0)
-            _ui.Tab(_canvas, MenuImages.PartyTab, PlainPatches, new Rgba(255, 255, 255, (byte)(Veil * 255)), plain: true);
+            _ui.Tab(_canvas, PauseTab.Party, PlainPatches, new Rgba(255, 255, 255, (byte)(Veil * 255)), plain: true);
         _overlay.DrawSetTransform(Vector2.Zero);
         Popups();
     }
 
     private void DrawTab()
     {
-        _ui.Tab(_canvas, MenuImages.PartyTab, PlainPatches);
+        _ui.Tab(_canvas, PauseTab.Party, PlainPatches);
         Portraits(PortraitPiece.Position);
         Health(HealthPiece.Position, _ui.Main);
         Silhouette(SilhouettePiece.Position);

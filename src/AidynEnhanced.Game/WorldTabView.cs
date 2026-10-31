@@ -57,6 +57,7 @@ public partial class WorldTabView : Control
         MouseFilter = MouseFilterEnum.Ignore;
         SetAnchorsPreset(LayoutPreset.FullRect);
         _ui.Images.Plain(MenuImages.WorldTab, PlainPatches);
+        _ui.Images.WarmParchment(PauseTab.World, PlainPatches, UiPainter.FullHeight);
     }
 
     public WorldMenu Menu { get; set; }
@@ -81,7 +82,7 @@ public partial class WorldTabView : Control
         var size = new Vector2I((int)Size.X, (int)Size.Y);
         var origin = new Vector2I((size.X - FrameWidth) / 2, (size.Y - FrameHeight) / 2);
         DrawSetTransform(origin);
-        _ui.Tab(this, MenuImages.WorldTab, PlainPatches);
+        _ui.Tab(this, PauseTab.World, PlainPatches);
         Map();
         _ui.Text(this, _ui.Main, Menu.SeasonName, SeasonName.X, SeasonName.Y,
             new ScreenRect(SeasonName.X, SeasonName.Y, SeasonRight, FrameHeight), WorldMenu.TextColor);
@@ -90,7 +91,7 @@ public partial class WorldTabView : Control
         _ui.Image(this, MenuImages.CampTitle, Camp.X, Camp.Y, color: Menu.Cursor == WorldChoice.Camp ? cursor : WorldMenu.TextColor);
         _ui.Image(this, MenuImages.JournalTitle, Journal.X, Journal.Y, color: Menu.Cursor == WorldChoice.Journal ? cursor : WorldMenu.TextColor);
         if (Veil > 0)
-            _ui.Tab(this, MenuImages.WorldTab, PlainPatches, new Rgba(255, 255, 255, (byte)(Veil * 255)), plain: true);
+            _ui.Tab(this, PauseTab.World, PlainPatches, new Rgba(255, 255, 255, (byte)(Veil * 255)), plain: true);
         DrawSetTransform(Vector2.Zero);
         _ui.Overlay(this, size, Menu.Overlay);
     }

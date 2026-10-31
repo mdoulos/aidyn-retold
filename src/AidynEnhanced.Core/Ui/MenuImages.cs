@@ -21,6 +21,14 @@ public static class MenuImages
     /// </summary>
     public static readonly RecordId WorldTab = Image(0x00DA);
 
+    /// <summary>A pause menu tab's image.</summary>
+    public static RecordId Tab(PauseTab tab) => tab switch
+    {
+        PauseTab.System => SystemTab,
+        PauseTab.Party => PartyTab,
+        _ => WorldTab,
+    };
+
     /// <summary>
     /// The World tab's widgets: today's square on the calendar (drawn 17 square), Camp and
     /// Journal; and the journal's book and its arrows, up and down.

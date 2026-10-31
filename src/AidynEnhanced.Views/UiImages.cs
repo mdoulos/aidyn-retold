@@ -1,5 +1,6 @@
 using AidynEnhanced.Core.Ui;
 using AidynEnhanced.Plugins;
+using AidynEnhanced.Plugins.Assets;
 using AidynEnhanced.Plugins.Records;
 using Godot;
 
@@ -72,6 +73,99 @@ public sealed class UiImages(PluginSet plugins)
             tall = ImageTexture.CreateFromImage(Image.CreateFromData(width, height + TallImage.Above + TallImage.Below, false, Image.Format.Rgba8, bytes));
         }
         return _tall[(image, plain)] = tall;
+    }
+
+    /// <summary>
+    /// The pause menu's scroll, scene <c>0x0E63</c>, beside whose model a mod puts the parchment the tabs are laid on,
+    /// <c>0x0E63.parchment.png</c>, at any size (<see cref="ParchmentSwap"/>).
+    /// </summary>
+    private static readonly RecordId Scroll = RecordId.Hex(RecordTypes.Scene, 0x0E63);
+
+    /// <summary>The parchment laid across a tab's frame, for each size and height, which the tabs of a plugin set share.</summary>
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<PluginSet, Dictionary<(int, int, bool, bool), Task<byte[]?>>> Laid = [];
+
+    private readonly Dictionary<(RecordId?, bool, bool), Task<(int Width, int Height, byte[] Rgba)?>> _swapping = [];
+    private readonly Dictionary<(RecordId?, bool, bool), Texture2D?> _swapped = [];
+
+    /// <summary>
+    /// A tab laid on a mod's parchment (<see cref="ParchmentSwap"/>), its paint found against its plain version (by
+    /// <paramref name="patches"/>), or that parchment alone, for a veiled tab; its torn edges where the full-height menu puts
+    /// them or the original's height, and mirrored as the tab's place on the scroll says (<see cref="ParchmentSwap.Mirrored"/>).
+    /// Null if no plugin has a parchment for the scroll, or the tab's image. It's laid on another thread, begun by
+    /// <see cref="WarmParchment"/> or the first time it's asked for, and waited for then.
+    /// </summary>
+    public Texture2D? OnParchment(PauseTab tab, IReadOnlyList<PlainImage.Patch> patches, bool plain, bool full)
+    {
+        var key = (plain ? (RecordId?)null : MenuImages.Tab(tab), full, ParchmentSwap.Mirrored(tab));
+        if (_swapped.TryGetValue(key, out var texture))
+            return texture;
+        try
+        {
+            if (Swapping(tab, patches, plain, full).Result is { } laid)
+            {
+                var data = Image.CreateFromData(laid.Width, laid.Height, false, Image.Format.Rgba8, laid.Rgba);
+                data.GenerateMipmaps();
+                // Mipmapped, for a screen drawn at the original's size, where it's drawn at a quarter.
+                texture = new CanvasTexture { DiffuseTexture = ImageTexture.CreateFromImage(data), TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps };
+            }
+        }
+        catch (AggregateException e)
+        {
+            GD.PushWarning($"The scroll's parchment couldn't be laid: {e.InnerException?.Message}");
+        }
+        return _swapped[key] = texture;
+    }
+
+    /// <summary>Begins laying a tab and the parchment alone on another thread, so they're ready when the menu opens.</summary>
+    public void WarmParchment(PauseTab tab, IReadOnlyList<PlainImage.Patch> patches, bool full)
+    {
+        Swapping(tab, patches, false, full);
+        Swapping(tab, patches, true, full);
+    }
+
+    private Task<(int Width, int Height, byte[] Rgba)?> Swapping(PauseTab tab, IReadOnlyList<PlainImage.Patch> patches, bool plain, bool full)
+    {
+        var image = MenuImages.Tab(tab);
+        var mirrored = ParchmentSwap.Mirrored(tab);
+        var key = (plain ? (RecordId?)null : image, full, mirrored);
+        if (_swapping.TryGetValue(key, out var task))
+            return task;
+        if (plugins.FindAsset(Scroll, "parchment.png") is not { } parchment || plugins.FindAsset(image, "png") is not { } tabPath
+            || PngHeader.Size(tabPath) is not { } size)
+            return _swapping[key] = Task.FromResult<(int, int, byte[])?>(null);
+        var laying = Laying(parchment, size.Width, size.Height, full, mirrored);
+        var patchList = patches.ToArray();
+        return _swapping[key] = Task.Run(async () =>
+        {
+            if (await laying is not { } laid || PngImage.Read(tabPath) is not { } png)
+                return null;
+            var (width, height) = (png.Width * ParchmentSwap.Scale, png.Height * ParchmentSwap.Scale);
+            if (plain)
+                return (width, height, laid);
+            var flat = (byte[])png.Rgba.Clone();
+            PlainImage.Apply(flat, png.Width, png.Height, patchList);
+            return ((int Width, int Height, byte[] Rgba)?)(width, height,
+                ParchmentSwap.Apply(laid, ParchmentSwap.Paint(png.Rgba, flat, png.Width, png.Height), png.Width, png.Height));
+        });
+    }
+
+    /// <summary>
+    /// The parchment at <paramref name="path"/> laid across a tab's frame, <paramref name="w"/> × <paramref name="h"/>, once for
+    /// each size, height and side.
+    /// </summary>
+    private Task<byte[]?> Laying(string path, int w, int h, bool full, bool mirrored)
+    {
+        var laid = Laid.GetValue(plugins, _ => []);
+        lock (laid)
+        {
+            if (!laid.TryGetValue((w, h, full, mirrored), out var task))
+            {
+                var (top, bottom) = full ? (ParchmentSwap.FullTop, ParchmentSwap.FullBottom) : (ParchmentSwap.OriginalTop, ParchmentSwap.OriginalBottom);
+                laid[(w, h, full, mirrored)] = task = Task.Run<byte[]?>(() =>
+                    PngImage.Read(path) is { } p ? ParchmentSwap.Lay(p.Rgba, p.Width, p.Height, w, h, top, bottom, mirrored) : null);
+            }
+            return task;
+        }
     }
 
     private readonly Dictionary<RecordId, Texture2D?> _feathered = [];

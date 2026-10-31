@@ -147,6 +147,9 @@ public sealed partial class Battle
                 n += 1f;
             }
         }
+        // No opponents, which a battle ends before, leaves nothing to centre on.
+        if (n == 0)
+            return 0;
         AiAreaCentre = new Vector2(sum.X / n, sum.Y / n);
         _triesB.RebuildSpell(this, c, source, from, AiAreaCentre);
         if (_triesB.Selected == 0)

@@ -200,7 +200,8 @@ public sealed partial class MapObjectUse(GameState game, MenuText text, IMapObje
             // The original keeps the way the player faces reversed, and the bearing from the object.
             var bearing = new Vector2(position.X, position.Z) - player;
             bearing = SafeNormalize.Of(bearing);
-            var score = (farthest - distance) / farthest + (Vector2.Dot(bearing, heading) + 1) * 0.5f;
+            // All at his centre, which only a mod's map could put them, they're weighed by facing alone, where 0 / 0 chose none.
+            var score = (farthest > 0 ? (farthest - distance) / farthest : 0) + (Vector2.Dot(bearing, heading) + 1) * 0.5f;
             if (bestScore <= score)
                 (best, bestScore) = (o, score);
         }

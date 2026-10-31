@@ -38,19 +38,16 @@ public sealed class WorldMenu
 
     private readonly GameState _game;
     private readonly MenuText _text;
-    private readonly TextLayout _font;
     private readonly float _campFactor;
     private readonly string _cannotCamp;
     private readonly MenuPulse _marker = new(frames: MarkerSteps, top: MarkerSteps);
 
-    /// <param name="font">The main font, which the journal wraps its entries in.</param>
     /// <param name="place">The chunk the player is in, or none, as in a cut-scene's stage.</param>
     /// <param name="outdoors">Whether the sky is the outdoor one, which the party's ring needs.</param>
-    public WorldMenu(PluginSet plugins, GameState game, TextLayout font, ChunkRef? place, bool outdoors)
+    public WorldMenu(PluginSet plugins, GameState game, ChunkRef? place, bool outdoors)
     {
         _game = game;
         _text = MenuText.From(plugins);
-        _font = font;
         Map = plugins.Singleton<WorldMapRecord>();
         var camping = plugins.Singleton<CampingRecord>();
         _cannotCamp = camping.CannotCamp;
@@ -174,7 +171,8 @@ public sealed class WorldMenu
         var added = flags.JournalOrder.Where(entries.ContainsKey).ToList();
         var waiting = flags.JournalEntries.Where(id => entries.ContainsKey(id) && !added.Contains(id));
         var shown = added.Concat(waiting).Select(id => entries[id]).Where(e => flags.IsSet(e.Flag));
-        return new JournalMenu(_font, [.. shown.Select(e => (e.Text, e.Id == newest))], _text[NoEntries]);
+        // In the main font as the text is drawn now, which the Text Font setting may have changed since the menu opened.
+        return new JournalMenu(_game.Fonts.Main, [.. shown.Select(e => (e.Text, e.Id == newest))], _text[NoEntries]);
     }
 
     /// <summary>

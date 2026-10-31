@@ -270,7 +270,7 @@ public sealed class PauseMenu
         System = new SystemMenu(_game.Plugins, _settings, _game.Party, _savesFolder, isSet: _game.Flags.Get, combat: _combat?.CanFlee,
             screen: () => _host.Screen, unsaved: () => Unsaved);
         var (place, outdoors) = _where();
-        World = new WorldMenu(_game.Plugins, _game, _game.Fonts.Main,
+        World = new WorldMenu(_game.Plugins, _game,
             place, outdoors);
         Tab = tab;
         Position = (float)tab;

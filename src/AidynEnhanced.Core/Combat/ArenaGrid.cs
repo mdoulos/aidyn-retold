@@ -63,8 +63,9 @@ public sealed class ArenaGrid
             Width = Depth = 0;
             return;
         }
-        Width = (byte)(int)MathF.Round(grid.CellSize.X * grid.Columns, MidpointRounding.AwayFromZero);
-        Depth = (byte)(int)MathF.Round(grid.CellSize.Y * grid.Rows, MidpointRounding.AwayFromZero);
+        // At most the grid's side: every arena of the game's fits, and a mod's wider one is cut to it rather than overrun the cells.
+        Width = (byte)Math.Min((int)MathF.Round(grid.CellSize.X * grid.Columns, MidpointRounding.AwayFromZero), Side);
+        Depth = (byte)Math.Min((int)MathF.Round(grid.CellSize.Y * grid.Rows, MidpointRounding.AwayFromZero), Side);
     }
 
     /// <summary>

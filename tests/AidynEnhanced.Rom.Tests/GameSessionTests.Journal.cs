@@ -49,7 +49,7 @@ public sealed partial class GameSessionTests
 
     private IReadOnlyList<JournalItem> OpenJournal(GameState game)
     {
-        var menu = new WorldMenu(Data.Set, game, new TextLayout(Data.Set.Get<FontRecord>(RecordId.Decimal(RecordTypes.Font, 0))), null, outdoors: false);
+        var menu = new WorldMenu(Data.Set, game, null, outdoors: false);
         menu.MoveCursor(1);
         menu.Accept();
         return menu.Journal!.Items;

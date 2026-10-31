@@ -6,7 +6,7 @@ namespace AidynEnhanced.Core.Combat;
 /// <summary>
 /// A round's turns (<c>Combat.Current</c>'s <c>+0x30</c>, <c>TurnOrder</c>, <c>turn.cpp</c>): the combatants' slots in the
 /// order they act, and the turn now. <see cref="Build"/> ports <c>TurnOrder.Build</c>; a turn's start and end and a round's
-/// end are session 3's.
+/// end are the battle's (<c>Battle.Turns.cs</c>).
 /// </summary>
 public sealed class TurnOrder
 {

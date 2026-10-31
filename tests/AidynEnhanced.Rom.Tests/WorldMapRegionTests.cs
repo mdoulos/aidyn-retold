@@ -118,7 +118,7 @@ public sealed class WorldMapRegionTests(Na10Import fixture)
 
     /// <summary>The flags of the World tab's pieces that show, in the table's order.</summary>
     private RecordId[] Pieces(GameState game) =>
-        [.. new WorldMenu(Data.Set, game, new TextLayout(Data.Set.Get<FontRecord>(RecordId.Decimal(RecordTypes.Font, 0))), null, false)
+        [.. new WorldMenu(Data.Set, game, null, false)
             .Pieces.Select(p => p.Flag)];
 
     /// <summary>The player steps into the middle of a chunk next to his, set down on its ground, and trek ticks.</summary>

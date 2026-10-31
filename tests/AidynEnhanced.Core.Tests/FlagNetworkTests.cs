@@ -195,6 +195,23 @@ public class FlagNetworkTests
     }
 
     [Fact]
+    public void AModsFlagThatNeverSettlesStopsRatherThanHangs()
+    {
+        var flipping = RecordId.Parse("mymod:flag/flipping");
+        var flags = new FlagNetwork(
+            [
+                .. Enumerable.Range(0, 3).Select(i => new FlagRecord(Flag(i))),
+                new FlagRecord(flipping, Formula: new(FlagFormulaKind.Logic, FlagOperation.Not, 0, [flipping])),
+            ],
+            Flag(2));
+
+        flags.Set(Flag(0), true);
+        _ = flags.Get(flipping);
+
+        Assert.False(flags.Dirty);
+    }
+
+    [Fact]
     public void AnUnknownFlagReadsClearAndItsSetIsIgnored()
     {
         var flags = Network();

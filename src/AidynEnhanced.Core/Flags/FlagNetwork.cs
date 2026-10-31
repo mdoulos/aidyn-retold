@@ -276,16 +276,18 @@ public sealed class FlagNetwork
     /// <summary>
     /// Brings the derived flags up to date (<c>ProcessGameStates</c>): evaluates every derived flag in
     /// order, each seeing the ones before it as already updated, and starts again from the first
-    /// while anything changed.
+    /// while anything changed. Formulas without a loop settle within a pass for each derived flag; a mod's that loops, as a flag
+    /// that's none of itself does, would never settle, so it stops there with the flags as the last pass left them.
     /// </summary>
     public void Process()
     {
-        while (Dirty)
+        for (var pass = 0; Dirty && pass <= _derived.Length; pass++)
         {
             Dirty = false;
             foreach (var handle in _derived)
                 Write(handle, Evaluate(_formulas[handle]!.Value));
         }
+        Dirty = false;
     }
 
     /// <summary>A change marks the network out of date, and may add a journal entry.</summary>

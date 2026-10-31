@@ -200,7 +200,7 @@ public sealed partial class Battle
         return first is { } spare && third is not null ? new Items.ItemInstance(items[spare]) : null;
     }
 
-      /// <summary>
+    /// <summary>
     /// For tests: the combatant at <paramref name="slot"/> made again from another sheet where it stands (<c>Combatant.Init</c> on a
     /// new entity), keeping its body, cell, turn's start, direction, footprint and flags, with the new entity's look (the heights the attack's sight reads); armed, with its first spell selected, its
     /// action from its weapon and a new AI record, as an enemy is made. Its field radius is worked out again.
@@ -230,7 +230,7 @@ public sealed partial class Battle
         return c;
     }
 
-  /// <summary>A combatant the AI plays, with its record (<see cref="EnemyAI.Init"/>).</summary>
+    /// <summary>A combatant the AI plays, with its record (<see cref="EnemyAI.Init"/>).</summary>
     private void GiveAi(Combatant c, Items.ItemInstance? spare)
     {
         c.Controlled = true;

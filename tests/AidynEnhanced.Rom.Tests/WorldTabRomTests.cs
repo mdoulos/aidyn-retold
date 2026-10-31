@@ -20,8 +20,6 @@ public sealed class WorldTabRomTests(Na10Import fixture)
 
     private PluginSet Set => fixture.Data.Set;
 
-    private TextLayout MainFont => new(Set.Get<FontRecord>(RecordId.Decimal(RecordTypes.Font, 0)));
-
     private GameState Checkpoint()
     {
         var problems = new List<string>();
@@ -44,21 +42,21 @@ public sealed class WorldTabRomTests(Na10Import fixture)
     public void BeforeTheFinalEncounterTheTabShowsTheEarthSeasonsThirteenthAndTheWholeMap()
     {
         var game = Checkpoint();
-        var menu = new WorldMenu(Set, game, MainFont, new ChunkRef(RecordId.Decimal(RecordTypes.MapSet, 0), 13, 6), outdoors: true);
+        var menu = new WorldMenu(Set, game, new ChunkRef(RecordId.Decimal(RecordTypes.MapSet, 0), 13, 6), outdoors: true);
 
         Assert.Equal("THE EARTH SEASON", menu.SeasonName.Trim());
         Assert.Equal((173, 93), menu.Today);
         Assert.Equal(18, menu.Pieces.Count);
         // The blue ring in the capture, its centre at (112.5, 46.5).
         Assert.Equal((108, 42), menu.Marker);
-        Assert.Null(new WorldMenu(Set, game, MainFont, new ChunkRef(RecordId.Decimal(RecordTypes.MapSet, 6), 3, 5), outdoors: true).Marker);
-        Assert.Null(new WorldMenu(Set, game, MainFont, new ChunkRef(RecordId.Decimal(RecordTypes.MapSet, 0), 13, 6), outdoors: false).Marker);
+        Assert.Null(new WorldMenu(Set, game, new ChunkRef(RecordId.Decimal(RecordTypes.MapSet, 6), 3, 5), outdoors: true).Marker);
+        Assert.Null(new WorldMenu(Set, game, new ChunkRef(RecordId.Decimal(RecordTypes.MapSet, 0), 13, 6), outdoors: false).Marker);
     }
 
     [Fact]
     public void TheRingPulsesFromBlackAStepATickWhileTheTabShowsAndStandsStillWhileItSlides()
     {
-        var menu = new WorldMenu(Set, GameState.NewGame(Set), MainFont, null, outdoors: false);
+        var menu = new WorldMenu(Set, GameState.NewGame(Set), null, outdoors: false);
         var color = WorldMenu.MarkerColor;
         int step = 0, sign = 1;
         for (var tick = 0; tick < 60; tick++)
@@ -79,7 +77,7 @@ public sealed class WorldTabRomTests(Na10Import fixture)
     public void TheJournalListsTheCheckpointsEntriesEndingWithTheDarkerSelfAndOpensAtTheFoot()
     {
         var game = Checkpoint();
-        var menu = new WorldMenu(Set, game, MainFont, null, outdoors: false);
+        var menu = new WorldMenu(Set, game, null, outdoors: false);
         menu.MoveCursor(1);
         menu.Accept();
         var journal = menu.Journal!;
@@ -95,17 +93,17 @@ public sealed class WorldTabRomTests(Na10Import fixture)
     {
         var game = GameState.NewGame(Set);
         // MiscInteriors' chunks, but I05, allow no camping.
-        var menu = new WorldMenu(Set, game, MainFont, new ChunkRef(RecordId.Decimal(RecordTypes.MapSet, 6), 3, 5), outdoors: false);
+        var menu = new WorldMenu(Set, game, new ChunkRef(RecordId.Decimal(RecordTypes.MapSet, 6), 3, 5), outdoors: false);
         Assert.Null(menu.Accept());
         Assert.Equal("The party cannot camp here.", menu.Message?.Text);
         Assert.Null(menu.Accept());
         Assert.Null(menu.Message);
 
         // Nor does Gwernia's country, terrain 19, where the checkpoint stands; G14, terrain 0, does.
-        var gwernia = new WorldMenu(Set, game, MainFont, new ChunkRef(RecordId.Decimal(RecordTypes.MapSet, 0), 13, 6), outdoors: true);
+        var gwernia = new WorldMenu(Set, game, new ChunkRef(RecordId.Decimal(RecordTypes.MapSet, 0), 13, 6), outdoors: true);
         gwernia.Accept();
         Assert.NotNull(gwernia.Message);
-        var outside = new WorldMenu(Set, game, MainFont, new ChunkRef(RecordId.Decimal(RecordTypes.MapSet, 0), 7, 14), outdoors: true);
+        var outside = new WorldMenu(Set, game, new ChunkRef(RecordId.Decimal(RecordTypes.MapSet, 0), 7, 14), outdoors: true);
         // Camp ends the menu, and the party camps once it has rolled up.
         Assert.Equal(PauseExit.Camp, outside.Accept());
         Assert.Equal(1, (int)PauseExitCode.Camp);

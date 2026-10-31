@@ -83,8 +83,22 @@ public sealed class DialogueBox(TextLayout font, int borderWidth, int borderHeig
     /// <summary>Where the box's bottom part starts, before it grows to fit.</summary>
     public const int BaseTop = 180;
 
-    /// <summary>The font the box's text is laid out in, as it's drawn: the session hands the game's boxes theirs (<see cref="TextFonts"/>).</summary>
-    public TextLayout Font { get; set; } = font;
+    /// <summary>
+    /// The font the box's text is laid out in, as it's drawn: the session hands the game's boxes theirs (<see cref="TextFonts"/>). A
+    /// page showing is laid out again in it.
+    /// </summary>
+    public TextLayout Font
+    {
+        get;
+        set
+        {
+            if (ReferenceEquals(field, value))
+                return;
+            field = value;
+            if (_page is not null)
+                Lay();
+        }
+    } = font;
 
     /// <summary>The original's screen, which the box is laid out in.</summary>
     public const int FrameWidth = 320, FrameHeight = 240;

@@ -174,6 +174,17 @@ public sealed class PlayerMotion
     /// </summary>
     public int? Asked { get; set; }
 
+    /// <summary>
+    /// Ends a jump and forgets a press waiting for one, as he's put somewhere: through a teleporter, by a load, back from a battle.
+    /// A jump carried on there would touch from where it left the ground before.
+    /// </summary>
+    public void Settle()
+    {
+        Jumping = false;
+        _jumpBuffer = 0;
+        _carry = 0;
+    }
+
     /// <summary>Turns him to face <paramref name="heading"/> where he stands (<c>Actor::SetFacing</c>).</summary>
     public void Face(Vector2 heading) =>
         TurnTo = heading.LengthSquared() > SpherePhysics.Epsilon * SpherePhysics.Epsilon ? Vector2.Normalize(heading) : null;

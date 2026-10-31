@@ -117,7 +117,8 @@ public sealed class Wanderer
         GoesBack = false;
         Goal = new Vector2(node.Position.X + Map.Origin.X, node.Position.Z + Map.Origin.Z);
         if ((node.Flags & WanderFlags.Rotate) != 0)
-            Goal = Vector2.Normalize(new Vector2(Body.Sphere.Position.X, Body.Sphere.Position.Z) - Goal);
+            // On the node itself, it keeps facing as it does.
+            Goal = SafeNormalize.Of(new Vector2(Body.Sphere.Position.X, Body.Sphere.Position.Z) - Goal, -Body.Heading);
     }
 
     /// <summary>

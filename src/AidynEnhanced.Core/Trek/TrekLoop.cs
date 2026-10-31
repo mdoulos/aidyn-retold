@@ -423,7 +423,8 @@ public sealed partial class TrekLoop : IMapObjectHost
         else
             camera.Follow();
         camera.ZoomBy(input.Zoom);
-        if (!input.Locked && !input.Pushed)
+        // Standing still, but not carried through a jump with the stick let go.
+        if (!input.Locked && !input.Pushed && !player.Jumping)
             camera.Anchor(player.Sphere.Position);
         player.Step(world, input.Move, camera.LookXZ, animation);
     }
@@ -492,6 +493,7 @@ public sealed partial class TrekLoop : IMapObjectHost
             ground = Body.SetDown(Chunks.World, ground, radius, Game.Random.World).Position;
         motion.Sphere.Position = ground;
         motion.Sphere.Velocity = Vector3.Zero;
+        motion.Settle();
         if (arrival.Heading is { } heading)
             motion.Heading = heading;
         _centre = (arrival.Chunk.Row, arrival.Chunk.Column);
@@ -700,6 +702,7 @@ public sealed partial class TrekLoop : IMapObjectHost
         }
         Player.Sphere.Position = Chunks.Origin(chunk) + position;
         Player.Sphere.Velocity = Vector3.Zero;
+        Player.Settle();
         Player.Heading = heading;
         _centre = (chunk.Row, chunk.Column);
         AtPlace = true;
@@ -716,6 +719,7 @@ public sealed partial class TrekLoop : IMapObjectHost
     /// </summary>
     public void Resume(bool fled = false)
     {
+        Player.Settle();
         if (fled && Standing is { } start && Breadcrumbs.Find(start, farthest: true) is { } crumb
             && Chunks.MapSet.Chunk(crumb.Row, crumb.Column) is { } chunk)
         {

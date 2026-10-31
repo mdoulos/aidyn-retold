@@ -40,7 +40,11 @@ public sealed class BodyAudio
 /// </summary>
 public sealed class AudioKeys(GameAudio audio, SoundsRecord sounds, IRandom random)
 {
-    /// <summary>How far from what the camera looks at a body is heard, before the loudness wraps (<c>Audio.VolumeAndPan</c>'s 15).</summary>
+    /// <summary>
+    /// How far from what the camera looks at a body is heard (<c>Audio.VolumeAndPan</c>'s 15). The original's loudness wraps
+    /// past it, so a body 15 to 30 away is loud again; the port keeps that only in a battle (<see cref="Process"/>'s
+    /// <c>wraps</c>).
+    /// </summary>
     public const float Hearing = 15;
 
     /// <summary>How far from what the camera looks at bodies are stepped at all (<c>Players+0x68</c>).</summary>
@@ -59,12 +63,13 @@ public sealed class AudioKeys(GameAudio audio, SoundsRecord sounds, IRandom rand
     /// A body's animation that plays its sounds as it steps: each step of the animation is a tick of
     /// <c>Bodies.Process</c>' loop.
     /// </summary>
-    public IRootMotion Sounding(IRootMotion animation, BodyAudio body, BodySounds? profile, CollisionSphere sphere) =>
-        animation is IActorMotion actor ? Sounding(actor, body, profile, sphere) : animation;
+    /// <param name="wraps">Whether its loudness wraps past <see cref="Hearing"/>, as <see cref="Process"/>'s.</param>
+    public IRootMotion Sounding(IRootMotion animation, BodyAudio body, BodySounds? profile, CollisionSphere sphere, bool wraps = false) =>
+        animation is IActorMotion actor ? Sounding(actor, body, profile, sphere, wraps) : animation;
 
-    /// <inheritdoc cref="Sounding(IRootMotion, BodyAudio, BodySounds?, CollisionSphere)"/>
-    public IActorMotion Sounding(IActorMotion animation, BodyAudio body, BodySounds? profile, CollisionSphere sphere) =>
-        new SoundingMotion(this, animation, body, profile, sphere);
+    /// <inheritdoc cref="Sounding(IRootMotion, BodyAudio, BodySounds?, CollisionSphere, bool)"/>
+    public IActorMotion Sounding(IActorMotion animation, BodyAudio body, BodySounds? profile, CollisionSphere sphere, bool wraps = false) =>
+        new SoundingMotion(this, animation, body, profile, sphere, wraps);
 
     /// <summary>
     /// A body's tick, after its animation stepped (<c>Bodies.Process</c>, <c>AudioKeys.ProcessPlayer</c>).
@@ -75,9 +80,14 @@ public sealed class AudioKeys(GameAudio audio, SoundsRecord sounds, IRandom rand
     /// <param name="frame">Its animation's frame after the step, from 1 (<see cref="Actors.ActorStateMachine.Clock"/>).</param>
     /// <param name="length">Its animation's length in frames.</param>
     /// <param name="surface">The surface its sphere touches, 0 if none.</param>
+    /// <param name="wraps">
+    /// Whether its loudness wraps past <see cref="Hearing"/> as the original's does, so that a body 15 to 30 away is loud
+    /// again. Only a battle passes it, whose sounds were all heard as they are; elsewhere a body past 15 is silent, as Aidyn
+    /// ReChronicled has it (its 7158d7e), the user's choice: wanderers and a cut-scene's actors 15 to 30 away stepped loudly.
+    /// </param>
     /// <remarks>The port's full run (<see cref="Body.FullRun"/>) sounds as the run, whose keys the original's sounds have.</remarks>
     public void Process(BodyAudio body, BodySounds? profile, int request, int frame, int length, Vector3 position, int surface,
-        Vector3 eye, Vector3 aim)
+        Vector3 eye, Vector3 aim, bool wraps = false)
     {
         if (frame == 1)
             body.Request = request == Body.FullRun ? Body.Run : request;
@@ -85,7 +95,7 @@ public sealed class AudioKeys(GameAudio audio, SoundsRecord sounds, IRandom rand
             body.Surface = surface;
         if (Vector3.Distance(position, aim) > Reach)
             return;
-        var (volume, pan) = VolumeAndPan(position, eye, aim);
+        var (volume, pan) = VolumeAndPan(position, eye, aim, wraps);
         if (volume == 0 || profile is not { Kind: not 0 })
             return;
 
@@ -124,8 +134,8 @@ public sealed class AudioKeys(GameAudio audio, SoundsRecord sounds, IRandom rand
     /// <summary>The request a spell's cast plays as, which its sound waits for (<c>Player.SetCastSound</c>'s 5).</summary>
     public const int CastRequest = 5;
 
-    private sealed class SoundingMotion(AudioKeys keys, IActorMotion animation, BodyAudio body, BodySounds? profile, CollisionSphere sphere)
-        : IActorMotion
+    private sealed class SoundingMotion(AudioKeys keys, IActorMotion animation, BodyAudio body, BodySounds? profile, CollisionSphere sphere,
+        bool wraps) : IActorMotion
     {
         public int StateLength => animation.StateLength;
 
@@ -139,7 +149,7 @@ public sealed class AudioKeys(GameAudio audio, SoundsRecord sounds, IRandom rand
         {
             var forward = animation.Tick(request);
             keys.Process(body, profile, request, animation.Frame, animation.StateLength, sphere.Position,
-                sphere.Touching ? sphere.Surface : 0, keys.Eye, keys.Aim);
+                sphere.Touching ? sphere.Surface : 0, keys.Eye, keys.Aim, wraps);
             return forward;
         }
     }
@@ -155,11 +165,14 @@ public sealed class AudioKeys(GameAudio audio, SoundsRecord sounds, IRandom rand
 
     /// <summary>
     /// A body's loudness and pan (<c>Audio.VolumeAndPan</c>, 1.0 <c>0x8004EB90</c>), as bytes. Neither is clamped: past
-    /// 15 from what the camera looks at, the loudness's int wraps to its low byte, as the original's does.
+    /// 15 from what the camera looks at, the loudness's int wraps to its low byte, as the original's does, unless
+    /// <paramref name="wraps"/> is false, which silences it there.
     /// </summary>
-    public static (byte Volume, byte Pan) VolumeAndPan(Vector3 position, Vector3 eye, Vector3 aim)
+    public static (byte Volume, byte Pan) VolumeAndPan(Vector3 position, Vector3 eye, Vector3 aim, bool wraps = true)
     {
         var loudness = AudioLevels.Loudness(Vector3.Distance(position, aim), Hearing);
+        if (!wraps && loudness < 0)
+            loudness = 0;
         return (AudioLevels.LoudnessByte(loudness), AudioLevels.WrappedPanByte(AudioLevels.Pan(position, eye, aim, loudness)));
     }
 

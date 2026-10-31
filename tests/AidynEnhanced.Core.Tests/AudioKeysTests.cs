@@ -133,5 +133,22 @@ public class AudioKeysTests
         Assert.Equal(0, AudioKeys.VolumeAndPan(new Vector3(0, 0, -15), new Vector3(0, 0, 5), Vector3.Zero).Volume);
         // (int)(−1/3 × 255) is −85, whose low byte is 171.
         Assert.Equal(171, AudioKeys.VolumeAndPan(new Vector3(0, 0, -20), new Vector3(0, 0, 5), Vector3.Zero).Volume);
+        // The port's outside a battle: silent past 15.
+        Assert.Equal(0, AudioKeys.VolumeAndPan(new Vector3(0, 0, -20), new Vector3(0, 0, 5), Vector3.Zero, wraps: false).Volume);
+    }
+
+    [Fact]
+    public void ABodyPastItsHearingIsHeardOnlyInABattle()
+    {
+        foreach (var wraps in new[] { false, true })
+        {
+            var (keys, audio) = Make();
+            var body = new BodyAudio();
+            var run = new BodySounds(1, [new SoundKey(65500, Movement.Body.Run, [Step])]);
+            var far = new Vector3(0, 0, -20);
+            keys.Process(body, run, Movement.Body.Run, 1, 20, far, Grass, new Vector3(0, 0, 5), Vector3.Zero, wraps);
+            keys.Process(body, run, Movement.Body.Run, 20, 20, far, Grass, new Vector3(0, 0, 5), Vector3.Zero, wraps);
+            Assert.Equal(wraps, Heard(audio));
+        }
     }
 }

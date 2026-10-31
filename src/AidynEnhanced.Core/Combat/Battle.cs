@@ -316,7 +316,7 @@ public sealed partial class Battle
                 continue;
             }
             combatant.Audio.Weapon = WeaponOf(combatant) is { Model: not null } weapon ? weapon.Sounds : null;
-            var animation = motion(combatant) is { } m ? keys.Sounding(m, combatant.Audio, combatant.Sounds, combatant.Body.Sphere) : IActorMotion.Still;
+            var animation = motion(combatant) is { } m ? keys.Sounding(m, combatant.Audio, combatant.Sounds, combatant.Body.Sphere, wraps: true) : IActorMotion.Still;
             // A body that has fallen holds its last frame; one a web or hold keeps doesn't step its idle (Body.IsHeld, 0x80012754).
             var still = combatant.Fallen || combatant.PoseHeld && combatant.Body.Request == 0 && combatant.Audio.Request == 0;
             // Bodies.Process reads the frame before the actor steps for an attack's strike.

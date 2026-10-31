@@ -279,7 +279,16 @@ public sealed class SaveMenu
                 (Request, Target) = (SaveRequest.Save, Current!.Path);
                 break;
             case DeleteQuestion when choice == 0:
-                SaveSlot.Delete(Current!.Path);
+                // A save that's read-only, gone with its folder, or held open by another program says why, as a failed save does.
+                try
+                {
+                    SaveSlot.Delete(Current!.Path);
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                {
+                    Failed(e.Message);
+                    return;
+                }
                 Refresh(0);
                 break;
             case SavedLine:

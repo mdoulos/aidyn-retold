@@ -701,6 +701,28 @@ public class SystemMenuTests(BarterPlugins fixture) : IClassFixture<BarterPlugin
     }
 
     [Fact]
+    public void ASaveThatWontDeleteSaysWhy()
+    {
+        var b = Write("b", 0);
+        File.SetAttributes(b, FileAttributes.ReadOnly);
+        try
+        {
+            var screen = Screen(saving: false);
+            screen.Point(1);
+            screen.Accept();
+            Assert.Equal("L372", screen.Choice!.Text);
+            screen.Accept();
+            Assert.True(File.Exists(b));
+            Assert.NotEqual("L372", screen.Choice!.Text);
+            Assert.Single(screen.Slots);
+        }
+        finally
+        {
+            File.SetAttributes(b, FileAttributes.Normal);
+        }
+    }
+
+    [Fact]
     public void TheNewSlotHasNoDelete()
     {
         var screen = Screen(saving: true);

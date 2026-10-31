@@ -292,7 +292,7 @@ public partial class PartyTabView : Control
             return;
         }
         // The barter, training and post-battle states: the header here, and the window's own parts on their layer (DrawWindow).
-        _ui.Image(_canvas, MenuImages.PartyTab, 0, 0);
+        _ui.Tab(_canvas, MenuImages.PartyTab, PlainPatches);
         Portraits(PortraitPiece.Position);
         Health(HealthPiece.Position, _ui.Main);
     }
@@ -383,14 +383,14 @@ public partial class PartyTabView : Control
         _canvas = _overlay;
         _overlay.DrawSetTransform(_origin);
         if (Veil > 0)
-            _ui.Plain(_canvas, MenuImages.PartyTab, PlainPatches, 0, 0, new Rgba(255, 255, 255, (byte)(Veil * 255)));
+            _ui.Tab(_canvas, MenuImages.PartyTab, PlainPatches, new Rgba(255, 255, 255, (byte)(Veil * 255)), plain: true);
         _overlay.DrawSetTransform(Vector2.Zero);
         Popups();
     }
 
     private void DrawTab()
     {
-        _ui.Image(_canvas, MenuImages.PartyTab, 0, 0);
+        _ui.Tab(_canvas, MenuImages.PartyTab, PlainPatches);
         Portraits(PortraitPiece.Position);
         Health(HealthPiece.Position, _ui.Main);
         Silhouette(SilhouettePiece.Position);

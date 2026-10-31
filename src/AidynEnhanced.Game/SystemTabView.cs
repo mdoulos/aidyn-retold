@@ -174,7 +174,7 @@ public partial class SystemTabView : Control
         _origin = _pageOrigin = Origin();
         DrawSetTransform(_origin);
         if (Style.Parchment)
-            _ui.Image(this, MenuImages.SystemTab, 0, 0);
+            _ui.Tab(this, MenuImages.SystemTab, []);
         // The page, and the one before fading out over it (OptionsMenu.Step, 0x8003f81c). The title's are each on their box, the boxes
         // drawn first by the pages' alphas (IntroMenu.Draw, 0x80042aa8).
         var showing = new SystemScreen(Menu.Page, Menu.Options, Menu.Saves, Menu.Rename, Menu.Theatre);
@@ -188,7 +188,7 @@ public partial class SystemTabView : Control
         if (Menu.Outgoing is { } outgoing)
             Page(outgoing, Menu.OutgoingAlpha);
         if (Veil > 0)
-            _ui.Image(this, MenuImages.SystemTab, 0, 0, color: new Rgba(255, 255, 255, (byte)(Veil * 255)));
+            _ui.Tab(this, MenuImages.SystemTab, [], new Rgba(255, 255, 255, (byte)(Veil * 255)));
         DrawSetTransform(Vector2.Zero);
         if (Menu.Saves is { } saves)
             _ui.Overlay(this, size, saves.Overlay);

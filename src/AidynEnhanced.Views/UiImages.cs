@@ -52,6 +52,28 @@ public sealed class UiImages(PluginSet plugins)
         return _plain[image] = plain;
     }
 
+    private readonly Dictionary<(RecordId, bool), Texture2D?> _tall = [];
+
+    /// <summary>
+    /// A tab's image made taller for the full-height menu (<see cref="TallImage"/>), its gaps filled from its plain version
+    /// (<see cref="Plain"/>, by <paramref name="patches"/>), or that plain version made taller; made the first time it's asked for,
+    /// or null if no plugin has the image.
+    /// </summary>
+    public Texture2D? Tall(RecordId image, IReadOnlyList<PlainImage.Patch> patches, bool plain = false)
+    {
+        if (_tall.TryGetValue((image, plain), out var tall))
+            return tall;
+        if (Plain(image, patches)?.GetImage() is { } flat && (plain ? flat : Get(image)?.GetImage()) is { } data)
+        {
+            flat.Convert(Image.Format.Rgba8);
+            data.Convert(Image.Format.Rgba8);
+            var (width, height) = (data.GetWidth(), data.GetHeight());
+            var bytes = TallImage.Apply(data.GetData(), flat.GetData(), width, height);
+            tall = ImageTexture.CreateFromImage(Image.CreateFromData(width, height + TallImage.Above + TallImage.Below, false, Image.Format.Rgba8, bytes));
+        }
+        return _tall[(image, plain)] = tall;
+    }
+
     private readonly Dictionary<RecordId, Texture2D?> _feathered = [];
 
     /// <summary>

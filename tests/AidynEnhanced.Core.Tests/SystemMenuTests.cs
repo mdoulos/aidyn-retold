@@ -84,12 +84,12 @@ public class SystemMenuTests(BarterPlugins fixture) : IClassFixture<BarterPlugin
         options.Back();
         options.Point(2);
         options.Accept();
-        Assert.Equal(["Draw Distance", "Object Distance", "Model Detail", "Surface Detail", "Animation Blending", "Rain and Snow", "Menu Size", "Menu Filter", "Pace", "Jump", "Text Speed", "Text Voice", "Text Font", "Status Auras", "Intro Logos"],
+        Assert.Equal(["Draw Distance", "Object Distance", "Model Detail", "Surface Detail", "Animation Blending", "Rain and Snow", "Menu Size", "Menu Filter", "Menu Height", "Pace", "Jump", "Text Speed", "Text Voice", "Text Font", "Status Auras", "Intro Logos"],
             options.Rows.Rows.Select(r => r.Label));
         // A new player's are the original's but the menus drawn sharp; Surface Detail's Full and Animation Blending's Smooth show only on a
         // mod's model, he can jump, the text prints at Normal with its voice on in the high-resolution typeface, and the intro logos are
         // skipped, the user's choice.
-        Assert.Equal(["Original", "Original", "Original", "Full", "Smooth", "Original", "Original", "Sharp", "Original", "On", "Normal", "On", "High Resolution", "Original", "Skip"],
+        Assert.Equal(["Original", "Original", "Original", "Full", "Smooth", "Original", "Original", "Sharp", "Full", "Original", "On", "Normal", "On", "High Resolution", "Original", "Skip"],
             options.Rows.Rows.Select(r => r.ValueName));
     }
 

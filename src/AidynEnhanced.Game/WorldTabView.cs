@@ -81,7 +81,7 @@ public partial class WorldTabView : Control
         var size = new Vector2I((int)Size.X, (int)Size.Y);
         var origin = new Vector2I((size.X - FrameWidth) / 2, (size.Y - FrameHeight) / 2);
         DrawSetTransform(origin);
-        _ui.Image(this, MenuImages.WorldTab, 0, 0);
+        _ui.Tab(this, MenuImages.WorldTab, PlainPatches);
         Map();
         _ui.Text(this, _ui.Main, Menu.SeasonName, SeasonName.X, SeasonName.Y,
             new ScreenRect(SeasonName.X, SeasonName.Y, SeasonRight, FrameHeight), WorldMenu.TextColor);
@@ -90,7 +90,7 @@ public partial class WorldTabView : Control
         _ui.Image(this, MenuImages.CampTitle, Camp.X, Camp.Y, color: Menu.Cursor == WorldChoice.Camp ? cursor : WorldMenu.TextColor);
         _ui.Image(this, MenuImages.JournalTitle, Journal.X, Journal.Y, color: Menu.Cursor == WorldChoice.Journal ? cursor : WorldMenu.TextColor);
         if (Veil > 0)
-            _ui.Plain(this, MenuImages.WorldTab, PlainPatches, 0, 0, new Rgba(255, 255, 255, (byte)(Veil * 255)));
+            _ui.Tab(this, MenuImages.WorldTab, PlainPatches, new Rgba(255, 255, 255, (byte)(Veil * 255)), plain: true);
         DrawSetTransform(Vector2.Zero);
         _ui.Overlay(this, size, Menu.Overlay);
     }

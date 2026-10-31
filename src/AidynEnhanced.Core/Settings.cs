@@ -39,6 +39,13 @@ public sealed class Settings
     public UiFilter UiFilter { get; set; } = UiFilter.Pixels;
 
     /// <summary>
+    /// Whether the pause menu's parchment runs the screen's height, its torn edges moved past the original's screen and the gaps
+    /// filled with plain parchment (<see cref="Ui.TallImage"/>), the user's choice (Oct 31, 2026): the menu's text and pictures stay
+    /// as they were. Off, the tabs are the original's.
+    /// </summary>
+    public bool FullHeightMenus { get; set; } = true;
+
+    /// <summary>
     /// How many lines the 3D world is drawn at, scaled up to the window: the original's 240 or its Expansion Pak's 480, or 0 to draw
     /// it at <see cref="RenderScale"/>.
     /// </summary>

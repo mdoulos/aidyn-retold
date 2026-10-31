@@ -101,17 +101,13 @@ public class FollowCameraTests
     /// <summary>
     /// Orbiting into a wall, the original pulls in an eighth of the way a frame toward a point
     /// 0.25 past the wall, while still easing out toward 5. The two settle about 3.1 away, so
-    /// with the wall 2 away, the camera ends up behind it. The ROM has the -0.25.
+    /// with the wall 2 away, the camera ends up behind it. The ROM has the -0.25. The port keeps
+    /// it 0.3 off the wall on the player's side instead, as ReChronicled does.
     /// </summary>
     [Fact]
-    public void OrbitingPullsInFromWalls()
+    public void OrbitingStaysOffWalls()
     {
-        var world = Worlds.Flat();
-        // A wall at X = -2, facing the player.
-        world.Add(Worlds.Chunk(0), [
-            Worlds.Triangle(new(-2, 0, 20), new(-2, 0, -20), new(-2, 5, 20)),
-            Worlds.Triangle(new(-2, 5, 20), new(-2, 0, -20), new(-2, 5, -20)),
-        ], Vector3.Zero);
+        var world = WalledBehind();
         var player = new PlayerMotion(new Vector3(0, 0.5f, 0.1f), new Vector2(1, 0));
         var camera = new FollowCamera(player.Sphere.Position + new Vector3(0, 1.05f, 0), new Vector2(1, 0));
         for (var i = 0; i < 5 * TicksPerSecond; i++)
@@ -119,8 +115,34 @@ public class FollowCameraTests
             camera.Step(world, player.Sphere.Position, player.Heading);
             TrekLoop.StepPlayer(world, player, new PlayerInput(Vector2.Zero, Orbit: true), camera, new SteadyMotion(0));
         }
-        var reach = new Vector2(camera.Position.X - camera.Aim.X, camera.Position.Z - camera.Aim.Z).Length();
-        Assert.Equal(3.1f, reach, 0.1f);
+        Assert.InRange(camera.Position.X, -1.75f, -1.65f);
+    }
+
+    /// <summary>Following, the original's camera goes to its distance behind the player whatever's there; the port's stops at the wall.</summary>
+    [Fact]
+    public void FollowingStaysOffWalls()
+    {
+        var world = WalledBehind();
+        var player = new PlayerMotion(new Vector3(0, 0.5f, 0.1f), new Vector2(1, 0));
+        var camera = new FollowCamera(player.Sphere.Position + new Vector3(0, 1.05f, 0), new Vector2(1, 0));
+        for (var i = 0; i < 10 * TicksPerSecond; i++)
+        {
+            camera.Step(world, player.Sphere.Position, player.Heading);
+            TrekLoop.StepPlayer(world, player, new PlayerInput(Vector2.Zero), camera, new SteadyMotion(0));
+            Assert.True(camera.Position.X > -2, $"the camera went behind the wall on tick {i}");
+        }
+        Assert.InRange(camera.Position.X, -1.75f, -1.65f);
+    }
+
+    /// <summary>A flat world with a wall at X = -2, facing the player at the origin.</summary>
+    private static Physics.CollisionWorld WalledBehind()
+    {
+        var world = Worlds.Flat();
+        world.Add(Worlds.Chunk(0), [
+            Worlds.Triangle(new(-2, 0, 20), new(-2, 0, -20), new(-2, 5, 20)),
+            Worlds.Triangle(new(-2, 5, 20), new(-2, 0, -20), new(-2, 5, -20)),
+        ], Vector3.Zero);
+        return world;
     }
 
     /// <summary>

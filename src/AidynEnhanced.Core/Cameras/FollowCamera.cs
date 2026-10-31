@@ -150,6 +150,8 @@ public sealed partial class FollowCamera
             AimGoal = target + new Vector3(0, Height, 0);
             Approach(ref Aim, AimGoal, 16, 0.25f);
             Orbiting(world, back, Distance, 0, 5);
+            if (KeepOffWalls(world))
+                Orient();
             return;
         }
 
@@ -187,7 +189,25 @@ public sealed partial class FollowCamera
             _clearView = !SpherePhysics.Sweep(world, Position, Aim, 0.25f, skipSeeThrough: false, out _, out _);
         if (SpherePhysics.Sweep(world, before, Position, 0.25f, skipSeeThrough: true, out _, out _) && Snap == 1 && _clearView)
             ResetOrbit();
+        KeepOffWalls(world);
         Orient();
+    }
+
+    /// <summary>
+    /// Puts the camera on the player's side of a wall between it and the aim, 0.3 off it, as Aidyn ReChronicled does
+    /// (its ee46dde): the original's <c>Mode0</c> never keeps it out of walls, so following or orbiting it ends up behind
+    /// one, showing the outside of the level. The user's choice. A wall within 0.5 of the aim leaves it where it is, as
+    /// the camera on its aim would have no look. Returns whether it moved.
+    /// </summary>
+    private bool KeepOffWalls(CollisionWorld world)
+    {
+        if (!SpherePhysics.Sweep(world, Aim, Position, 0.25f, skipSeeThrough: true, out var hit, out var normal))
+            return false;
+        var off = hit + normal * 0.3f;
+        if (Vector3.Distance(off, Aim) < 0.5f)
+            return false;
+        Position = off;
+        return true;
     }
 
     /// <summary>

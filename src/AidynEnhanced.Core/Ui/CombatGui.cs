@@ -408,7 +408,9 @@ public sealed class CombatGui
     /// each in play by its combatant (<c>CombatGui.TintByState</c>, <c>0x80086EB4</c>), each later rule over the earlier:
     /// orange while the AI has it fleeing, dim green as set A's candidate, dim red as set B's, bright green as set A's
     /// selected while an attack or a flask is aimed (states 9 and 18), and bright red as set B's selected while a spell or
-    /// its area is (10 and 11). Side doesn't matter: a party member a healing spell could reach is dim red.
+    /// its area is (10 and 11). Side doesn't matter: a party member a healing spell could reach is dim red. The port shows
+    /// the dim red, too, only while a spell or its area is aimed, where the original shows it for the spell a caster kept
+    /// selected from an earlier turn in every state, after Aidyn ReChronicled (its 8e519a1), the user's choice.
     /// </summary>
     public void Tint(Battle battle)
     {
@@ -426,11 +428,12 @@ public sealed class CombatGui
                 bar.Tint = FledColor;
             if (marks.HasFlag(TargetMarks.AttackCandidate))
                 bar.Tint = AttackCandidateColor;
-            if (marks.HasFlag(TargetMarks.SpellCandidate))
+            var spellAimed = state is CombatState.TargetSpell or CombatState.PlaceArea;
+            if (marks.HasFlag(TargetMarks.SpellCandidate) && spellAimed)
                 bar.Tint = SpellCandidateColor;
             if (marks.HasFlag(TargetMarks.AttackSelected | TargetMarks.AttackCandidate) && state is CombatState.TargetAttack or CombatState.TargetThrown)
                 bar.Tint = AttackSelectedColor;
-            if (marks.HasFlag(TargetMarks.SpellSelected | TargetMarks.SpellCandidate) && state is CombatState.TargetSpell or CombatState.PlaceArea)
+            if (marks.HasFlag(TargetMarks.SpellSelected | TargetMarks.SpellCandidate) && spellAimed)
                 bar.Tint = SpellSelectedColor;
         }
     }

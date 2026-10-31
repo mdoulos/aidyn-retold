@@ -150,28 +150,35 @@ public sealed class CombatGuiTests
         var gui = Screen(battle);
         Rgba FrameOf(int slot) => gui.Portraits.Single(p => p.Slot == slot).Bar!.Tint;
 
-        // An attack's candidates are dim green, a spell's dim red, whichever side they're on; the spell's over the attack's.
+        // An attack's candidates are dim green whichever side they're on. A spell's are dim red only while a spell is aimed,
+        // not for the one a caster kept from an earlier turn (the port's, after ReChronicled).
         battle.TargetsA.Mark(2, selected: true);
         battle.TargetsA.Mark(3, selected: false);
         battle.TargetsB.Mark(0, selected: true);
         battle.TargetsA.Mark(4, selected: false);
         battle.TargetsB.Mark(4, selected: false);
+        gui.TintState = CombatState.Turn;
         gui.Tick(battle);
         Assert.Equal(CombatGui.AttackCandidateColor, FrameOf(2));
         Assert.Equal(CombatGui.AttackCandidateColor, FrameOf(3));
-        Assert.Equal(CombatGui.SpellCandidateColor, FrameOf(0));
-        Assert.Equal(CombatGui.SpellCandidateColor, FrameOf(4));
+        Assert.Equal(CombatGui.FrameColor, FrameOf(0));
+        Assert.Equal(CombatGui.AttackCandidateColor, FrameOf(4));
         Assert.Equal(CombatGui.FrameColor, FrameOf(1));
 
-        // Aiming an attack (state 9) or a flask (18) brightens set A's selected; a spell (10) or its area (11) set B's.
+        // Aiming an attack (state 9) or a flask (18) brightens set A's selected; a spell (10) or its area (11) set B's,
+        // with its candidates dim red over the attack's.
         gui.TintState = CombatState.TargetAttack;
         gui.Tick(battle);
         Assert.Equal(CombatGui.AttackSelectedColor, FrameOf(2));
-        Assert.Equal(CombatGui.SpellCandidateColor, FrameOf(0));
+        Assert.Equal(CombatGui.FrameColor, FrameOf(0));
+        gui.TintState = CombatState.TargetSpell;
+        gui.Tick(battle);
+        Assert.Equal(CombatGui.SpellCandidateColor, FrameOf(4));
         gui.TintState = CombatState.PlaceArea;
         gui.Tick(battle);
         Assert.Equal(CombatGui.AttackCandidateColor, FrameOf(2));
         Assert.Equal(CombatGui.SpellSelectedColor, FrameOf(0));
+        Assert.Equal(CombatGui.SpellCandidateColor, FrameOf(4));
 
         // The dead take no tint.
         gui.MarkGone(3);

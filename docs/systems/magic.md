@@ -134,7 +134,7 @@ The user chose to keep these, which look like bugs, as the original has them:
 
 ## Where the port differs
 
-- The Defence potion and the Acid flask's corrosion change the sheet's protection, as the shields do, where the original adds them when it works out the total (`Combatant.TotalProtection`); the totals differ only when the sum is below 0.
+- The Defence potion and the Acid flask's corrosion change the sheet's protection, as the shields do, where the original adds them when it works out the total (`Combatant.TotalProtection`). The sheet's protection isn't kept as a byte, so corrosion past it leaves it below 0 and the total floors at 0, as the original's does; kept as a byte, 3 less 7 wrapped to 252, and every blow on the corroded did 1. The totals differ only past 255.
 - One record can hold several effects; the original keys one per kind. The base game's records hold one each but Web of Starlight's (immobilise and 2d6) and Tap Stamina's.
 - Any spell, potion or flask can carry any effect type ([How effects land](#how-effects-land)); the original's code carries each instant one for its own kinds only. The base game's records hold them where the original has them, so nothing it plays changes.
 - Trek's ageing runs every tick, and what the effects do each round once a 30 fps frame (`Cadence.FrameTicks`), as the original does once a drawn frame.

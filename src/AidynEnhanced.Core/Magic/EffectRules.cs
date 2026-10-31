@@ -54,7 +54,9 @@ internal static class EffectRules
                 sheet.Skills.Modify(SkillId.FromRecord(s.Skill), s.Amount.At(power));
                 break;
             case ProtectionEffect p:
-                sheet.Protection = (byte)(sheet.Protection + p.Amount.At(power));
+                // Not as a byte: Acid's corrosion takes it below 0, which the original's total floors at 0 rather than wrapping
+                // (Combatant.TotalProtection adds the corrosion), and taking the effect off puts it back exactly.
+                sheet.Protection += p.Amount.At(power);
                 break;
             case ImmobiliseEffect when target.Combatant is { } held:
                 held.Flags &= ~CombatantFlags.Active;
@@ -138,7 +140,7 @@ internal static class EffectRules
                 sheet.Skills.Modify(SkillId.FromRecord(s.Skill), -s.Amount.At(power));
                 break;
             case ProtectionEffect p:
-                sheet.Protection = (byte)(sheet.Protection - p.Amount.At(power) + (p.Leaves?.At(power) ?? 0));
+                sheet.Protection += -p.Amount.At(power) + (p.Leaves?.At(power) ?? 0);
                 break;
             case ImmobiliseEffect when target.Combatant is { } held:
                 held.Flags |= CombatantFlags.Active;

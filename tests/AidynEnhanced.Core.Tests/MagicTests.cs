@@ -67,6 +67,21 @@ public sealed class MagicTests
     }
 
     [Fact]
+    public void CorrosionPastTheProtectionLeavesNoneRatherThanWrapping()
+    {
+        // Acid's corrosion, as IMagicHost.Burst lands it: 7 off a sheet that has 3. The original takes it off the total, floored
+        // at 0 (Combatant.TotalProtection); as a byte it was 252, and every blow did 1.
+        var alaron = Alaron();
+        alaron.Protection = 3;
+        var corrosion = alaron.AddEffect(RecordId.Hex(RecordTypes.Item, 0x1000 + (int)BasePotion.AcidFlask), [new ProtectionEffect(Magnitude.Fixed(-7))], 1, MagicSchool.None, 0, 9999,
+            null, null, null)!;
+        Assert.Equal(-4, alaron.Protection);
+        Assert.Equal(0, AidynEnhanced.Core.Combat.Battle.Protection(alaron, behind: true));
+        alaron.RemoveEffect(corrosion);
+        Assert.Equal(3, alaron.Protection);
+    }
+
+    [Fact]
     public void CheatDeathHealsTwiceItsMarginAndEnds()
     {
         var alaron = Alaron();

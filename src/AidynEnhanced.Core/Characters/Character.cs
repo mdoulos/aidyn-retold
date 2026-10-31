@@ -105,7 +105,11 @@ public sealed partial class Character
 
     public bool Heavy => Record.Heavy;
 
-    /// <summary>Protection from spells and gear, over the entity's base (<c>CharExp::protection</c>), as a byte.</summary>
+    /// <summary>
+    /// Protection from spells and gear, over the entity's base (<c>CharExp::protection</c>), a byte in the original. Acid's
+    /// corrosion can take it below 0 while it lasts, as the original takes it off the total (<c>Combatant.TotalProtection</c>),
+    /// where a byte would wrap it to nearly 256.
+    /// </summary>
     public int Protection { get; set; }
 
     /// <summary>Damage from gear, over the entity's base (<c>CharExp::damage</c>), as a byte.</summary>

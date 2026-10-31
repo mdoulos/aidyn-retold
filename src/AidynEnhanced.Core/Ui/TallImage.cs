@@ -2,23 +2,25 @@ namespace AidynEnhanced.Core.Ui;
 
 /// <summary>
 /// A pause menu tab's image made taller for the full-height menu, the port's (<see cref="Settings.FullHeightMenus"/>): its torn top
-/// and bottom edges moved out by <see cref="Above"/> and <see cref="Below"/>, so on the original's 240 lines the parchment runs past
-/// the screen's top and bottom, and the gaps filled with its own plain parchment. Everything painted into it stays where it was,
-/// under the widgets drawn over it.
+/// and bottom edges moved out by <see cref="Above"/> and <see cref="Below"/>, so on the original's 240 lines the parchment nearly
+/// reaches the screen's top and bottom, and the gaps filled with its own plain parchment. Everything painted into it stays where it
+/// was, under the widgets drawn over it.
 /// </summary>
 /// <remarks>
 /// It works a column at a time, as the torn edges wander: the edge and its darkened rim, <see cref="Rim"/> rows in from either end
-/// of the parchment unbroken through the column's middle, move out, with any frayed flap beyond, and the gap is the plain image's parchment from rows well inside it, the same rows in every
-/// column, so it runs on across columns and from one tab into the next as the images do. It fades over <see cref="Blend"/> rows into
-/// the parchment just inside the edge at either end, so it meets the rim and the body without a seam.
+/// of the parchment unbroken through the column's middle, move out, with any frayed flap beyond, and the gap is the plain image's
+/// parchment from rows well inside it, the same rows in every column, so it runs on across columns and from one tab into the next as
+/// the images do. It fades over <see cref="Blend"/> rows into the parchment just inside the edge at either end, so it meets the rim
+/// and the body without a seam.
 /// </remarks>
 public static class TallImage
 {
     /// <summary>
-    /// How far the top and bottom edges move out, in lines: past the original's screen with every tab's deepest tear, the World
-    /// tab's, down to row 33 at the top and up to row 198 at the bottom.
+    /// How far the top and bottom edges move out, in lines: the System tab's torn edge reaches row 13 at the top and row 222 at the
+    /// bottom, and moved out it reaches lines 6 and 234, where the user marked the parchment's edge (Oct 31, 2026), the game showing
+    /// beyond it. The other tabs' edges move as far, keeping their own tears.
     /// </summary>
-    public const int Above = 34, Below = 43;
+    public const int Above = 7, Below = 12;
 
     /// <summary>How many rows in from the edge its darkened rim runs, which moves out with it.</summary>
     private const int Rim = 5;

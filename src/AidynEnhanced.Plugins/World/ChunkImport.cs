@@ -80,13 +80,14 @@ public static class ChunkImport
             }
         }
 
-        var baseCollision = CollisionMesh.For(plugins, chunk.Map);
+        // The collision as the plugins have it, the mod's own if it has one already.
+        var currentCollision = CollisionMesh.For(plugins, chunk.Map);
         if (collision is not null)
         {
             collision = CollisionRules.WithFlags(collision);
-            if (!force && SameCollision(baseCollision, collision))
+            if (!force && SameCollision(currentCollision, collision))
             {
-                report.Add("  collision: as the base has it, not written");
+                report.Add("  collision: as it is, not written");
                 collision = null;
             }
             else
@@ -98,7 +99,10 @@ public static class ChunkImport
         }
 
         var objects = Objects(map, objectNodes, report);
-        var result = MapPatch.Build(baseMap, objects, collision ?? baseCollision, collisionChanged: collision is not null);
+        // The grid goes by the collision the mod gives, written now or before, against what's below it: a mod's collision
+        // needs its grid however few objects changed, or the patch that carries it would be taken out below.
+        var inEffect = collision ?? currentCollision;
+        var result = MapPatch.Build(baseMap, objects, inEffect, collisionChanged: !SameCollision(CollisionMesh.For(below, chunk.Map), inEffect));
         report.Add($"  objects: {result.Summary}");
         var patch = result.Patch;
         var patchFile = Path.Combine("maps", set.Label + ".json");
@@ -205,7 +209,7 @@ public static class ChunkImport
         return triangles;
     }
 
-    private static bool SameCollision(IReadOnlyList<CollisionTriangle> a, IReadOnlyList<CollisionTriangle> b)
+    internal static bool SameCollision(IReadOnlyList<CollisionTriangle> a, IReadOnlyList<CollisionTriangle> b)
     {
         if (a.Count != b.Count)
             return false;

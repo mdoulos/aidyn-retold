@@ -94,7 +94,10 @@ public sealed class WorldEdits
         {
             var merged = plugins.Get<MapRecord>(mapId);
             var baseMap = below.TryGet<MapRecord>(mapId) ?? new MapRecord(mapId, []);
-            var result = MapPatch.Build(baseMap, Objects(merged), CollisionMesh.For(plugins, mapId));
+            // A collision of the mod's own keeps its grid, though the objects come back to the base's.
+            var collision = CollisionMesh.For(plugins, mapId);
+            var result = MapPatch.Build(baseMap, Objects(merged), collision,
+                collisionChanged: !ChunkImport.SameCollision(CollisionMesh.For(below, mapId), collision));
             var file = Path.Combine("maps", (placements.First(mapId)?.Set.Label ?? "maps") + ".json");
             if (result.Patch is not null)
                 mod.WriteRecord(file, result.Patch);

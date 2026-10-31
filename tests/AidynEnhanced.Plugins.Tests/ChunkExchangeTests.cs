@@ -199,6 +199,30 @@ public sealed class ChunkExchangeTests : IDisposable
     }
 
     [Fact]
+    public void A_mod_s_own_collision_keeps_its_grid_when_imported_again_unchanged()
+    {
+        // The mod's floor is four times as wide as the base's, so its grid has more cells.
+        var mod = ModFolder.OpenOrCreate(_temp.Root, "wider");
+        mod.WriteAsset(_chunk.Map, "glb", CollisionMesh.Write(CollisionRules.WithFlags(
+        [
+            new CollisionTriangle(new(0, 0, 0), new(0, 0, 40), new(40, 0, 40), 4, CollisionRole.Normal, CollisionFlags.None),
+            new CollisionTriangle(new(0, 0, 0), new(40, 0, 40), new(40, 0, 0), 4, CollisionRole.Normal, CollisionFlags.None),
+        ]), "wider"));
+        var installed = PluginSet.Load([Path.Combine(_temp.Root, "aidyn"), mod.Directory]);
+        var first = ChunkImport.Import(installed, ChunkExport.Export(installed, _set, _chunk), mod);
+        Assert.NotNull(first.Patch?["grid"]);
+
+        // Exported and imported again with nothing changed, the grid stays.
+        installed = PluginSet.Load([Path.Combine(_temp.Root, "aidyn"), mod.Directory]);
+        var again = ChunkImport.Import(installed, ChunkExport.Export(installed, _set, _chunk), mod);
+        Assert.False(again.CollisionWritten);
+        Assert.NotNull(again.Patch?["grid"]);
+        var map = PluginSet.Load([Path.Combine(_temp.Root, "aidyn"), mod.Directory]).Get<MapRecord>(_chunk.Map);
+        Assert.Equal((8, 8), (map.Grid!.Columns, map.Grid.Rows));
+        Assert.NotEqual(8, _base.Get<MapRecord>(_chunk.Map).Grid?.Columns);
+    }
+
+    [Fact]
     public void A_field_the_game_can_t_read_names_its_node()
     {
         var glb = ChunkExport.Export(_base, _set, _chunk);

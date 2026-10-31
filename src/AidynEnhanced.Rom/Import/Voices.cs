@@ -108,12 +108,15 @@ public static class Voices
     private static readonly Dictionary<RecordId, Voice> ById = ByPortrait.ToDictionary(p => RecordId.Hex(RecordTypes.Image, p.Key), p => p.Value);
 
     /// <summary>
-    /// The speakers whose pitch is set outright rather than by their voice and height, by portrait, the user's choice: Abrecan
-    /// halfway between Alaron's 0.72 (a man of 1.8) and Baird's 0.667 (a man of 2.1).
+    /// The speakers whose pitch is set outright rather than by their voice and height, by portrait, the user's choice by ear
+    /// (Oct 30, 2026): Abrecan 0.69 halfway between Alaron's 0.72 and Baird's 0.667 by height, then a tenth lower; Baird 0.57;
+    /// Becan 0.60, 15% under his 0.70 by height.
     /// </summary>
     private static readonly Dictionary<RecordId, float> PitchById = new()
     {
-        [RecordId.Hex(RecordTypes.Image, 0x0106)] = 0.69f, // Abrecan
+        [RecordId.Hex(RecordTypes.Image, 0x0106)] = 0.62f, // Abrecan
+        [RecordId.Hex(RecordTypes.Image, 0x010C)] = 0.57f, // Baird
+        [RecordId.Hex(RecordTypes.Image, 0x0113)] = 0.60f, // Becan
     };
 
     /// <summary>The voice of a speaker with this portrait, or none for a creature's or no portrait.</summary>

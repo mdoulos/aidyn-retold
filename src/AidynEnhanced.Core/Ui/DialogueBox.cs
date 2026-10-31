@@ -179,11 +179,12 @@ public sealed class DialogueBox(TextLayout font, int borderWidth, int borderHeig
 
     /// <summary>
     /// Shows a new page, with the cursor on its first choice, and starts printing its line (<see cref="GlyphsPerTick"/>). The same
-    /// line shown again, as a conversation's refresh after a tick does, goes on printing where it was.
+    /// line shown again while it's still printing, as a conversation's refresh after a tick does, goes on where it was; shown
+    /// again once it had finished, as talking to the same wanderer again does, it prints from the start.
     /// </summary>
     public DialogueBoxLayout Show(ScriptPage page)
     {
-        var sameLine = _page is not null && !_choicesAlone && page.Line == _page.Line;
+        var sameLine = _page is not null && !_choicesAlone && page.Line == _page.Line && !LineComplete;
         _page = page;
         _choicesAlone = false;
         Highlight = 0;

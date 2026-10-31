@@ -355,6 +355,24 @@ public class DialogueBoxTests
     }
 
     [Fact]
+    public void TheSameLineShownAgainAfterItFinishedStartsOver()
+    {
+        // Talking to the same wanderer again shows its first line again: it prints, and sounds, as the first time.
+        var box = Box();
+        box.GlyphsPerTick = 1;
+        box.Voice = true;
+        var page = new ScriptPage(Line("abcdab", Trahern), []);
+        box.Show(page);
+        box.CompleteLine();
+        box.TakeBlips();
+
+        box.Show(page);
+        Assert.Equal((0, false), (box.RevealedGlyphs, box.LineComplete));
+        box.Step();
+        Assert.Equal((1, 1), (box.RevealedGlyphs, box.TakeBlips()));
+    }
+
+    [Fact]
     public void TheVoiceBlipsAtMostEveryThirdTick()
     {
         var box = Box();

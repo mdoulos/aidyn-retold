@@ -264,6 +264,35 @@ public class PartyMenuActionTests
         Assert.Equal(Sword.Id, member.Equipment.Weapon?.Id);
     }
 
+    /// <summary>In a battle's pause a worn item is its wearer's to take off on their turn, whoever's shown (1.0's 0x800360c0).</summary>
+    [Fact]
+    public void InABattlesPauseAWornItemWaitsForItsWearersTurn()
+    {
+        var brenna = PotionData.Member("Brenna", 1);
+        var (party, alaron) = Setup(null, brenna);
+        brenna.Equipment.Restore(ItemData.Inst(Sword));
+        var menu = Menu(party);
+        var changed = false;
+        menu.Combat = new CombatPause(alaron, _ => { }, _ => changed = true);
+
+        PointAt(menu, r => r.Item.Id == Sword.Id && r.Wearer == 1);
+        menu.Accept();
+        Assert.Equal(490, Line(menu));
+        Assert.Equal(Sword.Id, brenna.Equipment.Weapon?.Id);
+        Assert.False(changed);
+    }
+
+    /// <summary>The skills' popups are trek's alone, so A on the Healer in a battle's pause opens nothing.</summary>
+    [Fact]
+    public void TheSkillsPopupsDontOpenInABattlesPause()
+    {
+        var (party, alaron) = Setup(new SkillLevels(Healer: 3));
+        var menu = Menu(party);
+        menu.Combat = new CombatPause(alaron, _ => { }, _ => { });
+        OpenSkill(menu, Skill.Healer);
+        Assert.Null(menu.Crafting);
+    }
+
     /// <summary>Equipping from a stack leaves the cursor on what's left of it.</summary>
     [Fact]
     public void EquippingFromAStackLeavesTheCursorOnTheStack()

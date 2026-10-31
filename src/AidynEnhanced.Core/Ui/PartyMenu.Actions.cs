@@ -91,7 +91,9 @@ public sealed partial class PartyMenu
         }
         else if (List == PartyList.Inventory && Inventory.Current is { } item)
             Use(item);
-        else if (List == PartyList.Skills && Skills.Current is { } skill)
+        // The Alchemist's, Mechanic's and Healer's popups are trek's alone (WidgetSkillInfo::AFunc): in a battle's pause, healing or
+        // brewing would spend no turn.
+        else if (Combat is null && List == PartyList.Skills && Skills.Current is { } skill)
             OpenCrafting(skill.Skill);
     }
 
@@ -175,10 +177,12 @@ public sealed partial class PartyMenu
         }
     }
 
-    // The combat pause's A (PartyMenu.InventoryA): whether it did something, or null if it leaves the row to trek's rules.
+    // The combat pause's A (PartyMenu.InventoryA): whether it did something, or null if it leaves the row to trek's rules. A worn
+    // row is its wearer's to change, whoever's shown, and a carried one the member shown's (0x80036054-0x800360c4).
     private bool? UseInCombat(CombatPause combat, Character member, InventoryRow row)
     {
-        if (member != combat.Member)
+        var actor = row.Wearer is { } wearer ? Party.Slots.ElementAtOrDefault(wearer) : member;
+        if (actor != combat.Member)
         {
             Say(_text[row.Wearer is null ? MenuText.NotTheirTurnToEquip : MenuText.NotTheirTurnToRemove]);
             return false;

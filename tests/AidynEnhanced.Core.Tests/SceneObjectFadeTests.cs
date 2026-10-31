@@ -119,7 +119,19 @@ public class SceneObjectFadeTests
         var twice = new ObjectDistance(2);
         Assert.Equal([255, 0], At(tree, 25, twice));
         Assert.Equal([0, 255], At(tree, 50, twice));
-        Assert.Equal([0, 127], At(tree, 79.5f, twice));
+        Assert.Equal([0, 127], At(tree, 79, twice));
+    }
+
+    [Fact]
+    public void AFartherObjectDistanceStretchesTheFades()
+    {
+        // At 2×, the far level fades in from 26 to 28 and the near one out from 28 to 30, the last out from 78 to 80.
+        var tree = Tree(Vector3.Zero, SceneObjectFlags.Solid);
+        var twice = new ObjectDistance(2);
+        Assert.Equal([255, 0], At(tree, 25.9f, twice));
+        Assert.Equal([255, 127], At(tree, 27, twice));
+        Assert.Equal([127, 255], At(tree, 29, twice));
+        Assert.Equal([0, 63], At(tree, 79.5f, twice));
     }
 
     [Fact]
@@ -148,13 +160,13 @@ public class SceneObjectFadeTests
     [Fact]
     public void AFartherObjectDistanceKeepsWhereAnEmptyLevelGivesWay()
     {
-        // At 2×, the light still vanishes from 14 to 13 as the data has it, but reaches out to 80 like everything else.
+        // At 2×, the light still vanishes from 14 to 13 as the data has it, but reaches out to 80 like everything else, fading over its last 2.
         var tree = Tree(Vector3.Zero, SceneObjectFlags.Solid);
         var light = tree with { Models = [tree.Models[0] with { Empty = true }, tree.Models[1]] };
         foreach (var range in new[] { new ObjectDistance(2), new ObjectDistance(2, NearestDetail: true) })
         {
             // The empty level's own alpha draws nothing, so only the billboard's matters.
-            Assert.Equal([0, 127, 255, 127], new[] { 12, 13.5f, 50, 79.5f }.Select(d => At(light, d, range)[1]));
+            Assert.Equal([0, 127, 255, 127], new[] { 12, 13.5f, 50, 79f }.Select(d => At(light, d, range)[1]));
         }
     }
 

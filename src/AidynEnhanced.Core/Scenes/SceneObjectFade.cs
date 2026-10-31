@@ -137,18 +137,25 @@ public static class SceneObjectFade
     }
 
     /// <summary>Level <paramref name="i"/>'s alpha by its distance alone (<see cref="LevelAlpha"/>).</summary>
-    private static byte Level(SceneObject o, int i, float distance, ObjectDistance range) =>
-        LevelAlpha(distance, i == 0 ? 0 : Boundary(o, i - 1, range), Boundary(o, i, range));
+    private static byte Level(SceneObject o, int i, float distance, ObjectDistance range)
+    {
+        var (near, nearUnit) = i == 0 ? (0f, 1f) : (Boundary(o, i - 1, range), Stretch(o, i - 1, range));
+        return LevelAlpha(distance, near, Boundary(o, i, range), nearUnit, Stretch(o, i, range));
+    }
+
+    /// <summary>Where level <paramref name="i"/> ends, stretched by <see cref="Stretch"/>.</summary>
+    private static float Boundary(SceneObject o, int i, ObjectDistance range) => o.Models[i].DrawDistance * Stretch(o, i, range);
 
     /// <summary>
-    /// Where level <paramref name="i"/> ends, stretched by <see cref="ObjectDistance.Scale"/>, except where an empty level
-    /// gives way to one that draws something: there an object vanishes as the player nears it, Oriana's path lights
-    /// among them, and the data's own distance is kept whatever the draw distance (the user's choice).
+    /// How much level <paramref name="i"/>'s end and the fades about it are stretched: by <see cref="ObjectDistance.Scale"/>,
+    /// except where an empty level gives way to one that draws something. There an object vanishes as the player nears it,
+    /// Oriana's path lights among them, and the data's own distance and fade are kept whatever the draw distance (the
+    /// user's choice).
     /// </summary>
-    private static float Boundary(SceneObject o, int i, ObjectDistance range)
+    private static float Stretch(SceneObject o, int i, ObjectDistance range)
     {
         var vanishes = o.Models[i].Empty && i + 1 < o.Models.Count && !o.Models[i + 1].Empty;
-        return o.Models[i].DrawDistance * (vanishes ? 1 : range.Scale);
+        return vanishes ? 1 : range.Scale;
     }
 
     /// <summary>
@@ -191,19 +198,22 @@ public static class SceneObjectFade
     /// A level of detail's alpha at a distance, 0 where it isn't drawn: from 2 short of the previous
     /// level's distance, fading in over a unit, to its own distance, fading out over the last unit
     /// (<c>RenderVoxelScenes</c>). So as the player walks away, the next level fades in before this
-    /// one fades out.
+    /// one fades out. Under a farther Object Distance the units stretch with the distances, as
+    /// ReChronicled found a unit's fade 100 or more out reads as a pop (its 55472a9).
     /// </summary>
     /// <param name="near">The previous level's distance, 0 for the first.</param>
     /// <param name="far">This level's distance.</param>
-    public static byte LevelAlpha(float distance, float near, float far)
+    /// <param name="nearUnit">The unit about <paramref name="near"/>, 1 at the original's distances.</param>
+    /// <param name="farUnit">The unit about <paramref name="far"/>.</param>
+    public static byte LevelAlpha(float distance, float near, float far, float nearUnit = 1, float farUnit = 1)
     {
-        if (distance < near - 2 || far < distance)
+        if (distance < near - 2 * nearUnit || far < distance)
             return 0;
         byte alpha = 0xFF;
-        if (far - 1 < distance)
-            alpha = ColorBytes.Single((far - distance) * 255f);
-        if (distance < near - 1)
-            alpha = ColorBytes.Single((1 - (near - 1 - distance)) * 255f);
+        if (far - farUnit < distance)
+            alpha = ColorBytes.Single((far - distance) / farUnit * 255f);
+        if (distance < near - nearUnit)
+            alpha = ColorBytes.Single((1 - (near - nearUnit - distance) / nearUnit) * 255f);
         return alpha;
     }
 

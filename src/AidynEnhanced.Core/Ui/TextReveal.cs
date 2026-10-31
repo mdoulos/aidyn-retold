@@ -16,13 +16,95 @@ public enum TextSpeed
 }
 
 /// <summary>
+/// How a line is printed and sounded under a mood (<see cref="TextReveal.Presets"/>): the moods are mostly tempo and pitch, with the
+/// blip's shape and tremble only nudged, since a blip voice tires the ear.
+/// </summary>
+/// <param name="Rate">How fast the line prints, as a multiple of the speed setting's.</param>
+/// <param name="PitchStart">The blips' pitch at the line's start, as a multiple of the speaker's.</param>
+/// <param name="PitchEnd">The blips' pitch at the line's end, reached evenly through it: falling reads sad, rising pleading.</param>
+/// <param name="Decay">How long each blip rings, as a multiple of the usual: short and clipped is stern, long and soft is sad.</param>
+/// <param name="Jitter">How far each blip strays from its pitch, either way: a tremble.</param>
+/// <param name="CommaPause">How many ticks the printing holds after a comma, a semicolon or a colon.</param>
+/// <param name="StopPause">How many ticks it holds after a full stop, an exclamation mark or a question mark that ends a sentence.</param>
+public sealed record MoodPreset(float Rate, float PitchStart, float PitchEnd, float Decay, float Jitter, int CommaPause, int StopPause);
+
+/// <summary>
 /// The port's typewriter reveal and its voice, the user's choice (docs/systems/ui.md, the conversation box): a line prints
 /// a few glyphs a tick instead of showing whole, A completes it, and a short blip sounds as glyphs appear, pitched by the
 /// speaker, in the manner of Golden Sun. The original shows a line whole and plays no sound for it, which Text Speed's
 /// Original and Text Voice's Off keep. <see cref="DialogueBox"/> counts the glyphs and the blips, and the runtime plays them.
+/// A line is said in a mood (<see cref="MoodPreset"/>): its node's (<see cref="DialogueNode.Mood"/>), else one guessed from its
+/// text (<see cref="Guess"/>).
 /// </summary>
 public static class TextReveal
 {
+    /// <summary>How each mood prints and sounds. Neutral is the plain typewriter, with the slightest hold at punctuation.</summary>
+    public static readonly IReadOnlyDictionary<TextMood, MoodPreset> Presets = new Dictionary<TextMood, MoodPreset>
+    {
+        [TextMood.Neutral] = new(Rate: 1, PitchStart: 1, PitchEnd: 1, Decay: 1, Jitter: 0.04f, CommaPause: 3, StopPause: 8),
+        [TextMood.Stern] = new(Rate: 1.25f, PitchStart: 0.95f, PitchEnd: 0.95f, Decay: 0.6f, Jitter: 0.01f, CommaPause: 2, StopPause: 10),
+        [TextMood.Pleading] = new(Rate: 1.15f, PitchStart: 1, PitchEnd: 1.12f, Decay: 1.2f, Jitter: 0.08f, CommaPause: 6, StopPause: 6),
+        [TextMood.Sad] = new(Rate: 0.7f, PitchStart: 1, PitchEnd: 0.88f, Decay: 1.6f, Jitter: 0.03f, CommaPause: 8, StopPause: 16),
+        [TextMood.Glad] = new(Rate: 1.2f, PitchStart: 1.05f, PitchEnd: 1.1f, Decay: 0.9f, Jitter: 0.06f, CommaPause: 2, StopPause: 6),
+    };
+
+    /// <summary>The words that mark a line sad, pleading or glad when its punctuation doesn't settle it (<see cref="Guess"/>), matched whole, in any case.</summary>
+    private static readonly string[] SadWords = ["sorry", "alas", "dead", "died", "dying", "death", "lost", "gone", "grief", "mourn", "weep", "forgive", "never"];
+    private static readonly string[] PleadingWords = ["please", "beg", "help", "mercy", "spare", "must", "need"];
+    private static readonly string[] GladWords = ["thank", "thanks", "wonderful", "glad", "welcome", "splendid", "excellent", "happy", "joy", "delighted"];
+
+    /// <summary>The mood a line is said in: its node's, else <see cref="Guess"/>ed from its text.</summary>
+    public static TextMood MoodOf(string text, TextMood? tagged) => tagged ?? Guess(text);
+
+    /// <summary>
+    /// Guesses how a line is said from its text alone, for a node no mod has tagged: shouting (a word of two or more capitals,
+    /// not a name's initials or "I") or an exclamation mark is stern, unless the line also asks or pleads; an ellipsis is sad; a
+    /// question mark, or a pleading word, is pleading; a sad or a glad word is sad or glad; else neutral.
+    /// </summary>
+    public static TextMood Guess(string text)
+    {
+        var words = Words(text);
+        var shouts = words.Any(w => w.Length >= 2 && w.All(char.IsUpper) && w.Any(char.IsLetter));
+        var exclaims = text.Contains('!');
+        var asks = text.Contains('?');
+        var trailsOff = text.Contains("...") || text.Contains('…');
+        var lower = words.Select(w => w.ToLowerInvariant()).ToHashSet();
+        var pleads = asks || lower.Overlaps(PleadingWords);
+        if (shouts || exclaims)
+            return pleads && !shouts ? TextMood.Pleading : TextMood.Stern;
+        if (trailsOff)
+            return TextMood.Sad;
+        if (pleads)
+            return TextMood.Pleading;
+        if (lower.Overlaps(SadWords))
+            return TextMood.Sad;
+        if (lower.Overlaps(GladWords))
+            return TextMood.Glad;
+        return TextMood.Neutral;
+    }
+
+    /// <summary>The pitch a mood gives a blip, as a multiple of the speaker's, <paramref name="progress"/> of the way through the line (0 to 1).</summary>
+    public static float PitchAt(MoodPreset mood, float progress) =>
+        mood.PitchStart + (mood.PitchEnd - mood.PitchStart) * Math.Clamp(progress, 0, 1);
+
+    private static List<string> Words(string text)
+    {
+        var words = new List<string>();
+        var start = -1;
+        for (var i = 0; i <= text.Length; i++)
+        {
+            var letter = i < text.Length && (char.IsLetter(text[i]) || text[i] == '\'');
+            if (letter && start < 0)
+                start = i;
+            else if (!letter && start >= 0)
+            {
+                words.Add(text[start..i].Trim('\''));
+                start = -1;
+            }
+        }
+        return words;
+    }
+
     /// <summary>How many ticks pass at least between two blips, so fast text doesn't buzz: 20 a second at most.</summary>
     public const int TicksBetweenBlips = 3;
 

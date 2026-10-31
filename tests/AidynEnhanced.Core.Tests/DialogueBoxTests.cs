@@ -434,4 +434,116 @@ public class DialogueBoxTests
         Assert.Equal(1, TextReveal.PitchOf(new DbRecord(Trahern, "Trahern")));
         Assert.Equal(1, TextReveal.PitchOf(null));
     }
+
+    // Moods (TextReveal.Presets, Guess).
+
+    [Theory]
+    [InlineData("Go now!", TextMood.Stern)]
+    [InlineData("You DARE?", TextMood.Stern)]
+    [InlineData("Will you help us?", TextMood.Pleading)]
+    [InlineData("Please, I beg you!", TextMood.Pleading)]
+    [InlineData("He is gone...", TextMood.Sad)]
+    [InlineData("I am sorry for your loss.", TextMood.Sad)]
+    [InlineData("Thank you, friend.", TextMood.Glad)]
+    [InlineData("The road runs north to Erromon.", TextMood.Neutral)]
+    [InlineData("I will.", TextMood.Neutral)]
+    public void AMoodIsGuessedFromTheText(string text, TextMood mood)
+    {
+        Assert.Equal(mood, TextReveal.Guess(text));
+    }
+
+    [Fact]
+    public void ATagWinsOverTheGuess()
+    {
+        Assert.Equal(TextMood.Glad, TextReveal.MoodOf("He is gone...", TextMood.Glad));
+        Assert.Equal(TextMood.Sad, TextReveal.MoodOf("He is gone...", null));
+
+        var box = Box();
+        box.GlyphsPerTick = 1;
+        box.Show(new ScriptPage(new ScriptLine(0, Trahern, "abcd", TextMood.Stern), []));
+        Assert.Equal(TextMood.Stern, box.Mood);
+    }
+
+    [Fact]
+    public void ThePitchBendsThroughTheLine()
+    {
+        var sad = TextReveal.Presets[TextMood.Sad];
+        Assert.Equal(sad.PitchStart, TextReveal.PitchAt(sad, 0));
+        Assert.Equal(sad.PitchEnd, TextReveal.PitchAt(sad, 1));
+        Assert.Equal((sad.PitchStart + sad.PitchEnd) / 2, TextReveal.PitchAt(sad, 0.5f), 1e-6f);
+        Assert.Equal(sad.PitchEnd, TextReveal.PitchAt(sad, 2));
+    }
+
+    [Fact]
+    public void ThePrintingHoldsAfterACommaAndASentencesEnd()
+    {
+        // The test font has no comma or full stop, so a word's letters stand for them: none hold.
+        var box = Box();
+        box.GlyphsPerTick = 1;
+        box.Show(new ScriptPage(new ScriptLine(0, Trahern, "ab, cd. ab", TextMood.Neutral), []));
+        for (var i = 0; i < 6; i++)
+            box.Step();
+        Assert.Equal(6, box.RevealedGlyphs);
+    }
+
+    [Fact]
+    public void AMoodsRateScalesTheSpeed()
+    {
+        var box = Box();
+        box.GlyphsPerTick = 1;
+        box.Show(new ScriptPage(new ScriptLine(0, Trahern, "abcdabcdab", TextMood.Sad), []));
+        // Sad prints at 0.7 a tick: 7 glyphs in 10 ticks.
+        for (var i = 0; i < 10; i++)
+            box.Step();
+        Assert.Equal(7, box.RevealedGlyphs);
+        Assert.Equal(0.7f, box.Progress, 1e-6f);
+    }
+
+    /// <summary>A box in a font that has a comma and a full stop too, at glyphs 5 and 7's widths.</summary>
+    private static DialogueBox PunctuatedBox() => new(new TextLayout(new FontRecord(
+        RecordId.Decimal(RecordTypes.Font, 0), RecordId.Hex(RecordTypes.Image, 0x1C), 4, 2, 8, 9,
+        [3, 5, 6, 7, 1, 4, 1, 8],
+        new Dictionary<string, int> { [" "] = 0, ["a"] = 1, ["b"] = 2, [","] = 5, ["."] = 7, ["!"] = 6 }, null)), 52, 52, Player);
+
+    [Fact]
+    public void ThePrintingHoldsAtPunctuationAsTheMoodHasIt()
+    {
+        var box = PunctuatedBox();
+        box.GlyphsPerTick = 1;
+        box.Show(new ScriptPage(new ScriptLine(0, Trahern, "ab, ab. a", TextMood.Neutral), []));
+        // a, b, then the comma: 3 glyphs in 3 ticks, then a hold of 3.
+        for (var i = 0; i < 3; i++)
+            box.Step();
+        Assert.Equal(3, box.RevealedGlyphs);
+        for (var i = 0; i < 3; i++)
+            box.Step();
+        Assert.Equal(3, box.RevealedGlyphs);
+        box.Step();
+        Assert.Equal(4, box.RevealedGlyphs);
+        // a, b, then the full stop at glyph 6, then a hold of 8.
+        box.Step();
+        box.Step();
+        Assert.Equal(6, box.RevealedGlyphs);
+        for (var i = 0; i < 8; i++)
+            box.Step();
+        Assert.Equal(6, box.RevealedGlyphs);
+        box.Step();
+        Assert.Equal((7, true), (box.RevealedGlyphs, box.LineComplete));
+    }
+
+    [Fact]
+    public void AnEllipsisHoldsOnceAndCompletingSkipsTheHold()
+    {
+        var box = PunctuatedBox();
+        box.GlyphsPerTick = 1;
+        box.Show(new ScriptPage(new ScriptLine(0, Trahern, "a... b"), []));
+        // Sad prints at 0.7 a tick: a and three dots take 6 ticks, with no hold between the dots, then the sad hold after the last.
+        for (var i = 0; i < 6; i++)
+            box.Step();
+        Assert.Equal((4, TextMood.Sad), (box.RevealedGlyphs, box.Mood));
+        box.Step();
+        Assert.Equal(4, box.RevealedGlyphs);
+        box.CompleteLine();
+        Assert.True(box.LineComplete);
+    }
 }

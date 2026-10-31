@@ -81,13 +81,28 @@ public enum DialogueNodeKind
 /// </param>
 /// <param name="Links">Node indices, in order. What they mean depends on the <see cref="Kind"/>.</param>
 /// <param name="Selects">When a Case links to this node: the values that select it. A node without one is never selected.</param>
+/// <param name="Mood">
+/// How the line is said, for the port's text voice and, later, faces (<c>AidynEnhanced.Core.Ui.TextReveal</c>): the port's own, which
+/// the importer leaves unset and a mod patches. Unset, the port guesses from the text's punctuation and a few words.
+/// </param>
 public sealed record DialogueNode(
     int Index,
     DialogueNodeKind Kind,
     string Text = "",
     IReadOnlyList<DialogueOp>? Ops = null,
     IReadOnlyList<int>? Links = null,
-    DialogueRange? Selects = null);
+    DialogueRange? Selects = null,
+    TextMood? Mood = null);
+
+/// <summary>How a line is said: the moods the port's text voice prints and sounds a line under (<c>TextReveal</c>).</summary>
+public enum TextMood
+{
+    Neutral,
+    Stern,
+    Pleading,
+    Sad,
+    Glad,
+}
 
 /// <summary>A range of values a Case matches.</summary>
 /// <param name="Max">Inclusive. Null for no upper bound.</param>

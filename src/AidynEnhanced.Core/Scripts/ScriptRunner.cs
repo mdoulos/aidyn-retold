@@ -20,7 +20,8 @@ public sealed record ScriptStart(int RefPoint = 0, RecordId? MapObject = null);
 /// when the page was made. A page's line has its leading spaces trimmed, as the original trims
 /// them; choices keep theirs.
 /// </param>
-public sealed record ScriptLine(int Node, RecordId? Speaker, string Text);
+/// <param name="Mood">How the line is said, if its node says (<see cref="DialogueNode.Mood"/>); else the port guesses from the text.</param>
+public sealed record ScriptLine(int Node, RecordId? Speaker, string Text, TextMood? Mood = null);
 
 /// <summary>
 /// What a script shows: a line, and choices under it if it's a menu. When the first choice has the
@@ -304,7 +305,7 @@ public sealed class ScriptRunner
         {
             if (_world.PlayerName is { } name)
                 text = text.Replace(PlayerToken, name, StringComparison.Ordinal);
-            _lines.Add(new ScriptLine(node, _speaker, text));
+            _lines.Add(new ScriptLine(node, _speaker, text, Node(node).Mood));
         }
     }
 

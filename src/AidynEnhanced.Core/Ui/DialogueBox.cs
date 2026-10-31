@@ -111,8 +111,9 @@ public sealed class DialogueBox(TextLayout font, int borderWidth, int borderHeig
     private bool _choicesAlone;
     private int _borderY = BaseTop;
     private readonly MenuPulse _pulse = new(Cadence.FrameTicks, PulseFrames);
-    private int _totalGlyphs, _revealed, _blips, _ticksSinceBlip = TextReveal.TicksBetweenBlips;
+    private int _totalGlyphs, _revealed, _blips, _ticksSinceBlip = TextReveal.TicksBetweenBlips, _pause;
     private float _revealAccumulated;
+    private readonly List<char> _glyphChars = [];
 
     /// <summary>
     /// The portrait border's size (image 0x00DF, 52 × 52), which the layout is built
@@ -138,6 +139,15 @@ public sealed class DialogueBox(TextLayout font, int borderWidth, int borderHeig
 
     /// <summary>How many of the line's glyphs, in the order <see cref="TextLayout.Print"/> places them, are shown so far.</summary>
     public int RevealedGlyphs => _revealed;
+
+    /// <summary>How far through the line the printing is, 0 to 1; 1 with the line shown whole.</summary>
+    public float Progress => _totalGlyphs == 0 ? 1 : (float)_revealed / _totalGlyphs;
+
+    /// <summary>The mood the line is said in (<see cref="TextReveal.MoodOf"/>), which its printing and its blips follow.</summary>
+    public TextMood Mood { get; private set; }
+
+    /// <summary>How the line prints and sounds under its <see cref="Mood"/>.</summary>
+    public MoodPreset Preset => TextReveal.Presets[Mood];
 
     /// <summary>Whether the whole line is up, so its choices show and A moves on; always, with the line shown whole.</summary>
     public bool LineComplete => _revealed >= _totalGlyphs;
@@ -189,10 +199,40 @@ public sealed class DialogueBox(TextLayout font, int borderWidth, int borderHeig
 
     private void StartReveal(DialogueBoxLayout layout)
     {
-        _totalGlyphs = layout.Line is { } line ? font.Print(line.Text, line.X, line.Y, line.Bounds, LineColor).Glyphs.Count : 0;
+        _glyphChars.Clear();
+        if (layout.Line is { } line)
+        {
+            // The glyphs in Print's order, with their characters, so the printing can hold at punctuation. Print leaves out what's
+            // clipped, so a line too tall for the box completes a little early, which the view's Take hides.
+            foreach (var c in line.Text)
+            {
+                if (c != '\n' && c != ' ' && font.Glyph(c) is not null)
+                    _glyphChars.Add(c);
+            }
+            _totalGlyphs = Math.Min(_glyphChars.Count, font.Print(line.Text, line.X, line.Y, line.Bounds, LineColor).Glyphs.Count);
+        }
+        else
+        {
+            _totalGlyphs = 0;
+        }
+        Mood = TextReveal.MoodOf(_page!.Line.Text, _page.Line.Mood);
         _revealed = GlyphsPerTick > 0 ? 0 : _totalGlyphs;
         _revealAccumulated = 0;
+        _pause = 0;
         _ticksSinceBlip = TextReveal.TicksBetweenBlips;
+    }
+
+    /// <summary>How many ticks the printing holds after the glyph at <paramref name="i"/>: the mood's pause at a sentence's end or a comma.</summary>
+    private int PauseAfter(int i)
+    {
+        var c = _glyphChars[i];
+        if (c is '.' or '!' or '?')
+        {
+            // An ellipsis or a "?!" holds once, after its last mark.
+            var next = i + 1 < _glyphChars.Count ? _glyphChars[i + 1] : ' ';
+            return next is '.' or '!' or '?' ? 0 : Preset.StopPause;
+        }
+        return c is ',' or ';' or ':' ? Preset.CommaPause : 0;
     }
 
     /// <summary>Brings up the choices under a line that showed alone first.</summary>
@@ -259,15 +299,24 @@ public sealed class DialogueBox(TextLayout font, int borderWidth, int borderHeig
         }
     }
 
-    /// <summary>Advances the cursor's pulse by one 60 Hz tick, and prints the line's next glyphs (<see cref="GlyphsPerTick"/>).</summary>
+    /// <summary>
+    /// Advances the cursor's pulse by one 60 Hz tick, and prints the line's next glyphs (<see cref="GlyphsPerTick"/>, at the mood's
+    /// rate), holding after punctuation as the mood has it.
+    /// </summary>
     public void Step()
     {
         _pulse.Step();
         _ticksSinceBlip++;
         if (LineComplete)
             return;
-        _revealAccumulated += GlyphsPerTick;
-        while (_revealAccumulated >= 1 && _revealed < _totalGlyphs)
+        if (_pause > 0)
+        {
+            _pause--;
+            return;
+        }
+        // A rate such as 0.7 a tick sums a hair short of a whole glyph on its tenth tick, so a whole is taken a little early.
+        _revealAccumulated += GlyphsPerTick * Preset.Rate;
+        while (_revealAccumulated >= 1 - 1e-3f && _revealed < _totalGlyphs)
         {
             _revealAccumulated -= 1;
             _revealed++;
@@ -275,6 +324,12 @@ public sealed class DialogueBox(TextLayout font, int borderWidth, int borderHeig
             {
                 _blips++;
                 _ticksSinceBlip = 0;
+            }
+            _pause = PauseAfter(_revealed - 1);
+            if (_pause > 0)
+            {
+                _revealAccumulated = 0;
+                break;
             }
         }
     }

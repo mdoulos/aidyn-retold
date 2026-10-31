@@ -249,6 +249,17 @@ public class ControlBindingsTests : IDisposable
         Assert.True(new Settings().Controls.IsDefault);
     }
 
+    [Fact]
+    public void SourcesInAFileReadInTheOrderTheirControlTakesThem()
+    {
+        // As a hand-edited file might list them: the defaults, out of order, which are still the defaults.
+        var defaults = new Settings().Controls.Get(GameControls.MenuCursor);
+        var bindings = new Settings().Controls;
+        bindings.Load(GameControls.MenuCursor, defaults.Reverse());
+        Assert.Equal(defaults, bindings.Get(GameControls.MenuCursor));
+        Assert.True(bindings.IsDefault);
+    }
+
     [Theory]
     [InlineData(GameMode.Trek, Situation.Trek)]
     [InlineData(GameMode.Menu, Situation.Menus)]

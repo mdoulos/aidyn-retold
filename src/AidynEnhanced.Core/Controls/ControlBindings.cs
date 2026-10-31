@@ -142,6 +142,10 @@ public sealed class ControlBindings
             if (control.Essential && !list.Any(b => Binding.DeviceOf(b) == device))
                 list.AddRange(control.Defaults(device));
         }
+        // Sources in the order the control allows them, device by device, as SetSources keeps them: the options' rows and the
+        // check for a default compare them in that order.
+        if (control.Kind == ControlKind.Sources)
+            list = [.. Enum.GetValues<ControlDevice>().SelectMany(control.AllowedOn).Where(list.Contains)];
         _bindings[id] = list;
         Version++;
     }

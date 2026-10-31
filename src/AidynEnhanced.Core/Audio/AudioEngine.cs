@@ -305,7 +305,10 @@ public sealed class AudioEngine
             if (noteOn && sound)
             {
                 StopVoice(track);
-                StartVoice(ref track, p.Sequence.Instruments[track.Instrument], VoiceVolume(p, track), FinalPan(p.Pan, track.Pan), p.Priority);
+                // An instrument the sequence doesn't have, which only a mod's could name, plays nothing: on the audio thread, a
+                // throw would end the game.
+                if (track.Instrument < p.Sequence.Instruments.Count)
+                    StartVoice(ref track, p.Sequence.Instruments[track.Instrument], VoiceVolume(p, track), FinalPan(p.Pan, track.Pan), p.Priority);
             }
         }
     }

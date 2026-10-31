@@ -17,9 +17,14 @@ namespace AidynEnhanced.Plugins.Records;
 /// </param>
 /// <param name="VoicePitch">
 /// The pitch of the blips the port's conversation box sounds as this speaker's lines print, as a multiple of the blip's own: the port's
-/// own, which a mod sets outright in place of the voice and height; none, as the importer writes.
+/// own, which a mod sets outright in place of the voice and height; none, as the importer writes for most.
 /// </param>
-public sealed record DbRecord(RecordId Id, string Name, RecordId? Portrait = null, EntityBody? Body = null, Voice? Voice = null, float? VoicePitch = null);
+/// <param name="VoiceTone">
+/// The tone of those blips, one of the port's named tones (<c>AidynEnhanced.Core.Ui.TextReveal.Tones</c>: plain, soldier, soft, bright,
+/// buzzy, hollow, gravel): the port's own, which the importer sets for a few and a mod can patch; none is plain.
+/// </param>
+public sealed record DbRecord(RecordId Id, string Name, RecordId? Portrait = null, EntityBody? Body = null, Voice? Voice = null, float? VoicePitch = null,
+    string? VoiceTone = null);
 
 /// <summary>A speaker's voice, for the port's text voice: a man's, a woman's, or a big man's, deep whatever his height. A creature has none.</summary>
 public enum Voice

@@ -28,6 +28,29 @@ public enum TextSpeed
 /// <param name="StopPause">How many ticks it holds after a full stop, an exclamation mark or a question mark that ends a sentence.</param>
 public sealed record MoodPreset(float Rate, float PitchStart, float PitchEnd, float Decay, float Jitter, int CommaPause, int StopPause);
 
+/// <summary>The waveform a voice tone's blip is made of.</summary>
+public enum Waveform
+{
+    /// <summary>A sine with a quarter of its third harmonic: the plain blip.</summary>
+    Soft,
+    Sine,
+    Square,
+    Saw,
+    Triangle,
+}
+
+/// <summary>
+/// A speaker's tone (<see cref="TextReveal.Tones"/>): what the blip is made of and how it rises and dies, which sets who is speaking
+/// where the mood sets how. A hard, instant attack and a short ring are clipped and precise; a slow swell and a long ring are
+/// gentle; a square is bright, a saw buzzy, a triangle hollow, and noise makes it gravelly.
+/// </summary>
+/// <param name="Name">The name a record's <c>voiceTone</c> gives.</param>
+/// <param name="Attack">How long the blip takes to rise, in seconds.</param>
+/// <param name="Decay">How long it rings, as a multiple of the usual, which the mood's multiplies further.</param>
+/// <param name="Noise">How much of the blip is noise, 0 to 1.</param>
+/// <param name="Gain">Its loudness, as a multiple of the usual.</param>
+public sealed record VoiceTone(string Name, Waveform Waveform, float Attack, float Decay, float Noise, float Gain);
+
 /// <summary>
 /// The port's typewriter reveal and its voice, the user's choice (docs/systems/ui.md, the conversation box): a line prints
 /// a few glyphs a tick instead of showing whole, A completes it, and a short blip sounds as glyphs appear, pitched by the
@@ -119,6 +142,28 @@ public static class TextReveal
 
     /// <summary>A big man's pitch, the guards' and the giants', which the height doesn't scale: as deep as each other, the user's choice.</summary>
     public const float DeepPitch = 0.5f;
+
+    /// <summary>
+    /// The named tones a record's <c>voiceTone</c> picks from. Plain is the blip as it was; soldier is clipped and precise, the guards'
+    /// and Abrecan's; soft is gentle, Brenna's; the rest are tried on the party for comparing, the user's choice (Oct 30, 2026).
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, VoiceTone> Tones = new[]
+    {
+        new VoiceTone("plain", Waveform.Soft, Attack: 0.003f, Decay: 1, Noise: 0, Gain: 1),
+        new VoiceTone("soldier", Waveform.Square, Attack: 0.0004f, Decay: 0.65f, Noise: 0, Gain: 0.9f),
+        new VoiceTone("soft", Waveform.Sine, Attack: 0.009f, Decay: 1.35f, Noise: 0, Gain: 0.85f),
+        new VoiceTone("bright", Waveform.Square, Attack: 0.002f, Decay: 1, Noise: 0, Gain: 0.8f),
+        new VoiceTone("buzzy", Waveform.Saw, Attack: 0.002f, Decay: 1.1f, Noise: 0, Gain: 0.75f),
+        new VoiceTone("hollow", Waveform.Triangle, Attack: 0.004f, Decay: 1.2f, Noise: 0, Gain: 1),
+        new VoiceTone("gravel", Waveform.Soft, Attack: 0.003f, Decay: 0.9f, Noise: 0.35f, Gain: 1),
+    }.ToDictionary(t => t.Name);
+
+    /// <summary>The tone every speaker has unless its record names another.</summary>
+    public static VoiceTone PlainTone => Tones["plain"];
+
+    /// <summary>A speaker's tone: its record's <see cref="DbRecord.VoiceTone"/> if it names one of <see cref="Tones"/>, else plain.</summary>
+    public static VoiceTone ToneOf(DbRecord? speaker) =>
+        speaker?.VoiceTone is { } name && Tones.TryGetValue(name, out var tone) ? tone : PlainTone;
 
     /// <summary>How many glyphs a tick a speed prints: 0 for the whole line at once.</summary>
     public static float GlyphsPerTick(TextSpeed speed) => speed switch

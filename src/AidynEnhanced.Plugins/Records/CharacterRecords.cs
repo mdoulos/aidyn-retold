@@ -42,6 +42,7 @@ namespace AidynEnhanced.Plugins.Records;
 /// <param name="Sounds">Its body's footsteps and voice (the original's audio keys), or null for silence.</param>
 /// <param name="Voice">As <see cref="DbRecord.Voice"/>: a man's or a woman's, judged by the portrait, for the port's text voice; none for a creature.</param>
 /// <param name="VoicePitch">As <see cref="DbRecord.VoicePitch"/>: a mod's pitch for the port's text voice.</param>
+/// <param name="VoiceTone">As <see cref="DbRecord.VoiceTone"/>: the tone of the port's text voice, by name.</param>
 public sealed record EntityRecord(
     RecordId Id,
     string Name,
@@ -74,7 +75,8 @@ public sealed record EntityRecord(
     MemberFlags? Member = null,
     BodySounds? Sounds = null,
     Voice? Voice = null,
-    float? VoicePitch = null);
+    float? VoicePitch = null,
+    string? VoiceTone = null);
 
 /// <summary>
 /// What the engine does for a recruitable party member (<c>Party::CheckFlags</c>, <c>SaveEntity::GetSlot</c>).

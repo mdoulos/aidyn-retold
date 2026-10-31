@@ -583,7 +583,8 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
                 continue;
             var speaker = box.Layout?.Speaker is { } id ? _plugins!.TryGet<DbRecord>(id) : null;
             var mood = box.Preset;
-            _textVoice!.Blip(TextReveal.PitchOf(speaker) * TextReveal.PitchAt(mood, box.Progress), _audio!.SoundVolume, mood.Jitter, mood.Decay);
+            _textVoice!.Blip(TextReveal.ToneOf(speaker), TextReveal.PitchOf(speaker) * TextReveal.PitchAt(mood, box.Progress), _audio!.SoundVolume,
+                mood.Jitter, mood.Decay);
         }
     }
 
@@ -608,6 +609,7 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
             combatant => _combatantViews.TryGetValue(combatant, out var view) ? view.Motion : null, _spellFxView);
         _backdrop!.Draw(session.Backdrop);
         SoundTextVoice(session);
+        _voiceRing?.LabelWanderers(session.Trek.Wanderers.All);
         switch (step)
         {
             case SessionStep.Title:

@@ -49,6 +49,17 @@ public sealed class VoiceImportTests(Na10Import fixture)
     }
 
     [Fact]
+    public void TheGuardsAndAbrecanAreSoldierlyAndBrennaSoft()
+    {
+        var entities = fixture.Data.Set.All<EntityRecord>(RecordTypes.Entity).ToList();
+        foreach (var e in entities.Where(e => e.Name is "Town Guard" or "Jundar Guard" or "Abrecan"))
+            Assert.Equal("soldier", e.VoiceTone);
+        Assert.Equal("soft", entities.Single(e => e.Name == "Brenna").VoiceTone);
+        Assert.Null(entities.Single(e => e.Name == "Alaron").VoiceTone);
+        Assert.Null(entities.Single(e => e.Name == "Oriana").VoiceTone);
+    }
+
+    [Fact]
     public void TheGuardsAndTheGiantsAreDeep()
     {
         var entities = fixture.Data.Set.All<EntityRecord>(RecordTypes.Entity).ToList();

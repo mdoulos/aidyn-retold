@@ -119,6 +119,33 @@ public static class Voices
         [RecordId.Hex(RecordTypes.Image, 0x0113)] = 0.60f, // Becan
     };
 
+    /// <summary>
+    /// The speakers whose blips have a tone of their own (<c>TextReveal.Tones</c>), by portrait, the user's choice (Oct 30, 2026): the
+    /// guards and Abrecan clipped and precise, Brenna gentle, and the rest of the party given the other tones to compare.
+    /// </summary>
+    private static readonly Dictionary<RecordId, string> ToneById = new Dictionary<int, string>
+    {
+        [0x0144] = "soldier", // Town Guard
+        [0x0145] = "soldier", // Town Guard
+        [0x0146] = "soldier", // Town Guard
+        [0x014D] = "soldier", // Jundar Guard
+        [0x0106] = "soldier", // Abrecan
+        [0x0116] = "soft", // Brenna
+        [0x010B] = "bright", // Arturo
+        [0x0135] = "bright", // Farris
+        [0x0164] = "bright", // Rheda
+        [0x010C] = "buzzy", // Baird
+        [0x012D] = "hollow", // Donovan
+        [0x014F] = "hollow", // Keelin
+        [0x016B] = "hollow", // Sholeh
+        [0x0113] = "gravel", // Becan
+        [0x0140] = "gravel", // Godric
+        [0x015D] = "gravel", // Niesen
+    }.ToDictionary(p => RecordId.Hex(RecordTypes.Image, p.Key), p => p.Value);
+
+    /// <summary>The tone of a speaker with this portrait, or none for the plain one.</summary>
+    public static string? ToneOf(RecordId? portrait) => portrait is { } id && ToneById.TryGetValue(id, out var tone) ? tone : null;
+
     /// <summary>The voice of a speaker with this portrait, or none for a creature's or no portrait.</summary>
     public static Voice? Of(RecordId? portrait) => portrait is { } id && ById.TryGetValue(id, out var voice) ? voice : null;
 

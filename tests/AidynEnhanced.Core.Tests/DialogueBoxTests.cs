@@ -447,6 +447,17 @@ public class DialogueBoxTests
     }
 
     [Fact]
+    public void ATonesIsNamedAndUnknownOnesArePlain()
+    {
+        Assert.Equal("soldier", TextReveal.ToneOf(new DbRecord(Trahern, "Town Guard", VoiceTone: "soldier")).Name);
+        Assert.Equal("plain", TextReveal.ToneOf(new DbRecord(Trahern, "Trahern")).Name);
+        Assert.Equal("plain", TextReveal.ToneOf(new DbRecord(Trahern, "Trahern", VoiceTone: "nasal")).Name);
+        Assert.Equal("plain", TextReveal.ToneOf(null).Name);
+        Assert.True(TextReveal.Tones["soldier"].Attack < TextReveal.Tones["soft"].Attack);
+        Assert.True(TextReveal.Tones["soldier"].Decay < TextReveal.Tones["soft"].Decay);
+    }
+
+    [Fact]
     public void AModsPitchWinsAndNoBodyIsMiddling()
     {
         var speaker = new DbRecord(Trahern, "Trahern", Body: new EntityBody(RecordId.Hex(RecordTypes.Actor, 1), 0.5f, 1, 4), Voice: Voice.Male, VoicePitch: 1.25f);

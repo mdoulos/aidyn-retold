@@ -38,8 +38,7 @@ public sealed class ModFolder
         PluginManifest manifest;
         if (File.Exists(manifestPath))
         {
-            manifest = JsonSerializer.Deserialize<PluginManifest>(File.ReadAllBytes(manifestPath), PluginJson.Options)
-                ?? throw new InvalidDataException($"{manifestPath} is empty.");
+            manifest = PluginJson.ReadFile<PluginManifest>(manifestPath) ?? throw new InvalidDataException($"{manifestPath} is empty.");
             if (manifest.Id != id)
                 throw new InvalidDataException($"The plugin in {directory} says its ID is \"{manifest.Id}\"; a plugin's folder must be named for its ID.");
         }
@@ -89,7 +88,7 @@ public sealed class ModFolder
         else
             array.Add(copy);
         System.IO.Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        File.WriteAllBytes(path, JsonSerializer.SerializeToUtf8Bytes(array, PluginJson.Options));
+        PluginJson.WriteFile(path, JsonSerializer.SerializeToUtf8Bytes(array, PluginJson.Options));
     }
 
     /// <summary>Takes the record or patch of <paramref name="id"/> out of <c>records/<paramref name="file"/></c>, if it's there.</summary>
@@ -108,7 +107,7 @@ public sealed class ModFolder
         if (array.Count == 0)
             File.Delete(path);
         else
-            File.WriteAllBytes(path, JsonSerializer.SerializeToUtf8Bytes(array, PluginJson.Options));
+            PluginJson.WriteFile(path, JsonSerializer.SerializeToUtf8Bytes(array, PluginJson.Options));
     }
 
     /// <summary>
@@ -116,7 +115,7 @@ public sealed class ModFolder
     /// either, so writing beside it keeps it.
     /// </summary>
     private static JsonArray ReadRecords(string path) =>
-        JsonNode.Parse(File.ReadAllBytes(path), documentOptions: PluginJson.DocumentOptions) switch
+        PluginJson.ReadNode(path) switch
         {
             JsonArray array => array,
             JsonObject one => [one],
@@ -132,7 +131,7 @@ public sealed class ModFolder
     {
         var path = AssetPath(id, extension);
         System.IO.Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        File.WriteAllBytes(path, bytes);
+        PluginJson.WriteFile(path, bytes);
     }
 
     /// <summary>Deletes the mod's asset of <paramref name="id"/>, if it has one, so the one below it shows again.</summary>

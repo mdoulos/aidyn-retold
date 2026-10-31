@@ -41,7 +41,11 @@ public static class RecordSchema
             {
                 if (o[Keys[i]] is not JsonValue value)
                     return null;
-                parts[i] = value.TryGetValue(out string? text) ? text : value.ToJsonString();
+                // A whole number as one, however it's written: a hand-written or round-tripped 12.0 is the element keyed 12.
+                parts[i] = value.TryGetValue(out string? text) ? text
+                    : value.GetValueKind() == System.Text.Json.JsonValueKind.Number && value.TryGetValue(out decimal number) && number == decimal.Truncate(number)
+                        ? number.ToString("0", System.Globalization.CultureInfo.InvariantCulture)
+                        : value.ToJsonString();
             }
             return string.Join(',', parts);
         }

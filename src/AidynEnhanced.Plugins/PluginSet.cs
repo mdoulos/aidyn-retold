@@ -11,10 +11,11 @@ public sealed record Plugin(string Directory, PluginManifest Manifest)
     public static Plugin Open(string directory)
     {
         var path = Path.Combine(directory, PluginManifest.FileName);
-        var manifest = JsonSerializer.Deserialize<PluginManifest>(File.ReadAllBytes(path), PluginJson.Options)
-            ?? throw new InvalidDataException($"{path} is empty.");
+        var manifest = PluginJson.ReadFile<PluginManifest>(path) ?? throw new InvalidDataException($"{path} is empty.");
         if (!RecordId.TryParse($"{manifest.Id}:flag/0", out _))
             throw new InvalidDataException($"{path}: \"{manifest.Id}\" isn't a valid plugin ID ([a-z0-9_]+).");
+        if ((manifest.Dependencies ?? []).Concat(manifest.LoadAfter ?? []).Any(string.IsNullOrEmpty))
+            throw new InvalidDataException($"{path}: dependencies and loadAfter list plugin IDs, and one is empty.");
         return new Plugin(directory, manifest);
     }
 }
@@ -529,11 +530,12 @@ public sealed class PluginSet
         var records = Path.Combine(plugin.Directory, "records");
         if (!Directory.Exists(records))
             return;
+        // In order of their paths under records, with / between folders, so a plugin's files load in one order on every system.
         var files = Directory.EnumerateFiles(records, "*.json", SearchOption.AllDirectories)
-            .Order(StringComparer.Ordinal);
+            .OrderBy(f => Path.GetRelativePath(records, f).Replace(Path.DirectorySeparatorChar, '/'), StringComparer.Ordinal);
         foreach (var file in files)
         {
-            var node = JsonNode.Parse(File.ReadAllBytes(file), documentOptions: PluginJson.DocumentOptions);
+            var node = PluginJson.ReadNode(file);
             var objects = node switch
             {
                 JsonArray array => array.Select(n => n as JsonObject),

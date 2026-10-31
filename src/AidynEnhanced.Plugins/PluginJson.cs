@@ -36,6 +36,49 @@ public static class PluginJson
     };
 
     /// <summary>
+    /// A JSON file read as <typeparamref name="T"/> with <see cref="Options"/>: its byte-order mark skipped, as Windows' editors and
+    /// PowerShell 5.1 write one, which the reader refuses, and a file that isn't JSON of it named in the error.
+    /// </summary>
+    public static T? ReadFile<T>(string path)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<T>(Utf8(File.ReadAllBytes(path)), Options);
+        }
+        catch (JsonException e)
+        {
+            throw new InvalidDataException($"{path}: {e.Message}", e);
+        }
+    }
+
+    /// <summary>A JSON file read as a node with <see cref="DocumentOptions"/>, as <see cref="ReadFile{T}"/> reads one.</summary>
+    public static System.Text.Json.Nodes.JsonNode? ReadNode(string path)
+    {
+        try
+        {
+            return System.Text.Json.Nodes.JsonNode.Parse(Utf8(File.ReadAllBytes(path)), documentOptions: DocumentOptions);
+        }
+        catch (JsonException e)
+        {
+            throw new InvalidDataException($"{path}: {e.Message}", e);
+        }
+    }
+
+    /// <summary>
+    /// Writes a file whole or not at all: to a file beside it, then moved over it, so a crash or a full disk midway leaves the
+    /// old one as it was rather than cut short.
+    /// </summary>
+    public static void WriteFile(string path, ReadOnlySpan<byte> bytes)
+    {
+        var temporary = path + ".tmp";
+        File.WriteAllBytes(temporary, bytes);
+        File.Move(temporary, path, overwrite: true);
+    }
+
+    private static ReadOnlySpan<byte> Utf8(byte[] bytes) =>
+        bytes.AsSpan().StartsWith((ReadOnlySpan<byte>)[0xEF, 0xBB, 0xBF]) ? bytes.AsSpan(3) : bytes;
+
+    /// <summary>
     /// <see cref="Options"/> that refuse what those overlook: a field the record type lacks, a <c>type</c> discriminator none
     /// of its kinds has, a null where the type allows none, and a missing field with no default (a constructor parameter
     /// that's neither nullable nor defaulted nor left out of the writer's output). <see cref="PluginSet.Validate"/> reads every

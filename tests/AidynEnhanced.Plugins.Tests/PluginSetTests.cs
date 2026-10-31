@@ -406,4 +406,61 @@ public sealed class PluginSetTests : IDisposable
         Assert.Equal(original.Models, scene.Models);
         Assert.Equal(original with { Models = scene.Models }, scene);
     }
+
+    [Fact]
+    public void FilesWithAByteOrderMarkLoad()
+    {
+        // As Windows' editors and PowerShell 5.1 save them.
+        var mod = Plugin("mymod", ["aidyn"], ("club.json", """{ "patch": "aidyn:weapon/0x0712", "damage": 9 }"""));
+        foreach (var file in new[] { Path.Combine(mod, "plugin.json"), Path.Combine(mod, "records", "club.json") })
+            File.WriteAllText(file, File.ReadAllText(file), new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+
+        var set = PluginSet.Load([Base(), mod]);
+
+        Assert.Equal(9, (int)set.GetJson(RecordId.Parse("aidyn:weapon/0x0712"))!["damage"]!);
+    }
+
+    [Fact]
+    public void AFileThatIsntJsonIsNamed()
+    {
+        var mod = Plugin("mymod", ["aidyn"], ("broken.json", """{ "patch": "aidyn:weapon/0x0712", "damage": """));
+
+        var error = Assert.Throws<InvalidDataException>(() => PluginSet.Load([Base(), mod]));
+
+        Assert.Contains(Path.Combine(mod, "records", "broken.json"), error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnEmptyDependencyIsRefused()
+    {
+        var mod = _temp.AddRaw("mymod", """{ "id": "mymod", "name": "My mod", "version": "1.0.0", "loadAfter": [null] }""");
+
+        var error = Assert.Throws<InvalidDataException>(() => AidynEnhanced.Plugins.Plugin.Open(mod));
+
+        Assert.Contains("loadAfter", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AKeyWrittenAsAWholeNumberWithADecimalPointIsTheSameKey()
+    {
+        var set = PluginSet.Load([
+            Plugin("aidyn", null, ("maps.json", MapWithThreeObjects)),
+            Plugin("mymod", ["aidyn"], ("map.json", """{ "patch": "aidyn:map/0x0E87", "objects": [{ "index": 0.0, "reach": 5 }] }""")),
+        ]);
+
+        var objects = (JsonArray)set.GetJson(RecordId.Parse("aidyn:map/0x0E87"))!["objects"]!;
+        Assert.Equal(3, objects.Count);
+        Assert.Equal(5, (int)objects[0]!["reach"]!);
+    }
+
+    [Fact]
+    public void ASaveIsWrittenWholeWithNothingLeftBeside()
+    {
+        var path = Path.Combine(_temp.Root, "saves", "Save 1.json");
+        Saves.SaveFile.Write(path, new Saves.SaveGame { Label = "first" });
+        Saves.SaveFile.Write(path, new Saves.SaveGame { Label = "second" });
+
+        Assert.Equal("second", Saves.SaveFile.Read(path).Label);
+        Assert.Equal(["Save 1.json"], Directory.GetFiles(Path.GetDirectoryName(path)!).Select(Path.GetFileName));
+    }
 }

@@ -240,6 +240,6 @@ public static class SaveFile
     {
         if (Path.GetDirectoryName(Path.GetFullPath(path)) is { } folder)
             Directory.CreateDirectory(folder);
-        File.WriteAllText(path, Serialize(save) + "\n");
+        PluginJson.WriteFile(path, System.Text.Encoding.UTF8.GetBytes(Serialize(save) + "\n"));
     }
 }

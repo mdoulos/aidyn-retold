@@ -115,6 +115,24 @@ public sealed class PakSaveTests(Na10Import fixture)
     }
 
     [Fact]
+    public void AModsFlagsAndItemsAreLeftOutRatherThanTakenForTheBases()
+    {
+        // A mod's keys can read as numbers, which the original's save would take for flag 12 and item 0x0F1A.
+        var save = AidynEnhanced.Core.GameState.NewGame(Set).Save();
+        save = save with
+        {
+            Flags = [.. save.Flags, RecordId.Parse("mymod:flag/12"), RecordId.Parse("mymod:flag/met_hermit")],
+            Party = save.Party with { Inventory = [.. save.Party.Inventory, new SaveStack(RecordId.Parse("mymod:item/0x0f1a"), 1)] },
+        };
+        var problems = new List<string>();
+        var pak = Saves.FromSave(save, problems);
+        Assert.Equal(3, problems.Count(p => p.Contains("is a mod's", StringComparison.Ordinal)));
+        Assert.DoesNotContain(12, pak.Flags);
+        var back = Saves.ToSave(Saves.Decode(Saves.Encode(pak)));
+        Assert.DoesNotContain(back.Party.Inventory, s => s.Item.Key == "0x0F1A");
+    }
+
+    [Fact]
     public void WritesASlotThatReadsBack()
     {
         var (_, pak) = Slot('B');

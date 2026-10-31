@@ -52,12 +52,27 @@ public sealed class PakSaves
 
     public byte[] Encode(PakSave save) => save.Encode(SchoolOf);
 
-    /// <summary>The pak's saves by slot, as the load menu lists them: the game's notes, whatever their name.</summary>
-    public IReadOnlyList<(char Slot, PakSave Save)> Read(ControllerPak pak) =>
-    [
-        .. pak.Notes.Where(n => n.Game == Game && n.Company == Company)
-            .Select(n => (FontText.Decode(n.Extension) is [var slot] ? slot : '?', Decode(pak.ReadNote(n)))),
-    ];
+    /// <summary>
+    /// The pak's saves by slot, as the load menu lists them: the game's notes, whatever their name. A note that doesn't read, as
+    /// one the game lists as corrupt, is left out and named in <paramref name="problems"/>, so the others still read.
+    /// </summary>
+    public IReadOnlyList<(char Slot, PakSave Save)> Read(ControllerPak pak, ICollection<string>? problems = null)
+    {
+        var saves = new List<(char, PakSave)>();
+        foreach (var note in pak.Notes.Where(n => n.Game == Game && n.Company == Company))
+        {
+            var slot = FontText.Decode(note.Extension) is [var s] ? s : '?';
+            try
+            {
+                saves.Add((slot, Decode(pak.ReadNote(note))));
+            }
+            catch (InvalidDataException e)
+            {
+                problems?.Add($"Slot {slot} doesn't read: {e.Message}");
+            }
+        }
+        return saves;
+    }
 
     /// <summary>Writes a save into a slot, replacing the save there.</summary>
     public void Write(ControllerPak pak, char slot, PakSave save)
@@ -135,7 +150,9 @@ public sealed class PakSaves
         var flags = new HashSet<int> { 1 };
         foreach (var flag in save.Flags)
         {
-            if (Number(flag) is var n and < PakSave.FlagBits)
+            if (!IsBase(flag))
+                problems.Add($"{flag} is a mod's, which the original's save can't hold.");
+            else if (Number(flag) is var n and < PakSave.FlagBits)
                 flags.Add(n);
             else
                 problems.Add($"{flag} isn't a plain flag, which is all the original saves.");
@@ -155,6 +172,11 @@ public sealed class PakSaves
         var keyItems = KeyItems().ToDictionary(k => k.Item, k => k.Flag);
         foreach (var stack in save.Party.Inventory)
         {
+            if (!IsBase(stack.Item))
+            {
+                problems.Add($"{stack.Item} is a mod's, which the original's save can't hold.");
+                continue;
+            }
             var id = Number(stack.Item);
             if (keyItems.TryGetValue(stack.Item, out var held))
                 flags.Add(held);
@@ -221,18 +243,27 @@ public sealed class PakSaves
 
     private static readonly string[] Falls = ["None", "Rain", "Snow"];
 
-    /// <summary>The number a record's key gives: hex for DB and archive keys, decimal for the rest.</summary>
+    /// <summary>Whether a record is the base game's, the only ones the original's save can hold.</summary>
+    private static bool IsBase(RecordId id) => id.Namespace == RecordId.BaseNamespace;
+
+    /// <summary>
+    /// The number a record's key gives: hex for DB and archive keys, decimal for the rest. A mod's record has none the original
+    /// knows, as a mod's key that reads as a number would otherwise be taken for the base's.
+    /// </summary>
     private static int Number(RecordId id)
     {
+        if (!IsBase(id))
+            throw new InvalidDataException($"{id} is a mod's, which the original's save can't hold.");
         var key = id.Key.Split('/')[0];
         return key.StartsWith("0x", StringComparison.Ordinal)
             ? int.Parse(key.AsSpan(2), NumberStyles.HexNumber, CultureInfo.InvariantCulture)
             : int.Parse(key, CultureInfo.InvariantCulture);
     }
 
-    /// <summary>The key items, each with the flag set while the party has it.</summary>
+    /// <summary>The key items, each with the flag set while the party has it: the base game's, which the original's save holds.</summary>
     private IEnumerable<(RecordId Item, int Flag)> KeyItems() =>
-        _plugins.All<ItemRecord>(RecordTypes.Item).Where(i => i.KeyItem is not null).Select(i => (i.Id, Number(i.KeyItem!.Held)));
+        _plugins.All<ItemRecord>(RecordTypes.Item).Where(i => i.KeyItem is { } key && IsBase(i.Id) && IsBase(key.Held))
+            .Select(i => (i.Id, Number(i.KeyItem!.Held)));
 
     private IReadOnlyList<RecordId> Group(MagicSchool school) => _spellGroups.GetValueOrDefault(school) ?? [];
 
@@ -291,7 +322,9 @@ public sealed class PakSaves
     {
         var entity = Number(c.Entity);
         var levels = SkillSlots.ToArray(c.Skills, c.WeaponSkills, c.ShieldSkill);
-        var gear = c.Gear.Select(Item).Cast<PakItem?>().ToList();
+        foreach (var item in c.Gear.Where(g => !IsBase(g.Item)))
+            problems.Add($"{c.Entity}'s {item.Item} is a mod's, which the original's save can't hold.");
+        var gear = c.Gear.Where(g => IsBase(g.Item)).Select(Item).Cast<PakItem?>().ToList();
         if (gear.Count > 12)
             problems.Add($"{c.Entity} wears {gear.Count} gear; the save keeps 12.");
         while (gear.Count < 12)

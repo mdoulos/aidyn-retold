@@ -530,8 +530,11 @@ static int SavePak(string rom, string? pak)
     pak = PakPath(rom, pak);
     var plugins = InstalledPlugins();
     var saves = new PakSaves(plugins, RomImage.Load(rom));
-    var read = saves.Read(ControllerPak.Read(pak));
+    var unread = new List<string>();
+    var read = saves.Read(ControllerPak.Read(pak), unread);
     Console.WriteLine($"{Path.GetFullPath(pak)}: {read.Count} {(read.Count == 1 ? "save" : "saves")}");
+    foreach (var problem in unread)
+        Console.Error.WriteLine(problem);
     foreach (var (slot, save) in read)
     {
         var played = TimeSpan.FromSeconds(save.PlayTime / 60.0);
@@ -573,10 +576,11 @@ static int SaveFromPak(string rom, char slot, string? pak, string? path)
 {
     pak = PakPath(rom, pak);
     var saves = new PakSaves(InstalledPlugins(), RomImage.Load(rom));
-    var (_, found) = saves.Read(ControllerPak.Read(pak)).FirstOrDefault(s => s.Slot == slot);
-    if (found is null)
-        return Fail($"{pak} has no save in slot {slot}.");
     var problems = new List<string>();
+    var (_, found) = saves.Read(ControllerPak.Read(pak), problems).FirstOrDefault(s => s.Slot == slot);
+    if (found is null)
+        return Fail(problems.FirstOrDefault(p => p.StartsWith($"Slot {slot} ", StringComparison.Ordinal)) ?? $"{pak} has no save in slot {slot}.");
+    problems.Clear();
     path = SavePath(path, $"pak-{slot}");
     SaveFile.Write(path, saves.ToSave(found, $"{found.Name}, slot {slot}", problems));
     foreach (var problem in problems)

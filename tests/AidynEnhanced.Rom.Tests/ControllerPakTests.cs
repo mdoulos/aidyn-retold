@@ -67,4 +67,22 @@ public class ControllerPakTests
         Assert.Equal(["CHRONICLES.A", "CHRONICLES.B"], pak.Notes.Select(n => n.Label));
         Assert.Equal(pak.ToArray(), ControllerPak.Read(pak.ToArray()).ToArray());
     }
+
+    [Fact]
+    public void AMupen64PlusPakKeepsTheOtherControllersPaksWhenWritten()
+    {
+        // Controller 1's pak, then three more, which Mupen64Plus keeps in the same file.
+        var others = Enumerable.Range(0, 3 * ControllerPak.Size).Select(i => (byte)(i * 7)).ToArray();
+        var file = (byte[])[.. ControllerPak.Blank().ToArray(), .. others];
+        var pak = ControllerPak.Read(file);
+        pak.WriteNote("NAYE", "78", FontText.Encode("CHRONICLES", 16), FontText.Encode("A", 4), new byte[300]);
+
+        using var temp = new TempPlugins();
+        var path = Path.Combine(Directory.CreateDirectory(temp.Root).FullName, "game.mpk");
+        pak.Write(path);
+        var written = File.ReadAllBytes(path);
+        Assert.Equal(file.Length, written.Length);
+        Assert.Equal(pak.ToArray(), written[..ControllerPak.Size]);
+        Assert.Equal(others, written[ControllerPak.Size..]);
+    }
 }

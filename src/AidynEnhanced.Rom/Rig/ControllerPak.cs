@@ -22,7 +22,10 @@ public sealed class ControllerPak
 
     private readonly byte[] _data;
 
-    private ControllerPak(byte[] data) => _data = data;
+    /// <summary>What the file held after this pak: a Mupen64Plus <c>.mpk</c>'s other three controllers' paks, kept as they were.</summary>
+    private readonly byte[] _after;
+
+    private ControllerPak(byte[] data, byte[]? after = null) => (_data, _after) = (data, after ?? []);
 
     /// <summary>
     /// A pak read from a file: a 32 KB <c>.pak</c>, or a Mupen64Plus <c>.mpk</c>, whose first 32 KB are
@@ -34,7 +37,7 @@ public sealed class ControllerPak
     {
         if (data.Length < Size || data.Length % Size != 0)
             throw new InvalidDataException($"A Controller Pak is {Size:N0} bytes (or four of them, as Mupen64Plus keeps), not {data.Length:N0}.");
-        var pak = new ControllerPak(data[..Size]);
+        var pak = new ControllerPak(data[..Size], data[Size..]);
         if (!pak.HasValidId)
             throw new InvalidDataException("The pak's ID block's checksum is wrong: it isn't formatted.");
         return pak;
@@ -154,10 +157,10 @@ public sealed class ControllerPak
         var needed = Math.Max(1, (data.Length + PageSize - 1) / PageSize);
         var free = Enumerable.Range(FirstDataPage, Pages - FirstDataPage).Where(p => Inode(p) == FreePage).Take(needed).ToList();
         if (free.Count < needed)
-            throw new InvalidOperationException($"The pak has {free.Count} free pages, and the note needs {needed}.");
+            throw new IOException($"The pak has {free.Count} free pages, and the note needs {needed}.");
         var slot = Enumerable.Range(0, MaxNotes).FirstOrDefault(i => BinaryPrimitives.ReadUInt32BigEndian(_data.AsSpan(DirectoryOffset + i * NoteSize)) == 0, -1);
         if (slot < 0)
-            throw new InvalidOperationException($"The pak already holds {MaxNotes} notes.");
+            throw new IOException($"The pak already holds {MaxNotes} notes.");
 
         for (var i = 0; i < needed; i++)
         {
@@ -190,9 +193,11 @@ public sealed class ControllerPak
         _data.AsSpan(DirectoryOffset + note.Index * NoteSize, NoteSize).Clear();
     }
 
+    /// <summary>The pak's 32 KB.</summary>
     public byte[] ToArray() => (byte[])_data.Clone();
 
-    public void Write(string path) => File.WriteAllBytes(path, _data);
+    /// <summary>Writes the pak as it was read: a Mupen64Plus <c>.mpk</c> whole, with the other controllers' paks as they were.</summary>
+    public void Write(string path) => File.WriteAllBytes(path, [.. _data, .. _after]);
 
     /// <summary>The pages of a note's chain, from its start page.</summary>
     private List<int> Chain(int start)

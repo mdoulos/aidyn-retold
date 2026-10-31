@@ -251,7 +251,7 @@ public sealed record PakSave
     {
         var bytes = Encoding.Latin1.GetBytes(text);
         if (bytes.Length > to.Length)
-            throw new InvalidOperationException($"\"{text}\" is longer than the save keeps, {to.Length} bytes.");
+            throw new InvalidDataException($"\"{text}\" is longer than the save keeps, {to.Length} bytes.");
         bytes.CopyTo(to);
     }
 
@@ -431,7 +431,7 @@ public sealed record PakSheet(
             return;
         }
         if (sheet.Entity is <= 0x200 or > 0x2FF)
-            throw new InvalidOperationException($"Entity 0x{sheet.Entity:X4} can't be saved: the save keeps 0x0201 to 0x02FF.");
+            throw new InvalidDataException($"Entity 0x{sheet.Entity:X4} can't be saved: the save keeps 0x0201 to 0x02FF.");
         bits.Write((uint)(sheet.Entity - 0x200), 8);
         bits.Write(sheet.TotalExp, 24);
         bits.Write(sheet.SpendableExp, 24);
@@ -488,7 +488,7 @@ public sealed record PakItem(int Id, int Charges, int StatMod)
             return;
         }
         if (item.Id is < 0 or >= 0x2000 || item.Charges is < 0 or >= 32 || item.StatMod is < 0 or >= 0x400)
-            throw new InvalidOperationException($"Item 0x{item.Id:X4} with {item.Charges} charges doesn't fit the save's 28 bits.");
+            throw new InvalidDataException($"Item 0x{item.Id:X4} with {item.Charges} charges doesn't fit the save's 28 bits.");
         bits.Write((uint)item.Id, 13);
         bits.Write((uint)item.Charges, 5);
         bits.Write((uint)item.StatMod, 10);
@@ -553,7 +553,7 @@ public sealed record PakChart(int Count, IReadOnlyList<int> Slots, IReadOnlyList
     public static PakChart Of(IReadOnlyList<CheckpointMemory> memories)
     {
         if (memories.Count > PakSave.ChartEntries)
-            throw new InvalidOperationException($"The chart holds {PakSave.ChartEntries} memories, not {memories.Count}.");
+            throw new InvalidDataException($"The chart holds {PakSave.ChartEntries} memories, not {memories.Count}.");
         return new(memories.Count, Empty.Slots,
             [.. memories, .. Enumerable.Repeat<CheckpointMemory?>(null, PakSave.ChartEntries - memories.Count)]);
     }
@@ -633,11 +633,11 @@ internal ref struct BitWriter(Span<byte> bytes)
     public void Write(uint value, int count)
     {
         if (count < 32 && value >> count != 0)
-            throw new InvalidOperationException($"{value} doesn't fit the save's {count} bits.");
+            throw new InvalidDataException($"{value} doesn't fit the save's {count} bits.");
         for (var k = 0; k < count; k++, _bit++)
         {
             if (_bit >> 3 >= _bytes.Length)
-                throw new InvalidOperationException("The party doesn't fit the room the save has for it.");
+                throw new InvalidDataException("The party doesn't fit the room the save has for it.");
             _bytes[_bit >> 3] |= (byte)((value >> k & 1) << (_bit & 7));
         }
     }

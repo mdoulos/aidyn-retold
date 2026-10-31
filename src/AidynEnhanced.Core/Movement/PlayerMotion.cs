@@ -98,6 +98,11 @@ public sealed class PlayerMotion
     /// <summary>The ticks a jump pressed just before he lands is kept for, so it jumps as he does.</summary>
     public const int JumpBufferTicks = 6;
 
+    /// <summary>The longest a jump lasts, 3 seconds: off a cliff, the falling rule takes over from it.</summary>
+    public const int JumpMostTicks = 180;
+
+    private int _jumpTicks;
+
     /// <summary>
     /// Whether he's in a jump, from leaving the ground until he's back on it (the port's, a PC game's jump, the user's choice): he
     /// carries the speed he left the ground at along his heading, which the stick still turns; his pose holds as it was, or plays
@@ -188,21 +193,36 @@ public sealed class PlayerMotion
     public void Step(CollisionWorld world, MoveInput input, Vector2 look, IRootMotion animation)
     {
         Control(input, look);
-        StartJump(input);
+        StartJump(world, input);
 
         var height = Sphere.Position.Y;
         SpherePhysics.Step(world, Sphere);
         if (Jumping)
         {
-            // Back on the ground on the way down; until then, the trigger floors under him down to where he left the ground.
-            if (Sphere.Velocity.Y <= 0 && Grounded)
+            // Down on anything that faces up, on the way down: the ground, a ledge, or a slope too steep to stand on, which he then
+            // slides down as he would have walked onto it. A wall he's against faces across, and doesn't end it; the floor under it
+            // does, whatever he last touched. Until then, the trigger floors under him down to where he left the ground.
+            if (Sphere.Velocity.Y <= 0 && (Grounded || Below(world, 0.1f, 0.05f)) || ++_jumpTicks >= JumpMostTicks)
                 Jumping = false;
             else
                 SpherePhysics.TreadBelow(world, Sphere, _takeoff - Radius - 0.25f);
         }
         if (Jumping)
         {
-            // He carries the speed he left the ground at; his pose holds unless his actor has a jump.
+            // He carries the speed he left the ground at, until he's carried into a wall: most surfaces keep no velocity on contact,
+            // so each tick's push into it would hold him up there, sliding down it at a crawl.
+            var contact = Sphere.ContactNormal;
+            var across = new Vector2(contact.X, contact.Z);
+            if (Sphere.Touching && contact.Y < 0.5f && Vector2.Dot(Heading, across) < 0)
+                _carry = 0;
+            // And on the way down he's eased a hair off a wall he's against, as a sphere that barely moves while it touches something
+            // settles where it is (SpherePhysics.Step), which would hold him up there for good.
+            if (Sphere.Touching && contact.Y < 0.5f && Sphere.Velocity.Y <= 0 && across != Vector2.Zero)
+            {
+                across = Vector2.Normalize(across) * 0.02f;
+                Sphere.Position += new Vector3(across.X, 0, across.Y);
+            }
+            // His pose holds unless his actor has a jump.
             if (animation is Actors.IActorMotion actor && actor.Knows(Body.Jump))
             {
                 Body.Request = Body.Jump;
@@ -239,16 +259,21 @@ public sealed class PlayerMotion
         EndStep();
     }
 
-    /// <summary>A jump pressed, or kept from the last few ticks, leaves the ground if he's on it and may jump.</summary>
-    private void StartJump(MoveInput input)
+    /// <summary>
+    /// A jump pressed, or kept from the last few ticks, leaves the ground if he's on it and may jump: ground he could stand on,
+    /// facing more than 60° up, within a hair below, so plain collision's push down, which can leave him falling by his velocity
+    /// where he stands, doesn't hold it back, and a slope too steep to stand on can't be climbed by jumping.
+    /// </summary>
+    private void StartJump(CollisionWorld world, MoveInput input)
     {
         if (input.Jump)
             _jumpBuffer = JumpBufferTicks;
         else if (_jumpBuffer > 0)
             _jumpBuffer--;
-        if (_jumpBuffer == 0 || Jumping || !CanJump || input.Held || !Grounded)
+        if (_jumpBuffer == 0 || Jumping || !CanJump || input.Held || !(Grounded || Below(world, 0.05f, 0.5f)))
             return;
         _jumpBuffer = 0;
+        _jumpTicks = 0;
         Jumping = true;
         _takeoff = Sphere.Position.Y;
         _carry = _groundForward;
@@ -256,6 +281,10 @@ public sealed class PlayerMotion
         _fellLastTick = false;
         Pinned = 0;
     }
+
+    /// <summary>Whether something facing at least <paramref name="up"/> upward is within <paramref name="depth"/> below his sphere.</summary>
+    private bool Below(CollisionWorld world, float depth, float up) =>
+        SpherePhysics.SweepNearest(world, Sphere.Position, Sphere.Position - new Vector3(0, depth, 0), Radius, skipSeeThrough: false, up, out _, out _);
 
     /// <summary>Whether he has fallen out of the world (<see cref="FellOut"/>), which stops him and ends a jump.</summary>
     private void EndStep()

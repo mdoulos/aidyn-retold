@@ -95,13 +95,41 @@ The menu's widgets animate with tweens (`MenuTween.CreateShort` at `0x800cc880`,
 - **The stick's left shows the next list and its right the one before** (`PartyMenu.ListsLeft` `0x800319f0`, `ListsRight` `0x80031a10`), wrapping from stats to the inventory. The list, its title and its arrows slide together, the old and the new 140 pixels over 20 frames (`PartyMenu.ChangeList`, `0x80031620`): left brings the next list from x 20 to 160 and pushes the old from 160 to 300; right the other way. The rows are cut to the list's bounds, x 160 to 300 and y 101 to 205, and the title to x 170 to 300 (`PartyMenu.ListsCreate`, `0x80030c50`); the port cuts the title at 160 with the rows.
 - **A change waits for the last** (`PartyMenu.Changing`, `0x800304b4`): no member change while the header, the silhouette or the lists are moving, and no list change while the lists are. So for 16 frames after a potion drunk or an item put on, C-left and C-right do nothing. Training's member change animates the same way.
 
+### The tabbed layout
+
+The user's design (Oct 31, 2026), the Enhancements page's Party Layout, Tabbed by default (`Settings.PartyLayout`, `PartyLayout`). The original's layout leans on what's painted into `0x00D9`, and a mod's blank parchment takes that away ([below](#opening-and-closing)). This layout needs nothing painted in: it's drawn on the tab's plain parchment (`PlainPatches`), or on the mod's. `PartyMenu.Tabbed` is the core's side, which the pause menu sets on every window as it's built and on the one up when the setting changes (`PauseMenu.PartyLayout`, from `SessionSettings`). `PartyTabView` draws either.
+
+- **The left column is the member.**
+  - **The portraits and name** are where the original has them.
+  - **The level** is right of the name, its right edge at 149, level with the name's foot: "Level n".
+  - **The hit points bar** is under the portraits at (22, 67), 96 × 10, on a translucent track with an edge where the painted frame was. The hit points and their maximum are centred on it, "hp / max", off-white with a shadow.
+  - **The aspect's and school's icons** come after the bar, from x 125 and 4 apart.
+  - **The silhouette's slots** are centred in the column under the bar, their corner at (27, 83). The silhouette and the slots' frames are painted into the original's parchment, so they aren't drawn.
+  - **The red arrow** for the pause menu's other tabs sits under the gap between the columns, at (130, 215).
+- **The right column is the lists.**
+  - **Three tabs** sit at y 27 over the list: Inventory, Stats and Skills, and Spells (`PartyMenu.Tabs`), with the party's gold after a drawn coin at the right edge, x 306. They replace the lists' title images, and the gold's and the level's painted labels. The labels are English literals.
+  - **The tab showing** is dark and underlined, and the others are faded. The tabs a window hasn't got are fainter still: barter has only the inventory, and training and the post-battle window have the other two. A shop's inventory tab reads Sell.
+  - **The underline slides** to the new tab as the lists slide, by the slide's eased share.
+  - **The tabs, the level, the gold and the hit points** are the slim font at 0.6 of its size, the most that lets "Stats and Skills" and a six-figure gold share the row. The font has no ampersand.
+  - **The lists** are 12 rows of 13 from (160, 56) to (306, 212) (`PartyMenu.TabbedList`), their arrows 13 above in the gap under the tabs. They slide the list's width, 146, as the stick changes them (`SlideDistance`).
+- **The stick's left and right go from tab to tab.** Its right goes Inventory → Stats and Skills → Spells, and its left back, wrapping from the inventory to the spells. That's the original's list order with the stats and skills as one stop, so it works as the stick always has. The post-battle window's three lists are two tabs.
+- **The stats and skills are one page** (`PartyMenu.Page.cs`). It holds the stats' rows 11 apart, the experience lines 4 under them, and the skills' rows 13 apart 6 under those.
+  - **The cursor** runs from the last stat into the first skill and back, and wraps from the first stat to the last skill. `List` says which section it's in, so details, A and training work as they did.
+  - **The page scrolls as a whole**, a row at a time and only as far as shows the cursor's row whole (`PageScroll`). The first skill's row takes the experience lines over it with it. A row not shown whole isn't drawn, and the arrows show while rows are hidden.
+  - **The stick comes back** onto the page in the section it left.
+  - **Hovering** finds either section's rows (`PageRowAt`, `PointPage`).
+- **What goes over the silhouette is drawn 20 lower** (`TabbedDrop`), so its parchment clears the bar and covers the left column down to the full-height parchment's foot, its paper from 82 to 234. That's C-down's details, the skills' popups, and the barter, training and post-battle windows' own parts.
+- **A long name is squeezed onto its line**, in either layout. The high-resolution typeface is wider than the original's sheets and wrapped a long spell's or item's name, "Detect Moon Phase" or "Control Marquis", onto the next row, over that row's name. The lists' names reach the bounds' right edge, the original's 140 from the left, and one that doesn't fit is drawn narrower to end there (`OneLine`).
+- **The editor's Party tab panel** starts in the default layout. Its Layout button switches between the two.
+- **Not done yet:** clicking a tab with the mouse, and the silhouette drawn on the blank parchment.
+
 ### The model and the layouts
 
 `PartyMenu` (`AidynEnhanced.Core.Ui`) is the tab's state: the member shown, the list showing with its rows (`PartyMenuRows`) and cursor, the silhouette's slots, and C-down's details (`MenuDetails`). `MenuImages` and `InventoryOrder` hold the chrome's image IDs and the kinds' order. `PartyTabView` (`AidynEnhanced.Views`) draws it with the widget kit, `UiPainter`.
 
 **The Party tab's windows** are `IPartyWindow` (`AidynEnhanced.Core.Ui`), each a `WidgetDollMenu` in one of the original's pause states: the tab itself (`PartyMenu`), the loot window and shops (`BarterMenu`), the training window (`TrainingMenu`) and the post-battle window (`PostBattleMenu`, pause state 5, [below](#after-a-battle)). The pause menu sends every press to whichever window is up, and neither it nor the view knows which; the stick's left and right (`Sideways`) are the tab's next or previous list, the loot window's pile or party list, or training's skills or spells. `PartyTabView` draws the header for every window and the window's own parts on a layer over it (`DrawWindow`, with a case for each), whose alpha carries the post-battle windows' fades.
 
-**Lists are laid out in the core.** `ListLayout` is a list's bounds in the 320 × 240 frame and its rows' pitch, which ADR 0014 fixes: the Party tab's 8 rows of 13 (the stats 9 of 11), barter's pile and training's 6 of 13, crafting's 11 or 10 slim-font lines or 4 members of 28. The menus build their lists with the layout's count, so a list scrolls with no view drawn, and the views draw and hit-test from the same layout rather than repeating the pitch and bounds.
+**Lists are laid out in the core.** `ListLayout` is a list's bounds in the 320 × 240 frame and its rows' pitch, which ADR 0014 fixes: the Party tab's 8 rows of 13 (the stats 9 of 11; 12 in [the tabbed layout](#the-tabbed-layout)), barter's pile and training's 6 of 13, crafting's 11 or 10 slim-font lines or 4 members of 28. The menus build their lists with the layout's count, so a list scrolls with no view drawn, and the views draw and hit-test from the same layout rather than repeating the pitch and bounds.
 
 ### Opening and closing
 
@@ -264,6 +292,7 @@ The user laid this out, and it isn't the original's ([ADR 0013](../adr/0013-sett
   | | Menu Size | Original (240 lines), Smaller (360), Smallest (480): the UI screen's height, for the menu and trek's popups and box |
   | | Menu Filter | Sharp, Smooth, Video Out (`UiFilter`) |
   | | Menu Height | Original, Full (the tabs' parchment runs past the original's screen: [the pause menu](#the-pause-menu)). Full by default, the user's choice |
+  | | Party Layout | Original, Tabbed (the Party tab's header by the portraits and tabs over a taller list, the stats and skills on one page: [the tabbed layout](#the-tabbed-layout)). Tabbed by default, the user's design |
   | | Pace | Original, Brisk (1.3×) |
   | | Jump | Original (none), On: Space jumps in trek, the port's ([movement](movement.md)). On by default, the user's choice |
   | | Text Speed | Original (a line shows whole), Slow, Normal, Fast (the box prints it half a glyph, one or two a tick: [the conversation box](#the-conversation-box)). Normal by default, the user's choice |

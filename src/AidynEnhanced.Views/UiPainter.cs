@@ -361,11 +361,14 @@ public sealed class UiPainter
     /// The arrows that show a list has rows above or below: up at <paramref name="up"/> and down at
     /// <paramref name="down"/>, each drawn while rows are hidden its way (<c>WidgetScrollArrows</c>).
     /// </summary>
-    public void Arrows<TRow>(CanvasItem canvas, MenuList<TRow> list, ListLayout layout)
+    public void Arrows<TRow>(CanvasItem canvas, MenuList<TRow> list, ListLayout layout) => Arrows(canvas, list.MoreAbove, list.MoreBelow, layout);
+
+    /// <summary>The arrows at a list's place, for rows hidden above and below.</summary>
+    public void Arrows(CanvasItem canvas, bool above, bool below, ListLayout layout)
     {
-        if (list.MoreAbove)
+        if (above)
             Image(canvas, MenuImages.ScrollUp, layout.UpArrow.X, layout.UpArrow.Y, color: ArrowColor);
-        if (list.MoreBelow)
+        if (below)
             Image(canvas, MenuImages.ScrollDown, layout.DownArrow.X, layout.DownArrow.Y, color: ArrowColor);
     }
 

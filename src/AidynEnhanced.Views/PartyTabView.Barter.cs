@@ -37,6 +37,7 @@ public partial class PartyTabView
         var (party, pile) = Cursors(barter);
         List(0, _ui.Slim, party);
 
+        Begin(_canvas, _origin + new Vector2I(0, Drop));
         _ui.Parchment(_canvas, ClassicParchment.X, ClassicParchment.Y);
         var title = _ui.Size(barter.Title);
         _ui.Image(_canvas, barter.Title, PileTitleCentre - title.X / 2, PileTitleFoot - title.Y);

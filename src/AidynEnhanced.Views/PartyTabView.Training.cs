@@ -27,6 +27,7 @@ public partial class PartyTabView
     {
         List(0, _ui.Slim, MemberCursor(training));
 
+        Begin(_canvas, _origin + new Vector2I(0, Drop));
         _ui.Parchment(_canvas, ClassicParchment.X, ClassicParchment.Y);
         var title = _ui.Size(training.Title);
         _ui.Image(_canvas, training.Title, PileTitleCentre - title.X / 2, TrainTitleFoot - title.Y);

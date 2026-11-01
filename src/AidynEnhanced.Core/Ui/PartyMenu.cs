@@ -15,6 +15,19 @@ public enum PartyList
     Stats,
 }
 
+/// <summary>How the Party tab and the windows built on it are laid out (<see cref="Settings.PartyLayout"/>).</summary>
+public enum PartyLayout
+{
+    /// <summary>The original's: four lists the stick steps through, each under its title, on the right under the header's numbers.</summary>
+    Original,
+
+    /// <summary>
+    /// The user's (Oct 31, 2026): the header's numbers by the portraits, and over a taller list, tabs for the inventory, the stats
+    /// and skills on one page, and the spells, with the party's gold beside them (<see cref="PartyMenu.Tabbed"/>).
+    /// </summary>
+    Tabbed,
+}
+
 /// <summary>
 /// The pause menu's Party tab (<c>WidgetDollMenu</c>): the member shown, with their portrait, hit
 /// points, level and the party's gold, what they wear on the silhouette, and one of four lists with
@@ -32,8 +45,41 @@ public sealed partial class PartyMenu : IPartyWindow
     /// <summary>The lists' bounds in the 320 × 240 frame (<c>DollMenuLists</c>): at (160, 101) and bounded to x 300 and y 205.</summary>
     public static readonly ScreenRect ClassicList = new(160, 101, 300, 205);
 
-    /// <summary>A list's place and its rows' pitch: 11 for the stats, 13 for the rest, so the stats show 9 rows and the others 8.</summary>
-    public static ListLayout Layout(PartyList list) => new(ClassicList, list == PartyList.Stats ? 11 : 13);
+    /// <summary>
+    /// The lists' bounds in the tabbed layout (<see cref="Tabbed"/>): under the tabs and their arrows, and as far down as 12 rows of 13
+    /// reach, across the column the user drew for them.
+    /// </summary>
+    public static readonly ScreenRect TabbedList = new(160, 56, 306, 212);
+
+    /// <summary>
+    /// A list's place and its rows' pitch: 11 for the stats, 13 for the rest, so the stats show 9 rows and the others 8, or in the
+    /// tabbed layout 12.
+    /// </summary>
+    public static ListLayout Layout(PartyList list, bool tabbed = false) =>
+        new(tabbed ? TabbedList : ClassicList, list == PartyList.Stats ? StatPitch : 13);
+
+    /// <summary>A list's place and its rows' pitch in this menu's layout.</summary>
+    public ListLayout LayoutOf(PartyList list) => Layout(list, Tabbed);
+
+    /// <summary>
+    /// Whether the tab is laid out with tabs over its list, the user's design (<see cref="PartyLayout.Tabbed"/>): three tabs, the
+    /// inventory, the stats and skills on one page that scrolls as a whole (<c>PartyMenu.Page.cs</c>), and the spells, which the
+    /// stick steps through as it does the original's four lists. The pause menu sets it on each window as the settings have it.
+    /// </summary>
+    public bool Tabbed
+    {
+        get;
+        set
+        {
+            field = value;
+            Inventory.Visible = LayoutOf(PartyList.Inventory).Visible;
+            Spells.Visible = LayoutOf(PartyList.Spells).Visible;
+            // The page scrolls rather than its lists.
+            Stats.Visible = value ? int.MaxValue : LayoutOf(PartyList.Stats).Visible;
+            Skills.Visible = value ? int.MaxValue : LayoutOf(PartyList.Skills).Visible;
+            KeepPage();
+        }
+    }
 
     /// <summary>The colour of a row, and of the header's numbers.</summary>
     public static readonly Rgba TextColor = MenuDetailsBuilder.TextColor;
@@ -209,15 +255,22 @@ public sealed partial class PartyMenu : IPartyWindow
     {
         if (HasPopup || Slide is not null)
             return;
-        var lists = among ?? Enum.GetValues<PartyList>();
+        // Tabbed, the stats and skills are one page, which the stick steps onto where the stats are.
+        IReadOnlyList<PartyList> lists = among ?? Enum.GetValues<PartyList>();
+        if (Tabbed)
+            lists = [.. lists.Select(Page).Distinct()];
         var count = lists.Count;
-        var at = Math.Max(0, lists.ToList().IndexOf(List));
+        var at = Math.Max(0, lists.ToList().IndexOf(Page(List)));
         StartListSlide(by);
-        List = lists[((at + by) % count + count) % count];
+        ShowPage(lists[((at + by) % count + count) % count]);
     }
 
     /// <summary>Shows a list.</summary>
-    public void ShowList(PartyList list) => List = list;
+    public void ShowList(PartyList list)
+    {
+        List = list;
+        KeepPage();
+    }
 
     /// <summary>Moves the cursor of the popup, or of the list showing.</summary>
     public void MoveCursor(int by)
@@ -228,6 +281,11 @@ public sealed partial class PartyMenu : IPartyWindow
         {
             if (crafting.Fade.IsOpen)
                 crafting.Rows.Move(by);
+            return;
+        }
+        if (OnPage)
+        {
+            MovePage(by);
             return;
         }
         switch (List)
@@ -257,6 +315,7 @@ public sealed partial class PartyMenu : IPartyWindow
             case PartyList.Skills: Skills.Point(row); break;
             default: Spells.Point(row); break;
         }
+        KeepPage();
     }
 
     /// <summary>What C-down shows for the cursor's row, or a crafting popup's recipe's product, or null if it shows nothing.</summary>
@@ -297,6 +356,7 @@ public sealed partial class PartyMenu : IPartyWindow
             Spells.Replace(PartyMenuRows.Spells(shown), resetPastEnd: true);
             Experience = PartyMenuRows.Experience(shown, _text);
         }
+        KeepPage();
     }
 
     /// <summary>
@@ -308,6 +368,8 @@ public sealed partial class PartyMenu : IPartyWindow
     /// </summary>
     public void Step()
     {
+        // Training's member's list follows the trainer's cursor, which the page keeps in view.
+        KeepPage();
         _pulse.Step();
         _pulse.Step();
         StepPopups();

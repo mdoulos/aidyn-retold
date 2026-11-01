@@ -46,6 +46,12 @@ public sealed class Settings
     public bool FullHeightMenus { get; set; } = true;
 
     /// <summary>
+    /// How the pause menu's Party tab is laid out (<see cref="Ui.PartyLayout"/>): with tabs over its list, the user's design (Oct 31,
+    /// 2026), by default, or the original's.
+    /// </summary>
+    public Ui.PartyLayout PartyLayout { get; set; } = Ui.PartyLayout.Tabbed;
+
+    /// <summary>
     /// How many lines the 3D world is drawn at, scaled up to the window: the original's 240 or its Expansion Pak's 480, or 0 to draw
     /// it at <see cref="RenderScale"/>.
     /// </summary>

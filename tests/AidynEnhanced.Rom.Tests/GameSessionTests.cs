@@ -132,6 +132,18 @@ public sealed partial class GameSessionTests(Na10Import fixture)
         Assert.Equal((1f, Core.Sky.SkyPlacement.Original, 65, 1f), Playing());
     }
 
+    /// <summary>The Party Layout setting reaches the window the Party tab shows as it's built, and the one up as the setting changes.</summary>
+    [Fact]
+    public void ThePartyLayoutReachesThePartyTabsWindow()
+    {
+        var (session, _) = Start("G14", 40, 40);
+        Tick(session, SessionSettings.Original with { PartyLayout = Core.Ui.PartyLayout.Tabbed });
+        session.Menu.Open(Core.Ui.PauseTab.Party);
+        Assert.True(session.Menu.Window.Menu.Tabbed);
+        Tick(session);
+        Assert.False(session.Menu.Window.Menu.Tabbed);
+    }
+
     [Fact]
     public void TheModeIsTheHighestUpAndTheTickCountsInEveryMode()
     {

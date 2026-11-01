@@ -22,6 +22,7 @@ public partial class PartyTabView
 
     private void DrawPostBattle(PostBattleMenu window)
     {
+        Begin(_canvas, _origin + new Vector2I(0, Drop));
         _ui.Parchment(_canvas, ClassicParchment.X, ClassicParchment.Y);
         var title = _ui.Size(window.Title);
         _ui.Image(_canvas, window.Title, PileTitleCentre - title.X / 2, PostBattleTitleFoot - title.Y);

@@ -39,19 +39,6 @@ public sealed class Settings
     public UiFilter UiFilter { get; set; } = UiFilter.Pixels;
 
     /// <summary>
-    /// Whether the pause menu's parchment runs the screen's height, its torn edges moved past the original's screen and the gaps
-    /// filled with plain parchment (<see cref="Ui.TallImage"/>), the user's choice (Oct 31, 2026): the menu's text and pictures stay
-    /// as they were. Off, the tabs are the original's.
-    /// </summary>
-    public bool FullHeightMenus { get; set; } = true;
-
-    /// <summary>
-    /// How the pause menu's Party tab is laid out (<see cref="Ui.PartyLayout"/>): with tabs over its list, the user's design (Oct 31,
-    /// 2026), by default, or the original's.
-    /// </summary>
-    public Ui.PartyLayout PartyLayout { get; set; } = Ui.PartyLayout.Tabbed;
-
-    /// <summary>
     /// How many lines the 3D world is drawn at, scaled up to the window: the original's 240 or its Expansion Pak's 480, or 0 to draw
     /// it at <see cref="RenderScale"/>.
     /// </summary>
@@ -141,9 +128,6 @@ public sealed class Settings
 
     /// <summary>Whether a blip sounds as a line prints, pitched by the speaker (<see cref="Ui.TextReveal"/>). On, the user's choice.</summary>
     public bool TextVoice { get; set; } = true;
-
-    /// <summary>What the UI's text is drawn in (<see cref="Ui.TextFont"/>): a typeface at the screen's resolution, the user's choice.</summary>
-    public Ui.TextFont TextFont { get; set; } = Ui.TextFont.HighResolution;
 
     /// <summary>
     /// Whether the title starts with the original's intro cards (<see cref="Ui.IntroCards"/>): the Expansion Pak's, the legal text and

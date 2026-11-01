@@ -6,7 +6,7 @@ using Godot;
 namespace AidynEnhanced.Views;
 
 /// <summary>
-/// A typeface the UI's text is drawn in instead of the fonts' sheets (<see cref="TextFont.HighResolution"/>): Marcellus SC, Roman
+/// A typeface the UI's text is drawn in instead of the fonts' sheets, the user's choice (Oct 31, 2026): Marcellus SC, Roman
 /// small capitals like the menus' own painted labels, or a plugin's (a <c>.ttf</c> asset of the font record, such as
 /// <c>assets/aidyn/font/0.ttf</c>). Each letter, digit and mark a sheet has is drawn by the face into a copy of the sheet's cells,
 /// <see cref="Density"/> texels a pixel, with a width of its own; the controller buttons and icons the sheets draw for some

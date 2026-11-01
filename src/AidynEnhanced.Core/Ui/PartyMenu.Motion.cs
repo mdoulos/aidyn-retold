@@ -23,8 +23,11 @@ public sealed partial class PartyMenu
     /// </summary>
     public const int MemberFrames = 15;
 
-    /// <summary>The frames a list takes to slide in as the stick changes it, and how far it slides (<c>PartyMenu.ListsSlide</c>, <c>0x80031620</c>).</summary>
-    public const int ListFrames = 20, ListDistance = 140;
+    /// <summary>
+    /// The frames a list takes to slide in as the stick changes it (<c>PartyMenu.ListsSlide</c>, <c>0x80031620</c>), and how far it
+    /// slides: the list's width, where the original's slide its 140.
+    /// </summary>
+    public const int ListFrames = 20, ListDistance = 146;
 
     private MenuSlide<(Character Member, IReadOnlyList<int> Order)>? _memberChange;
     private MenuSlide<HeaderNumbers>? _numbersChange;

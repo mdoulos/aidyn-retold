@@ -10,11 +10,8 @@ public static class ParchmentSwap
     /// <summary>How many pixels across the laid parchment has for each of the tab's.</summary>
     public const int Scale = 4;
 
-    /// <summary>
-    /// The lines the parchment's torn edges reach: the full-height menu's, where the user marked them (Oct 31, 2026), and the
-    /// original's height, the System tab's.
-    /// </summary>
-    public const int FullTop = 6, FullBottom = 234, OriginalTop = 13, OriginalBottom = 222;
+    /// <summary>The lines the parchment's torn edges reach in the full-height menu, where the user marked them (Oct 31, 2026).</summary>
+    public const int Top = 6, Bottom = 234;
 
     /// <summary>
     /// Whether a tab's parchment is laid mirrored, left to right: every other tab's, the Party tab's, so the parchment runs on

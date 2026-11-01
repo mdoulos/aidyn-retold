@@ -67,7 +67,7 @@ public partial class SystemTabView : Control
         Name = "System tab";
         MouseFilter = MouseFilterEnum.Pass;
         SetAnchorsPreset(LayoutPreset.FullRect);
-        _ui.Images.WarmParchment(PauseTab.System, UiPainter.FullHeight);
+        _ui.Images.WarmParchment(PauseTab.System);
     }
 
     public SystemMenu Menu { get; set; }

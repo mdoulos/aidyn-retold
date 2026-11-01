@@ -114,17 +114,17 @@ UI images and sprites are plain PNG files, and any PNG an image editor saves wil
 The parchment behind the pause menu's System, Party and World tabs can be replaced by a picture of blank parchment at any size, and is drawn sharper than the menu itself.
 
 - **Put the PNG beside the scroll's model:** `assets\aidyn\scene\0x0E63.parchment.png` in your mod. The torn top and bottom edges should be transparent. The left and right edges go under the scroll's rolls, so they can be cut straight.
-- **It's stretched to fit the screen.** Its width spans the screen. Its torn edges reach almost the screen's top and bottom, or the original tabs' edges if the Enhancements page's **Menu Height** says Original. Any proportions work, but a 4:3 picture is stretched least.
+- **It's stretched to fit the screen.** Its width spans the screen. Its torn edges reach almost the screen's top and bottom. Any proportions work, but a 4:3 picture is stretched least.
 - **It replaces everything painted into the tabs.** The original paints some of the menus into its parchment rather than drawing them: the Party tab's HitPoints, Level and Gold labels, the slots' frames, the silhouette, the knotwork and "Details", and the World tab's map backdrop, compass and the calendar's days and moons. On your parchment they're gone, and only what the game draws over the tabs remains: names, numbers, items, portraits, the world map and the menus' text.
 - **The middle tab's copy is mirrored,** so the paper runs on from tab to tab without a seam. A picture whose left and right edges differ still joins up.
 
 ## Fonts
 
-The game draws its text in Marcellus SC, a typeface drawn sharp at any screen size, unless the Enhancements page's **Text Font** says Original, which uses the original's two letter sheets, UI images `0x001C` (the main font) and `0x001D` (the slim one the lists use).
+The game draws its text in Marcellus SC, a typeface drawn sharp at any screen size, in place of the original's two letter sheets, UI images `0x001C` (the main font) and `0x001D` (the slim one the lists use).
 
 - **To give the text another typeface,** put a `.ttf` file in your mod named for the font: `assets\aidyn\font\0.ttf` for the main font and `assets\aidyn\font\1.ttf` for the slim one. The game sizes its capitals to the sheet's, 8 pixels of the original's screen in the main font and 7 in the slim, and spaces the letters by the typeface's own widths. Your typeface's licence must let it be shipped in a mod; fonts under the SIL Open Font License, as Marcellus SC is, do.
-- **The typeface draws letters, digits and the common punctuation marks.** The sheets also hold the controller buttons and a few icons (the skull, the heart, infinity), which some characters draw in place of themselves. Those always come from the sheet, so a repainted sheet changes them under either setting.
-- **A repainted sheet** works as any UI image does, at its original size. Under Original it draws every character, with the original's widths.
+- **The typeface draws letters, digits and the common punctuation marks.** The sheets also hold the controller buttons and a few icons (the skull, the heart, infinity), which some characters draw in place of themselves. Those always come from the sheet, so a repainted sheet changes them.
+- **A repainted sheet** works as any UI image does, at its original size, for the buttons and icons it draws.
 
 ## Models
 

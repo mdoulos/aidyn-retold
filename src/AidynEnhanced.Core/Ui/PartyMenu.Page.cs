@@ -3,13 +3,13 @@ namespace AidynEnhanced.Core.Ui;
 public sealed partial class PartyMenu
 {
     /// <summary>
-    /// The tabbed layout's stats and skills page (<see cref="Tabbed"/>), the user's design (Oct 31, 2026): the stats' rows 11 apart as the
+    /// The stats and skills page, the user's design (Oct 31, 2026): the stats' rows 11 apart as the
     /// original's stats list has them, 4 under them the experience lines 11 apart, and 6 under those the skills' rows, 13 apart as the
     /// skills list's. The page scrolls as a whole, a row at a time, the experience lines going with the first skill.
     /// </summary>
     public const int StatPitch = 11, ExperienceGap = 4, ExperiencePitch = 11, ExperienceLines = 3, SkillsGap = 6, SkillPitch = 13;
 
-    /// <summary>The tabs over the tabbed layout's list, left to right: the inventory, the stats and skills page, and the spells.</summary>
+    /// <summary>The tabs over the list, left to right: the inventory, the stats and skills page, and the spells.</summary>
     public static readonly IReadOnlyList<PartyList> Tabs = [PartyList.Inventory, PartyList.Stats, PartyList.Spells];
 
     /// <summary>The section of the page the stick last left it on, which it comes back to.</summary>
@@ -21,14 +21,11 @@ public sealed partial class PartyMenu
     /// <summary>Which of <see cref="Tabs"/> shows a list.</summary>
     public static int TabOf(PartyList list) => Tabs.ToList().IndexOf(Page(list));
 
-    /// <summary>Whether the list showing is the tabbed layout's stats and skills page.</summary>
-    public bool OnPage => Tabbed && Page(List) == PartyList.Stats;
+    /// <summary>Whether the list showing is the stats and skills page.</summary>
+    public bool OnPage => Page(List) == PartyList.Stats;
 
-    /// <summary>How tall the tabbed layout's list is, which the page shows of.</summary>
-    public static int ListHeight => TabbedList.Bottom - TabbedList.Top;
-
-    /// <summary>How far a list slides as the stick changes it: the original's 140, or the tabbed layout's list's width.</summary>
-    public int SlideDistance => Tabbed ? TabbedList.Right - TabbedList.Left : ListDistance;
+    /// <summary>How tall the list is, which the page shows of.</summary>
+    public static int ListHeight => ListBounds.Bottom - ListBounds.Top;
 
     /// <summary>Where on the page, from its top, the experience lines are.</summary>
     public int ExperienceAt => Stats.Rows.Count * StatPitch + ExperienceGap;
@@ -58,7 +55,7 @@ public sealed partial class PartyMenu
     /// <summary>The stats' or skills' row under a point in the frame, if the page shows it whole.</summary>
     public (PartyList List, int Row)? PageRowAt(float x, float y)
     {
-        var bounds = TabbedList;
+        var bounds = ListBounds;
         if (x < bounds.Left || x >= bounds.Right || y < bounds.Top || y >= bounds.Bottom)
             return null;
         var at = (int)(y - bounds.Top);
@@ -93,7 +90,7 @@ public sealed partial class PartyMenu
     {
         if (OnPage)
             _pageSection = List;
-        List = Tabbed && list == PartyList.Stats ? _pageSection : list;
+        List = list == PartyList.Stats ? _pageSection : list;
         KeepPage();
     }
 
@@ -125,11 +122,6 @@ public sealed partial class PartyMenu
     /// </summary>
     private void KeepPage()
     {
-        if (!Tabbed)
-        {
-            PageScroll = 0;
-            return;
-        }
         var height = ListHeight;
         var (top, bottom) = List == PartyList.Skills && Skills.Rows.Count > 0
             ? (Skills.Cursor == 0 ? ExperienceAt : SkillsAt + Skills.Cursor * SkillPitch, SkillsAt + (Skills.Cursor + 1) * SkillPitch)

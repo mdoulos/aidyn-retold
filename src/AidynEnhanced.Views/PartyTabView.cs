@@ -6,8 +6,9 @@ using Godot;
 namespace AidynEnhanced.Views;
 
 /// <summary>
-/// Draws the pause menu's Party tab (<see cref="PartyMenu"/>) on a <see cref="UiScreen"/>'s canvas, as the
-/// original lays it out, in its 320 × 240 frame at the screen's centre, on the tab's image, <c>0x00D9</c>. It draws its
+/// Draws the pause menu's Party tab (<see cref="PartyMenu"/>) on a <see cref="UiScreen"/>'s canvas, laid out as the user
+/// designed it (Oct 31, 2026), in the original's 320 × 240 frame at the screen's centre, on the tab's plain parchment or a mod's
+/// blank one. It draws its
 /// <see cref="Window"/>: the tab itself, the menu's barter state, the loot window or a shop (see <c>PartyTabView.Barter.cs</c>),
 /// or its training state (<c>PartyTabView.Training.cs</c>), each with the header and lists of the <see cref="PartyMenu"/>
 /// under it. A further window is drawn by a case in <see cref="_Draw"/> and <see cref="Hover"/>, and takes its presses
@@ -18,26 +19,40 @@ public partial class PartyTabView : Control
     /// <summary>The original's frame.</summary>
     private const int FrameWidth = 320, FrameHeight = 240;
 
-    // The blocks, as pieces of 0x00D9 and what's drawn on them relative to each piece.
+    // The left column is the member: the portraits and name where the original has them, the level by the name, the bar under
+    // the portraits with the aspect's and school's icons after it, and the silhouette's slots in the column under them. The right
+    // is the lists, under the tabs and the gold.
 
-    /// <summary>The portraits' frames. DollMenuPortraits puts each portrait 2 inside its frame.</summary>
+    /// <summary>The portraits' frames, as the original paints them into <c>0x00D9</c>. DollMenuPortraits puts each portrait 2 inside its frame.</summary>
     private static readonly Rect2I PortraitPiece = new(18, 22, 134, 46);
 
-    private static readonly Vector2I ShownPortrait = new(4, 4), NameAt = new(51, 6), IconsAt = new(4, 48);
+    private static readonly Vector2I ShownPortrait = new(4, 4), NameAt = new(51, 6);
     private static readonly Vector2I[] OtherPortraits = [new(49, 17), new(78, 17), new(107, 17)];
     private const int ShownSize = 40, OtherSize = 24;
 
-    /// <summary>The hit points, level and gold labels and the bar's frame (WidgetHealthGold).</summary>
-    private static readonly Rect2I HealthPiece = new(160, 22, 140, 58);
+    /// <summary>The hit points bar under the portraits, the hit points on it.</summary>
+    private static readonly Rect2I Bar = new(22, 67, 96, 10);
 
-    private static readonly Vector2I HealthBarAt = new(60, 5), HealthBarSize = new(80, 10);
-    private static readonly Vector2I HpAt = new(63, 19), MaxHpAt = new(95, 19), LevelAt = new(63, 33), GoldAt = new(63, 47);
+    /// <summary>The aspect's and school's icons after the bar, from the portraits' frames' corner, and how far apart they are.</summary>
+    private static readonly Vector2I IconsAt = new(107, 45);
+
+    private const int IconGap = 4;
+
+    /// <summary>The level's right edge, under the small portraits' right edge, and the gold's, at the list's.</summary>
+    private const int LevelRight = 149, GoldRight = 306;
+
+    /// <summary>The tabs' row, and how far apart their labels are.</summary>
+    private const int TabsTop = 27, TabsHeight = 14, TabsGap = 6;
+
+    /// <summary>How big the tabs' labels, the level, the gold and the hit points are drawn, as a share of the slim font's size.</summary>
+    private const float SmallScale = 0.6f;
 
     /// <summary>
-    /// The silhouette and its slots' frames (DollEquipmentMenu::SetSlotCoords). The shield's is level with the first
-    /// scroll's, as its frame painted into <c>0x00D9</c> is and the user's captures show; at 45 it stood 2 above it.
+    /// The silhouette's slots' corner, centring them in the column under the bar. Their places are the original's, from its
+    /// silhouette's corner (DollEquipmentMenu::SetSlotCoords); the shield's is level with the first scroll's, as its frame painted
+    /// into <c>0x00D9</c> is and the user's captures show; at 45 it stood 2 above it.
     /// </summary>
-    private static readonly Rect2I SilhouettePiece = new(18, 72, 114, 142);
+    private static readonly Vector2I SilhouetteAt = new(27, 83);
 
     private static readonly Vector2I[] Slots =
     [
@@ -47,16 +62,14 @@ public partial class PartyTabView : Control
 
     private const int SlotSize = 16;
 
-    // DollMenuLists and WidgetTrainShop: the list's bounds (PartyMenu.Layout); its title's centre is 70 into them and its
-    // top 20 above, and the arrow under the knotwork.
-    /// <summary>
-    /// What a list and its title are cut to as they slide: the list's bounds across, x 160 to 300, and from under the
-    /// gold to the list's foot. The original cuts the rows to the bounds and the title to x 170 to 300.
-    /// </summary>
-    private static readonly Rect2I ListClip = new(160, 78, 140, 128);
-    private static readonly Vector2I SliderAt = new(126, 207);
+    /// <summary>What the list and its arrows are cut to as they slide: the list's bounds across, from under the tabs to the list's foot.</summary>
+    private static readonly Rect2I ListClip = new(160, 43, 146, 171);
 
-    // WidgetItemDetail: the parchment, and its text's left and right edges and top.
+    /// <summary>The arrow that says which tabs of the pause menu are beside this one, under the gap between the columns.</summary>
+    private static readonly Vector2I SliderAt = new(130, 215);
+
+    // WidgetItemDetail: the parchment, and its text's left and right edges and top, as the original places them; what goes over
+    // the silhouette is drawn Drop lower.
     private static readonly Vector2I ClassicParchment = new(0, 58);
     private static readonly ScreenRect ClassicDetails = new(23, 70, 149, 218);
     private const int DetailsIndent = 16;
@@ -65,53 +78,20 @@ public partial class PartyTabView : Control
     // the portraits touch and the next name overlaps the health by 2; the port leaves 3 between them, as the user asked.
     private const int MemberPortrait = 25;
 
-    // The tabbed layout (PartyMenu.Tabbed), the user's design (Oct 31, 2026), on the plain parchment or a mod's blank one: the bar
-    // under the portraits with the aspect's and school's icons after it, the level by the name, the silhouette's slots in the
-    // column under them, and over the list on the right, the tabs and the gold.
-
-    /// <summary>The hit points bar under the portraits, the hit points on it.</summary>
-    private static readonly Rect2I TabbedBar = new(22, 67, 96, 10);
-
-    /// <summary>The aspect's and school's icons after the bar, from the portraits' frames' corner, and how far apart they are.</summary>
-    private static readonly Vector2I TabbedIconsAt = new(107, 45);
-
-    private const int TabbedIconGap = 4;
-
-    /// <summary>The level's right edge, under the small portraits' right edge, and the gold's, at the list's.</summary>
-    private const int TabbedLevelRight = 149, TabbedGoldRight = 306;
-
-    /// <summary>The tabs' row, and how far apart their labels are.</summary>
-    private const int TabsTop = 27, TabsHeight = 14, TabsGap = 6;
-
-    /// <summary>How big the tabs' labels, the level, the gold and the hit points are drawn, as a share of the slim font's size.</summary>
-    private const float SmallScale = 0.6f;
-
-    /// <summary>The silhouette's slots' corner, centring them in the column under the bar.</summary>
-    private static readonly Vector2I TabbedSilhouette = new(27, 83);
-
-    /// <summary>What the list and its arrows are cut to as they slide: the list's bounds across, from under the tabs to the list's foot.</summary>
-    private static readonly Rect2I TabbedListClip = new(160, 43, 146, 171);
-
-    /// <summary>The arrow that says which tabs of the pause menu are beside this one, under the gap between the columns.</summary>
-    private static readonly Vector2I TabbedSliderAt = new(130, 215);
-
     /// <summary>
-    /// How far down the tabbed layout draws what goes over the silhouette, C-down's details, the skills' popups and the barter,
-    /// training and post-battle windows' own parts, so their parchment clears the bar and covers the silhouette's column, to the
-    /// full-height parchment's foot.
+    /// How far down what goes over the silhouette is drawn from where the original has it, C-down's details, the skills' popups and
+    /// the barter, training and post-battle windows' own parts, so their parchment clears the bar and covers the silhouette's
+    /// column, to the full-height parchment's foot.
     /// </summary>
-    private const int TabbedDrop = 20;
+    private const int Drop = 20;
 
     /// <summary>The colours of the bar's track, its edge, and the hit points on it, with their shadow.</summary>
     private static readonly Rgba BarTrack = new(68, 42, 34, 60), BarEdge = new(68, 42, 34, 150), BarText = new(250, 242, 226, 255),
         BarShadow = new(40, 20, 14, 170);
 
-    /// <summary>How far down what goes over the silhouette is drawn in this layout.</summary>
-    private int Drop => Menu.Tabbed ? TabbedDrop : 0;
-
     /// <summary>
-    /// What's painted into <c>0x00D9</c>, covered by plain parchment from the list's side, which the veil is drawn from so
-    /// it fades the painted layout with the widgets: the portraits' frames, the silhouette and its slots in nine pieces,
+    /// What's painted into <c>0x00D9</c>, covered by plain parchment from the list's side, which the tab is drawn on, and the veil
+    /// over it: the portraits' frames, the silhouette and its slots in nine pieces,
     /// the bar's frame, the labels, the two rules over the list, the knotwork in three, and "Details". Each piece's
     /// source was picked for grain like the parchment round it, and nothing painted or torn is in it or a pixel round it.
     /// </summary>
@@ -178,7 +158,7 @@ public partial class PartyTabView : Control
         _overlay.Draw += DrawOverlay;
         // The veil's image is made now, as the menu first opens, rather than as a tab is first slid from.
         _ui.Images.Plain(MenuImages.PartyTab, PlainPatches);
-        _ui.Images.WarmParchment(PauseTab.Party, UiPainter.FullHeight);
+        _ui.Images.WarmParchment(PauseTab.Party);
     }
 
     /// <summary>What the tab shows and takes the presses: the tab, the barter state or the training state, which the runtime's menu starts afresh each time it opens.</summary>
@@ -272,7 +252,7 @@ public partial class PartyTabView : Control
             case BarterMenu { HasPopup: false } barter:
                 if (BarterMenu.PileLayout.RowAt(barter.Pile, left.X, left.Y) is { } pile)
                     barter.Point(true, pile);
-                else if (Menu.LayoutOf(PartyList.Inventory).RowAt(Menu.Inventory, at.X, at.Y) is { } party)
+                else if (PartyMenu.Layout(PartyList.Inventory).RowAt(Menu.Inventory, at.X, at.Y) is { } party)
                     barter.Point(false, party);
                 else
                     return false;
@@ -334,10 +314,9 @@ public partial class PartyTabView : Control
         if (Menu.Shown is null)
             return;
         _origin = new Vector2I(((int)Size.X - FrameWidth) / 2, ((int)Size.Y - FrameHeight) / 2);
-        var clip = Menu.Tabbed ? TabbedListClip : ListClip;
-        _listClip.Position = _origin + clip.Position;
-        _listClip.Size = clip.Size;
-        _listLayer.Position = -clip.Position;
+        _listClip.Position = _origin + ListClip.Position;
+        _listClip.Size = ListClip.Size;
+        _listLayer.Position = -ListClip.Position;
         _listLayer.Size = new Vector2(FrameWidth, FrameHeight);
         Begin(this, _origin);
         _windowLayer.Modulate = new Color(1, 1, 1, WindowAlpha);
@@ -349,7 +328,7 @@ public partial class PartyTabView : Control
             return;
         }
         // The barter, training and post-battle states: the header here, and the window's own parts on their layer (DrawWindow).
-        _ui.Tab(_canvas, PauseTab.Party, PlainPatches, plain: Menu.Tabbed);
+        _ui.Tab(_canvas, PauseTab.Party, PlainPatches, plain: true);
         Portraits(PortraitPiece.Position);
         Health();
     }
@@ -361,8 +340,7 @@ public partial class PartyTabView : Control
             return;
         Begin(_windowLayer, _origin);
         // Each window has its own tabs, which fade with it.
-        if (Menu.Tabbed)
-            Tabs();
+        Tabs();
         switch (Window)
         {
             case BarterMenu barter:
@@ -395,8 +373,8 @@ public partial class PartyTabView : Control
             List(0, _ui.Slim);
             return;
         }
-        var left = Menu.LayoutOf(Menu.List).Bounds.Left;
-        var by = slide.Direction * Menu.SlideDistance;
+        var left = PartyMenu.ListBounds.Left;
+        var by = slide.Direction * PartyMenu.ListDistance;
         List(MenuTween.Value(left, left + by, Menu.ListChange) - left, _ui.Slim, which: slide.From);
         List(MenuTween.Value(left - by, left, Menu.ListChange) - left, _ui.Slim);
     }
@@ -445,25 +423,20 @@ public partial class PartyTabView : Control
         Popups();
     }
 
-    /// <summary>
-    /// The tab's image and header, the silhouette and the arrow under the knotwork, or in the tabbed layout the plain parchment, the
-    /// header laid out anew, the silhouette's slots in their column, the tabs and the arrow under the gap between the columns.
-    /// </summary>
+    /// <summary>The plain parchment, the header, the silhouette's slots in their column, the tabs and the arrow under the gap between the columns.</summary>
     private void DrawTab()
     {
-        _ui.Tab(_canvas, PauseTab.Party, PlainPatches, plain: Menu.Tabbed);
+        _ui.Tab(_canvas, PauseTab.Party, PlainPatches, plain: true);
         Portraits(PortraitPiece.Position);
         Health();
-        Silhouette(Menu.Tabbed ? TabbedSilhouette : SilhouettePiece.Position);
-        if (Menu.Tabbed)
-            Tabs();
-        // Combat's pause turns the arrow under the knotwork to point left only.
-        var slider = Menu.Tabbed ? TabbedSliderAt : SliderAt;
-        _ui.Image(_canvas, Menu.Combat is not null ? MenuImages.SliderLeft : MenuImages.SliderBoth, slider.X, slider.Y, color: PartyMenu.TextColor);
+        Silhouette(SilhouetteAt);
+        Tabs();
+        // Combat's pause turns the arrow to point left only.
+        _ui.Image(_canvas, Menu.Combat is not null ? MenuImages.SliderLeft : MenuImages.SliderBoth, SliderAt.X, SliderAt.Y, color: PartyMenu.TextColor);
     }
 
     /// <summary>
-    /// The tabbed layout's tabs over the list, in a small slim font: the inventory (a shop's Sell), the stats and skills, and the
+    /// The tabs over the list, in a small slim font: the inventory (a shop's Sell), the stats and skills, and the
     /// spells, the one showing dark and underlined, the others faded, and those the window hasn't fainter still. The underline
     /// slides to the tab shown as the lists slide. Beside them, at the list's right edge, the party's gold.
     /// </summary>
@@ -472,7 +445,7 @@ public partial class PartyTabView : Control
         var font = _ui.Slim;
         var labels = PartyMenu.Tabs.Select(TabLabel).ToList();
         var places = new List<(float X, float Width)>();
-        var x = (float)PartyMenu.TabbedList.Left;
+        var x = (float)PartyMenu.ListBounds.Left;
         foreach (var label in labels)
         {
             var width = SmallWidth(label);
@@ -494,7 +467,7 @@ public partial class PartyTabView : Control
 
         // The gold, after a coin.
         var gold = Num(Menu.Party.Gold);
-        var goldX = TabbedGoldRight - SmallWidth(gold);
+        var goldX = GoldRight - SmallWidth(gold);
         Small(gold, goldX, y, PartyMenu.TextColor);
         var coin = new Vector2(goldX - CoinRadius - 1.5f, y + (font.LineHeight - 2) * SmallScale / 2);
         _canvas.DrawCircle(coin, CoinRadius, _ui.Tint(CoinFace));
@@ -641,7 +614,7 @@ public partial class PartyTabView : Control
         _ui.Text(_canvas, _ui.Slim, shown.Name, at.X + NameAt.X, at.Y + NameAt.Y, FadingIn(PartyMenu.TextColor, change));
         var icons = Icons(shown);
         var old = Menu.Previous is { } member ? Icons(member) : icons;
-        var iconsY = (Menu.Tabbed ? TabbedIconsAt : IconsAt).Y;
+        var iconsY = IconsAt.Y;
         foreach (var (icon, x) in old.Except(icons))
             _ui.Image(_canvas, icon, at.X + x, at.Y + iconsY, color: FadingOut(White, change));
         foreach (var (icon, x) in icons)
@@ -652,18 +625,15 @@ public partial class PartyTabView : Control
     private static (Vector2I At, int Size) PortraitPlace(int i) =>
         i == 0 ? (ShownPortrait, ShownSize) : (OtherPortraits[Math.Min(i - 1, OtherPortraits.Length - 1)], OtherSize);
 
-    /// <summary>
-    /// A member's aspect's and school's icons under the large portrait, 2 apart, or in the tabbed layout after the bar, 4 apart, and
-    /// where they go across.
-    /// </summary>
+    /// <summary>A member's aspect's and school's icons after the bar, 4 apart, and where they go across.</summary>
     private List<(RecordId Icon, int X)> Icons(Core.Characters.Character member)
     {
         var icons = new List<(RecordId, int)>();
-        var x = (Menu.Tabbed ? TabbedIconsAt : IconsAt).X;
+        var x = IconsAt.X;
         if (MenuImages.AspectIcon(member.Aspect) is { } aspect)
         {
             icons.Add((aspect, x));
-            x += _ui.Size(aspect).X + (Menu.Tabbed ? TabbedIconGap : 2);
+            x += _ui.Size(aspect).X + IconGap;
         }
         if (MenuImages.SchoolIcon(member.School) is { } school)
             icons.Add((school, x));
@@ -678,51 +648,17 @@ public partial class PartyTabView : Control
     /// <summary>A colour as it fades out, its alpha tweened to 0.</summary>
     private static Rgba FadingOut(Rgba color, float ease) => color with { A = (byte)MenuTween.Value(color.A, 0, ease) };
 
-    /// <summary>The hit points bar and the numbers, where the layout has them; the tabbed layout's gold is with its tabs.</summary>
+    /// <summary>
+    /// The hit points bar under the portraits, cut to the share left, on a track where the frame painted into the tab was, with the
+    /// hit points and their maximum on it, and the level by the name, small; the gold is with the tabs. As the member changes, or a
+    /// potion, the equipment, a skill or training changes the member shown (<c>PartyMenu.HealthGoldChange</c>, <c>0x8003be5c</c>),
+    /// the bar's width tweens to the new share, and the hit points, their maximum and the level crossfade, even where they're the
+    /// same.
+    /// </summary>
     private void Health()
     {
-        if (Menu.Tabbed)
-            TabbedHealth();
-        else
-            Health(HealthPiece.Position, _ui.Main);
-    }
-
-    /// <summary>
-    /// The hit points bar, cut to the share left, and the hit points, level and gold. As the member changes, or a potion,
-    /// the equipment, a skill or training changes the member shown (<c>PartyMenu.HealthGoldChange</c>, <c>0x8003be5c</c>),
-    /// the bar's width tweens to the new share, and the hit points, their maximum and the level crossfade, even where
-    /// they're the same; the gold stays.
-    /// </summary>
-    private void Health(Vector2I at, UiFont font)
-    {
         var shown = Menu.Shown!;
-        var bar = at + HealthBarAt;
-        var change = Menu.NumbersChange;
-        var width = Menu.HealthBar(HealthBarSize.X);
-        if (Menu.PreviousNumbers is { } before)
-        {
-            width = MenuTween.Value(before.Bar(HealthBarSize.X), width, change);
-            var fading = FadingOut(PartyMenu.TextColor, change);
-            Number(font, before.Hp, at + HpAt, fading);
-            Number(font, before.MaxHp, at + MaxHpAt, fading);
-            Number(font, before.Level, at + LevelAt, fading);
-        }
-        _ui.ImageTo(_canvas, MenuImages.HealthBar, bar.X, bar.Y, HealthBarSize, bar.X + width);
-        var color = FadingIn(PartyMenu.TextColor, change);
-        Number(font, shown.Hp, at + HpAt, color);
-        Number(font, shown.MaxHp, at + MaxHpAt, color);
-        Number(font, shown.Level, at + LevelAt, color);
-        Number(font, Menu.Party.Gold, at + GoldAt);
-    }
-
-    /// <summary>
-    /// The tabbed layout's bar under the portraits, on a track where the frame painted into the tab was, with the hit points and
-    /// their maximum on it, and the level by the name, small, crossfading and tweening as <see cref="Health(Vector2I, UiFont)"/>'s do.
-    /// </summary>
-    private void TabbedHealth()
-    {
-        var shown = Menu.Shown!;
-        var bar = TabbedBar;
+        var bar = Bar;
         var change = Menu.NumbersChange;
         var track = new Rect2(bar.Position - new Vector2(0.5f, 0.5f), bar.Size + Vector2.One);
         _canvas.DrawRect(track, _ui.Tint(BarTrack));
@@ -732,14 +668,14 @@ public partial class PartyTabView : Control
             width = MenuTween.Value(before.Bar(bar.Size.X), width, change);
         _ui.ImageTo(_canvas, MenuImages.HealthBar, bar.Position.X, bar.Position.Y, bar.Size, bar.Position.X + width);
         if (Menu.PreviousNumbers is { } was)
-            TabbedNumbers(was, FadingOut(White, change).A);
-        TabbedNumbers(HeaderNumbers.Of(shown), FadingIn(White, change).A);
+            Numbers(was, FadingOut(White, change).A);
+        Numbers(HeaderNumbers.Of(shown), FadingIn(White, change).A);
     }
 
     /// <summary>The hit points and their maximum centred on the bar, and the level by the name, at an alpha.</summary>
-    private void TabbedNumbers(HeaderNumbers numbers, byte a)
+    private void Numbers(HeaderNumbers numbers, byte a)
     {
-        var bar = TabbedBar;
+        var bar = Bar;
         var hp = $"{Num(numbers.Hp)} / {Num(numbers.MaxHp)}";
         var height = (_ui.Slim.LineHeight - 2) * SmallScale;
         Small(hp, bar.Position.X + (bar.Size.X - SmallWidth(hp)) / 2, bar.Position.Y + (bar.Size.Y - height) / 2, BarText with { A = a },
@@ -747,7 +683,7 @@ public partial class PartyTabView : Control
         var level = $"{LevelLabel} {Num(numbers.Level)}";
         // Level with the name's foot.
         var nameFoot = PortraitPiece.Position.Y + NameAt.Y + _ui.Slim.LineHeight - 2;
-        Small(level, TabbedLevelRight - SmallWidth(level), nameFoot - height, PartyMenu.TextColor with { A = a });
+        Small(level, LevelRight - SmallWidth(level), nameFoot - height, PartyMenu.TextColor with { A = a });
     }
 
     /// <summary>
@@ -774,9 +710,6 @@ public partial class PartyTabView : Control
         }
     }
 
-    private void Number(UiFont font, long value, Vector2I at, Rgba? color = null) =>
-        _ui.Text(_canvas, font, value.ToString(System.Globalization.CultureInfo.InvariantCulture), at.X, at.Y, color ?? PartyMenu.TextColor);
-
     /// <summary>
     /// Where a list's columns go, from its left edge: the original's (<c>SMIItem</c>, <c>SMStatItem</c>, <c>WidgetSkillInfo</c>,
     /// <c>WidgetSpellEntry</c>). Its names reach its bounds' right edge.
@@ -789,45 +722,24 @@ public partial class PartyTabView : Control
 
     /// <summary>
     /// A list, by default the one showing, <paramref name="shift"/> across from its place (<see cref="PartyMenu.LayoutOf"/>), under its
-    /// title, with its arrows and its rows in <paramref name="font"/>, the cursor's in <paramref name="cursor"/>, or pulsing
-    /// if none is given. In the tabbed layout the tabs are its title, and the stats and skills are one page (<see cref="StatsPage"/>).
+    /// tab, with its arrows and its rows in <paramref name="font"/>, the cursor's in <paramref name="cursor"/>, or pulsing if none is
+    /// given. The stats and skills are one page (<see cref="StatsPage"/>).
     /// </summary>
     private void List(int shift, UiFont font, Rgba? cursor = null, PartyList? which = null)
     {
         var shown = which ?? Menu.List;
-        var layout = Menu.LayoutOf(shown).Shifted(shift);
+        var layout = PartyMenu.Layout(shown).Shifted(shift);
         var b = layout.Bounds;
         if (shown == Menu.List)
             _listLayout = layout;
         var highlight = cursor ?? Menu.HighlightNow;
-        if (Menu.Tabbed && PartyMenu.Page(shown) == PartyList.Stats)
-        {
-            StatsPage(layout, font, highlight);
-            return;
-        }
-        if (!Menu.Tabbed)
-        {
-            var title = shown switch
-            {
-                PartyList.Inventory => (Window as BarterMenu)?.PartyTitle ?? MenuImages.InventoryTitle,
-                PartyList.Stats => MenuImages.StatsTitle,
-                PartyList.Skills => MenuImages.SkillsTitle,
-                _ => MenuImages.SpellsTitle,
-            };
-            _ui.Image(_canvas, title, b.Left + 70 - _ui.Size(title).X / 2, b.Top - 20);
-        }
         switch (shown)
         {
             case PartyList.Inventory:
                 Items(Menu.Inventory, layout, font, highlight);
                 break;
-            case PartyList.Stats:
-                _ui.List(Menu.Stats, layout, PartyMenu.TextColor, highlight, (row, top, c) => StatRowAt(row, layout, top, font, c));
-                // Below the rows, 4 apart.
-                ExperienceLinesAt(layout, b.Top + Menu.Stats.Rows.Count * layout.RowHeight + 4, font, _ => true);
-                break;
-            case PartyList.Skills:
-                SkillRows(Menu.Skills, layout, font, highlight);
+            case PartyList.Stats or PartyList.Skills:
+                StatsPage(layout, font, highlight);
                 break;
             default:
                 SpellRows(Menu.Spells, layout, font, highlight);
@@ -836,7 +748,7 @@ public partial class PartyTabView : Control
     }
 
     /// <summary>
-    /// The tabbed layout's stats and skills page, as far as it's scrolled (<see cref="PartyMenu.PageScroll"/>): the stats' rows, the
+    /// The stats and skills page, as far as it's scrolled (<see cref="PartyMenu.PageScroll"/>): the stats' rows, the
     /// experience lines and the skills' rows, each drawn whole or not at all, with the arrows while rows are hidden above or below.
     /// The cursor is on a stat or a skill.
     /// </summary>

@@ -124,30 +124,7 @@ public sealed class PauseMenu
     public PauseScroll Scroll { get; private set; } = new(0);
 
     /// <summary>What the Party tab shows and takes the presses: the tab itself, or the barter, training or post-battle window. Set from the first opening.</summary>
-    public IPartyWindow Window
-    {
-        get;
-        private set
-        {
-            field = value;
-            value.Menu.Tabbed = PartyLayout == PartyLayout.Tabbed;
-        }
-    } = null!;
-
-    /// <summary>
-    /// How the Party tab and the windows built on it are laid out, which the session hands over from the settings each tick: each
-    /// window takes it as it's built, and the one up as it changes.
-    /// </summary>
-    public PartyLayout PartyLayout
-    {
-        get;
-        set
-        {
-            field = value;
-            if (Window is { } window)
-                window.Menu.Tabbed = value == PartyLayout.Tabbed;
-        }
-    }
+    public IPartyWindow Window { get; private set; } = null!;
 
     /// <summary>The Party tab's own state, which the windows are built on. Set from the first opening.</summary>
     public PartyMenu Party { get; private set; } = null!;

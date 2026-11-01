@@ -49,16 +49,12 @@ public sealed record SessionSettings
     /// <summary>Whether a blip sounds as a line prints (<see cref="Ui.DialogueBox.Voice"/>); the original's box is silent.</summary>
     public bool TextVoice { get; init; }
 
-    /// <summary>How the Party tab and its windows are laid out (<see cref="Ui.PauseMenu.PartyLayout"/>): the original's in a headless run.</summary>
-    public Ui.PartyLayout PartyLayout { get; init; }
-
     /// <summary>Whether the player can jump in trek (<see cref="Movement.PlayerMotion.Jumping"/>); the original has no jump.</summary>
     public bool Jump { get; init; }
 
     /// <summary>
-    /// The widths each font's glyphs take in the typeface its text is drawn in, by font record, when the Text Font setting draws
-    /// it in one (<see cref="Ui.TextFont.HighResolution"/>), which the runtime measures and hands over; none for the sheets' own
-    /// (<see cref="Ui.TextFonts.Widths"/>).
+    /// The widths each font's glyphs take in the typeface its text is drawn in, by font record, which the runtime measures and hands
+    /// over; none for the sheets' own, as a headless run lays its text out by (<see cref="Ui.TextFonts.Widths"/>).
     /// </summary>
     public IReadOnlyDictionary<AidynEnhanced.Plugins.RecordId, IReadOnlyList<int>>? TextWidths { get; init; }
 
@@ -75,6 +71,5 @@ public sealed record SessionSettings
         TextRate = Ui.TextReveal.GlyphsPerTick(settings.TextSpeed),
         TextVoice = settings.TextVoice,
         Jump = settings.Jump,
-        PartyLayout = settings.PartyLayout,
     };
 }

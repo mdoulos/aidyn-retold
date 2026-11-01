@@ -81,25 +81,26 @@ public sealed class UiImages(PluginSet plugins)
     /// </summary>
     private static readonly RecordId Scroll = RecordId.Hex(RecordTypes.Scene, 0x0E63);
 
-    /// <summary>The parchment laid across a tab's frame, by the frame's size, the height and the side, which a plugin set's tabs share.</summary>
-    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<PluginSet, Dictionary<(int, int, bool, bool), Task<byte[]?>>> Laid = [];
+    /// <summary>The parchment laid across a tab's frame, by the frame's size and the side, which a plugin set's tabs share.</summary>
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<PluginSet, Dictionary<(int, int, bool), Task<byte[]?>>> Laid = [];
 
-    private readonly Dictionary<(bool, bool), Texture2D?> _onParchment = [];
+    /// <summary>The laid parchment's textures, by whether they're mirrored.</summary>
+    private readonly Dictionary<bool, Texture2D?> _onParchment = [];
 
     /// <summary>
     /// A mod's blank parchment laid across a tab's frame in place of the tab's own (<see cref="ParchmentSwap"/>): its torn edges
-    /// where the full-height menu puts them or the original's height, and mirrored as the tab's place on the scroll says
+    /// where the full-height menu puts them, and mirrored as the tab's place on the scroll says
     /// (<see cref="ParchmentSwap.Mirrored"/>). Null if no plugin has a parchment for the scroll. It's laid on another thread,
     /// begun by <see cref="WarmParchment"/> or the first time it's asked for, and waited for then.
     /// </summary>
-    public Texture2D? OnParchment(PauseTab tab, bool full)
+    public Texture2D? OnParchment(PauseTab tab)
     {
-        var key = (full, ParchmentSwap.Mirrored(tab));
+        var key = ParchmentSwap.Mirrored(tab);
         if (_onParchment.TryGetValue(key, out var texture))
             return texture;
         try
         {
-            if (Laying(tab, full) is { } laying && laying.Result is { } laid)
+            if (Laying(tab) is { } laying && laying.Result is { } laid)
             {
                 var (width, height) = plugins.ImageSize(MenuImages.Tab(tab));
                 var data = Image.CreateFromData(width * ParchmentSwap.Scale, height * ParchmentSwap.Scale, false, Image.Format.Rgba8, laid);
@@ -116,20 +117,19 @@ public sealed class UiImages(PluginSet plugins)
     }
 
     /// <summary>Begins laying the parchment for a tab on another thread, so it's ready when the menu opens.</summary>
-    public void WarmParchment(PauseTab tab, bool full) => Laying(tab, full);
+    public void WarmParchment(PauseTab tab) => Laying(tab);
 
-    private Task<byte[]?>? Laying(PauseTab tab, bool full)
+    private Task<byte[]?>? Laying(PauseTab tab)
     {
         var (w, h) = plugins.ImageSize(MenuImages.Tab(tab));
         if (w == 0 || plugins.FindAsset(Scroll, "parchment.png") is not { } path)
             return null;
         var mirrored = ParchmentSwap.Mirrored(tab);
         var laid = Laid.GetValue(plugins, _ => []);
-        if (!laid.TryGetValue((w, h, full, mirrored), out var task))
+        if (!laid.TryGetValue((w, h, mirrored), out var task))
         {
-            var (top, bottom) = full ? (ParchmentSwap.FullTop, ParchmentSwap.FullBottom) : (ParchmentSwap.OriginalTop, ParchmentSwap.OriginalBottom);
-            laid[(w, h, full, mirrored)] = task = Task.Run<byte[]?>(() =>
-                PngImage.Read(path) is { } p ? ParchmentSwap.Lay(p.Rgba, p.Width, p.Height, w, h, top, bottom, mirrored) : null);
+            laid[(w, h, mirrored)] = task = Task.Run<byte[]?>(() =>
+                PngImage.Read(path) is { } p ? ParchmentSwap.Lay(p.Rgba, p.Width, p.Height, w, h, ParchmentSwap.Top, ParchmentSwap.Bottom, mirrored) : null);
         }
         return task;
     }

@@ -178,8 +178,8 @@ public sealed class BarterMenuRomTests(Na10Import fixture)
         var slim = new TextLayout(Set.Get<FontRecord>(RecordId.Decimal(RecordTypes.Font, 1)));
 
         Assert.Equal(CraftingMenu.TextRow, slim.LineHeight());
-        Assert.Equal(8, PartyMenu.Layout(PartyList.Inventory).Visible);
-        Assert.Equal(9, PartyMenu.Layout(PartyList.Stats).Visible);
+        Assert.Equal(12, PartyMenu.Layout(PartyList.Inventory).Visible);
+        Assert.Equal(PartyMenu.StatPitch, slim.LineHeight());
         Assert.Equal(6, BarterMenu.PileLayout.Visible);
     }
 }

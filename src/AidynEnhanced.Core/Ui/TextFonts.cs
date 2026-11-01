@@ -3,18 +3,6 @@ using AidynEnhanced.Plugins.Records;
 
 namespace AidynEnhanced.Core.Ui;
 
-/// <summary>What the UI's text is drawn in: each font's own sheet, as the original's, or a typeface drawn at the screen's resolution.</summary>
-public enum TextFont
-{
-    Original,
-
-    /// <summary>
-    /// A typeface in place of the sheets' letters, digits and marks, with widths of its own: Marcellus SC, or a plugin's
-    /// (<c>TextFace</c> in the views). The sheets' controller buttons and icons stay. The default, the user's choice (Oct 31, 2026).
-    /// </summary>
-    HighResolution,
-}
-
 /// <summary>
 /// The fonts the core lays text out in: each font record as the plugins have it, or with the widths its glyphs take in the
 /// typeface the text is drawn in (<see cref="Widths"/>), which the runtime hands over with each tick's settings

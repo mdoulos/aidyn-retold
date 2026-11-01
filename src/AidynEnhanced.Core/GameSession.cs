@@ -360,7 +360,6 @@ public sealed class GameSession
         Sky.Placement = settings.SkyPlacement;
         Trek.Player.Pace = settings.Pace;
         Trek.Jump = settings.Jump;
-        Menu.PartyLayout = settings.PartyLayout;
         Battle?.Fx.Turns = settings.SpellAuras;
         Battle?.Pace = settings.Pace;
         SetReveal(Trek.Box, settings);

@@ -1,7 +1,7 @@
 namespace AidynEnhanced.Core.Ui;
 
 /// <summary>
-/// A pause menu tab's image made taller for the full-height menu, the port's (<see cref="Settings.FullHeightMenus"/>): its torn top
+/// A pause menu tab's image made taller for the full-height menu, the user's choice (Oct 31, 2026): its torn top
 /// and bottom edges moved out by <see cref="Above"/> and <see cref="Below"/>, so on the original's 240 lines the parchment nearly
 /// reaches the screen's top and bottom, and the gaps filled with its own plain parchment. Everything painted into it stays where it
 /// was, under the widgets drawn over it.

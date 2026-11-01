@@ -25,17 +25,13 @@ public partial class PartyTabPanel : MenuWindowPanel
     private PartyTabPanel(PluginCatalog catalog, EditorGame? game, PartyMenu menu) : base(catalog.Plugins, menu)
     {
         _menu = menu;
-        // As a new player's settings have it, as the menus' height is.
-        _menu.Tabbed = new Core.Settings().PartyLayout == PartyLayout.Tabbed;
         Describe($"{(game is { IsNewGame: false } ? $"{game.Name}'s party" : "A new game's party")} in the pause menu's Party tab. "
             + "Hover a row or scroll to move the cursor, and A to use it: equip, take off, drink, read, or a skill's popup. "
             + "Load a checkpoint or a save on a flag page to show its party.");
         AddButton("◀ Member", "C-left: the next member.", () => Press(MenuAction.MemberLeft));
         AddButton("Member ▶", "C-right: the member before.", () => Press(MenuAction.MemberRight));
-        AddButton("◀ List", "The stick left: the next list.", () => Press(MenuAction.Left));
-        AddButton("List ▶", "The stick right: the list before.", () => Press(MenuAction.Right));
-        AddButton("Layout", "Switch between the original's layout and the tabbed one (the Enhancements page's Party Layout).",
-            () => _menu.Tabbed = !_menu.Tabbed);
+        AddButton("◀ Tab", "The stick left: the tab on the left.", () => Press(MenuAction.Left));
+        AddButton("Tab ▶", "The stick right: the tab on the right.", () => Press(MenuAction.Right));
         AddButton("A", "Use the cursor's row, choose in a popup, or close a message.", () => Press(MenuAction.Accept));
         AddButton("B", "Close the popup or the message.", () => _menu.Back());
         AddDetails("Show what C-down shows for the cursor's row, as it does while held.");

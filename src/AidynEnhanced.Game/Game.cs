@@ -459,12 +459,12 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
 
     /// <summary>
     /// What the core plays by of the settings, with the command line's over the player's, and the typeface the UI's text is drawn
-    /// in by the Text Font setting (<see cref="TextFace.Current"/>), whose widths the core lays text out by.
+    /// in (<see cref="TextFace.Current"/>), whose widths the core lays text out by.
     /// </summary>
     private SessionSettings Playing()
     {
         var playing = _launch?.Session(_settings) ?? SessionSettings.From(_settings);
-        TextFace.Current = _settings.TextFont == Core.Ui.TextFont.HighResolution && _plugins is { } plugins ? TextFace.For(plugins) : null;
+        TextFace.Current = _plugins is { } plugins ? TextFace.For(plugins) : null;
         return playing with { TextWidths = TextFace.Current?.Widths };
     }
 
@@ -494,7 +494,6 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
         _extendedDrawDistance = s.ExtendedDrawDistance;
         N64Material.SetSurfaceDetail(s.SurfaceDetail);
         ActorAnimator.Blending = s.AnimationBlending;
-        UiPainter.FullHeight = s.FullHeightMenus;
         _cinematic?.Viewport.Msaa3D = GetViewport().Msaa3D;
         foreach (var screen in new[] { _menu?.Screen, _backdrop?.Screen, _cinematic?.Screen, _credits?.Screen, _titleLayer?.Screen, _trekScreen })
         {

@@ -4,7 +4,7 @@ using AidynEnhanced.Plugins.Records;
 
 namespace AidynEnhanced.Core.Tests;
 
-/// <summary>The tabbed layout's three tabs and its stats and skills page (<see cref="PartyMenu.Tabbed"/>).</summary>
+/// <summary>The Party tab's three tabs and its stats and skills page.</summary>
 public class PartyMenuPageTests
 {
     /// <summary>Alaron with every skill at 1 besides his weapon skills, so the page is taller than the list.</summary>
@@ -12,7 +12,7 @@ public class PartyMenuPageTests
     {
         var party = ItemData.NewParty();
         Assert.True(party.Add(Characters.Create(Characters.Alaron() with { Skills = new SkillLevels(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1) })));
-        return new PartyMenu(party, new MenuText([]), _ => null, _ => null) { Tabbed = true };
+        return new PartyMenu(party, new MenuText([]), _ => null, _ => null);
     }
 
     /// <summary>Lets a list's slide finish, which holds off the next change.</summary>
@@ -103,7 +103,7 @@ public class PartyMenuPageTests
     {
         var menu = Menu();
         menu.ShowList(PartyList.Stats);
-        var list = PartyMenu.TabbedList;
+        var list = PartyMenu.ListBounds;
 
         Assert.Equal((PartyList.Stats, 1), menu.PageRowAt(list.Left + 10, list.Top + PartyMenu.StatPitch + 2));
         Assert.Equal((PartyList.Skills, 0), menu.PageRowAt(list.Left + 10, list.Top + menu.SkillsAt + 2));
@@ -132,18 +132,13 @@ public class PartyMenuPageTests
         Assert.Equal(PartyList.Skills, menu.List);
     }
 
-    /// <summary>The tabbed layout's lists show 12 rows and the page shows all its rows, scrolling as a whole; the original's show 8 and 9.</summary>
+    /// <summary>The lists show 12 rows, and the page's lists all theirs, as the page scrolls rather than they.</summary>
     [Fact]
-    public void TheTabbedListsShowTwelveRowsAndThePageScrollsAsAWhole()
+    public void TheListsShowTwelveRowsAndThePageScrollsAsAWhole()
     {
         var menu = Menu();
-        Assert.Equal(12, menu.Inventory.Visible);
-        Assert.Equal(12, menu.Spells.Visible);
-        Assert.Equal(int.MaxValue, menu.Skills.Visible);
-
-        menu.Tabbed = false;
-        Assert.Equal((8, 8, 9, 8), (menu.Inventory.Visible, menu.Spells.Visible, menu.Stats.Visible, menu.Skills.Visible));
-        Assert.Equal(0, menu.PageScroll);
+        Assert.Equal((12, 12), (menu.Inventory.Visible, menu.Spells.Visible));
+        Assert.Equal((int.MaxValue, int.MaxValue), (menu.Stats.Visible, menu.Skills.Visible));
     }
 
     /// <summary>The post-battle window's three lists are two tabs, the spells and the stats and skills page.</summary>

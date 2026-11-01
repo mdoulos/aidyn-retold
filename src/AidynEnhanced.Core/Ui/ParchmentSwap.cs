@@ -1,7 +1,7 @@
 namespace AidynEnhanced.Core.Ui;
 
 /// <summary>
-/// A mod's blank parchment in place of the pause menu tabs' own, the user's choice (Oct 31, 2026): laid across each tab's
+/// The game's blank parchment in place of the pause menu tabs' own, the user's choice and the user's art (Oct 31, 2026): laid across each tab's
 /// frame, its torn edges on the lines the menu's height puts them, <see cref="Scale"/> times as fine as the tabs so it keeps
 /// its detail on a large screen. Nothing painted into the tabs is drawn on it: the user wanted the parchment blank.
 /// </summary>

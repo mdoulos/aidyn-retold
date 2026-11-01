@@ -20,6 +20,8 @@
   <ItemGroup>
     <!-- The text's typeface (TextFace), Marcellus SC under the SIL Open Font License (assets/fonts/OFL.txt), carried in the assembly. -->
     <EmbeddedResource Include="..\..\assets\fonts\MarcellusSC-Regular.ttf" LogicalName="MarcellusSC-Regular.ttf" />
+    <!-- The pause menu's blank parchment (UiImages.OnParchment), the user's own art (assets/ui/README.md). -->
+    <EmbeddedResource Include="..\..\assets\ui\parchment.png" LogicalName="parchment.png" />
   </ItemGroup>
 
 </Project>

@@ -76,8 +76,8 @@ public sealed class UiImages(PluginSet plugins)
     }
 
     /// <summary>
-    /// The pause menu's scroll, scene <c>0x0E63</c>, beside whose model a mod puts the blank parchment the tabs are drawn on in
-    /// place of their own, <c>0x0E63.parchment.png</c>, at any size (<see cref="ParchmentSwap"/>).
+    /// The pause menu's scroll, scene <c>0x0E63</c>, beside whose model a plugin can put a blank parchment of its own in place
+    /// of the game's, <c>0x0E63.parchment.png</c>, at any size (<see cref="ParchmentSwap"/>).
     /// </summary>
     private static readonly RecordId Scroll = RecordId.Hex(RecordTypes.Scene, 0x0E63);
 
@@ -88,9 +88,10 @@ public sealed class UiImages(PluginSet plugins)
     private readonly Dictionary<bool, Texture2D?> _onParchment = [];
 
     /// <summary>
-    /// A mod's blank parchment laid across a tab's frame in place of the tab's own (<see cref="ParchmentSwap"/>): its torn edges
-    /// where the full-height menu puts them, and mirrored as the tab's place on the scroll says
-    /// (<see cref="ParchmentSwap.Mirrored"/>). Null if no plugin has a parchment for the scroll. It's laid on another thread,
+    /// The game's blank parchment, the user's (<c>assets/ui/parchment.png</c>, carried in this assembly), or a plugin's in its
+    /// place, laid across a tab's frame in place of the tab's own (<see cref="ParchmentSwap"/>): its torn edges where the
+    /// full-height menu puts them, and mirrored as the tab's place on the scroll says (<see cref="ParchmentSwap.Mirrored"/>).
+    /// Null only if the tab has no image to size it by or it can't be read. It's laid on another thread,
     /// begun by <see cref="WarmParchment"/> or the first time it's asked for, and waited for then.
     /// </summary>
     public Texture2D? OnParchment(PauseTab tab)
@@ -122,16 +123,29 @@ public sealed class UiImages(PluginSet plugins)
     private Task<byte[]?>? Laying(PauseTab tab)
     {
         var (w, h) = plugins.ImageSize(MenuImages.Tab(tab));
-        if (w == 0 || plugins.FindAsset(Scroll, "parchment.png") is not { } path)
+        if (w == 0)
             return null;
+        var path = plugins.FindAsset(Scroll, "parchment.png");
         var mirrored = ParchmentSwap.Mirrored(tab);
         var laid = Laid.GetValue(plugins, _ => []);
         if (!laid.TryGetValue((w, h, mirrored), out var task))
         {
             laid[(w, h, mirrored)] = task = Task.Run<byte[]?>(() =>
-                PngImage.Read(path) is { } p ? ParchmentSwap.Lay(p.Rgba, p.Width, p.Height, w, h, ParchmentSwap.Top, ParchmentSwap.Bottom, mirrored) : null);
+                PngImage.Decode(path is not null ? File.ReadAllBytes(path) : GameParchment()) is { } p
+                    ? ParchmentSwap.Lay(p.Rgba, p.Width, p.Height, w, h, ParchmentSwap.Top, ParchmentSwap.Bottom, mirrored)
+                    : null);
         }
         return task;
+    }
+
+    /// <summary>The game's own blank parchment's PNG, carried in this assembly.</summary>
+    private static byte[] GameParchment()
+    {
+        using var stream = typeof(UiImages).Assembly.GetManifestResourceStream("parchment.png")
+            ?? throw new InvalidOperationException("The views' assembly carries no parchment.png.");
+        using var bytes = new MemoryStream();
+        stream.CopyTo(bytes);
+        return bytes.ToArray();
     }
 
     private readonly Dictionary<RecordId, Texture2D?> _feathered = [];

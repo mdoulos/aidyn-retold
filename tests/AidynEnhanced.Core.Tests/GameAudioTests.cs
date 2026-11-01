@@ -76,9 +76,9 @@ public class GameAudioTests
     }
 
     [Fact]
-    public void TheRainLoopFollowsTheWeatherAtItsLevelTimesTheSoundVolumeAndThunderIsAOneShot()
+    public void TheRainLoopFollowsTheWeatherAtItsLevelTimesTheAmbientVolumeAndThunderIsAOneShot()
     {
-        var audio = Audio(SessionSettings.Original with { SoundVolume = 50 });
+        var audio = Audio(SessionSettings.Original with { AmbientVolume = 50 });
         var sounds = new SoundsRecord(RecordId.Decimal(RecordTypes.Sounds, 0), new MenuSounds(Other, Other, Other, Other, Other, Other, Other, Other, Other, Other),
             [], Other, Other, Other, [], [], Tune, [Other, Other, Other, Other], Other, Other, []);
         var rain = new WeatherSounds(audio, sounds);
@@ -88,7 +88,7 @@ public class GameAudioTests
         rain.Step(weather);
         Assert.True(rain.RainPlaying);
         // 191 at half volume: 95.
-        Assert.Equal(95, WeatherSounds.RainVolume(weather.RainLoopLevel, audio.SoundVolume));
+        Assert.Equal(95, WeatherSounds.RainVolume(weather.RainLoopLevel, audio.Level(SoundGroup.Ambient)));
 
         weather.Draw(skyDrawn: false);
         rain.Step(weather);

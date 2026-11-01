@@ -29,7 +29,7 @@ public abstract class KeptSound(RecordId sequence, float volume, bool loop)
     /// that needs starting if it lets it. One that loops is started again whenever it has ended; any other plays once.
     /// </summary>
     /// <param name="audio">What it plays through.</param>
-    /// <param name="level">The sound or music volume it scales by (<see cref="GameAudio.SoundVolume"/>).</param>
+    /// <param name="level">Its group's loudness, which it scales by (<see cref="GameAudio.Level"/>).</param>
     /// <param name="there">Whether its flags let it play, read on every update while it isn't playing.</param>
     public void Update(GameAudio audio, float level, Func<bool>? there = null)
     {

@@ -21,7 +21,7 @@ public partial class Game
     private void PlayCredits()
     {
         _credits!.Play();
-        _creditsMusic = _audio!.Start(_session!.Game.Sounds.Credits, GameAudio.Volume(_audio.MusicVolume), 0x80, loop: true);
+        _creditsMusic = _audio!.Start(_session!.Game.Sounds.Credits, GameAudio.Volume(_audio.Level(SoundGroup.Music)), 0x80, loop: true);
         _audio!.Muted = true;
     }
 

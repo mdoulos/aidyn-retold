@@ -431,7 +431,7 @@ public sealed partial class MapObjectUse(GameState game, MenuText text, IMapObje
         }
         // By its kind, at the sound volume as its gain.
         if (o.Kind != ContainerKind.Custom && game.Sounds.Containers.ElementAtOrDefault((int)o.Kind) is { } opens)
-            host.Sound(new Audio.OneShot(opens, ContainerSoundTicks, TimesSoundVolume: true));
+            host.Sound(new Audio.OneShot(opens, ContainerSoundTicks));
         map.SetActive(o.Index, false);
         // Without an opened flag, it's remembered as emptied for a while.
         if (o.Opened is null && !(o.Exploded is { } exploded && Flags.IsSet(exploded)))
@@ -485,7 +485,7 @@ public sealed partial class MapObjectUse(GameState game, MenuText text, IMapObje
                 // One of four at random.
                 if (game.Sounds is { Explosions.Count: > 0 } sounds)
                     host.Sound(new Audio.OneShot(sounds.Explosions[(int)Rng.RandomExtensions.Below(game.Random.Cosmetic, (uint)sounds.Explosions.Count)],
-                        ExplosionTicks, TimesSoundVolume: true));
+                        ExplosionTicks));
             }
         }
         else

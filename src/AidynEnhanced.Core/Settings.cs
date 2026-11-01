@@ -26,11 +26,40 @@ public sealed class Settings
     /// </summary>
     public const int MaxVolume = 100;
 
-    /// <summary>The sound effects' volume (<c>VolSFX</c>): full in a new game (<c>app.cpp</c>).</summary>
-    public int SoundVolume { get; set; } = MaxVolume;
+    /// <summary>
+    /// Every sound's volume, which each group's is a share of (<see cref="Audio.SoundGroup"/>): the port's, the user's choice (Oct 31,
+    /// 2026), where the original has only the sound effects' and the music's.
+    /// </summary>
+    public int MasterVolume { get; set; } = MaxVolume;
 
     /// <summary>The music's volume (<c>VolBGM</c>): 0.65 in a new game.</summary>
     public int MusicVolume { get; set; } = 65;
+
+    /// <summary>The world's own sounds' volume: its placed sounds, and the rain and thunder.</summary>
+    public int AmbientVolume { get; set; } = MaxVolume;
+
+    /// <summary>The sound effects' volume: bodies' footsteps, voices, weapons and casts, and what the world and scripts sound.</summary>
+    public int EffectsVolume { get; set; } = MaxVolume;
+
+    /// <summary>The menus' sounds' volume.</summary>
+    public int InterfaceVolume { get; set; } = MaxVolume;
+
+    /// <summary>The voices' volume: a conversation's blip as a line prints, which is silent at 0.</summary>
+    public int DialogueVolume { get; set; } = MaxVolume;
+
+    /// <summary>
+    /// Older settings' one sound volume (<c>VolSFX</c>), which every group but the music's had: read as theirs, and never written.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? SoundVolume
+    {
+        get => null;
+        set
+        {
+            if (value is { } volume)
+                AmbientVolume = EffectsVolume = InterfaceVolume = DialogueVolume = volume;
+        }
+    }
 
     /// <summary>How many lines tall the UI screen is: the original's 240, or more for smaller UI with room for more.</summary>
     public int UiLines { get; set; } = 240;
@@ -126,8 +155,17 @@ public sealed class Settings
     /// </summary>
     public Ui.TextSpeed TextSpeed { get; set; } = Ui.TextSpeed.Normal;
 
-    /// <summary>Whether a blip sounds as a line prints, pitched by the speaker (<see cref="Ui.TextReveal"/>). On, the user's choice.</summary>
-    public bool TextVoice { get; set; } = true;
+    /// <summary>Older settings' switch for the conversation's blip, now the Dialogue volume at 0: read, and never written.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? TextVoice
+    {
+        get => null;
+        set
+        {
+            if (value == false)
+                DialogueVolume = 0;
+        }
+    }
 
     /// <summary>
     /// Whether the title starts with the original's intro cards (<see cref="Ui.IntroCards"/>): the Expansion Pak's, the legal text and

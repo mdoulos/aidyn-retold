@@ -19,11 +19,37 @@ public sealed record SessionSettings
     /// <summary>The player's pace under the Pace setting's Brisk, a multiple of the original's.</summary>
     public const float BriskPace = 1.3f;
 
-    /// <summary>The sound effects' volume, in hundredths (<see cref="Settings.SoundVolume"/>).</summary>
-    public int SoundVolume { get; init; } = Settings.MaxVolume;
+    /// <summary>Every sound's volume, in hundredths (<see cref="Settings.MasterVolume"/>).</summary>
+    public int MasterVolume { get; init; } = Settings.MaxVolume;
 
     /// <summary>The music's volume, in hundredths (<see cref="Settings.MusicVolume"/>).</summary>
     public int MusicVolume { get; init; } = 65;
+
+    /// <summary>The world's own sounds' volume, in hundredths (<see cref="Settings.AmbientVolume"/>).</summary>
+    public int AmbientVolume { get; init; } = Settings.MaxVolume;
+
+    /// <summary>The sound effects' volume, in hundredths (<see cref="Settings.EffectsVolume"/>).</summary>
+    public int EffectsVolume { get; init; } = Settings.MaxVolume;
+
+    /// <summary>The menus' sounds' volume, in hundredths (<see cref="Settings.InterfaceVolume"/>).</summary>
+    public int InterfaceVolume { get; init; } = Settings.MaxVolume;
+
+    /// <summary>The voices' volume, in hundredths (<see cref="Settings.DialogueVolume"/>).</summary>
+    public int DialogueVolume { get; init; } = Settings.MaxVolume;
+
+    /// <summary>A group's loudness, 0 to 1: its volume times the master volume.</summary>
+    public float Level(Audio.SoundGroup group)
+    {
+        var volume = group switch
+        {
+            Audio.SoundGroup.Music => MusicVolume,
+            Audio.SoundGroup.Ambient => AmbientVolume,
+            Audio.SoundGroup.Effects => EffectsVolume,
+            Audio.SoundGroup.Interface => InterfaceVolume,
+            _ => DialogueVolume,
+        };
+        return (float)MasterVolume / Settings.MaxVolume * volume / Settings.MaxVolume;
+    }
 
     /// <summary>How many raindrops and snowflakes fall, as a multiple of the original's (<see cref="Particles.WeatherParticles.Density"/>).</summary>
     public float PrecipitationDensity { get; init; } = 1;
@@ -46,7 +72,7 @@ public sealed record SessionSettings
     /// <summary>How many glyphs a tick the conversation box prints a line (<see cref="Ui.DialogueBox.GlyphsPerTick"/>): 0, the original's, shows it whole.</summary>
     public float TextRate { get; init; }
 
-    /// <summary>Whether a blip sounds as a line prints (<see cref="Ui.DialogueBox.Voice"/>); the original's box is silent.</summary>
+    /// <summary>Whether a blip sounds as a line prints (<see cref="Ui.DialogueBox.Voice"/>), as it does unless the Dialogue volume is 0; the original's box is silent.</summary>
     public bool TextVoice { get; init; }
 
     /// <summary>Whether the player can jump in trek (<see cref="Movement.PlayerMotion.Jumping"/>); the original has no jump.</summary>
@@ -61,15 +87,19 @@ public sealed record SessionSettings
     /// <summary>What the core plays by of these settings: the pace is Brisk's or the original's.</summary>
     public static SessionSettings From(Settings settings) => new()
     {
-        SoundVolume = settings.SoundVolume,
+        MasterVolume = settings.MasterVolume,
         MusicVolume = settings.MusicVolume,
+        AmbientVolume = settings.AmbientVolume,
+        EffectsVolume = settings.EffectsVolume,
+        InterfaceVolume = settings.InterfaceVolume,
+        DialogueVolume = settings.DialogueVolume,
         PrecipitationDensity = settings.PrecipitationDensity,
         SkyPlacement = settings.SkyPlacement,
         Pace = settings.BriskPace ? BriskPace : 1,
         SpellAuras = settings.SpellAuras,
         UiLines = Math.Max(settings.UiLines, 1),
         TextRate = Ui.TextReveal.GlyphsPerTick(settings.TextSpeed),
-        TextVoice = settings.TextVoice,
+        TextVoice = settings.DialogueVolume > 0,
         Jump = settings.Jump,
     };
 }

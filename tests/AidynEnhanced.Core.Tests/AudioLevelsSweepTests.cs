@@ -40,29 +40,31 @@ public class AudioLevelsSweepTests
         text.Append('\n');
     }
 
-    [Fact]
-    public void OneShotsKeepTheirVolumeAndPanOverTheFadeAndTheSoundVolumes()
+    /// <summary>
+    /// A one-shot plays centred at its group's level times the master volume, taken once, once its delay is past, and follows
+    /// the volumes as they change; the original took the sound volume twice, or three times as some's gain.
+    /// </summary>
+    [Theory]
+    [InlineData(SoundGroup.Effects, 100, 100, 255)]
+    [InlineData(SoundGroup.Effects, 100, 50, 127)]
+    [InlineData(SoundGroup.Interface, 50, 100, 127)]
+    [InlineData(SoundGroup.Interface, 40, 50, 51)]
+    [InlineData(SoundGroup.Ambient, 0, 100, 0)]
+    public void AOneShotPlaysAtItsGroupsLevelOnce(SoundGroup group, int master, int volume, int expected)
     {
-        var text = new StringBuilder();
-        foreach (var soundVolume in new[] { 0, 1, 7, 33, 50, 65, 99, 100 })
-        foreach (var times in new[] { false, true })
-        {
-            var audio = Audio(SessionSettings.Original with { SoundVolume = soundVolume });
-            audio.Play(new OneShot(Tune, 500, 3, times));
-            for (var tick = 0; tick < 110; tick++)
-            {
-                audio.Step();
-                // The first tick of a sound is the one a map sound's duration and a one-shot's differ on.
-                Record(text, audio, $"{soundVolume} {times} {tick}", duration: tick >= 5);
-            }
-            foreach (var now in new[] { 100, 40, 0, 12 })
-            {
-                audio.Settings = audio.Settings with { SoundVolume = now };
-                audio.Step();
-                Record(text, audio, $"{soundVolume} {times} now {now}", duration: true);
-            }
-        }
-        Assert.Equal("F2D050D7025B68872908C4FA041D53E70305DCAFF174E7327F2E9EE39C56306A", Hash(text));
+        var audio = Audio(SessionSettings.Original with { MasterVolume = master, EffectsVolume = volume, InterfaceVolume = volume, AmbientVolume = volume });
+        audio.Play(new OneShot(Tune, 500, 3, group));
+        // It starts on the step its delay runs out on, the third.
+        for (var tick = 0; tick < 2; tick++)
+            audio.Step();
+        Assert.Empty(audio.Engine.Playing());
+        audio.Step();
+        var (playing, pan, _) = Assert.Single(audio.Engine.Playing());
+        Assert.Equal(((byte)expected, (byte)0x7F), (playing, pan));
+
+        audio.Settings = audio.Settings with { MasterVolume = 100, EffectsVolume = 100, InterfaceVolume = 100, AmbientVolume = 100 };
+        audio.Step();
+        Assert.Equal(255, Assert.Single(audio.Engine.Playing()).Volume);
     }
 
     [Fact]
@@ -82,7 +84,7 @@ public class AudioLevelsSweepTests
         foreach (var distance in new[] { 0f, 0.4f, 1.3f, 2.9f, 4.4f, 5f, 6.1f, 7.7f, 9.3f, 9.99f, 10f })
         foreach (var angle in new[] { 0f, 0.7f, 2.1f, 4.0f, 5.6f })
         {
-            var audio = Audio(SessionSettings.Original with { SoundVolume = sound, MusicVolume = music });
+            var audio = Audio(SessionSettings.Original with { AmbientVolume = sound, MusicVolume = music });
             var sounds = new MapSounds(audio, new Lcg(), _ => true);
             var at = new SoundObject(0, Vector3.Zero, 10, PakVariant.Any, null, Tune, volume, 1, 2, flags);
             sounds.Load(LoadedMap.Activate(new MapRecord(RecordId.Hex(RecordTypes.Map, 1), [at]), Worlds.Chunk(0), ItemData.Flags(), new MapObjectMemory(), ItemData.NewParty(), new Lcg()));

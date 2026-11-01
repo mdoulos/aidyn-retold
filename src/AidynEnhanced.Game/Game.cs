@@ -627,7 +627,7 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
     /// <summary>
     /// Sounds the blips the boxes counted this tick as their lines printed (<see cref="DialogueBox.TakeBlips"/>, the Enhancements
     /// page's Text Voice), at the speaker's pitch (<see cref="TextReveal.PitchOf"/>) bent by the line's mood, with the mood's tremble and
-    /// ring (<see cref="MoodPreset"/>), at the sound volume.
+    /// ring (<see cref="MoodPreset"/>), at the Dialogue volume.
     /// </summary>
     private void SoundTextVoice(GameSession session)
     {
@@ -640,7 +640,7 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
                 continue;
             var speaker = box.Layout?.Speaker is { } id ? _plugins!.TryGet<DbRecord>(id) : null;
             var mood = box.Preset;
-            _textVoice!.Blip(TextReveal.ToneOf(speaker), TextReveal.PitchOf(speaker) * TextReveal.PitchAt(mood, box.Progress), _audio!.SoundVolume,
+            _textVoice!.Blip(TextReveal.ToneOf(speaker), TextReveal.PitchOf(speaker) * TextReveal.PitchAt(mood, box.Progress), _audio!.Level(SoundGroup.Dialogue),
                 mood.Jitter, mood.Decay);
         }
     }

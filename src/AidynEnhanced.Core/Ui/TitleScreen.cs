@@ -372,16 +372,16 @@ public sealed class TitleScreen
         switch (action)
         {
             case MenuAction.Up or MenuAction.Down:
-                _sound(new OneShot(menu.Cursor, OneShot.ShortTicks));
+                _sound(new OneShot(menu.Cursor, OneShot.ShortTicks, Group: SoundGroup.Interface));
                 break;
             case MenuAction.Accept or MenuAction.Start when !saves:
-                _sound(new OneShot(menu.Accept, OneShot.MenuTicks));
+                _sound(new OneShot(menu.Accept, OneShot.MenuTicks, Group: SoundGroup.Interface));
                 break;
             case MenuAction.Back:
-                _sound(new OneShot(menu.Back, OneShot.MenuTicks));
+                _sound(new OneShot(menu.Back, OneShot.MenuTicks, Group: SoundGroup.Interface));
                 break;
             case MenuAction.Left or MenuAction.Right when Menu is { OnVolume: false }:
-                _sound(new OneShot(menu.PageCursor, OneShot.ShortTicks));
+                _sound(new OneShot(menu.PageCursor, OneShot.ShortTicks, Group: SoundGroup.Interface));
                 break;
         }
     }

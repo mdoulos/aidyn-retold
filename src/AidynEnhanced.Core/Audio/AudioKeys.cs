@@ -183,7 +183,7 @@ public sealed class AudioKeys(GameAudio audio, SoundsRecord sounds, IRandom rand
     private void Play(BodyAudio body, IReadOnlyList<RecordId> choices, byte volume, byte pan)
     {
         var sequence = choices[(int)random.Below((uint)choices.Count)];
-        var scaled = (byte)(int)(volume * audio.SoundVolume);
+        var scaled = (byte)(int)(volume * audio.Level(SoundGroup.Effects));
         body.Slot ^= 1;
         audio.Stop(body.Slots[body.Slot]);
         body.Slots[body.Slot] = scaled == 0 ? default : audio.Start(sequence, scaled, pan, loop: false);

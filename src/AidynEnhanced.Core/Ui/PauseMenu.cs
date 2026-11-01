@@ -243,7 +243,7 @@ public sealed class PauseMenu
         _windowAlpha = 255;
         Window = PostBattleMenu.For(_game.Plugins, _game.Party, spoils, _game.Random.World, Member);
         if (spoils.Levelled.Count > 0)
-            _onBuilt.Add(new OneShot(_game.Sounds.Menu.LevelUp, OneShot.LongTicks, OneShot.MenuTicks, TimesSoundVolume: true));
+            _onBuilt.Add(new OneShot(_game.Sounds.Menu.LevelUp, OneShot.LongTicks, OneShot.MenuTicks));
     }
 
     /// <param name="brightens">Whether the world brightens again as it closes; the loot window and shops snap back.</param>
@@ -280,12 +280,12 @@ public sealed class PauseMenu
     }
 
     /// <summary>The coins, a second after a window is built on gold, at the sound volume as their gain.</summary>
-    private OneShot CoinsSound => new(_game.Sounds.GoldGained, OneShot.LongTicks, OneShot.MenuTicks, TimesSoundVolume: true);
+    private OneShot CoinsSound => new(_game.Sounds.GoldGained, OneShot.LongTicks, OneShot.MenuTicks);
 
     /// <summary>A menu sound (<c>Audio.PlaySound</c> at gain 1), for so many ticks.</summary>
     private void Sound(Func<MenuSounds, RecordId> pick, int ticks)
     {
-        _host.Cue(new MenuSoundCue(new OneShot(pick(_game.Sounds.Menu), ticks)));
+        _host.Cue(new MenuSoundCue(new OneShot(pick(_game.Sounds.Menu), ticks, Group: SoundGroup.Interface)));
     }
 
     /// <summary>The scroll unrolls as the menu opens, or rolls up as it closes (<c>BigAssMenu</c>, <c>PauseMenu.SlideOut</c>).</summary>

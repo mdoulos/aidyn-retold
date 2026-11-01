@@ -24,7 +24,7 @@ public sealed class LaunchSettings
     private int? _uiLines;
     private AuraTurns? _spellAuras;
     private Core.Ui.TextSpeed? _textSpeed;
-    private bool? _textVoice;
+    private int? _dialogueVolume;
     private float? _pace;
 
     /// <summary>The player's settings as last seen, which a change is told from.</summary>
@@ -43,7 +43,7 @@ public sealed class LaunchSettings
         _uiLines = options.UiLines;
         _spellAuras = options.SpellAuras;
         _textSpeed = options.TextSpeed;
-        _textVoice = options.TextVoice;
+        _dialogueVolume = options.DialogueVolume;
         _pace = options.Pace;
         _seen = player.Copy();
     }
@@ -72,8 +72,8 @@ public sealed class LaunchSettings
             settings.SpellAuras = auras;
         if (_textSpeed is { } textSpeed)
             settings.TextSpeed = textSpeed;
-        if (_textVoice is { } textVoice)
-            settings.TextVoice = textVoice;
+        if (_dialogueVolume is { } dialogue)
+            settings.DialogueVolume = dialogue;
         return settings;
     }
 
@@ -107,8 +107,8 @@ public sealed class LaunchSettings
             _spellAuras = null;
         if (player.TextSpeed != _seen.TextSpeed)
             _textSpeed = null;
-        if (player.TextVoice != _seen.TextVoice)
-            _textVoice = null;
+        if (player.DialogueVolume != _seen.DialogueVolume)
+            _dialogueVolume = null;
         if (player.BriskPace != _seen.BriskPace)
             _pace = null;
         _seen = player.Copy();

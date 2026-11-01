@@ -127,7 +127,8 @@ public partial class CinematicLayer : CanvasLayer
         StopMusic();
         if (_audio is null)
             return;
-        var volume = Math.Max(GameAudio.Volume(_audio.SoundVolume), GameAudio.Volume(_audio.MusicVolume));
+        // The original plays a shot's score at the louder of its two volumes; the port at the music's.
+        var volume = GameAudio.Volume(_audio.Level(SoundGroup.Music));
         _music = _audio.Start(shot.Music, volume, 0x80, loop: true);
     }
 

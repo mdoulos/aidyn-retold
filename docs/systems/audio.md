@@ -19,7 +19,7 @@ Two players run on libultra's synthesizer, each called every 1000 µs of audio (
 - **Pan:** a sequence also has a pan, 0x80 the middle. A track's pan is scaled into a window around it, `255 - 2|P - 0x80|` wide, so at the middle the track's own pan holds and towards either end every track narrows to the sequence's. The synthesizer takes `pan >> 1`, at most 127, and pans by equal power (`eqpower`, `0x800E5010`, `32767 × cos(k × π / 254)`).
 - **Where the port differs:** the sequencer's changes reach the voices at once rather than on the voice manager's next call, up to a millisecond sooner. libultra's four-tap resampler is approximated with cubic interpolation. And where the original reads past a sample's end (one instrument's loop runs past its sample), the port plays silence.
 
-- **The conversation box's voice** is the port's, the user's choice: a blip as a line prints, which `Game.SoundTextVoice` plays through `TextVoicePlayer` beside the mixer, not through the sequencer's one-shot slots, at the sound volume ([ui](ui.md#the-conversation-box)).
+- **The conversation box's voice** is the port's, the user's choice: a blip as a line prints, which `Game.SoundTextVoice` plays through `TextVoicePlayer` beside the mixer, not through the sequencer's one-shot slots, at the Dialogue volume ([volumes](#volumes), [ui](ui.md#the-conversation-box)).
 
 ## Not played yet
 
@@ -120,6 +120,18 @@ Each body's footsteps, voice and weapon come from the **audio keys** (`AudioKeys
 
 ## Volumes
 
-- **The sound and music volumes** are floats, 1.0 and 0.65 in a new game, which scale the byte each sequence is played at. The port's settings keep them in hundredths (`Settings.SoundVolume`, 100; `MusicVolume`, 65).
-- **One-shots take the sound volume twice:** `Audio.PlaySound` stores it as the sound's own volume and `Audio.UpdateSound` multiplies by it again; some pass it as their gain too, a starting fade. [User-checks](../user-checks.md) asks whether that's audible.
+- **The original's sound and music volumes** are floats, 1.0 and 0.65 in a new game, which scale the byte each sequence is played at. The sound volume is everything's but the music's.
+- **The original's one-shots take the sound volume twice:** `Audio.PlaySound` stores it as the sound's own volume and `Audio.UpdateSound` multiplies by it again; some pass it as their gain too, a starting fade, so at half volume the menu's sounds play at a quarter and the containers' at an eighth.
+- **The port has six volumes, the user's choice** (Oct 31, 2026), each a slider on the options' Audio page, in hundredths: a master volume, which multiplies the rest, and one for each group of sounds (`SoundGroup`, `SessionSettings.Level`, `GameAudio.Level`):
+
+  | Group | Default | What's in it |
+  | --- | --- | --- |
+  | Master | 100 | Every sound |
+  | Music | 65 | The chunks' and map sets' music, music objects (`SoundFlags.Music`), a battle's, the title's, the credits' and the cinematics' |
+  | Ambient | 100 | Map objects' sounds that aren't music, and the rain and thunder (`WeatherSounds`) |
+  | Effects | 100 | Bodies' footsteps, voices, weapons and casts (`AudioKeys`); containers, traps, gold, experience, level-ups and scripts' sounds |
+  | Interface | 100 | The pause menu's and the title menu's own sounds (`PauseMenu.Sound`, `TitleScreen`) |
+  | Dialogue | 100 | The conversation box's blip as a line prints, silent at 0 (`SessionSettings.TextVoice`) |
+
+  A one-shot names its group (`OneShot.Group`, Effects unless it says otherwise) and takes its level once, as it plays, with no starting fade, in place of the original's two or three times. A cinematic's score plays at the Music volume, where the original plays it at the louder of its two. Older settings' sound volume is read as every group's but the music's, and their Text Voice off as Dialogue at 0 (`Settings.SoundVolume`, `TextVoice`, never written).
 - **Nothing has priority.** Every sequence is played with priority 0, so a note finding all 32 voices busy is dropped, and a 33rd sequence doesn't play.

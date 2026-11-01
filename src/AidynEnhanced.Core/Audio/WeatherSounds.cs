@@ -54,7 +54,7 @@ public sealed class WeatherSounds(GameAudio audio, SoundsRecord sounds)
                 if (sounds is not null)
                     _rain = audio.Start(sounds.Rain, 0, Centre, loop: true);
             }
-            audio.Set(_rain, RainVolume(weather.RainLoopLevel, audio.SoundVolume), Centre);
+            audio.Set(_rain, RainVolume(weather.RainLoopLevel, audio.Level(SoundGroup.Ambient)), Centre);
         }
     }
 
@@ -62,7 +62,7 @@ public sealed class WeatherSounds(GameAudio audio, SoundsRecord sounds)
     public void Thunder(int which)
     {
         if (sounds is not null && which >= 0 && which < sounds.Thunder.Count)
-            audio.Play(new OneShot(sounds.Thunder[which], ThunderTicks[Math.Min(which, ThunderTicks.Length - 1)], TimesSoundVolume: true));
+            audio.Play(new OneShot(sounds.Thunder[which], ThunderTicks[Math.Min(which, ThunderTicks.Length - 1)], Group: SoundGroup.Ambient));
     }
 
     /// <summary>Stops the rain loop (<c>Weather.StopRain</c>, <c>0x8001e770</c>).</summary>

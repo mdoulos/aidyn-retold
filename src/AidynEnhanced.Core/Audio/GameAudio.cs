@@ -40,11 +40,8 @@ public sealed class GameAudio
     /// </summary>
     public SessionSettings Settings { get; set; } = SessionSettings.Original;
 
-    /// <summary>The sound effects' volume, 0 to 1 (<c>VolSFX</c>), or 0 while <see cref="Muted"/>.</summary>
-    public float SoundVolume => Muted ? 0 : (float)Settings.SoundVolume / Core.Settings.MaxVolume;
-
-    /// <summary>The music's volume, 0 to 1 (<c>VolBGM</c>), or 0 while <see cref="Muted"/>.</summary>
-    public float MusicVolume => Muted ? 0 : (float)Settings.MusicVolume / Core.Settings.MaxVolume;
+    /// <summary>A group's loudness, 0 to 1: its volume times the master volume (<see cref="SessionSettings.Level"/>), or 0 while <see cref="Muted"/>.</summary>
+    public float Level(SoundGroup group) => Muted ? 0 : Settings.Level(group);
 
     /// <summary>
     /// Whether the game's music and sounds are silent, though they go on, as through the credits, which zero both
@@ -85,9 +82,10 @@ public sealed class GameAudio
 
     /// <summary>
     /// Plays a one-shot (<c>Audio.PlaySound</c>, 1.0 <c>0x8004E150</c>), centred, without falloff, from the next
-    /// <see cref="Step"/>. It's a sound object of its own: it keeps the sound volume now as its volume, and starts at
-    /// its gain, rising to full over 90 ticks. It holds its slot for its whole lifetime, and with all
-    /// <see cref="MaxSounds"/> held, it doesn't play.
+    /// <see cref="Step"/>, at its group's level. It's a sound object of its own, which holds its slot for its whole lifetime, and
+    /// with all <see cref="MaxSounds"/> held, it doesn't play. The original keeps the sound volume at the call as its volume and
+    /// multiplies by it again as it plays, and some start at it besides, rising to full over 90 ticks; the port takes its group's
+    /// level once, the user's choice (Oct 31, 2026).
     /// </summary>
     public void Play(OneShot sound)
     {
@@ -96,9 +94,9 @@ public sealed class GameAudio
             var slot = Array.IndexOf(_sounds, null);
             if (slot < 0)
                 return;
-            _sounds[slot] = new Slot(sound, SoundVolume)
+            _sounds[slot] = new Slot(sound)
             {
-                Fade = sound.TimesSoundVolume ? SoundVolume : 1,
+                Fade = 1,
                 Lifetime = sound.Lifetime + sound.Delay,
                 Delay = sound.Delay,
             };
@@ -164,11 +162,10 @@ public sealed class GameAudio
             {
                 if (_sounds[i] is not { } sound)
                     continue;
-                sound.Fade = MathF.Min(1, sound.Fade + 1f / AudioLevels.FadeTicks);
                 if (--sound.Delay <= 0)
                 {
                     sound.Delay = 0;
-                    sound.Update(this, SoundVolume);
+                    sound.Update(this, Level(sound.Group));
                 }
                 if (--sound.Lifetime <= 0)
                 {
@@ -221,30 +218,47 @@ public sealed class GameAudio
             _music = default;
             _musicPlaying = Music;
             if (Music is { } id && Bank.Get(id) is { } sequence)
-                _music = Engine.Play(sequence, Volume(MusicVolume), 0x80, loop: true);
+                _music = Engine.Play(sequence, Volume(Level(SoundGroup.Music)), 0x80, loop: true);
         }
         // Sent again every frame, so the options' slider acts at once.
-        Engine.SetVolume(_music, Volume(MusicVolume));
+        Engine.SetVolume(_music, Volume(Level(SoundGroup.Music)));
     }
 
-    /// <summary>
-    /// A one-shot is a <see cref="KeptSound"/>: its volume is its fade times the sound volume it was played at, as a
-    /// byte, times the sound volume now. So the sound volume counts twice, or three times for those whose gain it is.
-    /// It is centred, a pan of 0.
-    /// </summary>
-    private sealed class Slot(OneShot sound, float volume) : KeptSound(sound.Sequence, volume, false)
+    /// <summary>A one-shot is a <see cref="KeptSound"/> at full volume times its group's level now. It is centred, a pan of 0.</summary>
+    private sealed class Slot(OneShot sound) : KeptSound(sound.Sequence, 1, false)
     {
         public int Lifetime, Delay;
+
+        public SoundGroup Group => sound.Group;
     }
 }
 
-/// <summary>A one-shot sound: <c>Audio.PlaySound</c>'s arguments.</summary>
+/// <summary>
+/// The groups the game's sounds are in, each with a volume of its own under the master volume, the user's choice (Oct 31, 2026):
+/// the original has the music's and the sound effects' (docs/systems/audio.md).
+/// </summary>
+public enum SoundGroup
+{
+    /// <summary>The chunks' and map sets' music, music objects, a battle's, the title's, the credits' and the cinematics'.</summary>
+    Music,
+
+    /// <summary>The world's placed sounds (map objects that aren't music), and the rain and thunder.</summary>
+    Ambient,
+
+    /// <summary>Bodies' footsteps, voices, weapons and casts; containers, traps, gold, experience and scripts' sounds.</summary>
+    Effects,
+
+    /// <summary>The menus' own sounds: the cursor, accepting, going back, the tabs and popups.</summary>
+    Interface,
+
+    /// <summary>Voices: a conversation's blip as a line prints.</summary>
+    Dialogue,
+}
+
+/// <summary>A one-shot sound: <c>Audio.PlaySound</c>'s arguments, and the group whose volume it plays at.</summary>
 /// <param name="Lifetime">Ticks after its delay that it's stopped, whether or not it has ended.</param>
 /// <param name="Delay">Ticks before it starts.</param>
-/// <param name="TimesSoundVolume">
-/// Whether it's played with the sound volume as its gain, as the containers', thunder's and scripts' gold sounds are.
-/// </param>
-public readonly record struct OneShot(RecordId Sequence, int Lifetime, int Delay = 0, bool TimesSoundVolume = false)
+public readonly record struct OneShot(RecordId Sequence, int Lifetime, int Delay = 0, SoundGroup Group = SoundGroup.Effects)
 {
     /// <summary>The lifetime of the menus' cursors, a second of the menus' others, and five of the gold and experience sounds, in ticks.</summary>
     public const int ShortTicks = 30, MenuTicks = 60, LongTicks = 300;

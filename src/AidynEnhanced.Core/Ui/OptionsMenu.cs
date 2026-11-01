@@ -279,8 +279,12 @@ public sealed partial class OptionsMenu
         var s = Settings;
         return
         [
-            new("Sound Volume", OptionKind.Volume, () => s.SoundVolume, v => s.SoundVolume = v, []),
-            new("Music Volume", OptionKind.Volume, () => s.MusicVolume, v => s.MusicVolume = v, []),
+            new("Master", OptionKind.Volume, () => s.MasterVolume, v => s.MasterVolume = v, []),
+            new("Music", OptionKind.Volume, () => s.MusicVolume, v => s.MusicVolume = v, []),
+            new("Ambient", OptionKind.Volume, () => s.AmbientVolume, v => s.AmbientVolume = v, []),
+            new("Effects", OptionKind.Volume, () => s.EffectsVolume, v => s.EffectsVolume = v, []),
+            new("Interface", OptionKind.Volume, () => s.InterfaceVolume, v => s.InterfaceVolume = v, []),
+            new("Dialogue", OptionKind.Volume, () => s.DialogueVolume, v => s.DialogueVolume = v, []),
         ];
     }
 
@@ -367,7 +371,6 @@ public sealed partial class OptionsMenu
             Choice("Pace", ["Original", "Brisk"], () => s.BriskPace ? 1 : 0, v => s.BriskPace = v == 1),
             Choice("Jump", ["Original", "On"], () => s.Jump ? 1 : 0, v => s.Jump = v == 1),
             Choice("Text Speed", ["Original", "Slow", "Normal", "Fast"], () => (int)s.TextSpeed, v => s.TextSpeed = (TextSpeed)v),
-            Choice("Text Voice", ["Off", "On"], () => s.TextVoice ? 1 : 0, v => s.TextVoice = v == 1),
             Choice("Status Auras", ["Original", "More Often"], () => s.SpellAuras == Combat.AuraTurns.EachCharacter ? 1 : 0,
                 v => s.SpellAuras = v == 1 ? Combat.AuraTurns.EachCharacter : Combat.AuraTurns.Battle),
             Choice("Intro Logos", ["Original", "Skip"], () => s.IntroCards ? 0 : 1, v => s.IntroCards = v == 0),

@@ -36,6 +36,15 @@ public partial class SystemTabView : Control
     /// </summary>
     private const int ChoiceLabel = 72, ChoiceValue = 204;
 
+    /// <summary>
+    /// The Audio page's six volumes, the port's (Oct 31, 2026): each on a line of its own, 22 apart, its label's left where the other
+    /// pages' are, clear of the roller, and its rope bar's to the right of it at its own size.
+    /// </summary>
+    private const int AudioLabel = ChoiceLabel, AudioBar = 136, AudioPitch = 22;
+
+    /// <summary>The Audio page's row whose rope the mouse is dragging along, setting its volume, or none.</summary>
+    private int? _sliding;
+
     // WidgetContPakData and ControllerPakSliders: the title, the screenshot stretched to 104 × 78, the portraits,
     // the arrow, the name and the time played, and the actions.
     private static readonly Vector2I SavesTitle = new(132, 24), Screenshot = new(73, 52), ScreenshotSize = new(104, 78);
@@ -118,6 +127,12 @@ public partial class SystemTabView : Control
             AcceptEvent();
             return;
         }
+        if (Slide(@event))
+        {
+            QueueRedraw();
+            AcceptEvent();
+            return;
+        }
         // A click on a row chooses it, as A does; anywhere else it chooses nothing.
         if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } click)
         {
@@ -138,6 +153,62 @@ public partial class SystemTabView : Control
             return;
         QueueRedraw();
         AcceptEvent();
+    }
+
+    /// <summary>
+    /// The Audio page's ropes under the mouse: a press on one sets its volume where it's pressed, and dragging along it goes on
+    /// setting it until the button's let go. Whether the event was one of those.
+    /// </summary>
+    private bool Slide(InputEvent e)
+    {
+        if (Menu.Page != SystemPage.Options || Menu.Options is not { Page: OptionsPage.Audio } options)
+        {
+            _sliding = null;
+            return false;
+        }
+        switch (e)
+        {
+            case InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: false } when _sliding is not null:
+                _sliding = null;
+                return true;
+            case InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true } press when VolumeAt(options, press.Position - _origin) is var (row, value):
+                _sliding = row;
+                SetVolume(options, row, value);
+                return true;
+            case InputEventMouseMotion drag when _sliding is { } row:
+                SetVolume(options, row, VolumeAlong(options, drag.Position - _origin));
+                return true;
+            default:
+                return false;
+        }
+
+        void SetVolume(OptionsMenu page, int row, int value)
+        {
+            Menu.Point(row);
+            page.Change(value - page.Rows.Rows[row].Value);
+        }
+    }
+
+    /// <summary>The volume row whose rope is under a point in the frame, and the volume it points at along it.</summary>
+    private (int Row, int Value)? VolumeAt(OptionsMenu options, Vector2 at)
+    {
+        var shifted = at - OptionsShift(options);
+        var rows = OptionRows(options);
+        var bar = _ui.Size(MenuImages.VolumeBar);
+        for (var i = 0; i < rows.Count; i++)
+        {
+            if (options.Rows.Rows[i].Kind == OptionKind.Volume && shifted.Y >= rows[i].Top && shifted.Y < rows[i].Bottom
+                && shifted.X >= AudioBar - 4 && shifted.X < AudioBar + bar.X + 4)
+                return (i, VolumeAlong(options, at));
+        }
+        return null;
+    }
+
+    /// <summary>The volume a point in the frame points at along the Audio page's ropes, held to their ends.</summary>
+    private int VolumeAlong(OptionsMenu options, Vector2 at)
+    {
+        var x = at.X - OptionsShift(options).X - AudioBar;
+        return Math.Clamp((int)MathF.Round(x / _ui.Size(MenuImages.VolumeBar).X * Core.Settings.MaxVolume), 0, Core.Settings.MaxVolume);
     }
 
     /// <summary>The row of the list or options page under a point in the frame.</summary>
@@ -288,7 +359,8 @@ public partial class SystemTabView : Control
             : OptionRows(options).Select(r => r.Bottom).DefaultIfEmpty(OptionsTop).Max();
         var (left, right) = options.Page switch
         {
-            OptionsPage.Main or OptionsPage.Audio => (OptionsLeft, OptionsLeft + _ui.Size(MenuImages.VolumeBar).X),
+            OptionsPage.Main => (OptionsLeft, OptionsLeft + _ui.Size(MenuImages.VolumeBar).X),
+            OptionsPage.Audio => (AudioLabel, AudioBar + _ui.Size(MenuImages.VolumeBar).X),
             OptionsPage.Controls => (ChoiceLabel, ControlsRight),
             _ => (ChoiceLabel, ChoiceValue + options.Rows.Rows.SelectMany(r => r.Values).Select(_ui.Main.Width).DefaultIfEmpty(0).Max()),
         };
@@ -349,6 +421,11 @@ public partial class SystemTabView : Control
     {
         if (options.Page == OptionsPage.Controls)
             return ControlPlaces(options).Rows;
+        if (options.Page == OptionsPage.Audio)
+        {
+            var bar = _ui.Size(MenuImages.VolumeBar).Y;
+            return [.. options.Rows.Rows.Select((_, i) => (OptionsTop + i * AudioPitch, OptionsTop + i * AudioPitch + bar))];
+        }
         var rows = new List<(int, int)>();
         var y = OptionsTop;
         // A page with more rows than the parchment holds 16 apart closes them up, as Enhancements' ten do.
@@ -410,11 +487,11 @@ public partial class SystemTabView : Control
                 CentredText(row.Label, centre, top, color);
                 continue;
             }
-            _ui.Text(this, _ui.Main, row.Label, OptionsLeft, top, color);
-            // The rope whole and faint, then again in the rows' colour as far as the volume reaches.
-            var y = top + _ui.Main.LineHeight;
-            _ui.Image(this, MenuImages.VolumeBar, OptionsLeft, y, color: Style.BarEmpty);
-            _ui.ImageTo(this, MenuImages.VolumeBar, OptionsLeft, y, bar, OptionsLeft + bar.X * row.Value / Core.Settings.MaxVolume, Style.Text);
+            // The label level with the middle of its rope, and the rope whole and faint, then again in the rows' colour as far as the
+            // volume reaches.
+            _ui.Text(this, _ui.Main, row.Label, AudioLabel, top + (bar.Y - _ui.Main.LineHeight) / 2 + 1, color);
+            _ui.Image(this, MenuImages.VolumeBar, AudioBar, top, color: Style.BarEmpty);
+            _ui.ImageTo(this, MenuImages.VolumeBar, AudioBar, top, bar, AudioBar + bar.X * row.Value / Core.Settings.MaxVolume, Style.Text);
         }
     }
 

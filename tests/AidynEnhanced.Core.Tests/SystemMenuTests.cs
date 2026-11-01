@@ -31,15 +31,20 @@ public class SystemMenuTests(BarterPlugins fixture) : IClassFixture<BarterPlugin
         options.Accept();
 
         Assert.Equal(OptionsPage.Audio, options.Page);
-        Assert.Equal((100, 65), (settings.SoundVolume, settings.MusicVolume));
+        Assert.Equal(["Master", "Music", "Ambient", "Effects", "Interface", "Dialogue"], options.Rows.Rows.Select(r => r.Label));
+        Assert.Equal((100, 65), (settings.MasterVolume, settings.MusicVolume));
         options.Change(1);
-        Assert.Equal(100, settings.SoundVolume);
+        Assert.Equal(100, settings.MasterVolume);
         Assert.Equal(0, changes);
         options.Change(-1);
         options.MoveCursor(1);
         options.Change(1);
-        Assert.Equal((99, 66), (settings.SoundVolume, settings.MusicVolume));
-        Assert.Equal(2, changes);
+        Assert.Equal((99, 66), (settings.MasterVolume, settings.MusicVolume));
+        options.MoveCursor(4);
+        options.Change(-100);
+        Assert.Equal(0, settings.DialogueVolume);
+        Assert.False(SessionSettings.From(settings).TextVoice);
+        Assert.Equal(3, changes);
         Assert.True(options.Changed);
     }
 
@@ -84,11 +89,11 @@ public class SystemMenuTests(BarterPlugins fixture) : IClassFixture<BarterPlugin
         options.Back();
         options.Point(2);
         options.Accept();
-        Assert.Equal(["Draw Distance", "Object Distance", "Model Detail", "Surface Detail", "Animation Blending", "Rain and Snow", "Menu Size", "Menu Filter", "Pace", "Jump", "Text Speed", "Text Voice", "Status Auras", "Intro Logos"],
+        Assert.Equal(["Draw Distance", "Object Distance", "Model Detail", "Surface Detail", "Animation Blending", "Rain and Snow", "Menu Size", "Menu Filter", "Pace", "Jump", "Text Speed", "Status Auras", "Intro Logos"],
             options.Rows.Rows.Select(r => r.Label));
         // A new player's are the original's but the menus drawn sharp; Surface Detail's Full and Animation Blending's Smooth show only on a
-        // mod's model, he can jump, the text prints at Normal with its voice on, and the intro logos are skipped, the user's choice.
-        Assert.Equal(["Original", "Original", "Original", "Full", "Smooth", "Original", "Original", "Sharp", "Original", "On", "Normal", "On", "Original", "Skip"],
+        // mod's model, he can jump, the text prints at Normal, and the intro logos are skipped, the user's choice.
+        Assert.Equal(["Original", "Original", "Original", "Full", "Smooth", "Original", "Original", "Sharp", "Original", "On", "Normal", "Original", "Skip"],
             options.Rows.Rows.Select(r => r.ValueName));
     }
 
@@ -219,7 +224,27 @@ public class SystemMenuTests(BarterPlugins fixture) : IClassFixture<BarterPlugin
         var read = Settings.Load(path);
 
         Assert.Equal((30, 480, UiFilter.Smooth, true, 3f, true), (read.MusicVolume, read.UiLines, read.UiFilter, read.BriskPace, read.ObjectDistance, read.ExtendedDrawDistance));
-        Assert.Equal(100, Settings.Load(Path.Combine(_saves, "none.json")).SoundVolume);
+        Assert.Equal(100, Settings.Load(Path.Combine(_saves, "none.json")).MasterVolume);
+    }
+
+    /// <summary>
+    /// Older settings' one sound volume becomes every group's but the music's, and their text voice turned off the Dialogue volume;
+    /// neither is written again.
+    /// </summary>
+    [Fact]
+    public void OlderSettingsSoundVolumeAndTextVoiceBecomeTheGroups()
+    {
+        Directory.CreateDirectory(_saves);
+        var path = Path.Combine(_saves, "old.json");
+        File.WriteAllText(path, """{ "soundVolume": 40, "musicVolume": 49, "textVoice": false }""");
+
+        var read = Settings.Load(path);
+
+        Assert.Equal((100, 49, 40, 40, 40, 0), (read.MasterVolume, read.MusicVolume, read.AmbientVolume, read.EffectsVolume, read.InterfaceVolume, read.DialogueVolume));
+        read.Save(path);
+        var written = File.ReadAllText(path);
+        Assert.DoesNotContain("soundVolume", written);
+        Assert.DoesNotContain("textVoice", written);
     }
 
     // The name entry.

@@ -148,7 +148,7 @@ public sealed class MapSounds(GameAudio audio, IRandom random, Func<MapObject, b
     /// that needs starting if its flags let it (<see cref="KeptSound.Update"/>), at the music volume if it's music.
     /// </summary>
     private void Update(Bubble b) =>
-        b.Update(audio, (b.Sound.Flags & SoundFlags.Music) != 0 ? audio.MusicVolume : audio.SoundVolume, b.There);
+        b.Update(audio, audio.Level((b.Sound.Flags & SoundFlags.Music) != 0 ? SoundGroup.Music : SoundGroup.Ambient), b.There);
 
     private sealed class Bubble(LoadedMap map, SoundObject sound, Vector3 position, Func<bool> there)
         : KeptSound(sound.Sound, sound.Volume, (sound.Flags & SoundFlags.Loop) != 0)

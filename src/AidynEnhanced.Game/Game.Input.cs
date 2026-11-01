@@ -81,6 +81,9 @@ public partial class Game
         var own = Vector(InputBindings.Move);
         var shared = Vector(InputBindings.Steer);
         var move = hold ? own : (own + shared).LimitLength(1);
+        // Both mouse buttons held run him the way the camera looks, as World of Warcraft's do.
+        if (MouseRuns)
+            move = (move + Vector2.Up).LimitLength(1);
         var stick = new System.Numerics.Vector2(move.X, -move.Y);
         if (Input.IsActionPressed(GameControls.Walk) && stick.Length() > 0.5f)
             stick = System.Numerics.Vector2.Normalize(stick) * 0.5f;
@@ -101,7 +104,8 @@ public partial class Game
             orbitStick += new System.Numerics.Vector2(shared.X, -shared.Y);
         }
         var drag = _camera!.TakeDrag();
-        if (_camera.MouseSteers)
+        // The mouse's camera keeps the angle it was turned to, as Camera Hold's does while it's held.
+        if (_camera.MouseLook || _camera.MouseSteers)
         {
             orbit = true;
             var scale = (_camera.MouseLook ? LookToStick : DragToStick) * _settings.MouseSensitivity;
@@ -127,14 +131,21 @@ public partial class Game
     }
 
     /// <summary>
-    /// With the mouse on Camera, the mouse is captured in trek and a battle, where it turns the camera, and let go in the menus,
-    /// a conversation, a cut-scene and the free camera, and while the window isn't in front.
+    /// With the mouse on Camera, the mouse turns the camera in trek and a battle as World of Warcraft's does (ADR 0036), captured
+    /// only while it's dragged (<see cref="MouseDrag"/>), and not in the menus, a conversation, a cut-scene or the free camera. A drag
+    /// ends where the mode leaves them, or the window goes behind another.
     /// </summary>
     private void CaptureMouse()
     {
         var look = InputBindings.MouseLook(_settings.Controls) && _session is { Mode: GameMode.Trek or GameMode.Combat }
-            && _camera is { Flying: false } && GetWindow().HasFocus();
-        var mode = look ? Input.MouseModeEnum.Captured : Input.MouseModeEnum.Visible;
+            && _camera is { Flying: false };
+        var focused = GetWindow().HasFocus();
+        if (!look || !focused)
+        {
+            EndMouseDrag(restore: focused);
+            _mouseHeld = null;
+        }
+        var mode = _camera is { Dragging: true } ? Input.MouseModeEnum.Captured : Input.MouseModeEnum.Visible;
         if (Input.MouseMode != mode)
             Input.MouseMode = mode;
         _camera?.MouseLook = look;

@@ -1,6 +1,6 @@
 # 0026. Controls are listed by what the player does in each situation, and bound per device in the core
 
-Status: Accepted · Oct 24, 2026 · Fills in [0024](0024-the-options-are-pages-by-kind.md)'s "Controls will join them" · Cut-scenes and conversations' own controls are superseded by [0027](0027-conversations-take-the-menus-controls.md)
+Status: Accepted · Oct 24, 2026 · Fills in [0024](0024-the-options-are-pages-by-kind.md)'s "Controls will join them" · Cut-scenes and conversations' own controls are superseded by [0027](0027-conversations-take-the-menus-controls.md), and mouse look by [0036](0036-the-mouse-turns-the-camera-by-dragging.md)
 
 ## Context
 

@@ -308,7 +308,7 @@ The user laid this out, and it isn't the original's ([ADR 0013](../adr/0013-sett
 
 The port's own page ([ADR 0026](../adr/0026-controls-are-bound-by-situation.md), [ADR 0027](../adr/0027-conversations-take-the-menus-controls.md)): every control can be rebound, on the keyboard with the mouse and on a controller apart. `OptionsMenu.Controls.cs` holds the page over `Settings.Controls` (`ControlBindings`), and `SystemTabView.Controls.cs` draws it; the runtime turns the bindings into Godot's input actions as the game starts and whenever they change (`InputBindings`, [runtime](runtime.md#controls)).
 
-- **The controls** are what the player does in each situation, not the N64's buttons (`GameControls`), so C-down is both the menus' Details and combat's Spell Menu, which share a default. The defaults are the bindings the runtime had before the page, but for the keyboard and mouse's, which are a PC game's since Oct 31, 2026, as Fortnite's, the user's choice: the mouse looks, Ctrl sneaks, E uses, Tab or I, M and J open the menu's tabs, the wheel zooms and targets, and a right click goes back. The controller's are the N64's as before:
+- **The controls** are what the player does in each situation, not the N64's buttons (`GameControls`), so C-down is both the menus' Details and combat's Spell Menu, which share a default. The defaults are the bindings the runtime had before the page, but for the keyboard and mouse's, which are a PC game's since Oct 31, 2026, the user's choice: the mouse turns the camera as World of Warcraft's does, by dragging ([ADR 0036](../adr/0036-the-mouse-turns-the-camera-by-dragging.md)), Ctrl sneaks, E uses, Tab or I, M and J open the menu's tabs, the wheel zooms and targets, and a right click goes back. The controller's are the N64's as before:
 
   | Situation | Control | Keyboard | Controller | What it is |
   | --- | --- | --- | --- | --- |
@@ -324,7 +324,7 @@ The port's own page ([ADR 0026](../adr/0026-controls-are-bound-by-situation.md),
   | | Portraits | Backspace | B | B: raises or lowers the portraits |
   | | Menu | Enter, Escape | Start | Start: opens the pause menu |
   | | Inventory, Map, Journal | Tab and I, M, J | None | the port's: open the pause menu on the Party tab, the World tab, or the World tab's journal, where Start would open it |
-  | | Zoom In, Zoom Out | Wheel Up, Wheel Down | None | the port's: the camera's distance while the mouse looks ([cameras](cameras.md#the-follow-camera-cameramode0)) |
+  | | Zoom In, Zoom Out | Wheel Up, Wheel Down | None | the port's: the camera's distance while the mouse is on Camera ([cameras](cameras.md#the-follow-camera-cameramode0)) |
   | Menus | Move Cursor | WASD, Arrows | Left Stick, D-Pad | the stick and the D-pad |
   | | Accept, Back | Space; Backspace, Right Click | A, B | A, B |
   | | Close Menu | Enter, Escape | Start | Start |

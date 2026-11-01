@@ -54,9 +54,18 @@ public sealed class GameAudio
 
     /// <summary>
     /// The background music asked for, or none. <see cref="Step"/> starts it from its beginning when it changes, and
-    /// stops what played before.
+    /// stops what played before. A recording in its place begins loading as it's asked for (<see cref="SoundBank.Warm"/>).
     /// </summary>
-    public RecordId? Music { get; set; }
+    public RecordId? Music
+    {
+        get;
+        set
+        {
+            field = value;
+            if (value is { } id)
+                Bank.Warm(id);
+        }
+    }
 
     /// <summary>How many one-shots are playing or waiting to.</summary>
     public int SoundsPlaying
@@ -105,8 +114,10 @@ public sealed class GameAudio
     /// </summary>
     public SoundHandle Start(RecordId sequence, byte volume, byte pan, bool loop, int durationMs = -1)
     {
+        // Loaded before the lock, so the mixer doesn't wait on it.
+        var s = Bank.Get(sequence);
         lock (_sync)
-            return Bank.Get(sequence) is { } s ? Engine.Play(s, volume, pan, loop, durationMs) : default;
+            return s is not null ? Engine.Play(s, volume, pan, loop, durationMs) : default;
     }
 
     public bool IsPlaying(SoundHandle handle)

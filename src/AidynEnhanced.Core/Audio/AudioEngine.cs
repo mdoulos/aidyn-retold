@@ -33,7 +33,7 @@ public sealed class AudioEngine
     public const int OriginalRate = 44095;
 
     /// <summary>Samples at <see cref="OriginalRate"/> per 1000 µs call (<c>_timeToSamplesNoRound</c>).</summary>
-    private const int StepSamples = 44;
+    internal const int StepSamples = 44;
 
     public const int MaxPlayers = 32, MaxVoices = 32, MaxTracks = 32;
 
@@ -400,15 +400,27 @@ public sealed class AudioEngine
     {
         v.VolumeByte = volume;
         v.PanByte = pan;
-        var synthVolume = Math.Min(volume << 6, 0x7FFF);
-        var squared = synthVolume * synthVolume >> 15;
-        var synthPan = Math.Min(pan >> 1, 127);
-        var left = squared * EqPower[synthPan] / 32768f / 32768f;
-        var right = squared * EqPower[127 - synthPan] / 32768f / 32768f;
+        var (left, right) = Gains(volume, pan);
         v.LeftStep = (left - v.Left) / _rampFrames;
         v.RightStep = (right - v.Right) / _rampFrames;
         v.Ramp = _rampFrames;
     }
+
+    /// <summary>
+    /// What a voice's samples are multiplied by on the left and right at a volume byte and a pan byte: the voice manager's volume
+    /// (<c>min(volume &lt;&lt; 6, 0x7FFF)</c>) squared by the envelope mixer, and equal-power pan (<c>pan &gt;&gt; 1</c>). At full
+    /// volume, 15 × 255 &gt;&gt; 4 = 239, hard to one side, it's 0.218.
+    /// </summary>
+    public static (float Left, float Right) Gains(byte volume, byte pan)
+    {
+        var synthVolume = Math.Min(volume << 6, 0x7FFF);
+        var squared = synthVolume * synthVolume >> 15;
+        var synthPan = Math.Min(pan >> 1, 127);
+        return (squared * EqPower[synthPan] / 32768f / 32768f, squared * EqPower[127 - synthPan] / 32768f / 32768f);
+    }
+
+    /// <summary>A track's volume byte at full volume in a sequence at full volume: 15 × 255 &gt;&gt; 4.</summary>
+    public const byte FullVolume = 15 * 0xFF >> 4;
 
     /// <summary>The voice manager frees a voice that played once and reached its sample's end.</summary>
     private void UpdateVoices()
@@ -452,8 +464,8 @@ public sealed class AudioEngine
             var i = (int)Math.Floor(Position);
             var x = (float)(Position - i);
             float a = At(i - 1), b = At(i), c = At(i + 1), d = At(i + 2);
-            // Catmull-Rom through b and c.
-            var sample = b + 0.5f * x * (c - a + x * (2 * a - 5 * b + 4 * c - d + x * (3 * (b - c) + d - a)));
+            // Catmull-Rom through b and c, times a recording's levelling.
+            var sample = (b + 0.5f * x * (c - a + x * (2 * a - 5 * b + 4 * c - d + x * (3 * (b - c) + d - a)))) * Instrument.Gain;
 
             if (Ramp > 0)
             {

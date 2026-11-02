@@ -187,27 +187,23 @@ public class SystemMenuTests(BarterPlugins fixture) : IClassFixture<BarterPlugin
     }
 
     /// <summary>
-    /// Equipped Inventory goes by the device until it's changed, showing what that gives: Show with a controller, Hide with the keyboard
-    /// and mouse; once changed it's the player's either way. Under the original look it's greyed, showing Show, and doesn't change.
+    /// Equipped Inventory is the keyboard and mouse's, Hide until it's set, a controller always showing what's worn; under the original look
+    /// it's greyed, showing Show, and doesn't change.
     /// </summary>
     [Fact]
-    public void EquippedInventoryGoesByTheDeviceUntilItsChanged()
+    public void EquippedInventoryIsHiddenUntilItsSet()
     {
         var settings = new Settings();
-        var controller = true;
-        var options = new OptionsMenu(settings, inGame: true, controller: () => controller);
+        var options = new OptionsMenu(settings, inGame: true, controller: () => true);
         options.Point(2);
         options.Accept();
         var row = options.Rows.Rows.First(r => r.Label == "Equipped Inventory");
-        Assert.Equal("Show", row.ValueName);
-        controller = false;
         Assert.Equal("Hide", row.ValueName);
         Assert.Null(settings.WornInInventory);
 
         row.Set(0);
         Assert.Equal((true, "Show"), (settings.WornInInventory, row.ValueName));
         row.Set(1);
-        controller = true;
         Assert.Equal((false, "Hide"), (settings.WornInInventory, row.ValueName));
 
         settings.SetQuality(GraphicQuality.Original);

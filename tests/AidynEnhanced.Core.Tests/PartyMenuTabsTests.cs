@@ -18,7 +18,7 @@ public class PartyMenuTabsTests
     /// <summary>Lets a list's slide finish, which holds off the next change.</summary>
     private static void Slid(PartyMenu menu)
     {
-        for (var tick = 0; tick < (PartyMenu.ListFrames + 1) * Cadence.MenuFrameTicks; tick++)
+        for (var tick = 0; tick < (menu.SlideFrames + 1) * Cadence.MenuFrameTicks; tick++)
             menu.Step();
         Assert.Null(menu.Slide);
     }

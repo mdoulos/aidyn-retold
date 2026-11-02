@@ -130,7 +130,7 @@ public partial class PartyTabView : Control
     /// The tabs: the first one's corner, each one's paper, and how far apart they start, a pixel less than they're wide, so they
     /// meet. Each tab's foot runs 6 down behind its page's top, the tab showing's joined to the front page by plain paper.
     /// </summary>
-    private static readonly Vector2 TabsAt = new(158, 18);
+    private static readonly Vector2 TabsAt = new(161, 18);
 
     private const float TabWidth = 28, TabHeight = 28, TabStep = 27;
 
@@ -207,7 +207,7 @@ public partial class PartyTabView : Control
     /// What the list and its arrows are cut to as they slide: across the list's frame's inside, from under the tabs to the list's foot,
     /// which the grid's scroll bar beside it is in too.
     /// </summary>
-    private static readonly Rect2I ListClip = new(158, 43, 151, 172);
+    private static readonly Rect2I ListClip = new(158, 43, 151, 180);
 
 
     // WidgetItemDetail: the parchment, and its text's left and right edges and top, as the original places them; what goes over
@@ -404,6 +404,15 @@ public partial class PartyTabView : Control
         }
         if (TipInput(@event))
         {
+            AcceptEvent();
+            return;
+        }
+        // The grid's quick toggle for what's worn showing.
+        if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } toggle && OwnTab && Menu.ToggleWorn is { } turn
+            && Menu.List == PartyList.Inventory && Menu.Grid && Menu.Slide is null && !Menu.HasPopup
+            && WornToggleRect().HasPoint(toggle.Position - (Vector2)_origin))
+        {
+            turn();
             AcceptEvent();
             return;
         }
@@ -801,6 +810,7 @@ public partial class PartyTabView : Control
         Portraits(PortraitPiece.Position);
         Health();
         Silhouette(SilhouetteAt);
+        CardStats();
         Tabs();
     }
 
@@ -1112,11 +1122,25 @@ public partial class PartyTabView : Control
     private List<(RecordId Icon, float X, string Name)> Icons(Core.Characters.Character member)
     {
         var icons = new List<(RecordId, float, string)>();
-        float x = (OriginalLook ? OriginalIconsAt : IconsAt).X;
+        if (!OriginalLook)
+        {
+            // The port's: the aspect's right edge under the last small portrait's, the school's before it, the user's choice (Nov 2, 2026).
+            var right = (float)OtherPortraits[^1].X + OtherSize;
+            if (MenuImages.AspectIcon(member.Aspect) is { } ownAspect)
+            {
+                right -= IconSize;
+                icons.Add((ownAspect, right, $"{member.Aspect} Aspect"));
+                right -= IconGap;
+            }
+            if (MenuImages.SchoolIcon(member.School) is { } ownSchool)
+                icons.Add((ownSchool, right - IconSize, $"School of {member.School}"));
+            return icons;
+        }
+        float x = OriginalIconsAt.X;
         if (MenuImages.AspectIcon(member.Aspect) is { } aspect)
         {
             icons.Add((aspect, x, $"{member.Aspect} Aspect"));
-            x += OriginalLook ? _ui.Size(aspect).X + OriginalIconGap : IconSize + IconGap;
+            x += _ui.Size(aspect).X + OriginalIconGap;
         }
         if (MenuImages.SchoolIcon(member.School) is { } school)
             icons.Add((school, x, $"School of {member.School}"));
@@ -1254,17 +1278,15 @@ public partial class PartyTabView : Control
         {
             var x = at.X + SlotOffset(slot).X;
             var y = at.Y + SlotOffset(slot).Y;
-            var size = new Vector2I(BoxedSize, BoxedSize);
             Art(SlotBox, new Rect2(x - 1, y - 1, SlotSize + 2, SlotSize + 2));
-            var (ix, iy) = (x + SlotInset, y + SlotInset);
             if (Menu.PreviousSlots is { } before && Menu.SlotCrossfades(slot))
             {
-                _ui.Image(_canvas, before[(int)slot] ?? MenuImages.EmptySlots[(int)slot], ix, iy, size, FadingOut(White, change));
-                _ui.Image(_canvas, Menu.SlotImage(slot), ix, iy, size, FadingIn(White, change));
+                SlotArt(before[(int)slot] ?? MenuImages.EmptySlots[(int)slot], x, y, FadingOut(White, change));
+                SlotArt(Menu.SlotImage(slot), x, y, FadingIn(White, change));
             }
             else
             {
-                _ui.Image(_canvas, Menu.SlotImage(slot), ix, iy, size);
+                SlotArt(Menu.SlotImage(slot), x, y, null);
             }
             if (OwnTab && slot == Menu.SelectedSlot)
                 Art(Selected, new Rect2(x - 2, y - 2, SlotSize + 4, SlotSize + 4));
@@ -1290,6 +1312,122 @@ public partial class PartyTabView : Control
             }
         }
     }
+
+    /// <summary>
+    /// What a slot of the silhouette shows, its corner at (x, y): a worn item's icon 12 square inside the box's inner line, or the slot's
+    /// own image of what it takes, filling the box to its inner line, the user's choice (Nov 2, 2026).
+    /// </summary>
+    private void SlotArt(RecordId image, int x, int y, Rgba? color)
+    {
+        if (MenuImages.EmptySlots.Contains(image))
+        {
+            var inner = SlotBoxInner * (SlotSize + 2);
+            _ui.Image(_canvas, image, new Rect2(x - 1 + inner, y - 1 + inner, SlotSize + 2 - 2 * inner, SlotSize + 2 - 2 * inner), color);
+            return;
+        }
+        _ui.Image(_canvas, image, x + SlotInset, y + SlotInset, new Vector2I(BoxedSize, BoxedSize), color);
+    }
+
+    /// <summary>How far in the slot's box its inner line ends, a share of its size: 50 of its 512.</summary>
+    private const float SlotBoxInner = 50f / 512;
+
+    /// <summary>
+    /// The equipment card's corners, the user's design (Nov 2, 2026): the member's six stats in the top right in a tooltip's text, each
+    /// by its first three letters with its total, green where gear or a spell raises it and red where one lowers it, and their
+    /// experience left to spend in the bottom right, "XP Left".
+    /// </summary>
+    private void CardStats()
+    {
+        var font = _ui.Slim.Sized(NameText);
+        var right = EquipmentSheet.End.X - CardInset;
+        var top = EquipmentSheet.Position.Y + CardInset;
+        var labelX = right - CardStatsWidth;
+        foreach (var row in Menu.Stats.Rows)
+        {
+            var color = row.Change > 0 ? MenuDetailsBuilder.Gain : row.Change < 0 ? MenuDetailsBuilder.Loss : PartyMenu.TextColor;
+            var value = Num(row.Value + row.Change);
+            var middle = top + CardPitch / 2;
+            Small(row.Name[..Math.Min(3, row.Name.Length)], labelX, middle - font.Middle, PartyMenu.TextColor, font: font);
+            Small(value, right - font.ExactWidth(value), middle - font.Middle, color, font: font);
+            top += CardPitch;
+        }
+        if (Menu.Experience is { } exp)
+        {
+            var line = $"{XpLeft} {exp.Remaining}";
+            var middle = EquipmentSheet.End.Y - CardInset - CardPitch / 2;
+            Small(line, right - font.ExactWidth(line), middle - font.Middle, PartyMenu.TextColor, font: font);
+        }
+    }
+
+    /// <summary>How far in from the equipment card's paper its corners' text is, how far apart the stats are, and how wide their column.</summary>
+    private const float CardInset = 5, CardPitch = 4.5f, CardStatsWidth = 17;
+
+    private const string XpLeft = "XP Left";
+
+    /// <summary>
+    /// The grid's foot, the user's design (Nov 2, 2026): "Total Inventory" and how many items the party carries on the left, and on the
+    /// right the quick toggle for what's worn showing, "Equipped Items" and an eye, open while they show and shut while they don't,
+    /// with the keyboard and mouse (<see cref="PartyMenu.ToggleWorn"/>).
+    /// </summary>
+    private void InventoryFoot(GridLayout grid)
+    {
+        var font = _ui.Slim.Sized(FootText);
+        var b = grid.Bounds;
+        var middle = b.Top + grid.Lines * grid.Cell + FootMiddle;
+        var total = $"{TotalInventory} {Num(Menu.CarriedCount)}";
+        Small(total, b.Left, middle - font.Middle, PartyMenu.TextColor, font: font);
+        if (Menu.ToggleWorn is null)
+            return;
+        var eye = new Rect2(b.Left + grid.Columns * grid.Cell - EyeWidth, middle - EyeHeight / 2, EyeWidth, EyeHeight);
+        Small(EquippedItems, eye.Position.X - EyeGap - font.ExactWidth(EquippedItems), middle - font.Middle, UiPainter.RedInk, font: font);
+        Eye(eye, Menu.ShowWorn);
+    }
+
+    /// <summary>Where the grid's quick toggle is in the frame, label and eye, to click.</summary>
+    private Rect2 WornToggleRect()
+    {
+        var font = _ui.Slim.Sized(FootText);
+        var grid = PartyMenu.InventoryGrid;
+        var b = grid.Bounds;
+        var right = b.Left + grid.Columns * grid.Cell;
+        var width = font.ExactWidth(EquippedItems) + EyeGap + EyeWidth;
+        var middle = b.Top + grid.Lines * grid.Cell + FootMiddle;
+        return new Rect2(right - width - 1, middle - FootRow / 2, width + 2, FootRow);
+    }
+
+    /// <summary>An eye in red ink across a rectangle: open, its lids and pupil, or shut, its lid and lashes.</summary>
+    private void Eye(Rect2 rect, bool open)
+    {
+        var ink = _ui.Tint(UiPainter.RedInk);
+        var (left, right, middle) = (rect.Position.X, rect.End.X, rect.Position.Y + rect.Size.Y / 2);
+        Vector2[] Lid(float bulge) => [.. Enumerable.Range(0, 13).Select(i =>
+        {
+            var t = i / 12f;
+            return new Vector2(Mathf.Lerp(left, right, t), middle + bulge * Mathf.Sin(t * Mathf.Pi));
+        })];
+        var half = rect.Size.Y / 2;
+        _canvas.DrawPolyline(Lid(half), ink, EyeLine, true);
+        if (open)
+        {
+            _canvas.DrawPolyline(Lid(-half), ink, EyeLine, true);
+            _canvas.DrawCircle(new Vector2((left + right) / 2, middle), half * 0.55f, ink);
+            return;
+        }
+        // Shut: the lid's curve, and three lashes under it.
+        foreach (var t in new[] { 0.3f, 0.5f, 0.7f })
+        {
+            var at = new Vector2(Mathf.Lerp(left, right, t), middle + half * Mathf.Sin(t * Mathf.Pi));
+            _canvas.DrawLine(at, at + new Vector2((t - 0.5f) * 1.6f, half * 0.8f), ink, EyeLine, true);
+        }
+    }
+
+    /// <summary>
+    /// The grid's foot: its text's capitals this tall, its middle this far under the grid's last line, the row this tall to click, and the
+    /// eye this big, this far after its label, its lines this thick.
+    /// </summary>
+    private const float FootText = 3.4f, FootMiddle = 8.5f, FootRow = 7, EyeWidth = 6, EyeHeight = 3.4f, EyeGap = 1.5f, EyeLine = 0.45f;
+
+    private const string TotalInventory = "Total Inventory", EquippedItems = "Equipped Items";
 
     /// <summary>A member's figure, by their entity's record.</summary>
     private Figure FigureOf(Core.Characters.Character member)
@@ -1438,7 +1576,7 @@ public partial class PartyTabView : Control
     /// How tall a name's capitals are on its slip, half the menus' text, the user's choice (Nov 2, 2026), and how far the slip reaches
     /// past it at the sides and above and below it.
     /// </summary>
-    private const float NameText = UiPainter.StandardText / 2, SlipSide = 3, SlipEnds = 2;
+    private const float NameText = UiPainter.StandardText / 2 * 1.25f, SlipSide = 3, SlipEnds = 2;
 
     /// <summary>The actiontip's choices: their capitals this tall, this far apart, and the slip this far past them at the sides and ends.</summary>
     private const float TipText = 3, TipPitch = 6.5f, TipSide = 4, TipEnds = 2.5f;
@@ -1546,6 +1684,8 @@ public partial class PartyTabView : Control
                 if (shown == Menu.List)
                     _gridLayout = grid;
                 Grid(grid);
+                if (OwnTab)
+                    InventoryFoot(grid);
                 break;
             case PartyList.Inventory:
                 Items(Menu.Inventory, layout, font, highlight);

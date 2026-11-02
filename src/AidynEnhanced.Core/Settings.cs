@@ -182,10 +182,10 @@ public sealed class Settings
     public SkyPlacement SkyPlacement { get; set; } = SkyPlacement.Projected;
 
     /// <summary>
-    /// Whether the Party tab's inventory shows what the party wears, with the wearer's portrait (<see cref="Ui.PartyMenu.ShowWorn"/>), the
-    /// Equipped Inventory row, which the original look's list overrides, always showing it, or
-    /// null to go by the device the player is using, the user's choice (Nov 2, 2026): shown with a controller, which reaches worn items
-    /// only from the inventory, and hidden with the keyboard and mouse, which take them off from the silhouette.
+    /// Whether the Party tab's inventory shows what the party wears with the keyboard and mouse, with the wearer's portrait
+    /// (<see cref="Ui.PartyMenu.ShowWorn"/>): the Equipped Inventory row and the grid's quick toggle, hidden until it's set. A controller
+    /// always shows them, and so does the original look's list, the user's choice (Nov 2, 2026). Null, which went by the device in
+    /// use before, is hidden.
     /// </summary>
     public bool? WornInInventory { get; set; }
 

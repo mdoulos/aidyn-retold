@@ -29,6 +29,12 @@ public sealed partial class PartyMenu
     /// </summary>
     public const int ListFrames = 20, ListDistance = 146, OriginalListDistance = 140;
 
+    /// <summary>The frames the port's look takes to slide a list and its tab in, half the original's, the user's choice (Nov 2, 2026).</summary>
+    public const int PortListFrames = ListFrames / 2;
+
+    /// <summary>The frames a list takes to slide in: the original's in its look, else the port's, twice as fast.</summary>
+    public int SlideFrames => OriginalLook ? ListFrames : PortListFrames;
+
     private MenuSlide<(Character Member, IReadOnlyList<int> Order)>? _memberChange;
     private MenuSlide<HeaderNumbers>? _numbersChange;
     private MenuSlide<IReadOnlyList<RecordId?>>? _slotsChange;
@@ -120,7 +126,7 @@ public sealed partial class PartyMenu
     }
 
     /// <summary>Starts the list showing sliding out, the lists moving <paramref name="direction"/>'s way.</summary>
-    private void StartListSlide(int direction) => Slide = new MenuSlide<PartyList>(List, Math.Sign(direction), ListFrames, MenuTween.Ease);
+    private void StartListSlide(int direction) => Slide = new MenuSlide<PartyList>(List, Math.Sign(direction), SlideFrames, MenuTween.Ease);
 
     /// <summary>A frame of the member's, the numbers', the silhouette's and the list's changes.</summary>
     private void StepMotion()

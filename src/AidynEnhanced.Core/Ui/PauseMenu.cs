@@ -86,7 +86,7 @@ public sealed class PauseMenu
     public bool IsOpen { get; private set; }
 
     /// <summary>Whether the Party tab's inventory shows what's worn: as the setting says, or by the device in use (<see cref="Settings.WornInInventory"/>).</summary>
-    private bool ShowsWorn => OriginalLook || (_settings.WornInInventory ?? _host.Controller);
+    private bool ShowsWorn => OriginalLook || _host.Controller || _settings.WornInInventory == true;
 
     /// <summary>Whether the menus look as the original's do, Graphic Quality's Original (<see cref="Settings.OriginalLook"/>).</summary>
     private bool OriginalLook => _settings.OriginalLook;
@@ -101,6 +101,16 @@ public sealed class PauseMenu
         if (party.Grid == OriginalLook)
             party.Grid = !OriginalLook;
         party.ShowWorn = ShowsWorn;
+        party.ToggleWorn = OriginalLook || _host.Controller ? null : ToggleWorn;
+    }
+
+    /// <summary>The grid's quick toggle: turns the setting for what's worn showing over, which the runtime keeps, and lays the tab again.</summary>
+    private void ToggleWorn()
+    {
+        _settings.WornInInventory = _settings.WornInInventory != true;
+        _settings.Notify();
+        if (Party is { } party)
+            Lay(party);
     }
 
     /// <summary>The tab showing, or being slid to.</summary>

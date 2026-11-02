@@ -325,7 +325,7 @@ public class PartyMenuMotionTests
         menu.ChangeMember(1);
         Assert.Equal((PartyList.Spells, 0), (menu.List, menu.Member));
 
-        Frames(menu, PartyMenu.ListFrames + 1);
+        Frames(menu, menu.SlideFrames + 1);
         Assert.Null(menu.Slide);
         menu.ChangeList(-1);
         Assert.Equal((PartyList.Spells, -1), (menu.Slide!.From, menu.Slide.Direction));
@@ -354,13 +354,15 @@ public class PartyMenuMotionTests
         var menu = Menu();
         menu.ChangeMember(1);
         menu.ChangeList(1);
-        for (var frame = 0; frame <= PartyMenu.ListFrames + 2; frame++)
+        // The port's look slides a list in half the original's frames, the user's choice.
+        Assert.Equal(PartyMenu.ListFrames / 2, menu.SlideFrames);
+        for (var frame = 0; frame <= Math.Max(PartyMenu.MemberFrames, menu.SlideFrames) + 2; frame++)
         {
             var member = frame <= PartyMenu.MemberFrames;
-            var list = frame <= PartyMenu.ListFrames;
+            var list = frame <= menu.SlideFrames;
             Assert.Equal((member, list), (menu.Previous is not null, menu.Slide is not null));
             Assert.Equal(member ? MenuTween.Ease(frame, PartyMenu.MemberFrames) : 1, menu.MemberChange);
-            Assert.Equal(list ? MenuTween.Ease(frame, PartyMenu.ListFrames) : 1, menu.ListChange);
+            Assert.Equal(list ? MenuTween.Ease(frame, menu.SlideFrames) : 1, menu.ListChange);
             Assert.Equal(member || list, menu.Changing);
             Frames(menu, 1);
         }

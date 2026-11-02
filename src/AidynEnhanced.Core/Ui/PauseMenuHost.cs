@@ -19,6 +19,12 @@ public interface IPauseMenuHost
 
     /// <summary>The screen the game is on, which the options' Video page lists its sizes from.</summary>
     ScreenInfo Screen => ScreenInfo.Default;
+
+    /// <summary>
+    /// Whether the player is using a controller: their last input came from one rather than the keyboard or mouse. What goes by the
+    /// device does by it, as the Party tab's inventory showing what's worn (<see cref="Settings.WornInInventory"/>).
+    /// </summary>
+    bool Controller => false;
 }
 
 /// <summary>A one-off the pause menu asks its host for.</summary>

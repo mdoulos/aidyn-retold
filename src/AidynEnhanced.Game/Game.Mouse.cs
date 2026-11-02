@@ -34,6 +34,7 @@ public partial class Game
 
     public override void _Input(InputEvent e)
     {
+        NoteDevice(e);
         if (_camera is not { MouseLook: true } camera)
             return;
         switch (e)
@@ -52,6 +53,29 @@ public partial class Game
                 break;
         }
     }
+
+    /// <summary>
+    /// Whether the player is using a controller (<see cref="Core.Ui.IPauseMenuHost.Controller"/>): their last input came from one, a
+    /// button or a stick pushed past half way, rather than a key, a mouse button or the mouse moved. A controller plugged in counts
+    /// until anything is pressed.
+    /// </summary>
+    private bool _controller = Input.GetConnectedJoypads().Count > 0;
+
+    private void NoteDevice(InputEvent e)
+    {
+        bool? controller = e switch
+        {
+            InputEventJoypadButton { Pressed: true } => true,
+            InputEventJoypadMotion motion when Math.Abs(motion.AxisValue) > 0.5f => true,
+            InputEventKey { Pressed: true } or InputEventMouseButton { Pressed: true } => false,
+            InputEventMouseMotion motion when motion.Relative.LengthSquared() > 4 => false,
+            _ => null,
+        };
+        if (controller is { } c)
+            _controller = c;
+    }
+
+    bool Core.Ui.IPauseMenuHost.Controller => _controller;
 
     /// <summary>A button down or up over the world: held back, ending a drag, or a click let through.</summary>
     private void MouseDrag(CameraRig camera, InputEventMouseButton button)

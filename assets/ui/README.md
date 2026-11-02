@@ -8,7 +8,8 @@ The game's own UI art, drawn by the project's author. None of it comes from the 
 - `ui-gold.png`: the purse before the party's gold, 512 square.
 - `ui-bar-frame.png`, `ui-bar-red.png` and `ui-bar-brown.png`: the hit points bar, 850 × 200 each and drawn over one another: the cartouche, the red fill and the brown track behind it.
 - `ui-square-cornered.png`: the knotwork-cornered frame, 512 square, nine-sliced as a frame for any box.
-- `ui-square-solid.png`: a box, 512 square, which the silhouette's slots sit in.
+- `ui-square-solid.png`: a box, 512 square, which the silhouette's slots and the inventory grid's cells sit in.
+- `ui-square-select-red.png`: the red square round the inventory grid's cursor's cell, 350 square.
 - `ui-square-parchment.png`: a loose slip of paper with its shadow, 428 square, which popups, messages and questions are on.
 - `ui-wax-seal.png`: the seal on a question's slip, 428 square.
 - `ui-flourish-red.png`: a heading's red flourish, 655 × 115.

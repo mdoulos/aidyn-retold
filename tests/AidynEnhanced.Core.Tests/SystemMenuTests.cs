@@ -89,12 +89,38 @@ public class SystemMenuTests(BarterPlugins fixture) : IClassFixture<BarterPlugin
         options.Back();
         options.Point(2);
         options.Accept();
-        Assert.Equal(["Draw Distance", "Object Distance", "Model Detail", "Surface Detail", "Animation Blending", "Rain and Snow", "Menu Size", "Menu Filter", "Pace", "Jump", "Text Speed", "Status Auras", "Intro Logos"],
+        Assert.Equal(["Draw Distance", "Object Distance", "Model Detail", "Surface Detail", "Animation Blending", "Rain and Snow", "Menu Size", "Menu Filter", "Pace", "Jump", "Worn in Inventory", "Text Speed", "Status Auras", "Intro Logos"],
             options.Rows.Rows.Select(r => r.Label));
         // A new player's are the original's but the menus drawn sharp; Surface Detail's Full and Animation Blending's Smooth show only on a
-        // mod's model, he can jump, the text prints at Normal, and the intro logos are skipped, the user's choice.
-        Assert.Equal(["Original", "Original", "Original", "Full", "Smooth", "Original", "Original", "Sharp", "Original", "On", "Normal", "Original", "Skip"],
+        // mod's model, he can jump, worn items stay out of the inventory with the keyboard and mouse, the text prints at Normal, and the
+        // intro logos are skipped, the user's choice.
+        Assert.Equal(["Original", "Original", "Original", "Full", "Smooth", "Original", "Original", "Sharp", "Original", "On", "Off", "Normal", "Original", "Skip"],
             options.Rows.Rows.Select(r => r.ValueName));
+    }
+
+    /// <summary>
+    /// Worn in Inventory goes by the device until it's changed, showing what that gives: on with a controller, off with the keyboard and
+    /// mouse; once changed it's the player's either way.
+    /// </summary>
+    [Fact]
+    public void WornInInventoryGoesByTheDeviceUntilItsChanged()
+    {
+        var settings = new Settings();
+        var controller = true;
+        var options = new OptionsMenu(settings, inGame: true, controller: () => controller);
+        options.Point(2);
+        options.Accept();
+        var row = options.Rows.Rows.First(r => r.Label == "Worn in Inventory");
+        Assert.Equal("On", row.ValueName);
+        controller = false;
+        Assert.Equal("Off", row.ValueName);
+        Assert.Null(settings.WornInInventory);
+
+        row.Set(1);
+        controller = true;
+        Assert.Equal((true, "On"), (settings.WornInInventory, row.ValueName));
+        row.Set(0);
+        Assert.Equal((false, "Off"), (settings.WornInInventory, row.ValueName));
     }
 
     [Fact]

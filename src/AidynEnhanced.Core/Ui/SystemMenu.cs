@@ -137,6 +137,9 @@ public sealed class SystemMenu
     private readonly Func<string, IReadOnlyList<SaveSlot>>? _listSaves;
     private readonly Func<RecordId, bool> _isSet;
     private readonly Func<ScreenInfo> _screen;
+
+    /// <summary>Whether the player is using a controller, for the options that go by the device.</summary>
+    private readonly Func<bool> _controller;
     private readonly Func<bool> _unsaved;
     private ISystemPage _page;
 
@@ -155,8 +158,10 @@ public sealed class SystemMenu
     /// </param>
     /// <param name="unsaved">Whether quitting would lose progress, which the quit box warns of; always, by default.</param>
     public SystemMenu(PluginSet plugins, Settings settings, Party party, string savesFolder, Func<string, IReadOnlyList<SaveSlot>>? listSaves = null,
-        Func<RecordId, bool>? isSet = null, bool? combat = null, Func<ScreenInfo>? screen = null, bool title = false, Func<bool>? unsaved = null)
+        Func<RecordId, bool>? isSet = null, bool? combat = null, Func<ScreenInfo>? screen = null, bool title = false, Func<bool>? unsaved = null,
+        Func<bool>? controller = null)
     {
+        _controller = controller ?? (() => false);
         Title = title;
         Style = title ? SystemStyle.Title : SystemStyle.Pause;
         _isSet = isSet ?? (_ => false);
@@ -463,7 +468,7 @@ public sealed class SystemMenu
                     return null;
                 case SystemItem.Options:
                     menu.FadeFrom();
-                    menu.Options = new OptionsMenu(menu.Settings, inGame: !menu.Title, menu._screen());
+                    menu.Options = new OptionsMenu(menu.Settings, inGame: !menu.Title, menu._screen(), menu._controller);
                     menu._page = new OptionsPage(menu);
                     return null;
                 case SystemItem.Theater:

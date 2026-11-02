@@ -51,6 +51,20 @@ public sealed class MenuList<TRow>
         }
     }
 
+    /// <summary>
+    /// How many rows stand side by side, a grid's columns: it scrolls a line of them at a time, its first row in view always the
+    /// first of a line, and <see cref="Visible"/> is a whole number of lines. 1 for a list.
+    /// </summary>
+    public int Columns
+    {
+        get;
+        set
+        {
+            field = Math.Max(1, value);
+            Scroll();
+        }
+    } = 1;
+
     public TRow? Current => _rows.Count == 0 ? default : _rows[Cursor];
 
     /// <summary>Whether rows are hidden above, or below.</summary>
@@ -89,6 +103,18 @@ public sealed class MenuList<TRow>
 
     private void Scroll()
     {
+        if (Columns > 1)
+        {
+            // A line at a time, as far as shows the cursor's line, and no further than shows the last line.
+            var line = Cursor / Columns * Columns;
+            if (line < First)
+                First = line;
+            else if (line >= First + _visible)
+                First = line + Columns - _visible;
+            var lines = (_rows.Count + Columns - 1) / Columns * Columns;
+            First = Math.Clamp(First, 0, Math.Max(0, lines - _visible)) / Columns * Columns;
+            return;
+        }
         if (Cursor < First)
             First = Cursor;
         else if (Cursor >= First + _visible)

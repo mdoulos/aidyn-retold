@@ -110,13 +110,16 @@ public sealed partial class OptionsMenu
 
     private readonly bool _inGame;
     private ScreenInfo _screen;
+    private readonly Func<bool> _controller;
 
     /// <param name="screen">The screen the game is on, or <see cref="ScreenInfo.Default"/>.</param>
-    public OptionsMenu(Settings settings, bool inGame, ScreenInfo? screen = null)
+    /// <param name="controller">Whether the player is using a controller, which the settings that go by the device show by.</param>
+    public OptionsMenu(Settings settings, bool inGame, ScreenInfo? screen = null, Func<bool>? controller = null)
     {
         Settings = settings;
         _inGame = inGame;
         _screen = screen ?? ScreenInfo.Default;
+        _controller = controller ?? (() => false);
         Rows = new MenuList<OptionRow>(MainRows());
     }
 
@@ -148,7 +151,7 @@ public sealed partial class OptionsMenu
     /// <summary>A copy on the same page with the cursor on the same row, which the page fading out draws as it was.</summary>
     public OptionsMenu Copy()
     {
-        var copy = new OptionsMenu(Settings, _inGame, _screen) { Device = Device };
+        var copy = new OptionsMenu(Settings, _inGame, _screen, _controller) { Device = Device };
         if (Page != OptionsPage.Main)
             copy.Open(Page);
         copy.Rows.Point(Rows.Cursor);
@@ -370,6 +373,8 @@ public sealed partial class OptionsMenu
                 v => s.UiFilter = Filters[v]),
             Choice("Pace", ["Original", "Brisk"], () => s.BriskPace ? 1 : 0, v => s.BriskPace = v == 1),
             Choice("Jump", ["Original", "On"], () => s.Jump ? 1 : 0, v => s.Jump = v == 1),
+            // Until it's changed it goes by the device in use, and shows what that gives.
+            Choice("Worn in Inventory", ["Off", "On"], () => s.WornInInventory ?? _controller() ? 1 : 0, v => s.WornInInventory = v == 1),
             Choice("Text Speed", ["Original", "Slow", "Normal", "Fast"], () => (int)s.TextSpeed, v => s.TextSpeed = (TextSpeed)v),
             Choice("Status Auras", ["Original", "More Often"], () => s.SpellAuras == Combat.AuraTurns.EachCharacter ? 1 : 0,
                 v => s.SpellAuras = v == 1 ? Combat.AuraTurns.EachCharacter : Combat.AuraTurns.Battle),

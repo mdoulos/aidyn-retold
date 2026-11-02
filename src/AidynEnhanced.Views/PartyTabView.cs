@@ -140,8 +140,11 @@ public partial class PartyTabView : Control
 
     private const int SlotSize = 16;
 
-    /// <summary>What the list and its arrows are cut to as they slide: the list's bounds across, from under the tabs to the list's foot.</summary>
-    private static readonly Rect2I ListClip = new(160, 43, 146, 171);
+    /// <summary>
+    /// What the list and its arrows are cut to as they slide: across the list's frame's inside, from under the tabs to the list's foot,
+    /// which the grid's scroll bar beside it is in too.
+    /// </summary>
+    private static readonly Rect2I ListClip = new(158, 43, 151, 172);
 
     /// <summary>The arrow that says which tabs of the pause menu are beside this one, under the gap between the columns.</summary>
     private static readonly Vector2I SliderAt = new(130, 215);
@@ -206,6 +209,10 @@ public partial class PartyTabView : Control
     private readonly Dictionary<RecordId, Figure> _figures = [];
     /// <summary>The tab the mouse is on, or null.</summary>
     private int? _hoveredTab;
+    /// <summary>The silhouette's slot the mouse is on, or null.</summary>
+    private EquipmentSlot? _hoveredSlot;
+    /// <summary>Where the inventory's grid was last drawn, which the mouse is tested against, as <see cref="_listLayout"/> is for a list.</summary>
+    private GridLayout _gridLayout = PartyMenu.InventoryGrid;
     /// <summary>Where the tab's list was last drawn, which the mouse is tested against: a list sliding in is drawn off its place.</summary>
     private ListLayout _listLayout = PartyMenu.Layout(PartyList.Inventory);
     private Vector2I _origin;
@@ -316,7 +323,20 @@ public partial class PartyTabView : Control
     public override void _GuiInput(InputEvent @event)
     {
         if (@event is InputEventMouse mouse)
+        {
             _hoveredTab = TabAt(mouse.Position) is { } tab && HasTab(PartyMenu.Tabs[tab]) ? tab : null;
+            _hoveredSlot = SlotAt(mouse.Position);
+        }
+        // A click on a slot of the silhouette with something worn in it aims A at that and presses it, so it comes off as A on its row
+        // takes it off: with what's worn not in the inventory, the silhouette is where the mouse reaches it.
+        if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } && _hoveredSlot is { } slot)
+        {
+            Menu.AimAtSlot(slot);
+            UiScreen.Of(this)?.Click(MenuAction.Accept);
+            Menu.AimAtSlot(null);
+            AcceptEvent();
+            return;
+        }
         // A click on a tab aims the stick at it and presses it toward it, so it slides and sounds as the stick does, and waits as
         // the stick waits.
         if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } && _hoveredTab is { } clicked)
@@ -406,6 +426,24 @@ public partial class PartyTabView : Control
     /// <summary>Where a tab's art is drawn in the frame.</summary>
     private static Rect2 TabRect(int tab) => new(TabsAt.X + tab * (TabSize + TabsGap), TabsAt.Y, TabSize, TabSize);
 
+    /// <summary>The silhouette's slot under a point on the view that the member shown wears something in, on the tab itself, or null.</summary>
+    private EquipmentSlot? SlotAt(Vector2 point)
+    {
+        if (!OwnTab || Menu.Shown is null)
+            return null;
+        var at = point - (Vector2)_origin;
+        foreach (var slot in Enum.GetValues<EquipmentSlot>())
+        {
+            if (SlotRect(slot).HasPoint(at) && Menu.Worn(slot) is not null)
+                return slot;
+        }
+        return null;
+    }
+
+    /// <summary>Where a slot of the silhouette is in the frame.</summary>
+    private static Rect2 SlotRect(EquipmentSlot slot) =>
+        new(SilhouetteAt.X + Slots[(int)slot].X, SilhouetteAt.Y + Slots[(int)slot].Y, SlotSize, SlotSize);
+
     /// <summary>Puts the cursor on the tab's list row under a point in the frame, or the crafting popup's while it's open. True if there was a row.</summary>
     private bool PointTabRow(PartyMenu menu, Vector2 at)
     {
@@ -413,6 +451,7 @@ public partial class PartyTabView : Control
             ? crafting.Layout.RowAt(crafting.Rows, at.X, at.Y - Drop)
             : menu.List switch
             {
+                PartyList.Inventory when menu.Grid => _gridLayout.RowAt(menu.Inventory, at.X, at.Y),
                 PartyList.Inventory => _listLayout.RowAt(menu.Inventory, at.X, at.Y),
                 PartyList.Stats => _listLayout.RowAt(menu.Stats, at.X, at.Y),
                 PartyList.Skills => _listLayout.RowAt(menu.Skills, at.X, at.Y),
@@ -544,6 +583,7 @@ public partial class PartyTabView : Control
         Begin(_overlay, _origin);
         if (Veil > 0)
             _ui.Tab(_canvas, PauseTab.Party, PlainPatches, new Rgba(255, 255, 255, (byte)(Veil * 255)), plain: true);
+        Tooltip();
         _overlay.DrawSetTransform(Vector2.Zero);
         Popups();
     }
@@ -641,17 +681,17 @@ public partial class PartyTabView : Control
     };
 
     /// <summary>Text in the slim font from a point in the frame, to a fraction of a pixel, its shadow first if it has one.</summary>
-    private void Small(string text, float x, float y, Rgba color, Rgba? shadow = null)
+    private void Small(string text, float x, float y, Rgba color, Rgba? shadow = null, UiFont? font = null)
     {
         if (shadow is { } dark)
-            SmallAt(text, x + 0.4f, y + 0.4f, dark);
-        SmallAt(text, x, y, color);
+            SmallAt(text, x + 0.4f, y + 0.4f, dark, font);
+        SmallAt(text, x, y, color, font);
     }
 
-    private void SmallAt(string text, float x, float y, Rgba color)
+    private void SmallAt(string text, float x, float y, Rgba color, UiFont? font)
     {
         _canvas.DrawSetTransform(_base + new Vector2(x, y));
-        _ui.Text(_canvas, _ui.Slim, text, 0, 0, color);
+        _ui.Text(_canvas, font ?? _ui.Slim, text, 0, 0, color);
         _canvas.DrawSetTransform(_base);
     }
 
@@ -895,6 +935,103 @@ public partial class PartyTabView : Control
         Art(name, new Rect2(middle - width / 2, FigureTop, width, FigureHeight), strength);
     }
 
+    /// <summary>The red square round the cursor's cell, the user's art (ui-square-select-red.png), drawn a pixel past the cell.</summary>
+    private const string Selected = "ui-square-select-red.png";
+
+    /// <summary>
+    /// How big a worn item's wearer's portrait is in its cell's top left corner, how tall the count's capitals are in its bottom right,
+    /// and how far in from the cell's corners they sit.
+    /// </summary>
+    private const int WearerSize = 8;
+
+    private const float CountText = 3.6f, CellInset = 1.5f;
+
+    /// <summary>
+    /// The inventory's grid (<see cref="PartyMenu.InventoryGrid"/>), the user's design (Nov 2, 2026): a cell for each of its rows in
+    /// view, a stack or a worn item, the user's box with the item's icon in it, its count in the bottom right corner where there's more
+    /// than one, and on a worn item the wearer's portrait small in the top left; the cursor's cell in the user's red square; and the
+    /// arrows where lines are hidden above or below. The items' names show on a slip over the cursor's cell (<see cref="Tooltip"/>).
+    /// </summary>
+    private void Grid(GridLayout grid)
+    {
+        var list = Menu.Inventory;
+        var count = _ui.Slim.Sized(CountText);
+        var last = Math.Min(list.Rows.Count, list.First + grid.Visible);
+        for (var i = list.First; i < last; i++)
+        {
+            var (x, y) = grid.CellAt(i - list.First);
+            var row = list.Rows[i];
+            Art(SlotBox, new Rect2(x + 0.5f, y + 0.5f, grid.Cell - 1, grid.Cell - 1));
+            _ui.Image(_canvas, row.Item.Icon, x + 1, y + 1, new Vector2I(SlotSize, SlotSize));
+            if (row.Wearer is { } wearer && Menu.Party.Slots[wearer] is { } who && Menu.Portrait(who.Entity) is { } portrait)
+            {
+                _canvas.DrawRect(new Rect2(x + 1.5f, y + 1.5f, WearerSize + 1, WearerSize + 1), _ui.Tint(UiPainter.Ink));
+                _ui.Image(_canvas, portrait, x + 2, y + 2, new Vector2I(WearerSize, WearerSize));
+            }
+            if (row.Quantity > 1)
+            {
+                var text = Num(row.Quantity);
+                var foot = y + grid.Cell - CellInset;
+                Small(text, x + grid.Cell - CellInset - count.ExactWidth(text), foot - count.Capitals / 2 - count.Middle, BarText,
+                    BarShadow, count);
+            }
+            if (i == list.Cursor)
+                Art(Selected, new Rect2(x - 1, y - 1, grid.Cell + 2, grid.Cell + 2));
+        }
+        ScrollBar(grid, list);
+    }
+
+    /// <summary>
+    /// The grid's scroll bar beside its right edge, while it has lines hidden: a faint ink line its height, and on it a darker one as
+    /// long as the share of the lines in view and as far down as they are.
+    /// </summary>
+    private void ScrollBar<TRow>(GridLayout grid, MenuList<TRow> list)
+    {
+        var lines = (list.Rows.Count + grid.Columns - 1) / grid.Columns;
+        if (lines <= grid.Lines)
+            return;
+        var b = grid.Bounds;
+        var (x, top, height) = (b.Left + grid.Columns * grid.Cell + 1.5f, (float)b.Top, (float)grid.Lines * grid.Cell);
+        _canvas.DrawRect(new Rect2(x, top, 0.75f, height), _ui.Tint(UiPainter.Ink with { A = 70 }));
+        var first = (float)list.First / grid.Columns;
+        _canvas.DrawRect(new Rect2(x - 0.25f, top + height * first / lines, 1.25f, height * grid.Lines / lines), _ui.Tint(UiPainter.Ink));
+    }
+
+    /// <summary>
+    /// The name of what's under the cursor on a slip over it: the inventory grid's cursor's item, its cursor moved by the stick or the
+    /// mouse, and the item worn in a slot of the silhouette the mouse is on. Only on the tab itself, its lists still and no popup up.
+    /// </summary>
+    private void Tooltip()
+    {
+        if (!OwnTab || Menu.Slide is not null || Window.HasPopup || Menu.Crafting is not null)
+            return;
+        if (_hoveredSlot is { } slot && Menu.Worn(slot) is { } worn)
+        {
+            var rect = SlotRect(slot);
+            NameSlip(worn.Item.Name, rect.Position.X + rect.Size.X / 2, rect.Position.Y - 1);
+        }
+        else if (Menu.List == PartyList.Inventory && Menu.Grid && Menu.Inventory.Current is { } row)
+        {
+            var (x, y) = _gridLayout.CellAt(Menu.Inventory.Cursor - Menu.Inventory.First);
+            NameSlip(row.Item.Name, x + _gridLayout.Cell / 2f, y - 1);
+        }
+    }
+
+    /// <summary>How far a name's slip reaches past its text at the sides and above and below it.</summary>
+    private const float SlipSide = 6, SlipEnds = 4;
+
+    /// <summary>A name on a little slip of paper, centred across <paramref name="middle"/>, its foot at <paramref name="foot"/>, kept inside the frame.</summary>
+    private void NameSlip(string name, float middle, float foot)
+    {
+        var font = _ui.Slim;
+        var width = font.ExactWidth(name);
+        var height = font.Capitals + 2 * SlipEnds;
+        var left = Math.Clamp(middle - width / 2 - SlipSide, 4, FrameWidth - 4 - width - 2 * SlipSide);
+        var paper = new Rect2(left, foot - height, width + 2 * SlipSide, height);
+        _ui.Slip(_canvas, paper);
+        Small(name, left + SlipSide, paper.Position.Y + height / 2 - font.Middle, UiPainter.Ink);
+    }
+
     /// <summary>
     /// Where a list's columns go, from its left edge: the original's (<c>SMIItem</c>, <c>SMStatItem</c>, <c>WidgetSkillInfo</c>,
     /// <c>WidgetSpellEntry</c>). Its names reach its bounds' right edge.
@@ -920,6 +1057,12 @@ public partial class PartyTabView : Control
         var highlight = cursor ?? Menu.HighlightNow;
         switch (shown)
         {
+            case PartyList.Inventory when Menu.Grid:
+                var grid = PartyMenu.InventoryGrid.Shifted(shift);
+                if (shown == Menu.List)
+                    _gridLayout = grid;
+                Grid(grid);
+                break;
             case PartyList.Inventory:
                 Items(Menu.Inventory, layout, font, highlight);
                 break;

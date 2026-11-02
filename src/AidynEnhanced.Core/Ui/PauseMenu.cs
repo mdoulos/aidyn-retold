@@ -85,6 +85,9 @@ public sealed class PauseMenu
 
     public bool IsOpen { get; private set; }
 
+    /// <summary>Whether the Party tab's inventory shows what's worn: as the setting says, or by the device in use (<see cref="Settings.WornInInventory"/>).</summary>
+    private bool ShowsWorn => _settings.WornInInventory ?? _host.Controller;
+
     /// <summary>The tab showing, or being slid to.</summary>
     public PauseTab Tab { get; private set; }
 
@@ -266,9 +269,12 @@ public sealed class PauseMenu
         // An empty slot steps back to a member's, which is kept (DollMenu::InitMenu).
         _member = party.Member;
         party.Combat = rules;
+        // The tab's own inventory is a grid, showing what's worn as the setting or the device says (Settings.WornInInventory).
+        party.Grid = true;
+        party.ShowWorn = ShowsWorn;
         Window = party;
         System = new SystemMenu(_game.Plugins, _settings, _game.Party, _savesFolder, isSet: _game.Flags.Get, combat: _combat?.CanFlee,
-            screen: () => _host.Screen, unsaved: () => Unsaved);
+            screen: () => _host.Screen, unsaved: () => Unsaved, controller: () => _host.Controller);
         var (place, outdoors) = _where();
         World = new WorldMenu(_game.Plugins, _game,
             place, outdoors);
@@ -301,6 +307,9 @@ public sealed class PauseMenu
     /// <param name="scrollLength">The length of the state the actor is in, in frames.</param>
     public PauseExit? Step(int scrollFrame, int scrollLength)
     {
+        // The device can change while the menu is open, and the setting on the Enhancements page.
+        if (IsOpen && Party is { } party)
+            party.ShowWorn = ShowsWorn;
         if (IsOpen && _frame.Tick())
             StepFrame(scrollFrame, scrollLength);
         var ended = _ended;

@@ -77,9 +77,11 @@ public sealed partial class PartyMenu
         Overlay.Step();
     }
 
-    /// <summary>A: closes a message, chooses in a popup, or uses the cursor's row.</summary>
+    /// <summary>A: closes a message, chooses in a popup, or uses the cursor's row, or the worn item a click on the silhouette aimed it at.</summary>
     public void Accept()
     {
+        var slot = _slotAim;
+        _slotAim = null;
         if (Message is not null)
             CloseMessage();
         else if (DetailsPane.Showing)
@@ -88,6 +90,11 @@ public sealed partial class PartyMenu
         {
             if (OpenCraftingPopup is { } crafting)
                 Choose(crafting);
+        }
+        else if (slot is { } aimed)
+        {
+            if (Worn(aimed) is { } worn)
+                Use(new InventoryRow(worn, 1, Member));
         }
         else if (List == PartyList.Inventory && Inventory.Current is { } item)
             Use(item);

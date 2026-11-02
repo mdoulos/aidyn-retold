@@ -588,7 +588,7 @@ public sealed class GameSession
         _trekZones = false;
         Title = new TitleScreen(Game,
             () => new SystemMenu(Game.Plugins, _playerSettings, Game.Party, _savesFolder, listSaves, Game.Flags.Get, screen: () => _menuHost.Screen,
-                title: true),
+                title: true, controller: () => _menuHost.Controller),
             sound => _menuHost.Cue(new MenuSoundCue(sound)), cards, skippable, place);
         Send(new Transition.ShowTitle(Title));
     }

@@ -150,6 +150,13 @@ public sealed class Settings
     public bool Jump { get; set; } = true;
 
     /// <summary>
+    /// Whether the Party tab's inventory shows what the party wears, with the wearer's portrait (<see cref="Ui.PartyMenu.ShowWorn"/>), or
+    /// null to go by the device the player is using, the user's choice (Nov 2, 2026): shown with a controller, which reaches worn items
+    /// only from the inventory, and hidden with the keyboard and mouse, which take them off from the silhouette.
+    /// </summary>
+    public bool? WornInInventory { get; set; }
+
+    /// <summary>
     /// How fast the conversation box prints a line (<see cref="Ui.TextReveal"/>): whole at once as the original's, or a few glyphs a
     /// tick. Normal, the user's choice.
     /// </summary>

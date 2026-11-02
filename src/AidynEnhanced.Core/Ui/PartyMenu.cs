@@ -87,8 +87,20 @@ public sealed partial class PartyMenu : IPartyWindow
 
     bool IPartyWindow.ChangesMember => true;
 
-    /// <summary>The stick's left shows the next list and its right the one before (<see cref="ChangeList"/>).</summary>
-    void IPartyWindow.Sideways(int direction) => ChangeList(-direction);
+    /// <summary>
+    /// The stick's left shows the next list and its right the one before (<see cref="ChangeList"/>); on the inventory's grid it moves
+    /// the cursor along its line, and off the line's end onto the tab beside, so every cell and every tab is in the stick's reach.
+    /// </summary>
+    void IPartyWindow.Sideways(int direction)
+    {
+        if (_aim is null && List == PartyList.Inventory && Grid && !HasPopup && Slide is null
+            && GridLayout.Step(Inventory.Cursor, Inventory.Rows.Count, InventoryGrid.Columns, direction, 0) is { } cell)
+        {
+            Inventory.Point(cell);
+            return;
+        }
+        ChangeList(-direction);
+    }
 
     /// <summary>The party slot of the member shown (<c>gPartyPicker</c>).</summary>
     public int Member { get; private set; }
@@ -242,6 +254,10 @@ public sealed partial class PartyMenu : IPartyWindow
         }
         switch (List)
         {
+            case PartyList.Inventory when Grid:
+                if (GridLayout.Step(Inventory.Cursor, Inventory.Rows.Count, InventoryGrid.Columns, 0, Math.Sign(by)) is { } cell)
+                    Inventory.Point(cell);
+                break;
             case PartyList.Inventory: Inventory.Move(by); break;
             case PartyList.Stats: Stats.Move(by); break;
             case PartyList.Skills: Skills.Move(by); break;
@@ -299,7 +315,8 @@ public sealed partial class PartyMenu : IPartyWindow
     /// <summary>Rebuilds the rows from the party, as a member change or anything that changes the party does.</summary>
     public void Refresh()
     {
-        Inventory.Replace(PartyMenuRows.Inventory(Party, Member), resetPastEnd: false);
+        var rows = PartyMenuRows.Inventory(Party, Member);
+        Inventory.Replace(ShowWorn ? rows : [.. rows.Where(r => r.Wearer is null)], resetPastEnd: false);
         if (Shown is { } shown)
         {
             Stats.Replace(PartyMenuRows.Stats(shown), resetPastEnd: false);

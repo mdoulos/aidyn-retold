@@ -345,11 +345,15 @@ public sealed partial class GameSessionTests
         OpenMenu(session);
         var menu = session.Menu;
         var system = menu.System;
-        var help = system.Items.Rows.ToList().IndexOf(SystemItem.Help);
-        Assert.True(help > 0);
+        var extras = system.Items.Rows.ToList().IndexOf(SystemItem.Extras);
+        Assert.True(extras > 0);
         Assert.Equal(PressOutcome.Taken, session.Press(MenuAction.Down));
         Assert.Equal(1, system.Items.Cursor);
-        while (system.Items.Cursor < help)
+        while (system.Items.Cursor < extras)
+            session.Press(MenuAction.Down);
+        // Help is on Extras' list.
+        Assert.Equal(PressOutcome.Taken, session.Press(MenuAction.Accept));
+        while (system.Extras.Current != SystemItem.Help)
             session.Press(MenuAction.Down);
         // Help rolls the menu up as closing does, and the help menu's page opens once it has.
         Assert.Equal(PressOutcome.Taken, session.Press(MenuAction.Accept));

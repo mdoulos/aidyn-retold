@@ -84,33 +84,71 @@ public class SystemMenuTests(BarterPlugins fixture) : IClassFixture<BarterPlugin
         var options = new OptionsMenu(new Settings(), inGame: true);
         options.Point(1);
         options.Accept();
-        Assert.Equal(["Display", "Window Size", "Render Resolution", "Frame Rate Limit", "V-Sync", "Anti-Aliasing"],
+        Assert.Equal(["Display", "Window Size", "Render Resolution", "Frame Rate Limit", "V-Sync", "Anti-Aliasing", "Graphic Quality", "Advanced Graphic Settings"],
             options.Rows.Rows.Select(r => r.Label));
+        // A new player's graphics are Medium, the user's choice.
+        Assert.Equal("Medium Quality", options.Rows.Rows[6].ValueName);
+        Assert.True(options.Rows.Rows[7] is { Kind: OptionKind.Link, GapBefore: true });
         options.Back();
         options.Point(2);
         options.Accept();
-        Assert.Equal(["Draw Distance", "Object Distance", "Model Detail", "Surface Detail", "Animation Blending", "Rain and Snow", "Menu Size", "Menu Filter", "Pace", "Jump", "Worn in Inventory", "Text Speed", "Status Auras", "Intro Logos"],
-            options.Rows.Rows.Select(r => r.Label));
-        // A new player's are the original's but the menus drawn sharp; Surface Detail's Full and Animation Blending's Smooth show only on a
-        // mod's model, he can jump, worn items stay out of the inventory with the keyboard and mouse, the text prints at Normal, and the
-        // intro logos are skipped, the user's choice.
-        Assert.Equal(["Original", "Original", "Original", "Full", "Smooth", "Original", "Original", "Sharp", "Original", "On", "Off", "Normal", "Original", "Skip"],
-            options.Rows.Rows.Select(r => r.ValueName));
+        Assert.Equal(["Menu Size", "Show Equipped in Inventory", "Text Speed", "Status Auras", "Intro Logos"], options.Rows.Rows.Select(r => r.Label));
+        // Worn items stay out of the inventory with the keyboard and mouse, the text prints at Normal, and the intro logos are skipped, the
+        // user's choice.
+        Assert.Equal(["Original", "Off", "Normal", "Original", "Skip"], options.Rows.Rows.Select(r => r.ValueName));
     }
 
     /// <summary>
-    /// Worn in Inventory goes by the device until it's changed, showing what that gives: on with a controller, off with the keyboard and
-    /// mouse; once changed it's the player's either way.
+    /// Advanced Graphic Settings opens a page of the world's detail, and B goes back to the Video page on it; Graphic Quality sets them all,
+    /// Original to the original's, High to each one's most, and shows Custom once one is set by hand to none of them.
     /// </summary>
     [Fact]
-    public void WornInInventoryGoesByTheDeviceUntilItsChanged()
+    public void GraphicQualitySetsTheAdvancedGraphicSettings()
+    {
+        var settings = new Settings();
+        var options = new OptionsMenu(settings, inGame: true);
+        options.Point(1);
+        options.Accept();
+        var advanced = options.Rows.Rows.ToList().FindIndex(r => r.Label == "Advanced Graphic Settings");
+        options.Point(advanced);
+        options.Accept();
+        Assert.Equal(OptionsPage.Graphics, options.Page);
+        Assert.Equal(["Draw Distance", "Object Distance", "Model Detail", "Surface Detail", "Animation Blending", "Rain and Snow"],
+            options.Rows.Rows.Select(r => r.Label));
+        Assert.Equal(["Extended", "2x", "Original", "Full", "Smooth", "4x"], options.Rows.Rows.Select(r => r.ValueName));
+        Assert.True(options.Back());
+        Assert.Equal((OptionsPage.Video, advanced), (options.Page, options.Rows.Cursor));
+
+        options.Point(advanced - 1);
+        options.Change(-1);
+        Assert.Equal((GraphicQuality.Original, false, 1f, false, false, false, 1f), (settings.Quality, settings.ExtendedDrawDistance,
+            settings.ObjectDistance, settings.NearestDetail, settings.SurfaceDetail, settings.AnimationBlending, settings.PrecipitationDensity));
+        options.Change(-1);
+        Assert.Equal((GraphicQuality.High, true, 3f, true, true, true, 8f), (settings.Quality, settings.ExtendedDrawDistance,
+            settings.ObjectDistance, settings.NearestDetail, settings.SurfaceDetail, settings.AnimationBlending, settings.PrecipitationDensity));
+        Assert.Equal("High Quality", options.Rows.Current!.ValueName);
+
+        // One set by hand: Custom, which stepping leaves and doesn't come back to.
+        settings.PrecipitationDensity = 2;
+        options.Refresh(ScreenInfo.Default);
+        Assert.Equal((null, "Custom", 4), (settings.Quality, options.Rows.Current!.ValueName, options.Rows.Current.Steps));
+        options.Change(1);
+        Assert.Equal((GraphicQuality.Original, 3), (settings.Quality, options.Rows.Current!.Steps));
+    }
+
+    /// <summary>
+    /// Show Equipped in Inventory goes by the device until it's changed, showing what that gives: on with a controller, off with the
+    /// keyboard and mouse; once changed it's the player's either way.
+    /// </summary>
+    [Fact]
+    public void ShowEquippedInInventoryGoesByTheDeviceUntilItsChanged()
     {
         var settings = new Settings();
         var controller = true;
         var options = new OptionsMenu(settings, inGame: true, controller: () => controller);
         options.Point(2);
         options.Accept();
-        var row = options.Rows.Rows.First(r => r.Label == "Worn in Inventory");
+        var row = options.Rows.Rows.First(r => r.Label == "Show Equipped in Inventory");
         Assert.Equal("On", row.ValueName);
         controller = false;
         Assert.Equal("Off", row.ValueName);
@@ -223,12 +261,6 @@ public class SystemMenuTests(BarterPlugins fixture) : IClassFixture<BarterPlugin
         Assert.Equal(240, settings.UiLines);
         options.Change(-1);
         Assert.Equal(480, settings.UiLines);
-
-        options.Point(options.Rows.Rows.ToList().FindIndex(r => r.Label == "Object Distance"));
-        options.Change(-1);
-        Assert.Equal(3, settings.ObjectDistance);
-        options.Point(options.Rows.Rows.ToList().FindIndex(r => r.Label == "Menu Filter"));
-        Assert.Equal("Sharp", options.Rows.Current!.ValueName);
     }
 
     [Fact]
@@ -245,12 +277,27 @@ public class SystemMenuTests(BarterPlugins fixture) : IClassFixture<BarterPlugin
     {
         Directory.CreateDirectory(_saves);
         var path = Path.Combine(_saves, "settings.json");
-        new Settings { MusicVolume = 30, UiLines = 480, UiFilter = UiFilter.Smooth, BriskPace = true, ObjectDistance = 3, ExtendedDrawDistance = true }.Save(path);
+        new Settings { MusicVolume = 30, UiLines = 480, ObjectDistance = 3, ExtendedDrawDistance = false }.Save(path);
 
         var read = Settings.Load(path);
 
-        Assert.Equal((30, 480, UiFilter.Smooth, true, 3f, true), (read.MusicVolume, read.UiLines, read.UiFilter, read.BriskPace, read.ObjectDistance, read.ExtendedDrawDistance));
+        Assert.Equal((30, 480, 3f, false), (read.MusicVolume, read.UiLines, read.ObjectDistance, read.ExtendedDrawDistance));
         Assert.Equal(100, Settings.Load(Path.Combine(_saves, "none.json")).MasterVolume);
+    }
+
+    /// <summary>Older settings' Menu Filter, Pace and Jump, no longer settings, are passed over, and the rest read as ever.</summary>
+    [Fact]
+    public void OlderSettingsFilterPaceAndJumpArePassedOver()
+    {
+        Directory.CreateDirectory(_saves);
+        var path = Path.Combine(_saves, "older.json");
+        File.WriteAllText(path, """{ "musicVolume": 49, "uiFilter": "Smooth", "briskPace": true, "jump": false, "uiLines": 360 }""");
+
+        var read = Settings.Load(path);
+
+        Assert.Equal((49, 360), (read.MusicVolume, read.UiLines));
+        read.Save(path);
+        Assert.DoesNotContain("briskPace", File.ReadAllText(path));
     }
 
     /// <summary>
@@ -443,25 +490,37 @@ public class SystemMenuTests(BarterPlugins fixture) : IClassFixture<BarterPlugin
         var party = TradeData.PartyOf(TradeData.Catalog(), ItemData.Flags(), Characters.Create(Characters.Alaron()));
         var system = new SystemMenu(fixture.Plugins, new Settings(), party, _saves);
 
-        Assert.Equal(Enum.GetValues<SystemItem>().Where(i => i is not (SystemItem.Flee or SystemItem.NewGame)), system.Items.Rows);
+        // Theater, Credits and Help are on Extras' list, the user's choice.
+        Assert.Equal([SystemItem.LoadGame, SystemItem.SaveGame, SystemItem.Options, SystemItem.Extras, SystemItem.Quit], system.Items.Rows);
+        Assert.Equal([SystemItem.Theater, SystemItem.Credits, SystemItem.Help], system.Extras.Rows);
         Assert.Equal("L160", system.Label(SystemItem.LoadGame));
         Assert.Equal("L377", system.Label(SystemItem.SaveGame));
-        Assert.Equal("Credits", system.Label(SystemItem.Credits));
+        Assert.Equal(("Credits", "Extras"), (system.Label(SystemItem.Credits), system.Label(SystemItem.Extras)));
         // Each ends the menu with its exit code: 5 for the credits and 3 for help (PauseMenu.Exit).
-        system.Items.Point((int)SystemItem.Credits);
-        Assert.Equal(PauseExit.Credits, system.Accept());
+        Assert.Equal(PauseExit.Credits, ChooseExtra(SystemItem.Credits));
         Assert.Equal(5, (int)PauseExitCode.Credits);
-        system = new SystemMenu(fixture.Plugins, new Settings(), party, _saves);
-        system.Items.Point((int)SystemItem.Help);
-        Assert.Equal(PauseExit.Help, system.Accept());
+        Assert.Equal(PauseExit.Help, ChooseExtra(SystemItem.Help));
         Assert.Equal(3, (int)PauseExitCode.Help);
         // The other rows open their screens, and the menu stays open.
-        foreach (var item in new[] { SystemItem.LoadGame, SystemItem.SaveGame, SystemItem.Options, SystemItem.Theater })
+        foreach (var item in new[] { SystemItem.LoadGame, SystemItem.SaveGame, SystemItem.Options, SystemItem.Extras })
         {
             system = new SystemMenu(fixture.Plugins, new Settings(), party, _saves);
-            system.Items.Point((int)item);
+            system.Items.Point(system.Items.Rows.ToList().IndexOf(item));
             Assert.Null(system.Accept());
             Assert.False(system.OnList);
+        }
+        // B on Extras' list goes back to the list on Extras.
+        Assert.Equal(SystemPage.Extras, system.Page);
+        Assert.True(system.Back());
+        Assert.Equal((SystemPage.List, SystemItem.Extras), (system.Page, system.Items.Current));
+
+        PauseExit? ChooseExtra(SystemItem item)
+        {
+            system = new SystemMenu(fixture.Plugins, new Settings(), party, _saves);
+            system.Items.Point(system.Items.Rows.ToList().IndexOf(SystemItem.Extras));
+            Assert.Null(system.Accept());
+            system.Point(system.Extras.Rows.ToList().IndexOf(item));
+            return system.Accept();
         }
     }
 

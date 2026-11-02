@@ -17,6 +17,12 @@ public partial class SystemTabView : Control
     /// <summary>The list (<c>WidgetOptionsMenu::MakeScrollList</c>): six rows 16 apart, centred, and the arrow under it.</summary>
     private const int ListPitch = 16, ListCentre = 160;
 
+    /// <summary>
+    /// Each row of the pause menu's list and Extras' is on a slip of parchment, as a tooltip is, the user's design (Nov 2, 2026): all
+    /// as wide as the widest row's text and this much more either side, and this tall, centred on the text, so a gap of 5 is between them.
+    /// </summary>
+    private const float RowSlipSide = 10, RowSlipHeight = 11;
+
     private static readonly Vector2I ListArrow = new(170, 204);
 
     /// <summary>The Theatre's page (<c>Theatre.Build</c>): the title's top, and its rows', 16 apart, centred on the list's centre.</summary>
@@ -216,10 +222,11 @@ public partial class SystemTabView : Control
     {
         switch (Menu.Page)
         {
-            case SystemPage.List:
-                var top = RowsTop();
+            case SystemPage.List or SystemPage.Extras:
+                var items = Menu.Page == SystemPage.List ? Menu.Items : Menu.Extras;
+                var top = RowsTop(items.Rows.Count);
                 var row = (int)Math.Floor((at.Y - top + 2) / RowPitch);
-                return at.X >= ListCentre - 70 && at.X < ListCentre + 70 && row >= 0 && row < Menu.Items.Rows.Count ? row : null;
+                return at.X >= ListCentre - 70 && at.X < ListCentre + 70 && row >= 0 && row < items.Rows.Count ? row : null;
             case SystemPage.Options when Menu.Options is { } options:
                 at -= OptionsShift(options);
                 var rows = OptionRows(options);
@@ -274,7 +281,10 @@ public partial class SystemTabView : Control
         switch (screen.Page)
         {
             case SystemPage.List:
-                List();
+                List(Menu.Items);
+                break;
+            case SystemPage.Extras:
+                List(Menu.Extras);
                 break;
             case SystemPage.Options:
                 Options(screen.Options!);
@@ -304,28 +314,38 @@ public partial class SystemTabView : Control
     /// <summary>The name entry's box (<c>IntroMenu.ShowNameEntry</c>, <c>0x800437f8</c>): from 8 left of the grid, and from y 43 to 179.</summary>
     private static readonly ScreenRect NameBox = new(52, 43, 268, 179);
 
-    /// <summary>The list's title's top: the pause menu's is centred down the frame with the rows, the title's at 75.</summary>
-    private int ListTop() => Menu.Title ? TitleListTop
-        : (FrameHeight - (24 + Menu.Items.Rows.Count * 11 + (Menu.Items.Rows.Count - 1) * 5 + 16)) / 2;
+    /// <summary>The list's title's top: the pause menu's is centred down the frame with its rows, the title's at 75.</summary>
+    private int ListTop(int rows) => Menu.Title ? TitleListTop : (FrameHeight - (24 + rows * 11 + (rows - 1) * 5 + 16)) / 2;
 
     /// <summary>The first row's top: 16 under the title in the pause menu, at 115 in the title's.</summary>
-    private int RowsTop() => Menu.Title ? TitleRowsTop : ListTop() + 24 + 16;
+    private int RowsTop(int rows) => Menu.Title ? TitleRowsTop : ListTop(rows) + 24 + 16;
 
     private int RowPitch => Menu.Title ? TitleRowPitch : ListPitch;
 
-    private void List()
+    /// <summary>
+    /// The list, or Extras': the title, and the rows, the pause menu's each on a slip of parchment
+    /// (<see cref="RowSlipSide"/>).
+    /// </summary>
+    private void List(MenuList<SystemItem> items)
     {
-        CentredImage(MenuImages.MenuTitle, ListCentre, ListTop());
-        var y = RowsTop();
+        var rows = items.Rows.Count;
+        CentredImage(MenuImages.MenuTitle, ListCentre, ListTop(rows));
+        var y = RowsTop(rows);
         var cursor = Menu.Pulse.Now(Style.CursorFrom, Style.CursorTo);
-        for (var i = 0; i < Menu.Items.Rows.Count; i++)
+        if (Style.Parchment)
         {
-            var item = Menu.Items.Rows[i];
-            var color = i == Menu.Items.Cursor ? cursor : Style.Text;
+            var width = items.Rows.Select(i => _ui.Main.Width(Menu.Label(i))).DefaultIfEmpty(0).Max() + 2 * RowSlipSide;
+            for (var i = 0; i < rows; i++)
+                _ui.Slip(this, new Rect2(ListCentre - width / 2, y + i * RowPitch + _ui.Main.Middle - RowSlipHeight / 2, width, RowSlipHeight));
+        }
+        for (var i = 0; i < rows; i++)
+        {
+            var item = items.Rows[i];
+            var color = i == items.Cursor ? cursor : Style.Text;
             CentredText(Menu.Label(item), ListCentre, y + i * RowPitch, color);
         }
-        // The arrow to the Party tab; the title has no tabs.
-        if (!Menu.Title)
+        // The arrow to the Party tab, on the list the tab can be left from; the title has no tabs.
+        if (!Menu.Title && items == Menu.Items)
             _ui.Image(this, MenuImages.SliderRight, ListArrow.X, ListArrow.Y, color: Style.Text);
     }
 
@@ -411,7 +431,7 @@ public partial class SystemTabView : Control
     }
 
     /// <summary>Whether the options' page lists settings with their values beside them, in two columns.</summary>
-    private static bool HasChoices(OptionsMenu options) => options.Page is OptionsPage.Video or OptionsPage.Enhancements;
+    private static bool HasChoices(OptionsMenu options) => options.Page is OptionsPage.Video or OptionsPage.Enhancements or OptionsPage.Graphics;
 
     /// <summary>
     /// Where each options row is: its label's top, and the bottom of what it draws (a volume's bar too). The rows are the list's 16

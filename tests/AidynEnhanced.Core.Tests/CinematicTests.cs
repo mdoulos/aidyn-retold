@@ -222,12 +222,14 @@ public class CinematicTests
     }
 
     [Fact]
-    public void TheaterOpensItsPageAndBGoesBackToTheListOnTheaterStill()
+    public void TheaterOpensItsPageAndBGoesBackToExtrasOnTheaterStill()
     {
         using var plugins = new CinematicPlugins();
         var system = new SystemMenu(plugins.Plugins, new Settings(), TradeData.PartyOf(TradeData.Catalog(), ItemData.Flags(), Characters.Create(Characters.Alaron())), plugins.Saves,
             isSet: id => id == RecordId.Decimal(RecordTypes.Flag, 3));
-        system.MoveCursor((int)SystemItem.Theater);
+        system.MoveCursor(system.Items.Rows.ToList().IndexOf(SystemItem.Extras));
+        system.Accept();
+        system.MoveCursor(system.Extras.Rows.ToList().IndexOf(SystemItem.Theater));
         system.Accept();
 
         Assert.Equal(SystemPage.Theatre, system.Page);
@@ -235,7 +237,7 @@ public class CinematicTests
         var exit = system.Accept();
         Assert.Equal((PauseExitCode.Theatre, "Gabrion's Search"), (exit?.Code, exit?.Cinematic?.Title));
         Assert.True(system.Back());
-        Assert.Equal((SystemPage.List, SystemItem.Theater), (system.Page, system.Items.Current));
+        Assert.Equal((SystemPage.Extras, SystemItem.Theater), (system.Page, system.Extras.Current));
         Assert.Null(system.Theatre);
     }
 

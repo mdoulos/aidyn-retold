@@ -114,12 +114,12 @@ public sealed partial class GameSessionTests(Na10Import fixture)
         Assert.Equal((1f, Core.Sky.SkyPlacement.Original, 65, 1f), Playing());
 
         // The options menu changes the player's settings, which the core doesn't read: nothing changes until a tick is handed them.
-        settings.BriskPace = true;
         settings.SkyPlacement = Core.Sky.SkyPlacement.Projected;
         settings.MusicVolume = 30;
         settings.PrecipitationDensity = 4;
         settings.Notify();
-        var next = SessionSettings.From(settings);
+        // The pace is a run's alone (--pace, F5).
+        var next = SessionSettings.From(settings) with { Pace = SessionSettings.BriskPace };
         Assert.Equal((1f, Core.Sky.SkyPlacement.Original, 65, 1f), Playing());
         Assert.Equal(SessionSettings.Original, session.Settings);
         Tick(session, next);

@@ -199,9 +199,6 @@ public sealed partial class TrekLoop : IMapObjectHost
     /// </summary>
     public bool MenuMayOpen => Backdrop is null && Use.Popup is null && Conversation is null;
 
-    /// <summary>Whether the player may jump, the Jump setting's (<see cref="SessionSettings.Jump"/>): a map can forbid it still.</summary>
-    public bool Jump { get; set; } = true;
-
     /// <summary>A cut-scene waiting for trek to fade out, or for its host to start it.</summary>
     public CutSceneLaunch? Cued { get; private set; }
 
@@ -330,8 +327,8 @@ public sealed partial class TrekLoop : IMapObjectHost
         // conversation too, so one holding the camera keeps it rather than the conversation's.
         var playing = !fading;
         var centre = Chunks.MapAt(motion.Sphere.Position);
-        // The Jump setting, and the map he's in, which a mod can forbid jumping on.
-        motion.CanJump = Jump && centre?.Record.NoJump != true;
+        // He can always jump, the user's choice, but on a map a mod forbids it on.
+        motion.CanJump = centre?.Record.NoJump != true;
         if (centre is not null)
         {
             // In a jump, as if from where he left the ground, so a hop passes over no trigger it would have walked through.

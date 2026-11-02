@@ -359,7 +359,6 @@ public sealed class GameSession
         Arena?.Precipitation?.Density = density;
         Sky.Placement = settings.SkyPlacement;
         Trek.Player.Pace = settings.Pace;
-        Trek.Jump = settings.Jump;
         Battle?.Fx.Turns = settings.SpellAuras;
         Battle?.Pace = settings.Pace;
         SetReveal(Trek.Box, settings);

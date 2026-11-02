@@ -24,6 +24,9 @@ public enum SystemItem
     /// The port's, last in every list: the title's quits at once, and the pause menu's asks where to go (<see cref="SystemMenu.Quitting"/>).
     /// </summary>
     Quit,
+
+    /// <summary>The port's, in trek: a list of Theater, Credits and Help of its own (<see cref="SystemMenu.Extras"/>).</summary>
+    Extras,
 }
 
 /// <summary>
@@ -57,6 +60,9 @@ public sealed record SystemStyle(Rgba Text, Rgba CursorFrom, Rgba CursorTo, Rgba
 public enum SystemPage
 {
     List,
+
+    /// <summary>Extras' list, of Theater, Credits and Help.</summary>
+    Extras,
     Options,
     Saves,
     Rename,
@@ -90,7 +96,8 @@ public interface ISystemPage
 /// <summary>
 /// The pause menu's System tab (<c>WidgetOptionsMenu</c>): a list of Load Game, Save Game, Options, Theater, Credits
 /// and Help under the title "Menu", and the screens they open (<see cref="ISystemPage"/>). B on the list closes the menu;
-/// in a screen, it goes back to the list.
+/// in a screen, it goes back to the list. The port puts Theater, Credits and Help on a list of their own, which Extras opens, the
+/// user's choice (Nov 2, 2026), so the list is Load Game, Save Game, Options, Extras and Quit Game.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -122,8 +129,8 @@ public sealed class SystemMenu
     /// <summary>The list's colour.</summary>
     public static readonly Rgba TextColor = PartyMenu.TextColor;
 
-    /// <summary>The rows' strings, by <see cref="SystemItem"/>: common lines, but Credits, which the code spells out.</summary>
-    private static readonly int[] Lines = [160, 377, 161, 162, -1, 173, 378, 159, -1];
+    /// <summary>The rows' strings, by <see cref="SystemItem"/>: common lines, but Credits, which the code spells out, and the port's.</summary>
+    private static readonly int[] Lines = [160, 377, 161, 162, -1, 173, 378, 159, -1, -1];
 
     /// <summary>The quit box's choices, and what it says above them while there's progress to lose.</summary>
     public const string QuitToDesktop = "Quit to Desktop", ReturnToTitle = "Return to Title", Unsaved = "Unsaved progress will be lost.";
@@ -176,7 +183,7 @@ public sealed class SystemMenu
         Items = new MenuList<SystemItem>(combat switch
         {
             null when title => [SystemItem.NewGame, SystemItem.LoadGame, SystemItem.Options, SystemItem.Quit],
-            null => [.. Enum.GetValues<SystemItem>().Where(i => i is not (SystemItem.Flee or SystemItem.NewGame))],
+            null => [SystemItem.LoadGame, SystemItem.SaveGame, SystemItem.Options, SystemItem.Extras, SystemItem.Quit],
             true => [SystemItem.Options, SystemItem.Flee, SystemItem.Quit],
             false => [SystemItem.Options, SystemItem.Quit],
         });
@@ -206,6 +213,9 @@ public sealed class SystemMenu
     public Party Party { get; }
 
     public MenuList<SystemItem> Items { get; }
+
+    /// <summary>Extras' list, which the cursor starts at the top of each time it opens.</summary>
+    public MenuList<SystemItem> Extras { get; } = new([SystemItem.Theater, SystemItem.Credits, SystemItem.Help]);
 
     public MenuPulse Pulse { get; } = new();
 
@@ -242,8 +252,13 @@ public sealed class SystemMenu
     /// <summary>Quit Game's question: where to go, and a warning if there's unsaved progress. Null while it isn't up.</summary>
     public MenuChoice? Quitting => Overlay.Choice;
 
-    /// <summary>A row's text: common lines, but Credits, which the code spells out, and Quit Game, the port's.</summary>
-    public string Label(SystemItem item) => Lines[(int)item] is var line and >= 0 ? _text[line] : item == SystemItem.Quit ? "Quit Game" : "Credits";
+    /// <summary>A row's text: common lines, but Credits, which the code spells out, and Quit Game and Extras, the port's.</summary>
+    public string Label(SystemItem item) => Lines[(int)item] is var line and >= 0 ? _text[line] : item switch
+    {
+        SystemItem.Quit => "Quit Game",
+        SystemItem.Extras => "Extras",
+        _ => "Credits",
+    };
 
     /// <summary>The help menu's script, which Help starts (<c>0x054B</c>).</summary>
     public static readonly RecordId HelpScript = RecordId.Hex(RecordTypes.Dialogue, 0x054B);
@@ -433,6 +448,33 @@ public sealed class SystemMenu
         Pulse.Reset();
     }
 
+    /// <summary>Extras' list fading in, the cursor on <paramref name="row"/>: at the top as Extras opens it, or on Theater coming back.</summary>
+    private void ToExtras(int row = 0)
+    {
+        FadeFrom();
+        _page = new ExtrasPage(this);
+        Theatre = null;
+        Extras.Point(row);
+        Pulse.Reset();
+    }
+
+    /// <summary>A on Theater, Credits or Help: opens the Theatre's page, or ends the menu for the credits or the help menu.</summary>
+    private PauseExit? Choose(SystemItem item)
+    {
+        switch (item)
+        {
+            case SystemItem.Theater:
+                ShowTheatre();
+                return null;
+            case SystemItem.Credits:
+                return PauseExit.Credits;
+            case SystemItem.Help:
+                return PauseExit.Help;
+            default:
+                return null;
+        }
+    }
+
     /// <summary>The list: A opens a row's screen, or ends the menu for Credits or Help; and the quit box over it, which takes the presses while it's up.</summary>
     private sealed class ListPage(SystemMenu menu) : ISystemPage
     {
@@ -471,13 +513,9 @@ public sealed class SystemMenu
                     menu.Options = new OptionsMenu(menu.Settings, inGame: !menu.Title, menu._screen(), menu._controller);
                     menu._page = new OptionsPage(menu);
                     return null;
-                case SystemItem.Theater:
-                    menu.ShowTheatre();
+                case SystemItem.Extras:
+                    menu.ToExtras();
                     return null;
-                case SystemItem.Credits:
-                    return PauseExit.Credits;
-                case SystemItem.Help:
-                    return PauseExit.Help;
                 case SystemItem.Flee:
                     return PauseExit.Flee;
                 case SystemItem.Quit when menu.Title:
@@ -486,7 +524,7 @@ public sealed class SystemMenu
                     menu.AskQuit();
                     return null;
                 default:
-                    return null;
+                    return menu.Choose(item);
             }
         }
 
@@ -504,6 +542,29 @@ public sealed class SystemMenu
             if (menu.Quitting is null)
                 menu.Items.Point(row);
         }
+    }
+
+    /// <summary>Extras' list: A opens the Theatre's page or ends the menu for Credits or Help, and B goes back to the list on Extras.</summary>
+    private sealed class ExtrasPage(SystemMenu menu) : ISystemPage
+    {
+        public SystemPage Kind => SystemPage.Extras;
+
+        public void MoveCursor(int by) => menu.Extras.Move(by);
+
+        public void Sideways(int by)
+        {
+        }
+
+        public PauseExit? Accept() => menu.Choose(menu.Extras.Current);
+
+        public bool Back()
+        {
+            menu.Items.Point(menu.Items.Rows.ToList().IndexOf(SystemItem.Extras));
+            menu.ToList();
+            return true;
+        }
+
+        public void Point(int row) => menu.Extras.Point(row);
     }
 
     /// <summary>The options, and their pages: A follows a link, and Rename Character opens the name entry.</summary>
@@ -608,7 +669,7 @@ public sealed class SystemMenu
         }
     }
 
-    /// <summary>The Theatre's page: A on a seen cinematic ends the menu to play it.</summary>
+    /// <summary>The Theatre's page: A on a seen cinematic ends the menu to play it, and B goes back to Extras' list on Theater.</summary>
     private sealed class TheatrePage(SystemMenu menu) : ISystemPage
     {
         public SystemPage Kind => SystemPage.Theatre;
@@ -628,7 +689,7 @@ public sealed class SystemMenu
 
         public bool Back()
         {
-            menu.ToList();
+            menu.ToExtras(menu.Extras.Rows.ToList().IndexOf(SystemItem.Theater));
             return true;
         }
 

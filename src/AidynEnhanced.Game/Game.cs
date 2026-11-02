@@ -500,7 +500,6 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
             if (screen is null)
                 continue;
             screen.Lines = s.UiLines;
-            screen.Filter = s.UiFilter;
         }
     }
 
@@ -1044,8 +1043,7 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
         }
         else if (e.IsActionPressed("toggle_pace") && _player is not null)
         {
-            _settings.BriskPace = !_settings.BriskPace;
-            _settings.Notify();
+            _launch?.TogglePace();
         }
         else if (e.IsActionPressed("toggle_sky_placement") && _sky is not null)
         {

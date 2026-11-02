@@ -16,7 +16,7 @@ public sealed record SessionSettings
     /// <summary>The original's: its volumes and its look and feel, the settings an enhancement leaves at their default.</summary>
     public static readonly SessionSettings Original = new();
 
-    /// <summary>The player's pace under the Pace setting's Brisk, a multiple of the original's.</summary>
+    /// <summary>The brisk pace <c>--pace</c> and F5 give for a run, a multiple of the original's: no longer a setting, the user's choice.</summary>
     public const float BriskPace = 1.3f;
 
     /// <summary>Every sound's volume, in hundredths (<see cref="Settings.MasterVolume"/>).</summary>
@@ -75,16 +75,13 @@ public sealed record SessionSettings
     /// <summary>Whether a blip sounds as a line prints (<see cref="Ui.DialogueBox.Voice"/>), as it does unless the Dialogue volume is 0; the original's box is silent.</summary>
     public bool TextVoice { get; init; }
 
-    /// <summary>Whether the player can jump in trek (<see cref="Movement.PlayerMotion.Jumping"/>); the original has no jump.</summary>
-    public bool Jump { get; init; }
-
     /// <summary>
     /// The widths each font's glyphs take in the typeface its text is drawn in, by font record, which the runtime measures and hands
     /// over; none for the sheets' own, as a headless run lays its text out by (<see cref="Ui.TextFonts.Widths"/>).
     /// </summary>
     public IReadOnlyDictionary<AidynEnhanced.Plugins.RecordId, IReadOnlyList<int>>? TextWidths { get; init; }
 
-    /// <summary>What the core plays by of these settings: the pace is Brisk's or the original's.</summary>
+    /// <summary>What the core plays by of these settings, at the original's pace.</summary>
     public static SessionSettings From(Settings settings) => new()
     {
         MasterVolume = settings.MasterVolume,
@@ -95,11 +92,9 @@ public sealed record SessionSettings
         DialogueVolume = settings.DialogueVolume,
         PrecipitationDensity = settings.PrecipitationDensity,
         SkyPlacement = settings.SkyPlacement,
-        Pace = settings.BriskPace ? BriskPace : 1,
         SpellAuras = settings.SpellAuras,
         UiLines = Math.Max(settings.UiLines, 1),
         TextRate = Ui.TextReveal.GlyphsPerTick(settings.TextSpeed),
         TextVoice = settings.DialogueVolume > 0,
-        Jump = settings.Jump,
     };
 }

@@ -64,9 +64,6 @@ public sealed class Settings
     /// <summary>How many lines tall the UI screen is: the original's 240, or more for smaller UI with room for more.</summary>
     public int UiLines { get; set; } = 240;
 
-    /// <summary>How the UI screen is scaled up to the window.</summary>
-    public UiFilter UiFilter { get; set; } = UiFilter.Pixels;
-
     /// <summary>
     /// How many lines the 3D world is drawn at, scaled up to the window: the original's 240 or its Expansion Pak's 480, or 0 to draw
     /// it at <see cref="RenderScale"/>.
@@ -116,11 +113,13 @@ public sealed class Settings
     /// <summary>The most frames drawn a second: a number, <see cref="DisplayRate"/> for the screen's refresh rate, or 0 for no limit.</summary>
     public int FrameRateLimit { get; set; } = DisplayRate;
 
+    // The world's detail, which Graphic Quality sets all at once (GraphicQuality), Medium's in new settings.
+
     /// <summary>Whether the Overworld's terrain is drawn out to the 5 × 5 chunks around the player rather than the original's 3 × 3.</summary>
-    public bool ExtendedDrawDistance { get; set; }
+    public bool ExtendedDrawDistance { get; set; } = true;
 
     /// <summary>How far scene objects are drawn, as a multiple of the original's distances.</summary>
-    public float ObjectDistance { get; set; } = 1;
+    public float ObjectDistance { get; set; } = 2;
 
     /// <summary>Whether scene objects always draw their nearest, most detailed level.</summary>
     public bool NearestDetail { get; set; }
@@ -138,19 +137,38 @@ public sealed class Settings
     public bool AnimationBlending { get; set; } = true;
 
     /// <summary>How many raindrops and snowflakes fall, as a multiple of the original's (<see cref="Particles.WeatherParticles.Density"/>).</summary>
-    public float PrecipitationDensity { get; set; } = 1;
+    public float PrecipitationDensity { get; set; } = 4;
+
+    /// <summary>
+    /// The Graphic Quality the world's detail settings make together, or null where they've been set by hand to none of them, which the
+    /// Video page shows as Custom.
+    /// </summary>
+    public GraphicQuality? Quality => Enum.GetValues<GraphicQuality>().Cast<GraphicQuality?>().FirstOrDefault(q => Matches(Detail(q!.Value)));
+
+    /// <summary>Sets the world's detail settings to a Graphic Quality's.</summary>
+    public void SetQuality(GraphicQuality quality) =>
+        (ExtendedDrawDistance, ObjectDistance, NearestDetail, SurfaceDetail, AnimationBlending, PrecipitationDensity) = Detail(quality);
+
+    /// <summary>
+    /// What each Graphic Quality sets, the user's design (Nov 2, 2026): Original the original's look, Medium a step past it on each, and
+    /// High each at its most.
+    /// </summary>
+    private static (bool Extended, float Objects, bool Nearest, bool Surface, bool Blending, float Precipitation) Detail(GraphicQuality quality) => quality switch
+    {
+        GraphicQuality.Original => (false, 1, false, false, false, 1),
+        GraphicQuality.Medium => (true, 2, false, true, true, 4),
+        _ => (true, 3, true, true, true, Particles.WeatherParticles.MaxDensity),
+    };
+
+    private bool Matches((bool Extended, float Objects, bool Nearest, bool Surface, bool Blending, float Precipitation) detail) =>
+        detail == (ExtendedDrawDistance, ObjectDistance, NearestDetail, SurfaceDetail, AnimationBlending, PrecipitationDensity);
 
     /// <summary>How the sky places its objects: no longer on the options menu, the user's choice, but kept for F6 and <c>--sky</c>.</summary>
     public SkyPlacement SkyPlacement { get; set; } = SkyPlacement.Projected;
 
-    /// <summary>Whether trek runs at a faster pace than the original's, which feels slow on a PC.</summary>
-    public bool BriskPace { get; set; }
-
-    /// <summary>Whether the player can jump in trek, a PC game's jump the original hasn't: on, the user's choice (Oct 31, 2026).</summary>
-    public bool Jump { get; set; } = true;
-
     /// <summary>
-    /// Whether the Party tab's inventory shows what the party wears, with the wearer's portrait (<see cref="Ui.PartyMenu.ShowWorn"/>), or
+    /// Whether the Party tab's inventory shows what the party wears, with the wearer's portrait (<see cref="Ui.PartyMenu.ShowWorn"/>), the
+    /// Show Equipped in Inventory row, or
     /// null to go by the device the player is using, the user's choice (Nov 2, 2026): shown with a controller, which reaches worn items
     /// only from the inventory, and hidden with the keyboard and mouse, which take them off from the silhouette.
     /// </summary>
@@ -230,4 +248,18 @@ public sealed class Settings
 
     /// <summary>How far the mouse turns the camera, as a multiple of the drag the runtime always had.</summary>
     public float MouseSensitivity { get; set; } = 1;
+}
+
+/// <summary>
+/// The Video page's Graphic Quality, which sets the world's detail settings together (<see cref="Settings.SetQuality"/>), each of which
+/// the Advanced Graphic Settings page sets alone.
+/// </summary>
+public enum GraphicQuality
+{
+    /// <summary>The original's draw distances, models, lighting and rain.</summary>
+    Original,
+
+    Medium,
+
+    High,
 }

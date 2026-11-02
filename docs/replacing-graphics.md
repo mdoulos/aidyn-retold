@@ -179,7 +179,7 @@ A character can have several **outfits**, each worn by what the character has on
 
 Animate the bones by rotation and, for the hips and the root, translation. A bone animated by scale hasn't been tried, and the game handles a part that's both turned and scaled specially.
 
-The game draws the material's base colour texture with its N64 lighting. A normal map carries the detail the triangles leave out: with the Enhancements page's **Surface Detail** on Full, the default, the model is lit at each pixel through it, and on Original at each vertex as the game's own models are. Bake the normal map in the mesh's tangent space with +Y up the image, as Blender does, and include the mesh's tangents in the file. A metal-roughness map is ignored.
+The game draws the material's base colour texture with its N64 lighting. A normal map carries the detail the triangles leave out: with the Advanced Graphic Settings page's **Surface Detail** on Full, as Medium and High Graphic Quality set it, the model is lit at each pixel through it, and on Original at each vertex as the game's own models are. Bake the normal map in the mesh's tangent space with +Y up the image, as Blender does, and include the mesh's tangents in the file. A metal-roughness map is ignored.
 
 ## Textures on models
 

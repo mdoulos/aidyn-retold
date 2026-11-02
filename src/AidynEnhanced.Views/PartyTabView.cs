@@ -231,6 +231,8 @@ public partial class PartyTabView : Control
     private EquipmentSlot? _hoveredSlot;
     /// <summary>The inventory's row whose grid cell the mouse is on, or null.</summary>
     private int? _hoveredCell;
+    /// <summary>The aspect's or school's icon the mouse is on, by its place among <see cref="Icons"/>, or null.</summary>
+    private int? _hoveredIcon;
     /// <summary>Where the inventory's grid was last drawn, which the mouse is tested against, as <see cref="_listLayout"/> is for a list.</summary>
     private GridLayout _gridLayout = PartyMenu.InventoryGrid;
     /// <summary>Where the tab's list was last drawn, which the mouse is tested against: a list sliding in is drawn off its place.</summary>
@@ -324,7 +326,7 @@ public partial class PartyTabView : Control
         if (what == NotificationResized)
             QueueRedraw();
         else if (what == NotificationMouseExit)
-            _hoveredTab = null;
+            (_hoveredTab, _hoveredIcon) = (null, null);
     }
 
     /// <summary>
@@ -346,6 +348,7 @@ public partial class PartyTabView : Control
         {
             _hoveredTab = TabAt(mouse.Position) is { } tab && HasTab(PartyMenu.Tabs[tab]) ? tab : null;
             _hoveredSlot = SlotAt(mouse.Position);
+            _hoveredIcon = IconAt(mouse.Position);
             _hoveredCell = null;
         }
         // A click on a slot of the silhouette with something worn in it selects it, and a double click uses it as A does, taking it off:
@@ -463,6 +466,21 @@ public partial class PartyTabView : Control
         }
         return null;
     }
+
+    /// <summary>The aspect's or school's icon under a point on the view, by its place among <see cref="Icons"/>, or null.</summary>
+    private int? IconAt(Vector2 point)
+    {
+        if (Menu.Shown is not { } shown)
+            return null;
+        var at = point - (Vector2)_origin;
+        var icons = Icons(shown);
+        var index = icons.FindIndex(i => IconRect(i).HasPoint(at));
+        return index >= 0 ? index : null;
+    }
+
+    /// <summary>Where an icon of <see cref="Icons"/> is in the frame.</summary>
+    private Rect2 IconRect((RecordId Icon, int X, string Name) icon) =>
+        new(PortraitPiece.Position + new Vector2I(icon.X, IconsAt.Y), _ui.Size(icon.Icon));
 
     /// <summary>Where a slot of the silhouette is in the frame.</summary>
     private static Rect2 SlotRect(EquipmentSlot slot) =>
@@ -888,10 +906,10 @@ public partial class PartyTabView : Control
         var icons = Icons(shown);
         var old = Menu.Previous is { } member ? Icons(member) : icons;
         var iconsY = IconsAt.Y;
-        foreach (var (icon, x) in old.Except(icons))
+        foreach (var (icon, x, _) in old.Except(icons))
             _ui.Image(_canvas, icon, at.X + x, at.Y + iconsY, color: FadingOut(White, change));
-        foreach (var (icon, x) in icons)
-            _ui.Image(_canvas, icon, at.X + x, at.Y + iconsY, color: old.Contains((icon, x)) ? null : FadingIn(White, change));
+        foreach (var (icon, x, name) in icons)
+            _ui.Image(_canvas, icon, at.X + x, at.Y + iconsY, color: old.Contains((icon, x, name)) ? null : FadingIn(White, change));
     }
 
     /// <summary>
@@ -910,18 +928,21 @@ public partial class PartyTabView : Control
     private static (Vector2I At, int Size) PortraitPlace(int i) =>
         i == 0 ? (ShownPortrait, ShownSize) : (OtherPortraits[Math.Min(i - 1, OtherPortraits.Length - 1)], OtherSize);
 
-    /// <summary>A member's aspect's and school's icons after the bar, 4 apart, and where they go across.</summary>
-    private List<(RecordId Icon, int X)> Icons(Core.Characters.Character member)
+    /// <summary>
+    /// A member's aspect's and school's icons after the bar, 4 apart, where they go across, and the names the mouse on one shows, the
+    /// user's choice (Nov 2, 2026).
+    /// </summary>
+    private List<(RecordId Icon, int X, string Name)> Icons(Core.Characters.Character member)
     {
-        var icons = new List<(RecordId, int)>();
+        var icons = new List<(RecordId, int, string)>();
         var x = IconsAt.X;
         if (MenuImages.AspectIcon(member.Aspect) is { } aspect)
         {
-            icons.Add((aspect, x));
+            icons.Add((aspect, x, $"{member.Aspect} Aspect"));
             x += _ui.Size(aspect).X + IconGap;
         }
         if (MenuImages.SchoolIcon(member.School) is { } school)
-            icons.Add((school, x));
+            icons.Add((school, x, $"School of {member.School}"));
         return icons;
     }
 
@@ -1124,12 +1145,18 @@ public partial class PartyTabView : Control
     }
 
     /// <summary>
-    /// The name of what the mouse is on, else of what's selected, on a slip over it: an item worn in a slot of the silhouette, or one in
-    /// the inventory grid's cells, the selected one the cursor's, moved by the stick or a click. Only on the tab itself, its lists
-    /// still and no popup up.
+    /// The name of what the mouse is on, else of what's selected, on a slip over it: the member's aspect or school by its icon, in any
+    /// window with no popup up; or on the tab itself, its lists still and no popup up, an item worn in a slot of the silhouette, or one in
+    /// the inventory grid's cells, the selected one the cursor's, moved by the stick or a click.
     /// </summary>
     private void Tooltip()
     {
+        if (_hoveredIcon is { } hovered && !Window.HasPopup && Menu.Shown is { } shown && Icons(shown).ElementAtOrDefault(hovered) is { Name: not null } icon)
+        {
+            var rect = IconRect(icon);
+            NameSlip(icon.Name, rect.Position.X + rect.Size.X / 2, rect.Position.Y - 1);
+            return;
+        }
         if (!OwnTab || Menu.Slide is not null || Window.HasPopup || Menu.Crafting is not null)
             return;
         var grid = Menu.List == PartyList.Inventory && Menu.Grid;

@@ -10,7 +10,8 @@ namespace AidynEnhanced.Game;
 /// which the runtime draws by (<see cref="Over"/>) and makes each tick's <see cref="SessionSettings"/> from
 /// (<see cref="Session"/>), never written into them, so <c>settings.json</c> only ever holds the player's own. Each holds for
 /// the run until the player changes that setting, in the options menu or with a debug key (<see cref="Changed"/>), and then the
-/// player's holds: <c>--pace</c> gives way to the Pace setting.
+/// player's holds. <c>--pace</c> has no setting under it, the pace being the original's, the user's choice, so it holds for the run, and
+/// F5 turns it on and off (<see cref="TogglePace"/>).
 /// </summary>
 public sealed class LaunchSettings
 {
@@ -84,6 +85,9 @@ public sealed class LaunchSettings
         return _pace is { } pace ? settings with { Pace = pace } : settings;
     }
 
+    /// <summary>F5: the brisk pace for the run, or the original's again.</summary>
+    public void TogglePace() => _pace = _pace is null ? SessionSettings.BriskPace : null;
+
     /// <summary>The player's settings changed: this run's setting for each one that did gives way to the player's.</summary>
     public void Changed(Settings player)
     {
@@ -109,8 +113,6 @@ public sealed class LaunchSettings
             _textSpeed = null;
         if (player.DialogueVolume != _seen.DialogueVolume)
             _dialogueVolume = null;
-        if (player.BriskPace != _seen.BriskPace)
-            _pace = null;
         _seen = player.Copy();
     }
 }

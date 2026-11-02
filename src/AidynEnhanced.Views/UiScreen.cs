@@ -107,6 +107,10 @@ public partial class UiScreen : Control
     /// </summary>
     public int Oversampling { get; private set; } = 1;
 
+    /// <summary>
+    /// How the screen is scaled up to the window: the game's always Sharp, the user's choice (Nov 2, 2026), and the editor's any of
+    /// them, for setting beside the console's captures.
+    /// </summary>
     public UiFilter Filter
     {
         get => _filter;

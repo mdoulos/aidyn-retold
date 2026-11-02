@@ -29,6 +29,9 @@ public enum OptionLink
     Enhancements,
     Controls,
     RenameCharacter,
+
+    /// <summary>The Video page's Advanced Graphic Settings.</summary>
+    Graphics,
 }
 
 /// <summary>
@@ -78,6 +81,12 @@ public enum OptionsPage
 
     /// <summary>The controls' bindings, on the keyboard and mouse or on a controller (ADR 0026).</summary>
     Controls,
+
+    /// <summary>
+    /// The Video page's Advanced Graphic Settings, the user's design (Nov 2, 2026): the world's detail, each setting alone, which the
+    /// Video page's Graphic Quality sets together.
+    /// </summary>
+    Graphics,
 }
 
 /// <summary>
@@ -220,7 +229,7 @@ public sealed partial class OptionsMenu
         }
     }
 
-    /// <summary>B: back from a page to the main one, and false on the main one, which the caller leaves.</summary>
+    /// <summary>B: back from a page to the one that led there, and false on the main one, which the caller leaves.</summary>
     public bool Back()
     {
         // The prompt takes every input, Back's among them, as what it binds.
@@ -229,7 +238,7 @@ public sealed partial class OptionsMenu
         if (Page == OptionsPage.Main)
             return false;
         var from = Page;
-        Open(OptionsPage.Main);
+        Open(from == OptionsPage.Graphics ? OptionsPage.Video : OptionsPage.Main);
         // Back on the row that led there.
         Rows.Point(Rows.Rows.ToList().FindIndex(r => r.Link is { } link && PageOf(link) == from));
         return true;
@@ -242,6 +251,7 @@ public sealed partial class OptionsMenu
         OptionLink.Video => OptionsPage.Video,
         OptionLink.Enhancements => OptionsPage.Enhancements,
         OptionLink.Controls => OptionsPage.Controls,
+        OptionLink.Graphics => OptionsPage.Graphics,
         _ => null,
     };
 
@@ -254,6 +264,7 @@ public sealed partial class OptionsMenu
             OptionsPage.Video => VideoRows(),
             OptionsPage.Enhancements => EnhancementRows(),
             OptionsPage.Controls => ControlRows(),
+            OptionsPage.Graphics => GraphicsRows(),
             _ => MainRows(),
         };
         Rows.Point(0);
@@ -293,7 +304,8 @@ public sealed partial class OptionsMenu
 
     /// <summary>
     /// The Video page's rows. Window Size lists the sizes that fit the screen and Maximized, and in fullscreen only the screen's own;
-    /// Render Resolution lists the original's 240 and 480 lines, then parts of the window's or screen's size.
+    /// Render Resolution lists the original's 240 and 480 lines, then parts of the window's or screen's size. Graphic Quality sets the
+    /// world's detail, which Advanced Graphic Settings, last, opens a page of.
     /// </summary>
     private List<OptionRow> VideoRows()
     {
@@ -313,7 +325,27 @@ public sealed partial class OptionsMenu
             Choice("V-Sync", ["On", "Off"], () => s.VSync ? 0 : 1, v => s.VSync = v == 0),
             Choice("Anti-Aliasing", ["Off", "2x", "4x", "8x"], () => Array.IndexOf(Samples, s.Antialiasing) is var i and >= 0 ? i : 0,
                 v => s.Antialiasing = Samples[v]),
+            QualityRow(),
+            Link("Advanced Graphic Settings", OptionLink.Graphics, gapBefore: true),
         ];
+    }
+
+    /// <summary>
+    /// Graphic Quality: Original, Medium or High, each setting the world's detail together (<see cref="Settings.SetQuality"/>). Where those
+    /// have been set by hand to none of them it shows Custom, which stepping leaves for Original or High and doesn't come back to.
+    /// </summary>
+    private OptionRow QualityRow()
+    {
+        var s = Settings;
+        List<string> values = ["Original", "Medium Quality", "High Quality"];
+        var custom = values.Count;
+        if (s.Quality is null)
+            values.Add("Custom");
+        return Choice("Graphic Quality", values, () => s.Quality is { } quality ? (int)quality : custom, v =>
+        {
+            if (v < custom)
+                s.SetQuality((GraphicQuality)v);
+        });
     }
 
     /// <summary>
@@ -354,7 +386,8 @@ public sealed partial class OptionsMenu
 
     private static string Size((int Width, int Height) size) => $"{size.Width}x{size.Height}";
 
-    private List<OptionRow> EnhancementRows()
+    /// <summary>The Advanced Graphic Settings page's rows: the world's detail, which Graphic Quality sets together.</summary>
+    private List<OptionRow> GraphicsRows()
     {
         var s = Settings;
         return
@@ -367,14 +400,18 @@ public sealed partial class OptionsMenu
             Choice("Animation Blending", ["Original", "Smooth"], () => s.AnimationBlending ? 1 : 0, v => s.AnimationBlending = v == 1),
             Choice("Rain and Snow", ["Original", "2x", "4x", "8x"], () => NearestIndex(PrecipitationDensities, s.PrecipitationDensity),
                 v => s.PrecipitationDensity = PrecipitationDensities[v]),
+        ];
+    }
+
+    private List<OptionRow> EnhancementRows()
+    {
+        var s = Settings;
+        return
+        [
             Choice("Menu Size", ["Original", "Smaller", "Smallest"], () => Array.IndexOf(UiLines, s.UiLines) is var i and >= 0 ? i : 0,
                 v => s.UiLines = UiLines[v]),
-            Choice("Menu Filter", ["Sharp", "Smooth", "Video Out"], () => Array.IndexOf(Filters, s.UiFilter) is var i and >= 0 ? i : 0,
-                v => s.UiFilter = Filters[v]),
-            Choice("Pace", ["Original", "Brisk"], () => s.BriskPace ? 1 : 0, v => s.BriskPace = v == 1),
-            Choice("Jump", ["Original", "On"], () => s.Jump ? 1 : 0, v => s.Jump = v == 1),
             // Until it's changed it goes by the device in use, and shows what that gives.
-            Choice("Worn in Inventory", ["Off", "On"], () => s.WornInInventory ?? _controller() ? 1 : 0, v => s.WornInInventory = v == 1),
+            Choice("Show Equipped in Inventory", ["Off", "On"], () => s.WornInInventory ?? _controller() ? 1 : 0, v => s.WornInInventory = v == 1),
             Choice("Text Speed", ["Original", "Slow", "Normal", "Fast"], () => (int)s.TextSpeed, v => s.TextSpeed = (TextSpeed)v),
             Choice("Status Auras", ["Original", "More Often"], () => s.SpellAuras == Combat.AuraTurns.EachCharacter ? 1 : 0,
                 v => s.SpellAuras = v == 1 ? Combat.AuraTurns.EachCharacter : Combat.AuraTurns.Battle),
@@ -409,7 +446,6 @@ public sealed partial class OptionsMenu
 
     /// <summary>The rain and snow's densities, up to <see cref="Particles.WeatherParticles.MaxDensity"/>.</summary>
     private static readonly float[] PrecipitationDensities = [1, 2, 4, 8];
-    private static readonly UiFilter[] Filters = [UiFilter.Pixels, UiFilter.Smooth, UiFilter.VideoOut];
 
     private static int NearestIndex(float[] values, float value)
     {

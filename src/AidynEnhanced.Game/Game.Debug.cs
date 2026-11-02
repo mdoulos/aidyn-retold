@@ -106,7 +106,8 @@ public partial class Game
     /// Each action pressed and let go in turn, a fifth of a second apart, as input events (<c>--press pause,menu_accept</c>).
     /// <c>wait:2</c> waits so many seconds more before the next, and <c>move_right:1.5</c> holds the action that long before
     /// it's let go and the next comes, or with a + after it (<c>menu_details:2+</c>) while it's still held. A binding's name
-    /// (<c>Key:P</c>, <c>Joy:Y</c>, <c>Axis:LeftX-</c>) presses that input itself, as the Controls page's prompt hears one.
+    /// (<c>Key:P</c>, <c>Joy:Y</c>, <c>Axis:LeftX-</c>) presses that input itself, as the Controls page's prompt hears one, and
+    /// <c>hover:1100x432</c> moves the mouse to that point of the window, and <c>shot:&lt;png&gt;</c> saves the window as it is then.
     /// Returns how long that takes after the half second before the first, or 0 with none.
     /// </summary>
     private double Press(string? presses)
@@ -120,6 +121,33 @@ public partial class Game
             if (InputBindings.Event(token) is { } raw)
             {
                 GetTree().CreateTimer(at).Timeout += () => PressRaw(raw);
+                at += 0.2;
+                continue;
+            }
+            // shot:<png> saves the window as it is then, so one run can show each screen a press goes through.
+            if (token.StartsWith("shot:"))
+            {
+                var png = token["shot:".Length..];
+                GetTree().CreateTimer(at).Timeout += () => CommandLine.Save(GetViewport().GetTexture().GetImage(), png);
+                at += 0.2;
+                continue;
+            }
+            // hover:1100x432 moves the mouse to that point of the window, as hovering a menu's icon does: straight to each UI screen that
+            // takes the mouse, as the window passes over a mouse moved while the cursor itself is off it.
+            if (token.StartsWith("hover:") && token["hover:".Length..].Split('x') is [var hx, var hy])
+            {
+                var point = new Vector2(float.Parse(hx, CultureInfo.InvariantCulture), float.Parse(hy, CultureInfo.InvariantCulture));
+                GetTree().CreateTimer(at).Timeout += () =>
+                {
+                    foreach (var screen in GetTree().Root.FindChildren("*", "", true, false).OfType<UiScreen>())
+                    {
+                        if (!screen.IsVisibleInTree() || screen.MouseFilter == Control.MouseFilterEnum.Ignore)
+                            continue;
+                        foreach (var viewport in screen.GetChildren().OfType<SubViewport>())
+                            viewport.Notification((int)NotificationVpMouseEnter);
+                        screen._GuiInput(screen.MakeInputLocal(new InputEventMouseMotion { Position = point, GlobalPosition = point }));
+                    }
+                };
                 at += 0.2;
                 continue;
             }

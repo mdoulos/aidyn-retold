@@ -23,7 +23,7 @@
     <!-- The pause menu's blank parchment (UiImages.OnParchment), the user's own art (assets/ui/README.md). -->
     <EmbeddedResource Include="..\..\assets\ui\parchment.png" LogicalName="parchment.png" />
     <!-- The Party tab's tabs, their icons, the gold's purse and the silhouette's figures (UiImages.Art), the user's own art. -->
-    <EmbeddedResource Include="..\..\assets\ui\ui-*.png;..\..\assets\ui\silhouette-*.png;..\..\assets\ui\parchment-bg-*.png" LogicalName="%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\..\assets\ui\ui-*.png;..\..\assets\ui\silhouette-*.png;..\..\assets\ui\parchment-*.png" LogicalName="%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

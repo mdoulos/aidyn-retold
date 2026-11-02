@@ -285,14 +285,26 @@ public sealed class UiPainter
     private const string Seal = "ui-wax-seal.png";
 
     /// <summary>
-    /// The sheets of parchment, the user's art (Nov 2, 2026), a shape each: a wide one, a square, and two tall ones, which every paper
-    /// in the menus is laid from, the sheet nearest its shape (<see cref="SheetFor"/>). A third tall one the user drew, 1000 × 1200, is
-    /// the 1500 × 1800's shape at less resolution, and isn't carried.
+    /// The sheets of parchment, the user's art (Nov 2, 2026), each drawn for its use, its colour and border to match the menu's
+    /// parchment: a wide one, a small square, a large square and a tall one. Each paper in the menus is laid from the one its use
+    /// names, or else the one nearest its shape (<see cref="SheetFor"/>).
     /// </summary>
-    private static readonly string[] Sheets = ["parchment-bg-400x180.png", SquareSheet, "parchment-bg-1400x1800.png", "parchment-bg-1500x1800.png"];
+    private static readonly string[] Sheets = [WideSheet, SquareSheet, LargeSheet, TallSheet];
 
-    /// <summary>The square sheet, which frames the portraits and which a portrait is cut to the shape of (<see cref="UiImages.CutTo"/>).</summary>
-    public const string SquareSheet = "parchment-bg-500x500.png";
+    /// <summary>The wide sheet, 1800 × 800: the Party tab's header and the gold's, and the wide papers, the names on slips and the System list's rows.</summary>
+    public const string WideSheet = "parchment-1800x800.png";
+
+    /// <summary>
+    /// The small square sheet, 500 × 500: the Party tab's tabs, and the portraits' frames, which a portrait is cut to the shape of
+    /// (<see cref="UiImages.CutTo"/>).
+    /// </summary>
+    public const string SquareSheet = "parchment-500x500.png";
+
+    /// <summary>The large square sheet, 1800 × 1800: the silhouette's, under the equipment.</summary>
+    public const string LargeSheet = "parchment-1800x1800.png";
+
+    /// <summary>The tall sheet, 1800 × 2150: the Party tab's page, which the lists are on.</summary>
+    public const string TallSheet = "parchment-1800x2150.png";
 
     /// <summary>The sheet whose paper is nearest a rectangle's shape, by the ratio of their sides.</summary>
     public static string SheetFor(Vector2 size)

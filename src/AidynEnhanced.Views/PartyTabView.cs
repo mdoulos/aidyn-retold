@@ -582,7 +582,7 @@ public partial class PartyTabView : Control
         }
         // The barter, training and post-battle states: the header here, and the window's own parts on their layer (DrawWindow).
         _ui.Tab(_canvas, PauseTab.Party, PlainPatches, plain: !OriginalLook);
-        _ui.Slip(_canvas, HeaderSheet);
+        _ui.Slip(_canvas, HeaderSheet, sheet: UiPainter.WideSheet);
         Portraits(PortraitPiece.Position);
         Health();
     }
@@ -696,8 +696,8 @@ public partial class PartyTabView : Control
             return;
         }
         _ui.Tab(_canvas, PauseTab.Party, PlainPatches, plain: true);
-        _ui.Slip(_canvas, EquipmentSheet);
-        _ui.Slip(_canvas, HeaderSheet);
+        _ui.Slip(_canvas, EquipmentSheet, sheet: UiPainter.LargeSheet);
+        _ui.Slip(_canvas, HeaderSheet, sheet: UiPainter.WideSheet);
         Portraits(PortraitPiece.Position);
         Health();
         Silhouette(SilhouetteAt);
@@ -732,16 +732,16 @@ public partial class PartyTabView : Control
                 continue;
             var has = HasTab(PartyMenu.Tabs[i]);
             var tint = i == _hoveredTab ? HoveredTab : BehindTab;
-            _ui.Slip(_canvas, TabRect(i), tint with { A = (byte)(255 * (has ? 1 : MissingTab)) });
+            _ui.Slip(_canvas, TabRect(i), tint with { A = (byte)(255 * (has ? 1 : MissingTab)) }, UiPainter.SquareSheet);
             TabFace(i, has ? ClosedIcon : MissingIcon);
         }
-        _ui.Slip(_canvas, PageRect);
+        _ui.Slip(_canvas, PageRect, sheet: UiPainter.TallSheet);
         for (var i = 0; i < open.Length; i++)
         {
             if (open[i] <= 0)
                 continue;
             var rect = TabRect(i);
-            _ui.Slip(_canvas, rect, White with { A = (byte)(255 * open[i]) });
+            _ui.Slip(_canvas, rect, White with { A = (byte)(255 * open[i]) }, UiPainter.SquareSheet);
             JoinTab(rect, open[i]);
             TabFace(i, Mathf.Lerp(ClosedIcon, 1, open[i]));
         }
@@ -751,7 +751,7 @@ public partial class PartyTabView : Control
         var goldX = GoldRight - SmallWidth(gold);
         var middle = TabsAt.Y + GoldMiddle;
         var purseX = goldX - PurseSize - 1;
-        _ui.Slip(_canvas, GoldSheet);
+        _ui.Slip(_canvas, GoldSheet, sheet: UiPainter.WideSheet);
         Small(gold, goldX, middle - _ui.Slim.Middle, PartyMenu.TextColor);
         Art(Purse, new Rect2(purseX, middle - PurseSize / 2f, PurseSize, PurseSize));
     }
@@ -771,7 +771,7 @@ public partial class PartyTabView : Control
     /// </summary>
     private void JoinTab(Rect2 tab, float strength)
     {
-        var sheet = UiPainter.SheetFor(PageRect.Size);
+        var sheet = UiPainter.TallSheet;
         if (UiImages.Art(sheet) is not { } texture)
             return;
         var paper = UiImages.ArtImage(sheet).Paper;

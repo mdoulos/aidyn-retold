@@ -144,6 +144,25 @@ public class PartyMenuGridTests
         Assert.Null(menu.SelectedSlot);
     }
 
+    /// <summary>Taking an item off with no room in the inventory leaves it on and says so, where the original says nothing.</summary>
+    [Fact]
+    public void TakingAnItemOffWithNoRoomSaysSo()
+    {
+        var member = PotionData.Member("Alaron", 0, null);
+        var party = TradeData.PartyOf(ItemData.CatalogWith(TradeData.Rules(Things.Length), [Sword, .. Things]), null, [member]);
+        Assert.True(party.Inventory.Add(Sword.Id));
+        Assert.Equal(EquipRefusal.None, party.Equip(member, Sword.Id));
+        foreach (var thing in Things)
+            Assert.True(party.Inventory.Add(thing.Id));
+        var menu = new PartyMenu(party, new MenuText([]), _ => null, _ => null) { Grid = true };
+
+        menu.SelectSlot(EquipmentSlot.Weapon);
+        menu.Accept();
+
+        Assert.Equal(Sword.Id, member.Equipment.Weapon?.Id);
+        Assert.Equal(PartyMenu.NoRoom, menu.Message?.Text);
+    }
+
     /// <summary>
     /// The actiontip on a worn slot offers Unequip and Details; the stick moves its cursor, not the grid's, and choosing Unequip takes
     /// the item off as A would. B closes it, and with it up the member and the list stay.

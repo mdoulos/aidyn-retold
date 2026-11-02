@@ -249,9 +249,13 @@ public sealed partial class PartyMenu
         }
     }
 
-    // Taking off: the Archmage Staff stays with its wielder, and an item the inventory has no room for
-    // stays on without a word, as the original's does. False only for the staff, as the original's no room
-    // still ends with the header's crossfade.
+    /// <summary>
+    /// What taking an item off says when the inventory has no room for it, the port's, the user's choice (Nov 2, 2026): the original's
+    /// leaves it on without a word.
+    /// </summary>
+    public const string NoRoom = "No room in inventory.";
+
+    // Taking off: the Archmage Staff stays with its wielder, and an item the inventory has no room for stays on, saying so.
     private bool TakeOff(InventoryRow row, int slot)
     {
         if (Party.Slots.ElementAtOrDefault(slot) is not { } wearer)
@@ -261,7 +265,11 @@ public sealed partial class PartyMenu
             Say(Format(MenuText.PowerfulMagic, row.Item.Name, wearer.Name));
             return false;
         }
-        Party.Unequip(wearer, row.Instance);
+        if (!Party.Unequip(wearer, row.Instance))
+        {
+            Say(NoRoom);
+            return false;
+        }
         Refresh();
         return true;
     }

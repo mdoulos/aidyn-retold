@@ -516,14 +516,28 @@ public sealed class PluginSet
         return null;
     }
 
+    /// <summary>The file that first provided <paramref name="id"/>'s asset, from the first plugin that has one: the original a later plugin's replaces.</summary>
+    public string? FindOriginalAsset(RecordId id, string extension)
+    {
+        var relative = Path.Combine([id.Namespace, id.Type, .. id.Key.Split('/')]) + "." + extension;
+        foreach (var plugin in Plugins)
+        {
+            var path = Path.Combine(plugin.Directory, "assets", relative);
+            if (File.Exists(path))
+                return path;
+        }
+        return null;
+    }
+
     private readonly ConcurrentDictionary<RecordId, (int Width, int Height)> _imageSizes = new();
 
     /// <summary>
-    /// An image asset's width and height in pixels, from its PNG's header, read once; 0 × 0 if no plugin has it. The
-    /// core places sprites and centres the minimap's pieces by it.
+    /// An image's width and height as the game lays it out, from its PNG's header, read once; 0 × 0 if no plugin has it: the original's,
+    /// the first plugin's that has it, so a mod's larger replacement is drawn into the original's place, sharper rather than larger
+    /// (<c>UiImages</c>). The core places sprites and centres the minimap's pieces by it.
     /// </summary>
     public (int Width, int Height) ImageSize(RecordId image) =>
-        _imageSizes.GetOrAdd(image, id => FindAsset(id, "png") is { } png && AidynEnhanced.Plugins.Assets.PngHeader.Size(png) is { } size ? size : (0, 0));
+        _imageSizes.GetOrAdd(image, id => FindOriginalAsset(id, "png") is { } png && AidynEnhanced.Plugins.Assets.PngHeader.Size(png) is { } size ? size : (0, 0));
 
     private void AddRecords(Plugin plugin)
     {

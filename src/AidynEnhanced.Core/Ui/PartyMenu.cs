@@ -96,6 +96,7 @@ public sealed partial class PartyMenu : IPartyWindow
         if (_aim is null && List == PartyList.Inventory && Grid && !HasPopup && Slide is null
             && GridLayout.Step(Inventory.Cursor, Inventory.Rows.Count, InventoryGrid.Columns, direction, 0) is { } cell)
         {
+            SelectedSlot = null;
             Inventory.Point(cell);
             return;
         }
@@ -210,6 +211,7 @@ public sealed partial class PartyMenu : IPartyWindow
         if (order.Count < 2)
             return;
         var at = order.IndexOf(Member);
+        SelectedSlot = null;
         StartMemberChange();
         Member = order[((at + by) % order.Count + order.Count) % order.Count];
         Refresh();
@@ -228,6 +230,7 @@ public sealed partial class PartyMenu : IPartyWindow
         _aim = null;
         if (HasPopup || Slide is not null)
             return;
+        SelectedSlot = null;
         var lists = (among ?? Enum.GetValues<PartyList>()).ToList();
         var count = lists.Count;
         var at = Math.Max(0, lists.IndexOf(List));
@@ -246,6 +249,7 @@ public sealed partial class PartyMenu : IPartyWindow
     {
         if (Message is not null || DetailsPane.Showing)
             return;
+        SelectedSlot = null;
         if (Crafting is { } crafting)
         {
             if (crafting.Fade.IsOpen)
@@ -270,6 +274,7 @@ public sealed partial class PartyMenu : IPartyWindow
     {
         if (Message is not null || DetailsPane.Showing)
             return;
+        SelectedSlot = null;
         if (Crafting is { } crafting)
         {
             if (crafting.Fade.IsOpen)
@@ -297,6 +302,8 @@ public sealed partial class PartyMenu : IPartyWindow
                 ? MenuDetailsBuilder.Item(new ItemInstance(product), shown, _text, _spells, Party.Inventory.Catalog)
                 : null;
         }
+        if (SelectedSlot is { } selected && Worn(selected) is { } worn)
+            return MenuDetailsBuilder.Item(worn, shown, _text, _spells, Party.Inventory.Catalog);
         return List switch
         {
             PartyList.Inventory when Inventory.Current is { } row =>
@@ -324,6 +331,8 @@ public sealed partial class PartyMenu : IPartyWindow
             Spells.Replace(PartyMenuRows.Spells(shown), resetPastEnd: true);
             Experience = PartyMenuRows.Experience(shown, _text);
         }
+        if (SelectedSlot is { } slot && Worn(slot) is null)
+            SelectedSlot = null;
     }
 
     /// <summary>

@@ -18,18 +18,38 @@ public sealed class UiImages(PluginSet plugins)
 
     private readonly Dictionary<RecordId, Texture2D?> _textures = [];
 
-    /// <summary>A UI image, or null if no plugin has it.</summary>
+    /// <summary>
+    /// A UI image, or null if no plugin has it. A mod's replacement larger than the original, as a redrawn pack's at 8 times, is laid
+    /// out at the original's size (<see cref="PluginSet.ImageSize"/>) and drawn into it, mipmapped and filtered, so it's sharper rather
+    /// than larger; one at the original's size is drawn pixel for pixel as the original is.
+    /// </summary>
     public Texture2D? Get(RecordId image)
     {
         if (_textures.TryGetValue(image, out var texture))
             return texture;
         if (plugins.FindAsset(image, "png") is { } png)
-            texture = Png.Texture(png);
+        {
+            var (width, height) = plugins.ImageSize(image);
+            texture = Png.Load(png) is not { } data ? null
+                : width > 0 && (data.GetWidth() != width || data.GetHeight() != height) ? Sharper(data, new Vector2I(width, height))
+                : ImageTexture.CreateFromImage(data);
+        }
         else
         {
             GD.PushWarning($"No asset for {image}.");
         }
         return _textures[image] = texture;
+    }
+
+    /// <summary>A larger picture drawn at a smaller size: mipmapped and filtered, the texture saying it's that size.</summary>
+    private static Texture2D Sharper(Image data, Vector2I size)
+    {
+        data.Convert(Image.Format.Rgba8);
+        data.FixAlphaEdges();
+        data.GenerateMipmaps();
+        var texture = ImageTexture.CreateFromImage(data);
+        texture.SetSizeOverride(size);
+        return new CanvasTexture { DiffuseTexture = texture, TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps };
     }
 
     private readonly Dictionary<RecordId, Texture2D?> _plain = [];
@@ -154,7 +174,7 @@ public sealed class UiImages(PluginSet plugins)
     private static readonly Dictionary<string, Texture2D?> CarriedArt = [];
 
     /// <summary>
-    /// A piece of the game's own UI art, carried in this assembly by its name in <c>assets/ui</c> (<c>ui-tab-open.png</c>), loaded once.
+    /// A piece of the game's own UI art, carried in this assembly by its name in <c>assets/ui</c> (<c>ui-gold.png</c>), loaded once.
     /// It's drawn far smaller than it's painted, so it's mipmapped and filtered, as the parchment is. Null if it can't be read.
     /// </summary>
     public static Texture2D? Art(string name)

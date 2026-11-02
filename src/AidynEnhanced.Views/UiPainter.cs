@@ -273,15 +273,15 @@ public sealed class UiPainter
 
     private static readonly Rect2 SlipPaper = new(11, 12, 411, 407);
 
-    /// <summary>A loose slip of paper, the user's art, stretched so its paper covers a rectangle, with its soft shadow past it.</summary>
-    public void Slip(CanvasItem canvas, Rect2 paper)
+    /// <summary>A loose slip of paper, the user's art, stretched so its paper covers a rectangle, with its soft shadow past it, in a colour.</summary>
+    public void Slip(CanvasItem canvas, Rect2 paper, Rgba? color = null)
     {
         if (UiImages.Art(SlipArt) is not { } texture)
             return;
         var size = texture.GetSize();
         var scale = paper.Size / SlipPaper.Size;
         var at = paper.Position - SlipPaper.Position * scale;
-        canvas.DrawTextureRect(texture, new Rect2(at, size * scale), false, White);
+        canvas.DrawTextureRect(texture, new Rect2(at, size * scale), false, color is { } c ? Tint(c) : White);
     }
 
     /// <summary>

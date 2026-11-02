@@ -98,22 +98,29 @@ public class PartyMenuGridTests
     }
 
     /// <summary>
-    /// A click on a slot of the silhouette aims A at what's worn there, so it comes off as A on its row takes it off; the aim is spent on
-    /// the one press, and a slot with nothing in it does nothing.
+    /// A click on a slot of the silhouette selects what's worn there, and only A, or a double click, takes it off, as A on its row would;
+    /// a slot with nothing in it isn't selected, and moving the cursor lets the slot go, A then being the cursor's row's again.
     /// </summary>
     [Fact]
-    public void AClickOnTheSilhouettesSlotTakesOffWhatsWornThere()
+    public void ASelectedSlotsItemIsWhatATakesOff()
     {
         var (menu, member) = Menu(showWorn: false);
-        menu.Point(3);
-        menu.AimAtSlot(EquipmentSlot.Helmet);
-        menu.Accept();
-        Assert.Equal(Sword.Id, member.Equipment.Weapon?.Id);
+        menu.SelectSlot(EquipmentSlot.Helmet);
+        Assert.Null(menu.SelectedSlot);
 
-        menu.AimAtSlot(EquipmentSlot.Weapon);
+        menu.SelectSlot(EquipmentSlot.Weapon);
+        Assert.Equal(EquipmentSlot.Weapon, menu.SelectedSlot);
+        Assert.Equal(Sword.Id, member.Equipment.Weapon?.Id);
+        Assert.Equal(Sword.Name, menu.Details()?.Title);
         menu.Accept();
         Assert.Null(member.Equipment.Weapon);
+        Assert.Null(menu.SelectedSlot);
         Assert.Contains(menu.Inventory.Rows, r => r.Item.Id == Sword.Id && r.Wearer is null);
-        Assert.Equal(21, menu.Inventory.Rows.Count);
+
+        Assert.Equal(EquipRefusal.None, menu.Party.Equip(member, Sword.Id));
+        menu.Refresh();
+        menu.SelectSlot(EquipmentSlot.Weapon);
+        menu.MoveCursor(1);
+        Assert.Null(menu.SelectedSlot);
     }
 }

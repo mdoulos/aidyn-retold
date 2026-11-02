@@ -34,29 +34,34 @@ public partial class PartyTabView : Control
     private const int ShownSize = 40, OtherSize = 24;
 
     /// <summary>
-    /// The hit points bar under the portraits, the user's art (Nov 2, 2026): its frame, a cartouche 850 × 200 (ui-bar-frame.png),
-    /// drawn over this rectangle, its top line just under the large portrait; the brown track and the red fill (ui-bar-brown.png and
-    /// ui-bar-red.png) drawn over the same rectangle under it, at the same scale, the red cut to the share of hit points left across
-    /// the frame's opening. The hit points are on it.
+    /// The hit points bar beside the aspect's and school's icons and as tall as they are, the user's art and the user's choice (Nov 2,
+    /// 2026): its frame, a cartouche 850 × 200 (ui-bar-frame.png), over this rectangle, its ends keeping their shape and its middle
+    /// stretched between them (<see cref="ThreeSlice"/>); the brown track and the red fill (ui-bar-brown.png, ui-bar-red.png) under
+    /// it, sliced alike, the red cut to the share of hit points left across the frame's opening. The hit points are on it.
     /// </summary>
-    private static readonly Rect2 BarFrame = new(16, 63.5f, 104, 104 * 200 / 850f);
+    private static readonly Rect2 BarFrame = new(18, 66.5f, 103, 11);
 
-    /// <summary>The bar's art: its width, its opening's sides, top and bottom, and the fill's left end under the frame, in its pixels.</summary>
-    private const float BarArtWidth = 850, BarOpeningLeft = 93, BarOpeningRight = 753, BarOpeningTop = 63, BarOpeningBottom = 139;
+    /// <summary>The bar's art: its size, how wide each end kept whole is, and its opening's sides, top and bottom, in its pixels.</summary>
+    private const float BarArtWidth = 850, BarArtHeight = 200, BarEnd = 140, BarOpeningLeft = 93, BarOpeningRight = 753, BarOpeningTop = 63,
+        BarOpeningBottom = 139;
 
     private const string BarFrameArt = "ui-bar-frame.png", BarFillArt = "ui-bar-red.png", BarTrackArt = "ui-bar-brown.png";
 
     /// <summary>How finely the bar's share of hit points is taken, as a width it's measured across.</summary>
     private const int BarPrecision = 1000;
 
-    /// <summary>The bar frame's opening, where it's drawn, which the hit points are centred in.</summary>
+    /// <summary>How tall the hit points' capitals are on the bar.</summary>
+    private const float HitPointsText = 3;
+
+    /// <summary>The bar frame's opening, where it's drawn, which the hit points are centred in and the red fills.</summary>
     private static Rect2 BarOpening
     {
         get
         {
-            var scale = BarFrame.Size.X / BarArtWidth;
-            return new Rect2(BarFrame.Position.X + BarOpeningLeft * scale, BarFrame.Position.Y + BarOpeningTop * scale,
-                (BarOpeningRight - BarOpeningLeft) * scale, (BarOpeningBottom - BarOpeningTop) * scale);
+            var scale = BarFrame.Size.Y / BarArtHeight;
+            var left = BarFrame.Position.X + BarOpeningLeft * scale;
+            var right = BarFrame.End.X - (BarArtWidth - BarOpeningRight) * scale;
+            return new Rect2(left, BarFrame.Position.Y + BarOpeningTop * scale, right - left, (BarOpeningBottom - BarOpeningTop) * scale);
         }
     }
 
@@ -69,28 +74,42 @@ public partial class PartyTabView : Control
     private const int LevelRight = 149, GoldRight = 306;
 
     /// <summary>
-    /// The tabs over the list, the user's art (<c>assets/ui</c>): the first one's corner, the square each one's art is drawn in, and
-    /// the gap between them, four and the gold fitting the list's width. A banner hangs from its rod 2 under the square's top, a
-    /// closed one to 22 down it, on the list's frame's top line, and an open one to 24, over it.
+    /// The right column's pages, the user's design (Nov 2, 2026): loose leaves of the user's parchment (ui-rectangle-parchment.png), the
+    /// front one the list is on, over this rectangle, and two under it, a little askew, as a stack of paper on the scroll; and a paper
+    /// tab sticking up from the top of each section's page, the user's slip of paper (ui-square-parchment.png).
     /// </summary>
-    private static readonly Vector2I TabsAt = new(160, 16);
+    private static readonly Rect2 PageRect = new(151, 40, 162, 177);
 
-    private const int TabSize = 26, TabsGap = 1;
+    private const string PageArt = "ui-rectangle-parchment.png";
+
+    /// <summary>The page art's paper, inside its shadow and the clear round it, in its pixels.</summary>
+    private static readonly Rect2 PagePaper = new(16, 16, 430, 578);
+
+    /// <summary>The pages under the front one: how far each is moved from it and how far it's turned, in radians.</summary>
+    private static readonly (Vector2 By, float Turn)[] UnderPages = [(new(2.5f, 2), 0.012f), (new(-1.5f, 3.5f), -0.016f)];
+
+    /// <summary>
+    /// The tabs: the first one's corner, each one's paper, and how far apart they start, a pixel less than they're wide, so they
+    /// meet. Each tab's foot runs 6 down behind its page's top, the tab showing's joined to the front page by plain paper.
+    /// </summary>
+    private static readonly Vector2 TabsAt = new(158, 18);
+
+    private const float TabWidth = 28, TabHeight = 28, TabStep = 27;
 
     /// <summary>
     /// A tab's icon, centred across it, this far down it and this big, with its caption under it, at most this far in from either
-    /// side, inside the banner's stitching.
+    /// side.
     /// </summary>
-    private const int TabIconTop = 5, TabIconSize = 11, CaptionInset = 4;
+    private const int TabIconTop = 4, TabIconSize = 11, CaptionInset = 4;
 
     /// <summary>
-    /// How strongly a tab that isn't showing draws its icon and caption, and one the window hasn't got; how strongly one the window
-    /// hasn't got draws its banner; and how strongly the open banner shows over a closed one the mouse is on.
+    /// How strongly a tab that isn't showing draws its icon and caption, and one the window hasn't got; and how strongly one the window
+    /// hasn't got draws its paper.
     /// </summary>
-    private const float ClosedIcon = 0.7f, MissingIcon = 0.3f, MissingTab = 0.5f, HoverOpen = 0.4f;
+    private const float ClosedIcon = 0.7f, MissingIcon = 0.3f, MissingTab = 0.5f;
 
-    /// <summary>The tabs' art, closed and open, and each tab's icon, in <see cref="PartyMenu.Tabs"/>' order.</summary>
-    private const string TabClosed = "ui-tab-closed.png", TabOpen = "ui-tab-open.png";
+    /// <summary>The colour the tabs behind the front page are drawn in, a shade darker, and one the mouse is on, lighter.</summary>
+    private static readonly Rgba BehindTab = new(220, 206, 186, 255), HoveredTab = new(242, 236, 226, 255);
 
     private static readonly string[] TabIcons = ["ui-inventory.png", "ui-stats.png", "ui-skills.png", "ui-spells.png"];
 
@@ -99,19 +118,8 @@ public partial class PartyTabView : Control
 
     private const int PurseSize = 14;
 
-    /// <summary>How far down the tabs the gold's middle is, level with the banners' middles.</summary>
+    /// <summary>How far down the tabs the gold's middle is, level with the tabs' middles.</summary>
     private const float GoldMiddle = 12;
-
-    /// <summary>
-    /// The frame round the list, the user's knotwork-cornered square (ui-square-cornered.png, 512 square) nine-sliced as a frame for
-    /// any box: over this rectangle, under the tabs, which hang on its top line, the open one over it; its corners 104 of its pixels
-    /// square, drawn 6 square.
-    /// </summary>
-    private static readonly Rect2 ListFrame = new(155, 37, 156, 179);
-
-    private const string FrameArt = "ui-square-cornered.png";
-
-    private const float FrameCorner = 104, FrameCornerDrawn = 6;
 
     /// <summary>
     /// The box each of the silhouette's slots sits in, over the figure, the user's art (ui-square-solid.png), a pixel round the
@@ -211,6 +219,8 @@ public partial class PartyTabView : Control
     private int? _hoveredTab;
     /// <summary>The silhouette's slot the mouse is on, or null.</summary>
     private EquipmentSlot? _hoveredSlot;
+    /// <summary>The inventory's row whose grid cell the mouse is on, or null.</summary>
+    private int? _hoveredCell;
     /// <summary>Where the inventory's grid was last drawn, which the mouse is tested against, as <see cref="_listLayout"/> is for a list.</summary>
     private GridLayout _gridLayout = PartyMenu.InventoryGrid;
     /// <summary>Where the tab's list was last drawn, which the mouse is tested against: a list sliding in is drawn off its place.</summary>
@@ -326,14 +336,15 @@ public partial class PartyTabView : Control
         {
             _hoveredTab = TabAt(mouse.Position) is { } tab && HasTab(PartyMenu.Tabs[tab]) ? tab : null;
             _hoveredSlot = SlotAt(mouse.Position);
+            _hoveredCell = null;
         }
-        // A click on a slot of the silhouette with something worn in it aims A at that and presses it, so it comes off as A on its row
-        // takes it off: with what's worn not in the inventory, the silhouette is where the mouse reaches it.
-        if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } && _hoveredSlot is { } slot)
+        // A click on a slot of the silhouette with something worn in it selects it, and a double click uses it as A does, taking it off:
+        // with what's worn not in the inventory, the silhouette is where the mouse reaches it.
+        if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } slotClick && _hoveredSlot is { } slot)
         {
-            Menu.AimAtSlot(slot);
-            UiScreen.Of(this)?.Click(MenuAction.Accept);
-            Menu.AimAtSlot(null);
+            Menu.SelectSlot(slot);
+            if (slotClick.DoubleClick)
+                UiScreen.Of(this)?.Click(MenuAction.Accept);
             AcceptEvent();
             return;
         }
@@ -351,19 +362,21 @@ public partial class PartyTabView : Control
             AcceptEvent();
             return;
         }
-        // A click on a row chooses it, as A does; anywhere else it chooses nothing.
+        // A click on a row or a cell selects it, the user's choice (Nov 2, 2026), and a double click uses it, as A does; anywhere else
+        // it does nothing.
         if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } click)
         {
-            if (Hover(click.Position))
+            if (Hover(click.Position, select: true))
             {
                 QueueRedraw();
-                UiScreen.Of(this)?.Click(MenuAction.Accept);
+                if (click.DoubleClick)
+                    UiScreen.Of(this)?.Click(MenuAction.Accept);
             }
             AcceptEvent();
             return;
         }
-        // Hovering a row puts the cursor on it, and the wheel moves it.
-        if (@event is InputEventMouseMotion motion && Hover(motion.Position))
+        // Hovering a list's row puts the cursor on it, and a grid's cell shows its name; the wheel moves the cursor.
+        if (@event is InputEventMouseMotion motion && Hover(motion.Position, select: false))
         {
         }
         else if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.WheelUp or MouseButton.WheelDown } wheel)
@@ -376,10 +389,11 @@ public partial class PartyTabView : Control
 
     /// <summary>
     /// Puts the window's cursor on the row under a point, as hovering does: the pile's or the party's list in the barter
-    /// state, the trainer's in training, and the tab's list or its crafting popup's. True if there was a row, and no popup
+    /// state, the trainer's in training, and the tab's list or its crafting popup's; on the inventory's grid the cell under it is
+    /// only hovered, its name shown, unless <paramref name="select"/>, as a click selects it. True if there was a row, and no popup
     /// took the presses.
     /// </summary>
-    private bool Hover(Vector2 point)
+    private bool Hover(Vector2 point, bool select)
     {
         var at = point - (Vector2)_origin;
         // What's drawn over the silhouette is drawn lower in the tabbed layout.
@@ -400,9 +414,9 @@ public partial class PartyTabView : Control
                 training.Point(trainer);
                 return true;
             case PartyMenu { Message: null } menu:
-                return PointTabRow(menu, at);
+                return PointTabRow(menu, at, select);
             case PostBattleMenu { HasPopup: false } postBattle:
-                return PointTabRow(postBattle.Party, at);
+                return PointTabRow(postBattle.Party, at, select);
             default:
                 return false;
         }
@@ -417,14 +431,14 @@ public partial class PartyTabView : Control
         for (var i = 0; i < PartyMenu.Tabs.Count; i++)
         {
             var rect = TabRect(i);
-            if (at.X >= rect.Position.X + 1 && at.X < rect.End.X - 1 && at.Y >= rect.Position.Y + 2 && at.Y < rect.End.Y - 3)
+            if (at.X >= rect.Position.X + 0.5f && at.X < rect.End.X - 0.5f && at.Y >= rect.Position.Y + 1 && at.Y < PageRect.Position.Y)
                 return i;
         }
         return null;
     }
 
-    /// <summary>Where a tab's art is drawn in the frame.</summary>
-    private static Rect2 TabRect(int tab) => new(TabsAt.X + tab * (TabSize + TabsGap), TabsAt.Y, TabSize, TabSize);
+    /// <summary>Where a tab's paper is in the frame.</summary>
+    private static Rect2 TabRect(int tab) => new(TabsAt.X + tab * TabStep, TabsAt.Y, TabWidth, TabHeight);
 
     /// <summary>The silhouette's slot under a point on the view that the member shown wears something in, on the tab itself, or null.</summary>
     private EquipmentSlot? SlotAt(Vector2 point)
@@ -445,8 +459,13 @@ public partial class PartyTabView : Control
         new(SilhouetteAt.X + Slots[(int)slot].X, SilhouetteAt.Y + Slots[(int)slot].Y, SlotSize, SlotSize);
 
     /// <summary>Puts the cursor on the tab's list row under a point in the frame, or the crafting popup's while it's open. True if there was a row.</summary>
-    private bool PointTabRow(PartyMenu menu, Vector2 at)
+    private bool PointTabRow(PartyMenu menu, Vector2 at, bool select)
     {
+        if (menu.Crafting is null && menu.List == PartyList.Inventory && menu.Grid && !select)
+        {
+            _hoveredCell = _gridLayout.RowAt(menu.Inventory, at.X, at.Y);
+            return _hoveredCell is not null;
+        }
         var row = menu.Crafting is { } crafting
             ? crafting.Layout.RowAt(crafting.Rows, at.X, at.Y - Drop)
             : menu.List switch
@@ -601,33 +620,45 @@ public partial class PartyTabView : Control
     }
 
     /// <summary>
-    /// The list's frame, and over it the tabs, banners on rods, the user's art: the inventory's satchel (a shop's Sell), the stats' arm
-    /// and brain, the skills' sword, mortar and flask, and the spells' book and fireball, each with a small caption under it. The tab
-    /// showing is the open banner, lighter and hanging over the frame's top line, and the others closed on it, their icons faded, and
-    /// those the window hasn't fainter still. As the lists slide, the banner left closes as the new one opens, by the slide's eased
-    /// share; the mouse on a closed one opens it a little. Beside them, at the list's right edge, the party's gold after a purse.
+    /// The right column's pages and their tabs, the user's design (Nov 2, 2026): loose leaves of parchment, the front one the list is on
+    /// and two under it a little askew, and a paper tab sticking up from each section's page, a stack of loose paper on the scroll with
+    /// a tab to each section. The tabs behind are drawn a shade darker, their feet under the pages, with their icons faded, and those the
+    /// window hasn't fainter still; the tab showing is in front, joined to the front page by plain paper over where the two meet. As the
+    /// lists slide, the tab left goes behind as the new one comes in front, by the slide's eased share; the mouse on a tab behind lightens
+    /// it. Each tab has its icon, the inventory's satchel (a shop's Sell), the stats' arm and brain, the skills' sword with a mortar and
+    /// flask, and the spells' book with a fireball, with a small caption under it. Beside them, at the list's right edge, the party's gold
+    /// after a purse.
     /// </summary>
     private void Tabs()
     {
-        if (UiImages.Art(FrameArt) is { } frame)
-            _ui.NineSlice(_canvas, frame, ListFrame, FrameCorner, FrameCornerDrawn);
         var shown = PartyMenu.TabOf(Menu.List);
         var from = Menu.Slide is { } slide ? PartyMenu.TabOf(slide.From) : shown;
         var change = Menu.ListChange;
-        for (var i = 0; i < PartyMenu.Tabs.Count; i++)
+        // How far each is the tab showing: 1 for it, 0 for the others, and between for the two the lists are sliding between.
+        var open = new float[PartyMenu.Tabs.Count];
+        for (var i = 0; i < open.Length; i++)
+            open[i] = i == shown ? (i == from ? 1 : change) : i == from ? 1 - change : 0;
+
+        for (var i = 0; i < open.Length; i++)
         {
-            var rect = TabRect(i);
+            if (open[i] >= 1)
+                continue;
             var has = HasTab(PartyMenu.Tabs[i]);
-            // How far it's the tab showing: 1 for it, 0 for the others, and between for the two the lists are sliding between.
-            var open = i == shown ? (i == from ? 1 : change) : i == from ? 1 - change : 0;
-            // The open banner hangs lower than the closed one, whose foot would show under it, so the closed one fades as it opens.
-            if (open < 1)
-                Art(TabClosed, rect, (has ? 1 : MissingTab) * (1 - open));
-            if (Math.Max(open, i == _hoveredTab ? HoverOpen : 0) is var lift and > 0)
-                Art(TabOpen, rect, lift);
-            var strength = has ? Mathf.Lerp(ClosedIcon, 1, open) : MissingIcon;
-            Art(TabIcons[i], new Rect2(rect.Position.X + (TabSize - TabIconSize) / 2f, rect.Position.Y + TabIconTop, TabIconSize, TabIconSize), strength);
-            Caption(TabLabel(PartyMenu.Tabs[i]), rect, PartyMenu.TextColor with { A = (byte)(255 * strength) });
+            var tint = i == _hoveredTab ? HoveredTab : BehindTab;
+            _ui.Slip(_canvas, TabRect(i), tint with { A = (byte)(255 * (has ? 1 : MissingTab)) });
+            TabFace(i, has ? ClosedIcon : MissingIcon);
+        }
+        foreach (var (by, turn) in UnderPages)
+            Page(new Rect2(PageRect.Position + by, PageRect.Size), turn, White);
+        Page(PageRect, 0, White);
+        for (var i = 0; i < open.Length; i++)
+        {
+            if (open[i] <= 0)
+                continue;
+            var rect = TabRect(i);
+            _ui.Slip(_canvas, rect, White with { A = (byte)(255 * open[i]) });
+            JoinTab(rect, open[i]);
+            TabFace(i, Mathf.Lerp(ClosedIcon, 1, open[i]));
         }
 
         // The gold, after a purse.
@@ -638,6 +669,63 @@ public partial class PartyTabView : Control
         Art(Purse, new Rect2(goldX - PurseSize - 1, middle - PurseSize / 2f, PurseSize, PurseSize));
     }
 
+    /// <summary>A tab's icon and caption, at a strength.</summary>
+    private void TabFace(int tab, float strength)
+    {
+        var rect = TabRect(tab);
+        Art(TabIcons[tab], new Rect2(rect.Position.X + (TabWidth - TabIconSize) / 2f, rect.Position.Y + TabIconTop, TabIconSize, TabIconSize), strength);
+        Caption(TabLabel(PartyMenu.Tabs[tab]), rect, PartyMenu.TextColor with { A = (byte)(255 * strength) });
+    }
+
+    /// <summary>
+    /// A page of the stack: the user's parchment stretched so its paper covers a rectangle, turned about its middle, in a colour.
+    /// </summary>
+    private void Page(Rect2 paper, float turn, Rgba color)
+    {
+        if (UiImages.Art(PageArt) is not { } texture)
+            return;
+        var scale = paper.Size / PagePaper.Size;
+        var middle = paper.GetCenter();
+        _canvas.DrawSetTransform(_base + middle, turn);
+        _canvas.DrawTextureRect(texture, new Rect2(paper.Position - PagePaper.Position * scale - middle, texture.GetSize() * scale), false, _ui.Tint(color));
+        _canvas.DrawSetTransform(_base);
+    }
+
+    /// <summary>
+    /// The tab showing joined to the front page: paper from just inside the page's art's top, at the page's scale, over where the tab's
+    /// foot and the page's torn top meet, across the tab but for its sides, its edges faded over <see cref="JoinFeather"/> so it runs
+    /// into the papers round it, at a strength.
+    /// </summary>
+    private void JoinTab(Rect2 tab, float strength)
+    {
+        if (UiImages.Art(PageArt) is not { } texture)
+            return;
+        var scale = PageRect.Size / PagePaper.Size;
+        var patch = new Rect2(tab.Position.X + 2, PageRect.Position.Y - 4, tab.Size.X - 4, 13);
+        // From the page's paper below its torn top, so it's the page's own grain and tone there.
+        var source = new Rect2(PagePaper.Position.X + (patch.Position.X - PageRect.Position.X) / scale.X, PagePaper.Position.Y + 22,
+            patch.Size / scale);
+        var size = texture.GetSize();
+        float[] xs = [patch.Position.X, patch.Position.X + JoinFeather, patch.End.X - JoinFeather, patch.End.X];
+        float[] ys = [patch.Position.Y, patch.Position.Y + JoinFeather, patch.End.Y - JoinFeather, patch.End.Y];
+        Vector2 Uv(float x, float y) => (source.Position + new Vector2(x - patch.Position.X, y - patch.Position.Y) / scale) / size;
+        var solid = _ui.Tint(White with { A = (byte)(255 * strength) });
+        Color Edge(int i, int j) => i is 0 or 3 || j is 0 or 3 ? solid with { A = 0 } : solid;
+        for (var i = 0; i < 3; i++)
+        {
+            for (var j = 0; j < 3; j++)
+            {
+                _canvas.DrawPolygon(
+                    [new(xs[i], ys[j]), new(xs[i + 1], ys[j]), new(xs[i + 1], ys[j + 1]), new(xs[i], ys[j + 1])],
+                    [Edge(i, j), Edge(i + 1, j), Edge(i + 1, j + 1), Edge(i, j + 1)],
+                    [Uv(xs[i], ys[j]), Uv(xs[i + 1], ys[j]), Uv(xs[i + 1], ys[j + 1]), Uv(xs[i], ys[j + 1])], texture);
+            }
+        }
+    }
+
+    /// <summary>How far the join between the tab showing and its page fades out at its edges.</summary>
+    private const float JoinFeather = 2.5f;
+
     /// <summary>
     /// A tab's caption, the slim font at <see cref="UiPainter.CaptionText"/>, its capitals' top 0.5 under its icon, centred, and
     /// squeezed across to stay <see cref="CaptionInset"/> in from the tab's sides.
@@ -646,9 +734,9 @@ public partial class PartyTabView : Control
     {
         var font = _ui.Slim.Sized(UiPainter.CaptionText);
         var width = font.ExactWidth(text);
-        var squeeze = Math.Min(1, (TabSize - 2 * CaptionInset) / width);
+        var squeeze = Math.Min(1, (TabWidth - 2 * CaptionInset) / width);
         var middle = tab.Position.Y + TabIconTop + TabIconSize + 0.5f + font.Capitals / 2;
-        var at = new Vector2(tab.Position.X + (TabSize - width * squeeze) / 2, middle - font.Middle);
+        var at = new Vector2(tab.Position.X + (TabWidth - width * squeeze) / 2, middle - font.Middle);
         _canvas.DrawSetTransform(_base + at, 0, new Vector2(squeeze, 1));
         _ui.Text(_canvas, font, text, 0, 0, color);
         _canvas.DrawSetTransform(_base);
@@ -844,20 +932,34 @@ public partial class PartyTabView : Control
         var share = Menu.HealthBar(BarPrecision);
         if (Menu.PreviousNumbers is { } before)
             share = MenuTween.Value(before.Bar(BarPrecision), share, change);
-        Art(BarTrackArt, BarFrame);
+        ThreeSlice(BarTrackArt, BarFrame);
         // The red from its left end under the frame to the share across the opening, its ragged end cut off straight.
-        if (share > 0 && UiImages.Art(BarFillArt) is { } fill)
-        {
-            var cut = BarOpeningLeft + (BarOpeningRight - BarOpeningLeft) * share / BarPrecision;
-            var scale = BarFrame.Size.X / BarArtWidth;
-            var texels = fill.GetWidth() / BarArtWidth;
-            _canvas.DrawTextureRectRegion(fill, new Rect2(BarFrame.Position, cut * scale, BarFrame.Size.Y),
-                new Rect2(0, 0, cut * texels, fill.GetHeight()), _ui.Tint(White));
-        }
-        Art(BarFrameArt, BarFrame);
+        if (share > 0)
+            ThreeSlice(BarFillArt, BarFrame, BarOpening.Position.X + BarOpening.Size.X * share / BarPrecision);
+        ThreeSlice(BarFrameArt, BarFrame);
         if (Menu.PreviousNumbers is { } was)
             Numbers(was, FadingOut(White, change).A);
         Numbers(HeaderNumbers.Of(shown), FadingIn(White, change).A);
+    }
+
+    /// <summary>
+    /// A piece of the bar's art over a rectangle in three slices: its ends, <see cref="BarEnd"/> of its pixels wide, kept their shape
+    /// at the rectangle's height, and its middle stretched between them; cut off at <paramref name="right"/>, as the red is.
+    /// </summary>
+    private void ThreeSlice(string name, Rect2 rect, float right = float.MaxValue)
+    {
+        if (UiImages.Art(name) is not { } texture)
+            return;
+        var texels = texture.GetWidth() / BarArtWidth;
+        var end = BarEnd * rect.Size.Y / BarArtHeight;
+        float[] dx = [rect.Position.X, rect.Position.X + end, rect.End.X - end, rect.End.X];
+        float[] sx = [0, BarEnd, BarArtWidth - BarEnd, BarArtWidth];
+        for (var i = 0; i < 3 && dx[i] < right; i++)
+        {
+            var share = Math.Min(1, (right - dx[i]) / (dx[i + 1] - dx[i]));
+            _canvas.DrawTextureRectRegion(texture, new Rect2(dx[i], rect.Position.Y, (dx[i + 1] - dx[i]) * share, rect.Size.Y),
+                new Rect2(sx[i] * texels, 0, (sx[i + 1] - sx[i]) * texels * share, texture.GetHeight()), _ui.Tint(White));
+        }
     }
 
     /// <summary>The hit points and their maximum centred on the bar, and the level by the name, at an alpha.</summary>
@@ -866,8 +968,9 @@ public partial class PartyTabView : Control
         var bar = BarOpening;
         var hp = $"{Num(numbers.Hp)} / {Num(numbers.MaxHp)}";
         var slim = _ui.Slim;
-        Small(hp, bar.Position.X + (bar.Size.X - SmallWidth(hp)) / 2, bar.Position.Y + bar.Size.Y / 2f - slim.Middle, BarText with { A = a },
-            BarShadow with { A = (byte)(BarShadow.A * a / 255) });
+        var small = slim.Sized(HitPointsText);
+        Small(hp, bar.Position.X + (bar.Size.X - small.ExactWidth(hp)) / 2, bar.Position.Y + bar.Size.Y / 2f - small.Middle, BarText with { A = a },
+            BarShadow with { A = (byte)(BarShadow.A * a / 255) }, small);
         var level = $"{LevelLabel} {Num(numbers.Level)}";
         // Level with the name's foot.
         var nameFoot = PortraitPiece.Position.Y + NameAt.Y + NameFont.Middle + NameFont.Capitals / 2;
@@ -909,6 +1012,8 @@ public partial class PartyTabView : Control
             {
                 _ui.Image(_canvas, Menu.SlotImage(slot), x, y, size);
             }
+            if (OwnTab && slot == Menu.SelectedSlot)
+                Art(Selected, new Rect2(x - 2, y - 2, SlotSize + 4, SlotSize + 4));
         }
     }
 
@@ -975,7 +1080,7 @@ public partial class PartyTabView : Control
                 Small(text, x + grid.Cell - CellInset - count.ExactWidth(text), foot - count.Capitals / 2 - count.Middle, BarText,
                     BarShadow, count);
             }
-            if (i == list.Cursor)
+            if (i == list.Cursor && Menu.SelectedSlot is null)
                 Art(Selected, new Rect2(x - 1, y - 1, grid.Cell + 2, grid.Cell + 2));
         }
         ScrollBar(grid, list);
@@ -998,36 +1103,43 @@ public partial class PartyTabView : Control
     }
 
     /// <summary>
-    /// The name of what's under the cursor on a slip over it: the inventory grid's cursor's item, its cursor moved by the stick or the
-    /// mouse, and the item worn in a slot of the silhouette the mouse is on. Only on the tab itself, its lists still and no popup up.
+    /// The name of what the mouse is on, else of what's selected, on a slip over it: an item worn in a slot of the silhouette, or one in
+    /// the inventory grid's cells, the selected one the cursor's, moved by the stick or a click. Only on the tab itself, its lists
+    /// still and no popup up.
     /// </summary>
     private void Tooltip()
     {
         if (!OwnTab || Menu.Slide is not null || Window.HasPopup || Menu.Crafting is not null)
             return;
-        if (_hoveredSlot is { } slot && Menu.Worn(slot) is { } worn)
+        var grid = Menu.List == PartyList.Inventory && Menu.Grid;
+        if ((_hoveredSlot ?? Menu.SelectedSlot) is { } slot && Menu.Worn(slot) is { } worn)
         {
             var rect = SlotRect(slot);
             NameSlip(worn.Item.Name, rect.Position.X + rect.Size.X / 2, rect.Position.Y - 1);
         }
-        else if (Menu.List == PartyList.Inventory && Menu.Grid && Menu.Inventory.Current is { } row)
+        else if (grid && (_hoveredCell ?? Menu.Inventory.Cursor) is var cell && Menu.Inventory.Rows.ElementAtOrDefault(cell) is { } row
+            && cell >= Menu.Inventory.First && cell < Menu.Inventory.First + _gridLayout.Visible)
         {
-            var (x, y) = _gridLayout.CellAt(Menu.Inventory.Cursor - Menu.Inventory.First);
-            NameSlip(row.Item.Name, x + _gridLayout.Cell / 2f, y - 1);
+            var (x, y) = _gridLayout.CellAt(cell - Menu.Inventory.First);
+            NameSlip(row.Item.Name, x + _gridLayout.Cell / 2f, y - 1, y + _gridLayout.Cell + 1);
         }
     }
 
     /// <summary>How far a name's slip reaches past its text at the sides and above and below it.</summary>
     private const float SlipSide = 6, SlipEnds = 4;
 
-    /// <summary>A name on a little slip of paper, centred across <paramref name="middle"/>, its foot at <paramref name="foot"/>, kept inside the frame.</summary>
-    private void NameSlip(string name, float middle, float foot)
+    /// <summary>
+    /// A name on a little slip of paper, centred across <paramref name="middle"/>, its foot at <paramref name="foot"/>, kept inside the
+    /// frame; or with its top at <paramref name="below"/> where over would reach the tabs above the pages.
+    /// </summary>
+    private void NameSlip(string name, float middle, float foot, float? below = null)
     {
         var font = _ui.Slim;
         var width = font.ExactWidth(name);
         var height = font.Capitals + 2 * SlipEnds;
         var left = Math.Clamp(middle - width / 2 - SlipSide, 4, FrameWidth - 4 - width - 2 * SlipSide);
-        var paper = new Rect2(left, foot - height, width + 2 * SlipSide, height);
+        var top = below is { } under && foot - height < PageRect.Position.Y ? under : foot - height;
+        var paper = new Rect2(left, top, width + 2 * SlipSide, height);
         _ui.Slip(_canvas, paper);
         Small(name, left + SlipSide, paper.Position.Y + height / 2 - font.Middle, UiPainter.Ink);
     }

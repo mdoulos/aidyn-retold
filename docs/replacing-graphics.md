@@ -102,7 +102,7 @@ If a mod is broken, for example its ID has a hyphen or its folder is misnamed, t
 
 UI images and sprites are plain PNG files, and any PNG an image editor saves will load.
 
-- **Keep the original's size in pixels.** The game lays out its menus and HUD by each image's size, so an image twice as wide is drawn twice as wide, not sharper. A repaint at the same size works perfectly. Higher-resolution UI needs a change to the game, described [below](#whats-planned).
+- **Keep the original's shape; any size works.** The game lays out its menus and HUD by the original's size, so a replacement larger than the original, such as a repaint at 8 times, is drawn into the original's place, sharper rather than larger, smoothed and with mipmaps for a smaller screen. A repaint at the same size is drawn pixel for pixel, as the original is. A different shape is squeezed into the original's.
 - **The pause menu's parchment is the exception: any size.** See [below](#the-pause-menus-parchment).
 - **The sky's gradients are data, not pictures.** Each is 12 columns by 37 rows. A column is one time of day, every two hours from midnight, and the game blends between neighbouring columns. The top 32 rows are the sky from the top of the screen down. The last 5 set the tint on the scenery and the colours of the fog, clouds and sun, so repainting them recolours the whole area, not just the sky. A replacement must be exactly 12 by 37, or the game ignores it.
 - **Transparency comes from the alpha channel.** Keep the transparent areas transparent, or a portrait or icon gets a box around it.
@@ -208,9 +208,8 @@ On Linux or macOS, change `folder` to your plugins folder.
 
 ## What's planned
 
-Replacing assets is part of the mod tools in the [roadmap](roadmap.md)'s Phase 5, and two changes to the game would finish it for graphics:
+Replacing assets is part of the mod tools in the [roadmap](roadmap.md)'s Phase 5, and one change to the game would finish it for graphics:
 
 1. **Textures on models from a mod's PNG.** When the game builds a model's materials, it would look for a mod's `texture` file with that texture's number and use it instead of the copy inside the model. Every material already records its texture's number, so this is a small change. A texture pack would then be a folder of PNGs at any resolution, with no models to touch.
-2. **Higher-resolution UI images.** The game would lay out each image at the original's size and draw a larger replacement scaled into it, so a sharper menu stays the same size on screen.
 
 The editor will eventually make and preview mods for you. For now, mods are made by hand as this guide describes, except the world: a chunk's scenery, collision and objects go out to Blender and back in with two commands ([editing the world](editing-the-world.md)).

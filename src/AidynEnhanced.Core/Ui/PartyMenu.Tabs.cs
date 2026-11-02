@@ -61,7 +61,7 @@ public sealed partial class PartyMenu
     /// <summary>
     /// Whether the inventory shows what the party wears, with the wearer's portrait, as the original's list does: the user's setting
     /// (<see cref="Settings.WornInInventory"/>), on by default with a controller, so worn items are in the stick's reach, and off with
-    /// the keyboard and mouse, which take them off from the silhouette (<see cref="AimAtSlot"/>). The pause menu sets it.
+    /// the keyboard and mouse, which reach them on the silhouette (<see cref="SelectSlot"/>). The pause menu sets it.
     /// </summary>
     public bool ShowWorn
     {
@@ -75,12 +75,17 @@ public sealed partial class PartyMenu
         }
     } = true;
 
-    /// <summary>The silhouette's slot a click aimed the next A at, or null for the cursor's row.</summary>
-    private EquipmentSlot? _slotAim;
-
     /// <summary>
-    /// Aims the next A at what the member shown wears in a slot of the silhouette, as a click on the slot does before it presses A,
-    /// so A takes it off as it would the worn item's row; or null to aim A at the cursor's row again.
+    /// The silhouette's slot selected in place of the cursor's row, as a click on it selects it, the user's choice (Nov 2, 2026): A and
+    /// C-down are then the worn item's there, as they'd be its row's, and moving the cursor, the tab or the member lets it go. Null while
+    /// the cursor's row is the selection.
     /// </summary>
-    public void AimAtSlot(EquipmentSlot? slot) => _slotAim = slot;
+    public EquipmentSlot? SelectedSlot { get; private set; }
+
+    /// <summary>Selects a slot of the silhouette with something worn in it, as a click on it does; one with nothing in it, nothing.</summary>
+    public void SelectSlot(EquipmentSlot slot)
+    {
+        if (Message is null && !DetailsPane.Showing && Crafting is null && Worn(slot) is not null)
+            SelectedSlot = slot;
+    }
 }

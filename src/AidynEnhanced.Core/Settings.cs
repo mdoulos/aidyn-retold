@@ -183,7 +183,7 @@ public sealed class Settings
 
     /// <summary>
     /// Whether the Party tab's inventory shows what the party wears, with the wearer's portrait (<see cref="Ui.PartyMenu.ShowWorn"/>), the
-    /// Show Equipped in Inventory row, or
+    /// Equipped Inventory row, which the original look's list overrides, always showing it, or
     /// null to go by the device the player is using, the user's choice (Nov 2, 2026): shown with a controller, which reaches worn items
     /// only from the inventory, and hidden with the keyboard and mouse, which take them off from the silhouette.
     /// </summary>

@@ -42,9 +42,14 @@ public enum OptionLink
 /// <param name="Shown">For a binding, what it shows as its value.</param>
 /// <param name="Control">For a control's row, its ID (<see cref="Controls.GameControl.Id"/>).</param>
 /// <param name="Heading">A heading drawn above it, on a line of its own: the situation its controls are in.</param>
+/// <param name="Disabled">Whether it's greyed and can't be changed, as another setting has it go by that one's.</param>
 public sealed record OptionRow(string Label, OptionKind Kind, Func<int> Get, Action<int> Set, IReadOnlyList<string> Values,
-    OptionLink? Link = null, bool GapBefore = false, Func<string>? Shown = null, string? Control = null, string? Heading = null)
+    OptionLink? Link = null, bool GapBefore = false, Func<string>? Shown = null, string? Control = null, string? Heading = null,
+    Func<bool>? Disabled = null)
 {
+    /// <summary>Whether it's greyed and can't be changed now (<see cref="Disabled"/>).</summary>
+    public bool IsDisabled => Disabled?.Invoke() == true;
+
     /// <summary>How many steps the value has: a volume's from silent to full, or a choice's values.</summary>
     public int Steps => Kind == OptionKind.Volume ? Settings.MaxVolume + 1 : Values.Count;
 
@@ -194,7 +199,7 @@ public sealed partial class OptionsMenu
     /// </summary>
     public void Change(int by)
     {
-        if (Prompt is not null || Rows.Current is not { } row || row.Kind is OptionKind.Link or OptionKind.Binding or OptionKind.Command)
+        if (Prompt is not null || Rows.Current is not { } row || row.IsDisabled || row.Kind is OptionKind.Link or OptionKind.Binding or OptionKind.Command)
             return;
         var value = row.Kind == OptionKind.Volume
             ? Math.Clamp(row.Value + by, 0, Settings.MaxVolume)
@@ -412,8 +417,10 @@ public sealed partial class OptionsMenu
         [
             Choice("Menu Size", ["Original", "Smaller", "Smallest"], () => Array.IndexOf(UiLines, s.UiLines) is var i and >= 0 ? i : 0,
                 v => s.UiLines = UiLines[v]),
-            // Until it's changed it goes by the device in use, and shows what that gives.
-            Choice("Show Equipped in Inventory", ["Off", "On"], () => s.WornInInventory ?? _controller() ? 1 : 0, v => s.WornInInventory = v == 1),
+            // Until it's changed it goes by the device in use, and shows what that gives. The original look's list always shows what's
+            // worn, so there it's greyed, showing Show.
+            Choice("Equipped Inventory", ["Show", "Hide"], () => s.OriginalLook || (s.WornInInventory ?? _controller()) ? 0 : 1,
+                v => s.WornInInventory = v == 0, disabled: () => s.OriginalLook),
             Choice("Text Speed", ["Original", "Slow", "Normal", "Fast"], () => (int)s.TextSpeed, v => s.TextSpeed = (TextSpeed)v),
             Choice("Status Auras", ["Original", "More Often"], () => s.SpellAuras == Combat.AuraTurns.EachCharacter ? 1 : 0,
                 v => s.SpellAuras = v == 1 ? Combat.AuraTurns.EachCharacter : Combat.AuraTurns.Battle),
@@ -421,8 +428,8 @@ public sealed partial class OptionsMenu
         ];
     }
 
-    private static OptionRow Choice(string label, IReadOnlyList<string> values, Func<int> get, Action<int> set) =>
-        new(label, OptionKind.Choice, get, set, values);
+    private static OptionRow Choice(string label, IReadOnlyList<string> values, Func<int> get, Action<int> set, Func<bool>? disabled = null) =>
+        new(label, OptionKind.Choice, get, set, values, Disabled: disabled);
 
     // The values the pages' rows step through.
     private static readonly int[] Samples = [0, 2, 4, 8], UiLines = [240, 360, 480];

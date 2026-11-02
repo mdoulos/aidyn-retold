@@ -33,6 +33,9 @@ public partial class SystemTabView : Control
     /// rows are the list's 16 apart, but on the Controls page.
     /// </summary>
     private const int OptionsTitleTop = 40, OptionsLeft = 84, OptionsTop = 74;
+    /// <summary>How strongly a row that can't be changed is drawn (<see cref="OptionRow.IsDisabled"/>).</summary>
+    private const float DisabledAlpha = 0.4f;
+
     /// <summary>The lowest an options row's text may reach, above where the parchment's torn foot rises at the left.</summary>
     private const int OptionsBottom = 206;
 
@@ -496,6 +499,9 @@ public partial class SystemTabView : Control
             var row = options.Rows.Rows[i];
             var top = rows[i].Top;
             var color = i == options.Rows.Cursor ? cursor : Style.Text;
+            // A setting another overrides is greyed.
+            if (row.IsDisabled)
+                color = color with { A = (byte)(color.A * DisabledAlpha) };
             if (HasChoices(options))
             {
                 _ui.Text(this, _ui.Main, row.Label, ChoiceLabel, top, color);

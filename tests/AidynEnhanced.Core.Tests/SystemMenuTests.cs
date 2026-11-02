@@ -92,10 +92,10 @@ public class SystemMenuTests(BarterPlugins fixture) : IClassFixture<BarterPlugin
         options.Back();
         options.Point(2);
         options.Accept();
-        Assert.Equal(["Menu Size", "Show Equipped in Inventory", "Text Speed", "Status Auras", "Intro Logos"], options.Rows.Rows.Select(r => r.Label));
+        Assert.Equal(["Menu Size", "Equipped Inventory", "Text Speed", "Status Auras", "Intro Logos"], options.Rows.Rows.Select(r => r.Label));
         // Worn items stay out of the inventory with the keyboard and mouse, the text prints at Normal, and the intro logos are skipped, the
         // user's choice.
-        Assert.Equal(["Original", "Off", "Normal", "Original", "Skip"], options.Rows.Rows.Select(r => r.ValueName));
+        Assert.Equal(["Original", "Hide", "Normal", "Original", "Skip"], options.Rows.Rows.Select(r => r.ValueName));
     }
 
     /// <summary>
@@ -187,28 +187,34 @@ public class SystemMenuTests(BarterPlugins fixture) : IClassFixture<BarterPlugin
     }
 
     /// <summary>
-    /// Show Equipped in Inventory goes by the device until it's changed, showing what that gives: on with a controller, off with the
-    /// keyboard and mouse; once changed it's the player's either way.
+    /// Equipped Inventory goes by the device until it's changed, showing what that gives: Show with a controller, Hide with the keyboard
+    /// and mouse; once changed it's the player's either way. Under the original look it's greyed, showing Show, and doesn't change.
     /// </summary>
     [Fact]
-    public void ShowEquippedInInventoryGoesByTheDeviceUntilItsChanged()
+    public void EquippedInventoryGoesByTheDeviceUntilItsChanged()
     {
         var settings = new Settings();
         var controller = true;
         var options = new OptionsMenu(settings, inGame: true, controller: () => controller);
         options.Point(2);
         options.Accept();
-        var row = options.Rows.Rows.First(r => r.Label == "Show Equipped in Inventory");
-        Assert.Equal("On", row.ValueName);
+        var row = options.Rows.Rows.First(r => r.Label == "Equipped Inventory");
+        Assert.Equal("Show", row.ValueName);
         controller = false;
-        Assert.Equal("Off", row.ValueName);
+        Assert.Equal("Hide", row.ValueName);
         Assert.Null(settings.WornInInventory);
 
+        row.Set(0);
+        Assert.Equal((true, "Show"), (settings.WornInInventory, row.ValueName));
         row.Set(1);
         controller = true;
-        Assert.Equal((true, "On"), (settings.WornInInventory, row.ValueName));
-        row.Set(0);
-        Assert.Equal((false, "Off"), (settings.WornInInventory, row.ValueName));
+        Assert.Equal((false, "Hide"), (settings.WornInInventory, row.ValueName));
+
+        settings.SetQuality(GraphicQuality.Original);
+        options.Point(options.Rows.Rows.ToList().IndexOf(row));
+        options.Change(1);
+        options.Accept();
+        Assert.Equal((true, "Show", false), (row.IsDisabled, row.ValueName, settings.WornInInventory));
     }
 
     [Fact]

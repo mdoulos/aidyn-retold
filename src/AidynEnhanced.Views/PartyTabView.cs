@@ -178,7 +178,7 @@ public partial class PartyTabView : Control
     /// silhouette's corner (DollEquipmentMenu::SetSlotCoords); the shield's is level with the first scroll's, as its frame painted
     /// into <c>0x00D9</c> is and the user's captures show; at 45 it stood 2 above it.
     /// </summary>
-    private static readonly Vector2I SilhouetteAt = new(27, 86);
+    private static readonly Vector2I SilhouetteAt = new(22, 86);
 
     /// <summary>
     /// The figure behind the slots, the user's art (<see cref="Figures"/>): its top and how tall it's drawn, centred under the helmet's
@@ -1351,18 +1351,30 @@ public partial class PartyTabView : Control
             Small(value, right - font.ExactWidth(value), middle - font.Middle, color, font: font);
             top += CardPitch;
         }
-        if (Menu.Experience is { } exp)
+        if (Menu.Experience is not { } exp)
+            return;
+        // The labels in a column, the values right-aligned at the card's edge.
+        (string Label, string Value)[] lines = [(XpAvailable, exp.Remaining), (TotalXp, exp.Total), (NextLevel, exp.NextLevel)];
+        var xpLabelX = right - lines.Max(l => font.ExactWidth(l.Value)) - CardLabelGap - lines.Max(l => font.ExactWidth(l.Label));
+        var lineMiddle = EquipmentSheet.End.Y - CardInset - CardPitch * (lines.Length - 0.5f);
+        foreach (var (label, value) in lines)
         {
-            var line = $"{XpLeft} {exp.Remaining}";
-            var middle = EquipmentSheet.End.Y - CardInset - CardPitch / 2;
-            Small(line, right - font.ExactWidth(line), middle - font.Middle, PartyMenu.TextColor, font: font);
+            Small(label, xpLabelX, lineMiddle - font.Middle, PartyMenu.TextColor, font: font);
+            Small(value, right - font.ExactWidth(value), lineMiddle - font.Middle, PartyMenu.TextColor, font: font);
+            lineMiddle += CardPitch;
         }
     }
 
     /// <summary>How far in from the equipment card's paper its corners' text is, how far apart the stats are, and how wide their column.</summary>
     private const float CardInset = 5, CardPitch = 4.5f, CardStatsWidth = 17;
 
-    private const string XpLeft = "XP Left";
+    /// <summary>
+    /// The experience lines' labels on the card, and the first on the Stats page in the port's look, the user's choice (Nov 2, 2026): the
+    /// experience left to spend is "XP Available", where the original says "XP Remaining"; and the gap between the card's labels and values.
+    /// </summary>
+    private const string XpAvailable = "XP Available", TotalXp = "Total XP", NextLevel = "Next Level";
+
+    private const float CardLabelGap = 2;
 
     /// <summary>
     /// The grid's foot, the user's design (Nov 2, 2026): "Total Inventory" and how many items the party carries on the left, and on the
@@ -1730,8 +1742,10 @@ public partial class PartyTabView : Control
         if (Menu.Experience is not { } exp)
             return;
         var b = layout.Bounds;
-        var valueX = b.Left + font.Width(exp.RemainingLabel) + 4;
-        foreach (var (label, value) in new[] { (exp.RemainingLabel, exp.Remaining), (exp.TotalLabel, exp.Total), (exp.NextLevelLabel, exp.NextLevel) })
+        // The original's "XP Remaining:" is "XP Available:" in the port's look.
+        var remaining = OriginalLook ? exp.RemainingLabel : XpAvailable + ":";
+        var valueX = b.Left + font.Width(remaining) + 4;
+        foreach (var (label, value) in new[] { (remaining, exp.Remaining), (exp.TotalLabel, exp.Total), (exp.NextLevelLabel, exp.NextLevel) })
         {
             if (shows(top))
             {

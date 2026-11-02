@@ -19,8 +19,8 @@ public enum PartyList
 /// The pause menu's Party tab (<c>WidgetDollMenu</c>): the member shown, with their portrait, hit
 /// points, level and the party's gold, what they wear on the silhouette, and one of four lists with
 /// a cursor, whose row C-down describes, the same for the menu's reuses in barter and training. The
-/// port lays it out with tabs over its lists, the user's design (Oct 31, 2026): the inventory, the
-/// stats and skills on one page that scrolls as a whole (<c>PartyMenu.Page.cs</c>), and the spells.
+/// port lays it out with tabs over its lists, the user's design (Oct 31 and Nov 2, 2026): the inventory, the
+/// stats, the skills and the spells (<c>PartyMenu.Tabs.cs</c>).
 /// </summary>
 /// <remarks>
 /// C-left and C-right change the member (<c>CHorizontal</c>), and the stick changes the tab, as the
@@ -66,9 +66,8 @@ public sealed partial class PartyMenu : IPartyWindow
         while (Member > 0 && party.Slots.ElementAtOrDefault(Member) is null)
             Member--;
         Inventory = Layout(PartyList.Inventory).List<InventoryRow>([]);
-        // The stats and skills page scrolls rather than its lists.
-        Stats = new MenuList<StatRow>([]);
-        Skills = new MenuList<SkillRow>([]);
+        Stats = Layout(PartyList.Stats).List<StatRow>([]);
+        Skills = Layout(PartyList.Skills).List<SkillRow>([]);
         Spells = Layout(PartyList.Spells).List<SpellRow>([]);
         Refresh();
     }
@@ -207,27 +206,28 @@ public sealed partial class PartyMenu : IPartyWindow
     /// <summary>
     /// Shows the next list, or with a negative step the one before: the stick's left shows the next, sliding the lists
     /// right, and its right the one before, sliding them left (<c>PartyMenu.ListsOnLeft</c> at <c>0x800319f0</c>,
-    /// <c>ListsOnRight</c> <c>0x80031a10</c>). Not while they're still sliding.
+    /// <c>ListsOnRight</c> <c>0x80031a10</c>). A click on a tab aims the press at it (<see cref="AimAt"/>), so it shows that one,
+    /// sliding the press's way. Not while they're still sliding.
     /// </summary>
     /// <param name="among">The lists the window has, in their order, where it hasn't all four: the post-battle window's three.</param>
     public void ChangeList(int by, IReadOnlyList<PartyList>? among = null)
     {
+        var aim = _aim;
+        _aim = null;
         if (HasPopup || Slide is not null)
             return;
-        // The stats and skills are one page, which the stick steps onto where the stats are.
-        IReadOnlyList<PartyList> lists = [.. (among ?? Enum.GetValues<PartyList>()).Select(Page).Distinct()];
+        var lists = (among ?? Enum.GetValues<PartyList>()).ToList();
         var count = lists.Count;
-        var at = Math.Max(0, lists.ToList().IndexOf(Page(List)));
+        var at = Math.Max(0, lists.IndexOf(List));
+        var next = aim is { } tab && lists.Contains(tab) ? tab : lists[((at + by) % count + count) % count];
+        if (next == List)
+            return;
         StartListSlide(by);
-        ShowPage(lists[((at + by) % count + count) % count]);
+        List = next;
     }
 
     /// <summary>Shows a list.</summary>
-    public void ShowList(PartyList list)
-    {
-        List = list;
-        KeepPage();
-    }
+    public void ShowList(PartyList list) => List = list;
 
     /// <summary>Moves the cursor of the popup, or of the list showing.</summary>
     public void MoveCursor(int by)
@@ -238,11 +238,6 @@ public sealed partial class PartyMenu : IPartyWindow
         {
             if (crafting.Fade.IsOpen)
                 crafting.Rows.Move(by);
-            return;
-        }
-        if (OnPage)
-        {
-            MovePage(by);
             return;
         }
         switch (List)
@@ -272,7 +267,6 @@ public sealed partial class PartyMenu : IPartyWindow
             case PartyList.Skills: Skills.Point(row); break;
             default: Spells.Point(row); break;
         }
-        KeepPage();
     }
 
     /// <summary>What C-down shows for the cursor's row, or a crafting popup's recipe's product, or null if it shows nothing.</summary>
@@ -313,7 +307,6 @@ public sealed partial class PartyMenu : IPartyWindow
             Spells.Replace(PartyMenuRows.Spells(shown), resetPastEnd: true);
             Experience = PartyMenuRows.Experience(shown, _text);
         }
-        KeepPage();
     }
 
     /// <summary>
@@ -325,8 +318,6 @@ public sealed partial class PartyMenu : IPartyWindow
     /// </summary>
     public void Step()
     {
-        // Training's member's list follows the trainer's cursor, which the page keeps in view.
-        KeepPage();
         _pulse.Step();
         _pulse.Step();
         StepPopups();

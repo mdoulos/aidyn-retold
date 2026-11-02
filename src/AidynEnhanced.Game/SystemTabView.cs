@@ -71,7 +71,7 @@ public partial class SystemTabView : Control
 
     public SystemTabView(PluginSet plugins, SystemMenu menu)
     {
-        _ui = new UiPainter(plugins) { TextSize = UiPainter.StandardText };
+        _ui = new UiPainter(plugins) { TextSize = UiPainter.StandardText, Slips = true };
         Menu = menu;
         Name = "System tab";
         MouseFilter = MouseFilterEnum.Pass;

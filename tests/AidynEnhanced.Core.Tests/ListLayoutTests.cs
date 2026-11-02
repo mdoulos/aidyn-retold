@@ -27,7 +27,7 @@ public class ListLayoutTests(BarterPlugins fixture) : IClassFixture<BarterPlugin
         return Menu(party);
     }
 
-    /// <summary>The lists are 156 tall: twelve rows of 13. The stats and skills page scrolls as a whole, so its lists show every row.</summary>
+    /// <summary>The lists are 156 tall: twelve rows of 13, or the stats' fourteen of 11.</summary>
     [Fact]
     public void TheTabsListsShowTheRowsTheirBoundsHold()
     {
@@ -35,7 +35,7 @@ public class ListLayoutTests(BarterPlugins fixture) : IClassFixture<BarterPlugin
 
         Assert.Equal(12, menu.Inventory.Visible);
         Assert.Equal(12, menu.Spells.Visible);
-        Assert.Equal((int.MaxValue, int.MaxValue), (menu.Stats.Visible, menu.Skills.Visible));
+        Assert.Equal((14, 12), (menu.Stats.Visible, menu.Skills.Visible));
         Assert.Equal((12, 13), (PartyMenu.Layout(PartyList.Skills).Visible, PartyMenu.Layout(PartyList.Skills).RowHeight));
         Assert.Equal(11, PartyMenu.Layout(PartyList.Stats).RowHeight);
     }

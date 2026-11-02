@@ -38,7 +38,7 @@ public partial class PartyTabView
         List(0, _ui.Slim, party);
 
         Begin(_canvas, _origin + new Vector2I(0, Drop));
-        _ui.Parchment(_canvas, ClassicParchment.X, ClassicParchment.Y);
+        Paper();
         var title = _ui.Size(barter.Title);
         _ui.Image(_canvas, barter.Title, PileTitleCentre - title.X / 2, PileTitleFoot - title.Y);
         Items(barter.Pile, BarterMenu.PileLayout, _ui.Slim, pile);
@@ -55,7 +55,7 @@ public partial class PartyTabView
     /// </summary>
     private void Help(string text)
     {
-        _ui.Parchment(_canvas, ClassicParchment.X, ClassicParchment.Y);
+        Paper();
         _ui.Text(_canvas, _ui.Main, text, HelpText.X, HelpText.Y, new ScreenRect(HelpText.X, HelpText.Y, HelpRight, (int)Size.Y), PartyMenu.TextColor);
     }
 
@@ -73,13 +73,13 @@ public partial class PartyTabView
         var rows = confirm.Options.Rows;
         var height = textHeight + rows.Count * font.LineHeight + BarterConfirm.Gap;
         var top = (screen.Y - height) / 2;
-        _ui.Images.DrawPanel(_canvas, _ui.Images.Around(new ScreenRect(left, top - 4, right, top + height + 4)));
-        _ui.Text(_canvas, font, confirm.Text, left, top, new ScreenRect(left, top, right, top + textHeight), BarterConfirm.TextColor);
+        _ui.Box(_canvas, new ScreenRect(left, top - 4, right, top + height + 4), question: true);
+        _ui.Text(_canvas, font, confirm.Text, left, top, new ScreenRect(left, top, right, top + textHeight), _ui.Slips ? UiPainter.Ink : BarterConfirm.TextColor);
         var optionsTop = top + textHeight + BarterConfirm.Gap;
         for (var i = 0; i < rows.Count; i++)
         {
             _ui.Text(_canvas, font, rows[i].Text, left, optionsTop + i * font.LineHeight, new ScreenRect(left, optionsTop, right, top + height),
-                i == confirm.Options.Cursor ? cursor : BarterConfirm.OptionColor);
+                i == confirm.Options.Cursor ? _ui.Slips ? UiPainter.RedInk : cursor : _ui.Slips ? UiPainter.OptionInk : BarterConfirm.OptionColor);
         }
     }
 }

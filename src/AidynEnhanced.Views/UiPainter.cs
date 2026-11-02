@@ -133,9 +133,10 @@ public sealed class UiPainter
         var (scale, drop) = (font.Scale, font.Drop);
         if (scale != 1)
         {
+            // The foot isn't moved up by the drop, so text moved down into a row laid out at the font's size isn't cut off by it.
             int Across(int edge) => x + (int)Math.Clamp((edge - x) / scale, -8192, 8192);
-            int Down(int edge) => y + (int)Math.Clamp((edge - y - drop) / scale, -8192, 8192);
-            bounds = new ScreenRect(Across(bounds.Left), Down(bounds.Top), Across(bounds.Right), Down(bounds.Bottom));
+            int Down(int edge, float by) => y + (int)Math.Clamp((edge - y - by) / scale, -8192, 8192);
+            bounds = new ScreenRect(Across(bounds.Left), Down(bounds.Top, drop), Across(bounds.Right), Down(bounds.Bottom, 0));
         }
         var run = font.Layout.Print(text, x, y, bounds, color);
         foreach (var glyph in run.Glyphs)
@@ -172,8 +173,8 @@ public sealed class UiPainter
     {
         var x0 = (screen.X - width) / 2;
         var y0 = (screen.Y - height) / 2;
-        Images.DrawPanel(canvas, Images.Around(new ScreenRect(x0, y0, x0 + width + 8, y0 + height)));
-        Text(canvas, Main, text, x0 + 4, y0 + 4, new ScreenRect(x0 + 4, y0, x0 + 4 + width, y0 + height + 4), color);
+        Box(canvas, new ScreenRect(x0, y0, x0 + width + 8, y0 + height), question: false);
+        Text(canvas, Main, text, x0 + 4, y0 + 4, new ScreenRect(x0 + 4, y0, x0 + 4 + width, y0 + height + 4), Slips ? Ink : color);
     }
 
     /// <summary>
@@ -225,12 +226,84 @@ public sealed class UiPainter
         var rows = options.Rows;
         var rowHeight = font.LineHeight;
         var bottom = choicesTop + rows.Count * rowHeight;
-        Images.DrawPanel(canvas, Images.Around(new ScreenRect(left, top, right, bottom)));
-        Text(canvas, font, text, left, top, new ScreenRect(left, top, right, choicesTop), textColor);
+        Box(canvas, new ScreenRect(left, top, right, bottom), question: true);
+        Text(canvas, font, text, left, top, new ScreenRect(left, top, right, choicesTop), Slips ? Ink : textColor);
         for (var i = 0; i < rows.Count; i++)
         {
-            Text(canvas, font, rows[i], left - 1, choicesTop + i * rowHeight, new ScreenRect(left - 1, choicesTop, right + 1, bottom),
-                i == options.Cursor ? cursor : optionColor);
+            var color = i == options.Cursor ? Slips ? RedInk : cursor : Slips ? OptionInk : optionColor;
+            Text(canvas, font, rows[i], left - 1, choicesTop + i * rowHeight, new ScreenRect(left - 1, choicesTop, right + 1, bottom), color);
+        }
+    }
+
+    /// <summary>
+    /// Whether messages and questions are loose slips of paper, the user's art and choice (Nov 2, 2026; the menus' own), with their
+    /// text in ink, a question's choice in red ink, and a wax seal on a question, which has to be answered; else the original's
+    /// feathered black boxes with their own colours.
+    /// </summary>
+    public bool Slips { get; set; }
+
+    /// <summary>The ink a slip's text is in, the menus' rows' colour, and a choice's on it, the red of the art's flourish and seal.</summary>
+    public static readonly Rgba Ink = new(68, 42, 34, 255), RedInk = new(150, 34, 28, 255);
+
+    /// <summary>The ink a question's choices that aren't the cursor's are in on a slip, fainter.</summary>
+    public static readonly Rgba OptionInk = Ink with { A = 170 };
+
+    /// <summary>A message's or question's box: a slip round the band (<see cref="Slips"/>), sealed for a question, or a feathered black box.</summary>
+    public void Box(CanvasItem canvas, ScreenRect band, bool question)
+    {
+        if (!Slips)
+        {
+            Images.DrawPanel(canvas, Images.Around(band));
+            return;
+        }
+        var paper = new Rect2(band.Left - SlipSide, band.Top - SlipTop, band.Right - band.Left + 2 * SlipSide, band.Bottom - band.Top + SlipTop + SlipFoot);
+        Slip(canvas, paper);
+        if (question && UiImages.Art(Seal) is { } seal)
+            canvas.DrawTextureRect(seal, new Rect2(paper.End.X - SealSize * 0.7f, paper.Position.Y - SealSize * 0.3f, SealSize, SealSize), false, White);
+    }
+
+    /// <summary>
+    /// How far a slip's paper reaches past its text's band at the sides, the top and the foot, clear of its torn edges, the foot further
+    /// for the text drawn smaller sitting low in its rows; and how big a question's seal is, over the slip's top right corner.
+    /// </summary>
+    private const float SlipSide = 12, SlipTop = 7, SlipFoot = 10, SealSize = 18;
+
+    /// <summary>The slip of paper, the user's art: its paper, inside its shadow and the clear round it, in its pixels.</summary>
+    private const string SlipArt = "ui-square-parchment.png", Seal = "ui-wax-seal.png";
+
+    private static readonly Rect2 SlipPaper = new(11, 12, 411, 407);
+
+    /// <summary>A loose slip of paper, the user's art, stretched so its paper covers a rectangle, with its soft shadow past it.</summary>
+    public void Slip(CanvasItem canvas, Rect2 paper)
+    {
+        if (UiImages.Art(SlipArt) is not { } texture)
+            return;
+        var size = texture.GetSize();
+        var scale = paper.Size / SlipPaper.Size;
+        var at = paper.Position - SlipPaper.Position * scale;
+        canvas.DrawTextureRect(texture, new Rect2(at, size * scale), false, White);
+    }
+
+    /// <summary>
+    /// Draws a frame over a rectangle in nine slices, as a frame for any box: its corners, <paramref name="corner"/> of its pixels
+    /// square, drawn <paramref name="drawn"/> square and keeping their shape; its edges between them stretched along; and its middle
+    /// stretched over the rest.
+    /// </summary>
+    public void NineSlice(CanvasItem canvas, Texture2D texture, Rect2 rect, float corner, float drawn, Rgba? color = null)
+    {
+        var size = texture.GetSize();
+        float[] sx = [0, corner, size.X - corner, size.X], sy = [0, corner, size.Y - corner, size.Y];
+        float[] dx = [rect.Position.X, rect.Position.X + drawn, rect.End.X - drawn, rect.End.X];
+        float[] dy = [rect.Position.Y, rect.Position.Y + drawn, rect.End.Y - drawn, rect.End.Y];
+        var tint = color is { } c ? Tint(c) : White;
+        for (var i = 0; i < 3; i++)
+        {
+            for (var j = 0; j < 3; j++)
+            {
+                var target = new Rect2(dx[i], dy[j], dx[i + 1] - dx[i], dy[j + 1] - dy[j]);
+                if (target.Size.X > 0 && target.Size.Y > 0)
+                    canvas.DrawTextureRectRegion(texture, target, new Rect2(sx[i], sy[j], sx[i + 1] - sx[i], sy[j + 1] - sy[j]), tint);
+            }
         }
     }
 

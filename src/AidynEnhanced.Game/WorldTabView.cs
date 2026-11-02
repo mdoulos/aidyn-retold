@@ -51,7 +51,7 @@ public partial class WorldTabView : Control
 
     public WorldTabView(PluginSet plugins, WorldMenu menu)
     {
-        _ui = new UiPainter(plugins) { TextSize = UiPainter.StandardText };
+        _ui = new UiPainter(plugins) { TextSize = UiPainter.StandardText, Slips = true };
         Menu = menu;
         Name = "World tab";
         MouseFilter = MouseFilterEnum.Ignore;

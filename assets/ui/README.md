@@ -2,6 +2,7 @@
 
 The game's own UI art, drawn by the project's author. None of it comes from the ROM.
 
+- `icon-lunar.png`, `icon-solar.png`, `icon-chaos.png`, `icon-elemental.png`, `icon-naming.png`, `icon-necromancy.png` and `icon-star.png`: the aspects' and the schools' icons, 250 square, the user's (Nov 2, 2026): a crescent with a star, a sun, a flaming eye, a leaf, a temple, a drop of blood with a skull and a four-pointed star. They're drawn wherever the original's `0x01A3` to `0x01A9` are, laid out at the original's 10 square (`UiImages.Get`), but in the original look.
 - `parchment.png`: the pause menu's blank parchment, 2560 × 1920 with transparent torn top and bottom edges, the user's second texture (Nov 2, 2026), paler, with faint stains, on the first's outline. The tabs are drawn on it, laid across the screen eight times as fine as the menu (`ParchmentSwap`), and the menu scroll's rolls are painted with it. It's carried in the views' assembly; a plugin's `assets/aidyn/scene/0x0E63.parchment.png` takes its place.
 - `ui-inventory.png`, `ui-stats.png`, `ui-skills.png` and `ui-spells.png`: the tabs' icons, a satchel, an arm and brain, a sword with a mortar and flask, and a book with a fireball, 512 square.
 - `ui-gold.png`: the purse before the party's gold, 512 square.

@@ -19,17 +19,36 @@ public sealed class UiImages(PluginSet plugins)
     private readonly Dictionary<RecordId, Texture2D?> _textures = [], _originals = [];
 
     /// <summary>
-    /// A UI image, or null if no plugin has it. A mod's replacement larger than the original, as a redrawn pack's at 8 times, is laid
-    /// out at the original's size (<see cref="PluginSet.ImageSize"/>) and drawn into it, mipmapped and filtered, so it's sharper rather
-    /// than larger; one at the original's size is drawn pixel for pixel as the original is.
+    /// The game's own art in place of the original's images, the user's (Nov 2, 2026), carried in this assembly: the aspects' and the
+    /// schools' icons, wherever they're drawn, laid out at the original's size as a larger replacement is.
+    /// </summary>
+    private static readonly Dictionary<RecordId, string> OwnArt = new()
+    {
+        [MenuImages.AspectIcon(Aspect.Lunar)!.Value] = "icon-lunar.png",
+        [MenuImages.AspectIcon(Aspect.Solar)!.Value] = "icon-solar.png",
+        [MenuImages.SchoolIcon(MagicSchool.Chaos)!.Value] = "icon-chaos.png",
+        [MenuImages.SchoolIcon(MagicSchool.Elemental)!.Value] = "icon-elemental.png",
+        [MenuImages.SchoolIcon(MagicSchool.Naming)!.Value] = "icon-naming.png",
+        [MenuImages.SchoolIcon(MagicSchool.Necromancy)!.Value] = "icon-necromancy.png",
+        [MenuImages.SchoolIcon(MagicSchool.Star)!.Value] = "icon-star.png",
+    };
+
+    /// <summary>
+    /// A UI image, or null if no plugin has it: the game's own art where it has its own (<see cref="OwnArt"/>), else the plugins'. A
+    /// replacement larger than the original, as a redrawn pack's at 8 times or the game's own, is laid out at the original's size
+    /// (<see cref="PluginSet.ImageSize"/>) and drawn into it, mipmapped and filtered, so it's sharper rather than larger; one at the
+    /// original's size is drawn pixel for pixel as the original is.
     /// </summary>
     public Texture2D? Get(RecordId image)
     {
-        // The original look draws the original's image, the first plugin's, whatever a mod puts over it.
+        // The original look draws the original's image, the first plugin's, whatever a mod or the game's own art puts over it.
         var original = UiPainter.Original;
         var textures = original ? _originals : _textures;
         if (textures.TryGetValue(image, out var texture))
             return texture;
+        if (!original && OwnArt.TryGetValue(image, out var own) && ArtImage(own).Image?.Duplicate() is Image art
+            && plugins.ImageSize(image) is var (ownWidth, ownHeight) && ownWidth > 0)
+            return textures[image] = Sharper(art, new Vector2I(ownWidth, ownHeight));
         if ((original ? plugins.FindOriginalAsset(image, "png") : plugins.FindAsset(image, "png")) is { } png)
         {
             var (width, height) = plugins.ImageSize(image);

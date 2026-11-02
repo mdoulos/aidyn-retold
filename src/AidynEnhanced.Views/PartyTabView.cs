@@ -78,19 +78,21 @@ public partial class PartyTabView : Control
     /// list is on, over this rectangle, a page for each section, which one shows standing for the stack without the others being drawn;
     /// and a paper tab sticking up from its top for each section.
     /// </summary>
-    private static readonly Rect2 PageRect = new(151, 40, 162, 177);
+    private static readonly Rect2 PageRect = new(158, 41.5f, 153, 182.5f);
 
     /// <summary>
-    /// The sheets of parchment the left column's parts lie on, the user's design (Nov 2, 2026): the portraits with the name, the level,
-    /// the bar and the aspect's and school's icons on one, and the silhouette with its slots on another under it.
+    /// The sheets of parchment the sections lie on, where the user marked their edges (Nov 2, 2026), a gap of 3 or 4 between each and
+    /// none overlapping: the portraits with the name, the level, the bar and the aspect's and school's icons on one, the silhouette
+    /// with its slots on another under it, and the gold on one after the tabs; the page (<see cref="PageRect"/>) beside them.
     /// </summary>
-    private static readonly Rect2 HeaderSheet = new(10, 14, 145, 68), EquipmentSheet = new(20, 80, 121, 151);
+    private static readonly Rect2 HeaderSheet = new(15.5f, 19, 138, 59.5f), EquipmentSheet = new(15.5f, 81.5f, 138.5f, 142),
+        GoldSheet = new(268, 19, 43, 20);
 
     /// <summary>
-    /// How much bigger than its portrait each portrait's square sheet is, as a share of the portrait, and how far in from the sheet's
-    /// paper the portrait is, cut to the sheet's outline (<see cref="UiImages.CutTo"/>), so a rim of the sheet shows round it.
+    /// How far each portrait's square sheet reaches past the portrait, cut to the sheet's outline (<see cref="UiImages.CutTo"/>), so a
+    /// rim of the sheet shows round it: 5 pixels of a screen 1440 lines tall, the user's choice.
     /// </summary>
-    private const float PortraitSheet = 0.08f, PortraitInset = 0.07f;
+    private const float PortraitBorder = 0.85f;
 
     /// <summary>
     /// The tabs: the first one's corner, each one's paper, and how far apart they start, a pixel less than they're wide, so they
@@ -125,8 +127,6 @@ public partial class PartyTabView : Control
     /// <summary>How far down the tabs the gold's middle is, level with the tabs' middles.</summary>
     private const float GoldMiddle = 12;
 
-    /// <summary>How far the gold's sheet reaches past the purse and the gold at the sides, and how tall it is.</summary>
-    private const float GoldSheetSide = 6, GoldSheetHeight = 20;
 
     /// <summary>
     /// The box each of the silhouette's slots sits in, over the figure, the user's art (ui-square-solid.png), a pixel round the
@@ -672,13 +672,12 @@ public partial class PartyTabView : Control
             TabFace(i, Mathf.Lerp(ClosedIcon, 1, open[i]));
         }
 
-        // The gold, after a purse, on a sheet of its own, which starts after the tabs.
+        // The gold, after a purse, on a sheet of its own after the tabs.
         var gold = Num(Menu.Party.Gold);
         var goldX = GoldRight - SmallWidth(gold);
         var middle = TabsAt.Y + GoldMiddle;
         var purseX = goldX - PurseSize - 1;
-        var sheetLeft = Math.Max(purseX - GoldSheetSide, TabRect(PartyMenu.Tabs.Count - 1).End.X + 1);
-        _ui.Slip(_canvas, new Rect2(sheetLeft, middle - GoldSheetHeight / 2, GoldRight + GoldSheetSide - sheetLeft, GoldSheetHeight));
+        _ui.Slip(_canvas, GoldSheet);
         Small(gold, goldX, middle - _ui.Slim.Middle, PartyMenu.TextColor);
         Art(Purse, new Rect2(purseX, middle - PurseSize / 2f, PurseSize, PurseSize));
     }
@@ -896,16 +895,15 @@ public partial class PartyTabView : Control
     }
 
     /// <summary>
-    /// A portrait framed by the square sheet of parchment, the user's design (Nov 2, 2026): the sheet a little bigger than the portrait,
-    /// and on it the portrait cut to the sheet's outline (<see cref="UiImages.CutTo"/>) and set in from its edges, so a rim of the
+    /// A portrait framed by the square sheet of parchment, the user's design (Nov 2, 2026): the sheet <see cref="PortraitBorder"/> past
+    /// the portrait all round, and on it the portrait cut to the sheet's outline (<see cref="UiImages.CutTo"/>), so a thin rim of the
     /// parchment shows all round and the portrait's corners follow the sheet's torn edges.
     /// </summary>
     private void FramedPortrait(RecordId portrait, Rect2 rect)
     {
-        var paper = rect.Grow(rect.Size.X * PortraitSheet);
-        _ui.Slip(_canvas, paper, sheet: UiPainter.SquareSheet);
+        _ui.Slip(_canvas, rect.Grow(PortraitBorder), sheet: UiPainter.SquareSheet);
         if (_ui.Images.CutTo(portrait, UiPainter.SquareSheet) is { } cut)
-            _canvas.DrawTextureRect(cut, paper.Grow(-paper.Size.X * PortraitInset), false, _ui.Tint(White));
+            _canvas.DrawTextureRect(cut, rect, false, _ui.Tint(White));
     }
 
     /// <summary>Where the portrait so far round the party from the member shown goes, from the frames' corner, and how big it is.</summary>

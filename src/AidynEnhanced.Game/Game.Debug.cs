@@ -107,7 +107,8 @@ public partial class Game
     /// <c>wait:2</c> waits so many seconds more before the next, and <c>move_right:1.5</c> holds the action that long before
     /// it's let go and the next comes, or with a + after it (<c>menu_details:2+</c>) while it's still held. A binding's name
     /// (<c>Key:P</c>, <c>Joy:Y</c>, <c>Axis:LeftX-</c>) presses that input itself, as the Controls page's prompt hears one, and
-    /// <c>hover:1100x432</c> moves the mouse to that point of the window, and <c>shot:&lt;png&gt;</c> saves the window as it is then.
+    /// <c>hover:1100x432</c> moves the mouse to that point of the window, <c>click:</c> and <c>rclick:</c> click the left or right button
+    /// there, and <c>shot:&lt;png&gt;</c> saves the window as it is then.
     /// Returns how long that takes after the half second before the first, or 0 with none.
     /// </summary>
     private double Press(string? presses)
@@ -132,11 +133,13 @@ public partial class Game
                 at += 0.2;
                 continue;
             }
-            // hover:1100x432 moves the mouse to that point of the window, as hovering a menu's icon does: straight to each UI screen that
-            // takes the mouse, as the window passes over a mouse moved while the cursor itself is off it.
-            if (token.StartsWith("hover:") && token["hover:".Length..].Split('x') is [var hx, var hy])
+            // hover:1100x432 moves the mouse to that point of the window, as hovering a menu's icon does, and click: and rclick: move it
+            // there and click the left or right button: straight to each UI screen that takes the mouse, as the window passes over a
+            // mouse moved while the cursor itself is off it.
+            if (token.Split(':') is [var kind and ("hover" or "click" or "rclick"), var where] && where.Split('x') is [var hx, var hy])
             {
                 var point = new Vector2(float.Parse(hx, CultureInfo.InvariantCulture), float.Parse(hy, CultureInfo.InvariantCulture));
+                var button = kind == "rclick" ? MouseButton.Right : MouseButton.Left;
                 GetTree().CreateTimer(at).Timeout += () =>
                 {
                     foreach (var screen in GetTree().Root.FindChildren("*", "", true, false).OfType<UiScreen>())
@@ -146,6 +149,16 @@ public partial class Game
                         foreach (var viewport in screen.GetChildren().OfType<SubViewport>())
                             viewport.Notification((int)NotificationVpMouseEnter);
                         screen._GuiInput(screen.MakeInputLocal(new InputEventMouseMotion { Position = point, GlobalPosition = point }));
+                        if (kind == "hover")
+                            continue;
+                        foreach (var pressed in new[] { true, false })
+                        {
+                            screen._GuiInput(screen.MakeInputLocal(new InputEventMouseButton
+                            {
+                                Position = point, GlobalPosition = point, ButtonIndex = button, Pressed = pressed,
+                                ButtonMask = pressed ? (MouseButtonMask)(1 << ((int)button - 1)) : 0,
+                            }));
+                        }
                     }
                 };
                 at += 0.2;

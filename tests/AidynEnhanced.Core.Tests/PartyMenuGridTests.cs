@@ -143,4 +143,59 @@ public class PartyMenuGridTests
         menu.MoveCursor(1);
         Assert.Null(menu.SelectedSlot);
     }
+
+    /// <summary>
+    /// The actiontip on a worn slot offers Unequip and Details; the stick moves its cursor, not the grid's, and choosing Unequip takes
+    /// the item off as A would. B closes it, and with it up the member and the list stay.
+    /// </summary>
+    [Fact]
+    public void TheActionTipOnAWornItemUnequipsIt()
+    {
+        var (menu, member) = Menu(showWorn: false);
+        menu.SelectSlot(EquipmentSlot.Weapon);
+        Assert.True(menu.OpenTip());
+
+        Assert.Equal([ActionTipChoice.Unequip, ActionTipChoice.Details], menu.Tip!.Choices.Rows);
+        Assert.True(menu.HasPopup);
+        var cursor = menu.Inventory.Cursor;
+        menu.MoveCursor(1);
+        Assert.Equal((1, cursor, EquipmentSlot.Weapon), (menu.Tip.Choices.Cursor, menu.Inventory.Cursor, menu.SelectedSlot));
+        Assert.True(menu.Back());
+        Assert.Null(menu.Tip);
+
+        menu.OpenTip();
+        menu.Accept();
+        Assert.Null(menu.Tip);
+        Assert.Null(member.Equipment.Weapon);
+        Assert.Contains(menu.Inventory.Rows, r => r.Item.Id == Sword.Id && r.Wearer is null);
+    }
+
+    /// <summary>
+    /// The actiontip on a carried item names what A does, Equip for what can be worn, and its Details hold the details open until A or B
+    /// lets them go; the menus' Appraise opens it on the cursor's item, the controller's way. A plain item with no details has none.
+    /// </summary>
+    [Fact]
+    public void TheActionTipNamesWhatADoesAndHoldsTheDetails()
+    {
+        var (menu, member) = Menu(showWorn: false);
+        menu.Point(menu.Inventory.Rows.ToList().FindIndex(r => r.Item.Id == Things[0].Id));
+        Assert.False(menu.OpenTip());
+        Assert.True(menu.Party.Unequip(member, member.Equipment.Weapon!));
+        menu.Refresh();
+        menu.Point(menu.Inventory.Rows.ToList().FindIndex(r => r.Item.Id == Sword.Id));
+        Assert.True(((IPartyWindow)menu).Appraise());
+        Assert.Equal([ActionTipChoice.Equip, ActionTipChoice.Details], menu.Tip!.Choices.Rows);
+        menu.MoveCursor(1);
+        menu.Accept();
+        Assert.Null(menu.Tip);
+        Assert.True(menu.DetailsPane is { Showing: true, Pinned: true });
+        menu.Step();
+        menu.MoveCursor(1);
+        Assert.True(menu.DetailsPane.Showing);
+        Assert.True(menu.Back());
+        Assert.False(menu.DetailsPane.Pinned);
+
+        menu.OriginalLook = true;
+        Assert.False(menu.OpenTip());
+    }
 }

@@ -49,8 +49,8 @@ public sealed partial class PartyMenu
     /// <summary>C-down's details, over the tab or the crafting popup.</summary>
     public DetailsPane DetailsPane => Overlay.Details;
 
-    /// <summary>Whether a popup or the details are taking the presses, fading or not.</summary>
-    public bool HasPopup => Overlay.HasPopup || Crafting is not null;
+    /// <summary>Whether a popup, the actiontip or the details are taking the presses, fading or not.</summary>
+    public bool HasPopup => Overlay.HasPopup || Crafting is not null || Tip is not null;
 
     /// <summary>The crafting popup, if it's open and nothing over it takes the presses.</summary>
     private CraftingMenu? OpenCraftingPopup => Crafting is { Fade.IsOpen: true } crafting && !DetailsPane.Showing ? crafting : null;
@@ -77,13 +77,21 @@ public sealed partial class PartyMenu
         Overlay.Step();
     }
 
-    /// <summary>A: closes a message, chooses in a popup, or uses the cursor's row, or the worn item in the silhouette's slot selected.</summary>
+    /// <summary>
+    /// A: closes a message or the details the actiontip held open, chooses in a popup or the actiontip, or uses the cursor's row, or
+    /// the worn item in the silhouette's slot selected.
+    /// </summary>
     public void Accept()
     {
         if (Message is not null)
             CloseMessage();
         else if (DetailsPane.Showing)
-            return;
+        {
+            if (DetailsPane.Pinned)
+                ReleaseDetails();
+        }
+        else if (Tip is { } tip)
+            ChooseTip(tip);
         else if (Crafting is not null)
         {
             if (OpenCraftingPopup is { } crafting)
@@ -103,13 +111,17 @@ public sealed partial class PartyMenu
     }
 
     /// <summary>
-    /// B: closes the message, or fades the popup out (<c>MenuPopup.OnB</c>, <c>0x80055e10</c>). False if there's none and
-    /// the details don't show, so B closes the menu.
+    /// B: closes the message, the details the actiontip held open or the actiontip, or fades the popup out (<c>MenuPopup.OnB</c>,
+    /// <c>0x80055e10</c>). False if there's none and the details don't show, so B closes the menu.
     /// </summary>
     public bool Back()
     {
         if (Message is not null)
             CloseMessage();
+        else if (DetailsPane.Pinned)
+            ReleaseDetails();
+        else if (Tip is not null)
+            CloseTip();
         else if (OpenCraftingPopup is { } crafting)
             crafting.Fade.Close();
         else if (Crafting is null && !DetailsPane.Showing)

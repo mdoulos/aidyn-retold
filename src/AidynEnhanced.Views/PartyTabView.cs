@@ -271,6 +271,8 @@ public partial class PartyTabView : Control
     private int? _hoveredCell;
     /// <summary>The aspect's or school's icon the mouse is on, by its place among <see cref="Icons"/>, or null.</summary>
     private int? _hoveredIcon;
+    /// <summary>The actiontip a right click opened and where in the frame, which it opens beside; the stick's opens by its item.</summary>
+    private (ActionTip Tip, Vector2 At)? _tipAt;
     /// <summary>Where the inventory's grid was last drawn, which the mouse is tested against, as <see cref="_listLayout"/> is for a list.</summary>
     private GridLayout _gridLayout = PartyMenu.InventoryGrid;
     /// <summary>Where the tab's list was last drawn, which the mouse is tested against: a list sliding in is drawn off its place.</summary>
@@ -389,6 +391,11 @@ public partial class PartyTabView : Control
             _hoveredIcon = IconAt(mouse.Position);
             _hoveredCell = null;
         }
+        if (TipInput(@event))
+        {
+            AcceptEvent();
+            return;
+        }
         // A click on a slot of the silhouette with something worn in it selects it, and a double click uses it as A does, taking it off:
         // with what's worn not in the inventory, the silhouette is where the mouse reaches it.
         if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } slotClick && _hoveredSlot is { } slot)
@@ -436,6 +443,66 @@ public partial class PartyTabView : Control
             return;
         QueueRedraw();
         AcceptEvent();
+    }
+
+    /// <summary>
+    /// The mouse and the actiontip (<see cref="ActionTip"/>): a click while the details it held open show lets them go; while it's up,
+    /// hovering a choice points at it, a click on one chooses it as A does, and a click elsewhere closes it, a right click on an item
+    /// opening it there instead; and with none up, a right click on a worn slot or a grid cell selects the item and opens one beside the
+    /// mouse, where a right click elsewhere goes on to be B. True if the event was the actiontip's.
+    /// </summary>
+    private bool TipInput(InputEvent e)
+    {
+        if (!OwnTab || e is not InputEventMouse mouse)
+            return false;
+        var at = mouse.Position - (Vector2)_origin;
+        if (Menu.DetailsPane.Pinned)
+        {
+            if (e is InputEventMouseButton { Pressed: true })
+                Menu.ReleaseDetails();
+            return e is InputEventMouseButton;
+        }
+        if (Menu.Tip is { } tip)
+        {
+            var row = TipChoiceAt(tip, at);
+            switch (e)
+            {
+                case InputEventMouseMotion when row is { } hovered:
+                    Menu.PointTip(hovered);
+                    return true;
+                case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } when row is { } chosen:
+                    Menu.PointTip(chosen);
+                    UiScreen.Of(this)?.Click(MenuAction.Accept);
+                    return true;
+                case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left or MouseButton.Right } click:
+                    Menu.CloseTip();
+                    if (click.ButtonIndex == MouseButton.Right)
+                        OpenTipAt(at);
+                    return true;
+                default:
+                    return e is InputEventMouseButton;
+            }
+        }
+        return e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Right } && OpenTipAt(at);
+    }
+
+    /// <summary>
+    /// Selects the item under a point in the frame, a worn slot's or a grid cell's, and opens the actiontip on it there, if there's
+    /// anything to offer. True if there was an item, so the right click isn't B.
+    /// </summary>
+    private bool OpenTipAt(Vector2 at)
+    {
+        if (Menu.HasPopup || Menu.OriginalLook || Menu.Slide is not null)
+            return false;
+        if (_hoveredSlot is { } slot)
+            Menu.SelectSlot(slot);
+        else if (Menu.List == PartyList.Inventory && Menu.Grid && _gridLayout.RowAt(Menu.Inventory, at.X, at.Y) is { } cell)
+            Menu.Point(cell);
+        else
+            return false;
+        if (Menu.OpenTip())
+            _tipAt = (Menu.Tip!, at);
+        return true;
     }
 
     /// <summary>
@@ -680,6 +747,8 @@ public partial class PartyTabView : Control
         // The original shows no names on slips.
         if (!OriginalLook)
             Tooltip();
+        if (OwnTab && Menu.Tip is { } tip)
+            ActionTipBox(tip);
         _overlay.DrawSetTransform(Vector2.Zero);
         Popups();
     }
@@ -1306,8 +1375,59 @@ public partial class PartyTabView : Control
         }
     }
 
-    /// <summary>How far a name's slip reaches past its text at the sides and above and below it.</summary>
-    private const float SlipSide = 6, SlipEnds = 4;
+    /// <summary>
+    /// How tall a name's capitals are on its slip, half the menus' text, the user's choice (Nov 2, 2026), and how far the slip reaches
+    /// past it at the sides and above and below it.
+    /// </summary>
+    private const float NameText = UiPainter.StandardText / 2, SlipSide = 3, SlipEnds = 2;
+
+    /// <summary>The actiontip's choices: their capitals this tall, this far apart, and the slip this far past them at the sides and ends.</summary>
+    private const float TipText = 3, TipPitch = 6.5f, TipSide = 4, TipEnds = 2.5f;
+
+    /// <summary>
+    /// The actiontip: its choices on a slip, the cursor's in red ink, beside where the right click opened it, or with the stick's beside its
+    /// item, the worn slot or the grid's cell, kept inside the frame.
+    /// </summary>
+    private void ActionTipBox(ActionTip tip)
+    {
+        var font = _ui.Slim.Sized(TipText);
+        var rect = TipRect(tip);
+        _ui.Slip(_canvas, rect);
+        for (var i = 0; i < tip.Choices.Rows.Count; i++)
+        {
+            var middle = rect.Position.Y + TipEnds + TipPitch * (i + 0.5f);
+            Small(ActionTip.Label(tip.Choices.Rows[i]), rect.Position.X + TipSide, middle - font.Middle,
+                i == tip.Choices.Cursor ? UiPainter.RedInk : UiPainter.Ink, font: font);
+        }
+    }
+
+    /// <summary>Where the actiontip's slip is in the frame.</summary>
+    private Rect2 TipRect(ActionTip tip)
+    {
+        var font = _ui.Slim.Sized(TipText);
+        var width = tip.Choices.Rows.Select(c => font.ExactWidth(ActionTip.Label(c))).DefaultIfEmpty(0).Max() + 2 * TipSide;
+        var height = tip.Choices.Rows.Count * TipPitch + 2 * TipEnds;
+        Vector2 at;
+        if (_tipAt is { } opened && opened.Tip == tip)
+            at = opened.At + new Vector2(1, 1);
+        else if (Menu.SelectedSlot is { } slot)
+            at = new Vector2(SlotRect(slot).End.X + 1, SlotRect(slot).Position.Y);
+        else
+        {
+            var (x, y) = _gridLayout.CellAt(Menu.Inventory.Cursor - Menu.Inventory.First);
+            at = new Vector2(x + _gridLayout.Cell + 1, y);
+        }
+        return new Rect2(Math.Clamp(at.X, 4, FrameWidth - 4 - width), Math.Clamp(at.Y, 4, FrameHeight - 4 - height), width, height);
+    }
+
+    /// <summary>The actiontip's choice under a point in the frame, or null.</summary>
+    private int? TipChoiceAt(ActionTip tip, Vector2 at)
+    {
+        var rect = TipRect(tip);
+        if (!rect.HasPoint(at))
+            return null;
+        return Math.Clamp((int)((at.Y - rect.Position.Y - TipEnds) / TipPitch), 0, tip.Choices.Rows.Count - 1);
+    }
 
     /// <summary>
     /// A name on a little slip of paper, centred across <paramref name="middle"/>, its foot at <paramref name="foot"/>, kept inside the
@@ -1315,14 +1435,14 @@ public partial class PartyTabView : Control
     /// </summary>
     private void NameSlip(string name, float middle, float foot, float? below = null)
     {
-        var font = _ui.Slim;
+        var font = _ui.Slim.Sized(NameText);
         var width = font.ExactWidth(name);
         var height = font.Capitals + 2 * SlipEnds;
         var left = Math.Clamp(middle - width / 2 - SlipSide, 4, FrameWidth - 4 - width - 2 * SlipSide);
         var top = below is { } under && foot - height < PageRect.Position.Y ? under : foot - height;
         var paper = new Rect2(left, top, width + 2 * SlipSide, height);
         _ui.Slip(_canvas, paper, sheet: UiPainter.TooltipSheet);
-        Small(name, left + SlipSide, paper.Position.Y + height / 2 - font.Middle, UiPainter.Ink);
+        Small(name, left + SlipSide, paper.Position.Y + height / 2 - font.Middle, UiPainter.Ink, font: font);
     }
 
     /// <summary>

@@ -88,8 +88,21 @@ public sealed class DetailsPane
             Fade = new PopupFade();
     }
 
-    /// <summary>C-down let go.</summary>
-    public void Release() => Held = false;
+    /// <summary>
+    /// Whether they were opened from the actiontip (<see cref="Pin"/>), which holds them open as C-down held does, until A, B or a click
+    /// lets them go.
+    /// </summary>
+    public bool Pinned { get; private set; }
+
+    /// <summary>The actiontip's Details: opens them if <paramref name="open"/>, held open until they're let go (<see cref="Release"/>).</summary>
+    public void Pin(bool open)
+    {
+        Press(open);
+        Pinned = Fade is not null;
+    }
+
+    /// <summary>C-down let go, or what holds the actiontip's details open.</summary>
+    public void Release() => (Held, Pinned) = (false, false);
 
     /// <summary>Steps the fade by a menu update, and starts it out if they're open and C-down isn't held.</summary>
     public void Advance()

@@ -276,11 +276,16 @@ public sealed partial class PartyMenu : IPartyWindow
     /// <summary>Shows a list.</summary>
     public void ShowList(PartyList list) => List = list;
 
-    /// <summary>Moves the cursor of the popup, or of the list showing.</summary>
+    /// <summary>Moves the cursor of the popup or the actiontip, or of the list showing.</summary>
     public void MoveCursor(int by)
     {
         if (Message is not null || DetailsPane.Showing)
             return;
+        if (Tip is { } tip)
+        {
+            tip.Choices.Move(by);
+            return;
+        }
         SelectedSlot = null;
         if (Crafting is { } crafting)
         {
@@ -304,7 +309,7 @@ public sealed partial class PartyMenu : IPartyWindow
     /// <summary>Puts the cursor of the popup, or of the list showing, on a row.</summary>
     public void Point(int row)
     {
-        if (Message is not null || DetailsPane.Showing)
+        if (Message is not null || DetailsPane.Showing || Tip is not null)
             return;
         SelectedSlot = null;
         if (Crafting is { } crafting)

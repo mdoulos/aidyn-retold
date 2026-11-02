@@ -71,7 +71,7 @@ public partial class SystemTabView : Control
 
     public SystemTabView(PluginSet plugins, SystemMenu menu)
     {
-        _ui = new UiPainter(plugins);
+        _ui = new UiPainter(plugins) { TextSize = UiPainter.StandardText };
         Menu = menu;
         Name = "System tab";
         MouseFilter = MouseFilterEnum.Pass;
@@ -489,7 +489,7 @@ public partial class SystemTabView : Control
             }
             // The label level with the middle of its rope, and the rope whole and faint, then again in the rows' colour as far as the
             // volume reaches.
-            _ui.Text(this, _ui.Main, row.Label, AudioLabel, top + (bar.Y - _ui.Main.LineHeight) / 2 + 1, color);
+            _ui.Text(this, _ui.Main, row.Label, AudioLabel, (int)MathF.Round(top + bar.Y / 2f - _ui.Main.Middle), color);
             _ui.Image(this, MenuImages.VolumeBar, AudioBar, top, color: Style.BarEmpty);
             _ui.ImageTo(this, MenuImages.VolumeBar, AudioBar, top, bar, AudioBar + bar.X * row.Value / Core.Settings.MaxVolume, Style.Text);
         }
@@ -591,24 +591,25 @@ public partial class SystemTabView : Control
     {
         CentredImage(MenuImages.EnterNameTitle, FrameWidth / 2, NameTitleTop);
         var name = entry.Name;
-        var x = FrameWidth / 2 - _ui.Main.Width(name) / 2;
+        var main = _ui.Main;
+        var x = FrameWidth / 2 - main.ExactWidth(name) / 2;
         var chosen = entry.Pulse.Now(NameEntry.PulseFrom, NameEntry.PulseTo);
         for (var i = 0; i < name.Length; i++)
         {
             var c = name[i].ToString();
-            _ui.Text(this, _ui.Main, c, x, NameTop, i == entry.Slot ? chosen : Style.Text);
-            x += _ui.Main.Width(c);
+            _ui.Text(this, main, c, x, NameTop, i == entry.Slot ? chosen : Style.Text);
+            x += main.ExactWidth(c);
         }
-        // The next letter's place, which the font's underscore (a diamond) can't show.
+        // The next letter's place, which the font's underscore (a diamond) can't show: a letter's width, a pixel under the capitals.
         if (entry.Slot >= name.Length)
-            DrawRect(new Rect2(x + 1, NameTop + _ui.Main.LineHeight - 2, 6, 1), _ui.Tint(chosen));
+            DrawRect(new Rect2(x + main.Scale, NameTop + main.Middle + main.Capitals / 2 + 1, 6 * main.Scale, main.Scale), _ui.Tint(chosen));
         for (var k = 0; k < NameEntry.Keys.Length; k++)
         {
             var cell = Grid + new Vector2I(k % NameEntry.Columns * KeySize, k / NameEntry.Columns * KeySize);
             var key = NameEntry.Keys[k].ToString();
             if (k == entry.Key)
                 _ui.Image(this, MenuImages.KeyCursor, cell.X, cell.Y, color: chosen);
-            _ui.Text(this, _ui.Main, key, cell.X + (KeySize - _ui.Main.Width(key)) / 2, cell.Y + (KeySize - _ui.Main.LineHeight) / 2 + 1,
+            _ui.Text(this, _ui.Main, key, cell.X + (KeySize - _ui.Main.Width(key)) / 2, (int)MathF.Round(cell.Y + KeySize / 2f - _ui.Main.Middle),
                 k == entry.Key ? KeyUnderCursor : Style.Text);
         }
     }

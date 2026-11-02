@@ -118,7 +118,7 @@ public sealed class TextFace
         };
         // The font is only reached through its RID above, which a collected FontFile frees.
         GC.KeepAlive(font);
-        return new FaceSheet(record with { Widths = widths }, canvasTexture, drawn);
+        return new FaceSheet(record with { Widths = widths }, canvasTexture, drawn, capitals, baseline);
     }
 
     /// <summary>
@@ -192,9 +192,12 @@ public sealed class TextFace
     };
 }
 
-/// <summary>A font's sheet as a <see cref="TextFace"/> draws it: the record with the face's widths, and the cells the face drew.</summary>
+/// <summary>
+/// A font's sheet as a <see cref="TextFace"/> draws it: the record with the face's widths, the cells the face drew, and how tall its
+/// capitals are and the row under them, its baseline, in the sheet's pixels.
+/// </summary>
 /// <param name="Texture">The cells, <see cref="TextFace.Density"/> texels a pixel, filtered smoothly.</param>
-public sealed record FaceSheet(FontRecord Record, Texture2D Texture, IReadOnlyList<bool> Drawn)
+public sealed record FaceSheet(FontRecord Record, Texture2D Texture, IReadOnlyList<bool> Drawn, int Capitals, int Baseline)
 {
     /// <summary>Whether the face draws a cell of the sheet, a glyph's by where it's taken from; its icons are the sheet's.</summary>
     public bool Draws(int sourceX, int sourceY)

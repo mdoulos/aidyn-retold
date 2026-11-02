@@ -31,12 +31,12 @@ public partial class PartyTabView
         var slim = _ui.Slim;
         var earned = new ScreenRect(x, y, x + wrap, FrameHeight);
         _ui.Text(_canvas, slim, window.Earned, x, y, earned, PartyMenu.TextColor);
-        var top = y + _ui.Main.Layout.Height(window.Earned, x, x + wrap) + PostBattleMenu.LevelPlace.Gap;
+        var top = y + _ui.Main.Height(window.Earned, x, x + wrap) + PostBattleMenu.LevelPlace.Gap;
         var (levelX, levelWrap, _) = PostBattleMenu.LevelPlace;
         foreach (var line in window.Levelled)
         {
             _ui.Text(_canvas, slim, line, levelX, top, new ScreenRect(levelX, top, levelX + levelWrap, FrameHeight), PartyMenu.TextColor);
-            top += slim.Layout.Height(line, levelX, levelX + levelWrap);
+            top += slim.Height(line, levelX, levelX + levelWrap);
         }
 
         var (costX, costY, spacing) = PostBattleMenu.CostPlace;

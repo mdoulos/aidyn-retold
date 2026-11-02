@@ -27,6 +27,9 @@ public partial class PartyTabView : Control
     private static readonly Rect2I PortraitPiece = new(18, 22, 134, 46);
 
     private static readonly Vector2I ShownPortrait = new(4, 4), NameAt = new(51, 6);
+
+    /// <summary>The member's name, a heading, larger than the menus' text.</summary>
+    private UiFont NameFont => _ui.Slim.Sized(UiPainter.HeadingText);
     private static readonly Vector2I[] OtherPortraits = [new(49, 17), new(78, 17), new(107, 17)];
     private const int ShownSize = 40, OtherSize = 24;
 
@@ -55,9 +58,6 @@ public partial class PartyTabView : Control
     /// </summary>
     private const int TabIconTop = 6, TabIconSize = 13, CaptionInset = 5;
 
-    /// <summary>How big a tab's caption is drawn, as a share of the slim font's size.</summary>
-    private const float CaptionScale = 0.42f;
-
     /// <summary>
     /// How strongly a tab that isn't showing draws its icon and caption, and one the window hasn't got; how strongly one the window
     /// hasn't got draws its banner; and how strongly the open banner shows over a closed one the mouse is on.
@@ -76,9 +76,6 @@ public partial class PartyTabView : Control
 
     /// <summary>How far down the tabs the gold's middle is, level with the banners' middles.</summary>
     private const float GoldMiddle = 15;
-
-    /// <summary>How big the level, the gold and the hit points are drawn, as a share of the slim font's size.</summary>
-    private const float SmallScale = 0.6f;
 
     /// <summary>
     /// The silhouette's slots' corner, centring them in the column under the bar. Their places are the original's, from its
@@ -180,7 +177,7 @@ public partial class PartyTabView : Control
 
     public PartyTabView(PluginSet plugins, IPartyWindow window)
     {
-        _ui = new UiPainter(plugins);
+        _ui = new UiPainter(plugins) { TextSize = UiPainter.StandardText };
         _plugins = plugins;
         _canvas = this;
         Window = window;
@@ -541,18 +538,23 @@ public partial class PartyTabView : Control
         var gold = Num(Menu.Party.Gold);
         var goldX = GoldRight - SmallWidth(gold);
         var middle = TabsAt.Y + GoldMiddle;
-        Small(gold, goldX, middle - (_ui.Slim.LineHeight - 2) * SmallScale / 2, PartyMenu.TextColor);
+        Small(gold, goldX, middle - _ui.Slim.Middle, PartyMenu.TextColor);
         Art(Purse, new Rect2(goldX - PurseSize - 1, middle - PurseSize / 2f, PurseSize, PurseSize));
     }
 
-    /// <summary>A tab's caption, centred under its icon, squeezed across to stay <see cref="CaptionInset"/> in from its sides.</summary>
+    /// <summary>
+    /// A tab's caption, the slim font at <see cref="UiPainter.CaptionText"/>, its capitals' top 0.5 under its icon, centred, and
+    /// squeezed across to stay <see cref="CaptionInset"/> in from the tab's sides.
+    /// </summary>
     private void Caption(string text, Rect2 tab, Rgba color)
     {
-        var width = _ui.Slim.Width(text) * CaptionScale;
+        var font = _ui.Slim.Sized(UiPainter.CaptionText);
+        var width = font.ExactWidth(text);
         var squeeze = Math.Min(1, (TabSize - 2 * CaptionInset) / width);
-        var at = new Vector2(tab.Position.X + (TabSize - width * squeeze) / 2, tab.Position.Y + TabIconTop + TabIconSize);
-        _canvas.DrawSetTransform(_base + at, 0, new Vector2(CaptionScale * squeeze, CaptionScale));
-        _ui.Text(_canvas, _ui.Slim, text, 0, 0, color);
+        var middle = tab.Position.Y + TabIconTop + TabIconSize + 0.5f + font.Capitals / 2;
+        var at = new Vector2(tab.Position.X + (TabSize - width * squeeze) / 2, middle - font.Middle);
+        _canvas.DrawSetTransform(_base + at, 0, new Vector2(squeeze, 1));
+        _ui.Text(_canvas, font, text, 0, 0, color);
         _canvas.DrawSetTransform(_base);
     }
 
@@ -584,7 +586,7 @@ public partial class PartyTabView : Control
         _ => true,
     };
 
-    /// <summary>Text in the slim font at <see cref="SmallScale"/> of its size, from a point in the frame, its shadow first if it has one.</summary>
+    /// <summary>Text in the slim font from a point in the frame, to a fraction of a pixel, its shadow first if it has one.</summary>
     private void Small(string text, float x, float y, Rgba color, Rgba? shadow = null)
     {
         if (shadow is { } dark)
@@ -594,7 +596,7 @@ public partial class PartyTabView : Control
 
     private void SmallAt(string text, float x, float y, Rgba color)
     {
-        _canvas.DrawSetTransform(_base + new Vector2(x, y), 0, new Vector2(SmallScale, SmallScale));
+        _canvas.DrawSetTransform(_base + new Vector2(x, y));
         _ui.Text(_canvas, _ui.Slim, text, 0, 0, color);
         _canvas.DrawSetTransform(_base);
     }
@@ -624,8 +626,8 @@ public partial class PartyTabView : Control
         _canvas.DrawSetTransform(_base);
     }
 
-    /// <summary>How wide text is in the slim font at <see cref="SmallScale"/>.</summary>
-    private float SmallWidth(string text) => _ui.Slim.Width(text) * SmallScale;
+    /// <summary>How wide text is in the slim font, unrounded.</summary>
+    private float SmallWidth(string text) => _ui.Slim.ExactWidth(text);
 
     /// <summary>
     /// A skill's popup (<c>WidgetCrafting</c>, <c>WidgetMenuPopup</c>) on the details' parchment at its own
@@ -696,8 +698,8 @@ public partial class PartyTabView : Control
                 new Vector2I(size, size));
         }
         if (Menu.Previous is { } before)
-            _ui.Text(_canvas, _ui.Slim, before.Name, at.X + NameAt.X, at.Y + NameAt.Y, FadingOut(PartyMenu.TextColor, change));
-        _ui.Text(_canvas, _ui.Slim, shown.Name, at.X + NameAt.X, at.Y + NameAt.Y, FadingIn(PartyMenu.TextColor, change));
+            _ui.Text(_canvas, NameFont, before.Name, at.X + NameAt.X, at.Y + NameAt.Y, FadingOut(PartyMenu.TextColor, change));
+        _ui.Text(_canvas, NameFont, shown.Name, at.X + NameAt.X, at.Y + NameAt.Y, FadingIn(PartyMenu.TextColor, change));
         var icons = Icons(shown);
         var old = Menu.Previous is { } member ? Icons(member) : icons;
         var iconsY = IconsAt.Y;
@@ -763,13 +765,13 @@ public partial class PartyTabView : Control
     {
         var bar = Bar;
         var hp = $"{Num(numbers.Hp)} / {Num(numbers.MaxHp)}";
-        var height = (_ui.Slim.LineHeight - 2) * SmallScale;
-        Small(hp, bar.Position.X + (bar.Size.X - SmallWidth(hp)) / 2, bar.Position.Y + (bar.Size.Y - height) / 2, BarText with { A = a },
+        var slim = _ui.Slim;
+        Small(hp, bar.Position.X + (bar.Size.X - SmallWidth(hp)) / 2, bar.Position.Y + bar.Size.Y / 2f - slim.Middle, BarText with { A = a },
             BarShadow with { A = (byte)(BarShadow.A * a / 255) });
         var level = $"{LevelLabel} {Num(numbers.Level)}";
         // Level with the name's foot.
-        var nameFoot = PortraitPiece.Position.Y + NameAt.Y + _ui.Slim.LineHeight - 2;
-        Small(level, LevelRight - SmallWidth(level), nameFoot - height, PartyMenu.TextColor with { A = a });
+        var nameFoot = PortraitPiece.Position.Y + NameAt.Y + NameFont.Middle + NameFont.Capitals / 2;
+        Small(level, LevelRight - SmallWidth(level), nameFoot - slim.Capitals / 2 - slim.Middle, PartyMenu.TextColor with { A = a });
     }
 
     /// <summary>
@@ -922,7 +924,7 @@ public partial class PartyTabView : Control
                 _ui.Text(_canvas, font, label, b.Left, top, b, PartyMenu.TextColor);
                 _ui.Text(_canvas, font, value, valueX, top, b, PartyMenu.TextColor);
             }
-            top += font.LineHeight;
+            top += PartyMenu.ExperiencePitch;
         }
     }
 

@@ -69,7 +69,7 @@ public partial class PartyTabView
         var screen = (Vector2I)Size;
         var left = (screen.X - BarterConfirm.Width) / 2;
         var right = left + BarterConfirm.Width;
-        var textHeight = font.Layout.Height(confirm.Text, left, right);
+        var textHeight = font.Height(confirm.Text, left, right);
         var rows = confirm.Options.Rows;
         var height = textHeight + rows.Count * font.LineHeight + BarterConfirm.Gap;
         var top = (screen.Y - height) / 2;

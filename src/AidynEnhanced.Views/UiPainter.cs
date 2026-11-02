@@ -5,12 +5,42 @@ using Godot;
 
 namespace AidynEnhanced.Views;
 
-/// <summary>A font's layout and its sheet, to print with, and the typeface its letters are drawn in instead, if one is (<see cref="TextFace"/>).</summary>
-public sealed record UiFont(TextLayout Layout, Texture2D? Sheet, FaceSheet? Face = null)
+/// <summary>
+/// A font's layout and its sheet, to print with, the typeface its letters are drawn in instead, if one is (<see cref="TextFace"/>),
+/// and how much smaller than its sheet's own size it's drawn (<see cref="Sized"/>). Its measures are at that size, rounded to
+/// the frame's pixels.
+/// </summary>
+public sealed record UiFont(TextLayout Layout, Texture2D? Sheet, FaceSheet? Face = null, float Scale = 1)
 {
-    public int LineHeight => Layout.LineHeight();
+    public int LineHeight => Scaled(Layout.LineHeight());
 
-    public int Width(string text) => Layout.Width(text);
+    public int Width(string text) => Scaled(Layout.Width(text));
+
+    /// <summary>How tall text is when it starts at <paramref name="x"/> and wraps at <paramref name="right"/>, or 0 if it's empty or has no room.</summary>
+    public int Height(string text, int x, int right) => Scaled(Layout.Height(text, x, x + (int)((right - x) / Scale)));
+
+    /// <summary>
+    /// The font drawn with its capitals <paramref name="capitals"/> of the frame's pixels tall. Only the typeface is drawn smaller:
+    /// the sheets' own letters are pixels, so a font without a face stays its size.
+    /// </summary>
+    public UiFont Sized(float capitals) => Face is { } face ? this with { Scale = capitals / face.Capitals } : this;
+
+    /// <summary>
+    /// How far down the text drawn smaller is moved, so the middle of its capitals is where the font's own size has them: text
+    /// drawn where a layout put the full-size text sits in the middle of the same row.
+    /// </summary>
+    public float Drop => Face is { } face ? (1 - Scale) * Middle : 0;
+
+    /// <summary>How far under where text is drawn its capitals' middle is, at any size.</summary>
+    public float Middle => Face is { } face ? face.Baseline - face.Capitals / 2f : Layout.Font.CellHeight / 2f;
+
+    /// <summary>How tall its capitals are drawn, in the frame's pixels.</summary>
+    public float Capitals => (Face?.Capitals ?? Layout.Font.CellHeight) * Scale;
+
+    /// <summary>How wide text is on one line, unrounded, for placing it to a fraction of a pixel.</summary>
+    public float ExactWidth(string text) => Layout.Width(text) * Scale;
+
+    private int Scaled(int length) => Scale == 1 ? length : (int)MathF.Round(length * Scale);
 }
 
 /// <summary>
@@ -35,7 +65,29 @@ public sealed class UiPainter
 
     public UiImages Images { get; }
 
-    /// <summary>The main font, and the slim one the lists and details use (<c>SlimFont</c>), as the game's text is drawn now.</summary>
+    /// <summary>
+    /// How tall the capitals of most of the menus' text are, in the frame's pixels, the user's choice (Nov 2, 2026): the size the
+    /// Party tab's level was drawn at, the slim font's 7 at 0.6, which reads better on a fine screen than the fonts' own size, kept
+    /// as large as it was for the console's pixels. A heading's are larger, and a tab's caption's smaller.
+    /// </summary>
+    public const float StandardText = 4.2f, HeadingText = 5.6f, CaptionText = 2.94f;
+
+    /// <summary>
+    /// How tall <see cref="Main"/>'s and <see cref="Slim"/>'s capitals are drawn, in the frame's pixels: <see cref="StandardText"/>
+    /// in the menus, so the two fonts' text is one size, or null for the fonts' own size, which the screens the menus' size hasn't
+    /// reached yet keep.
+    /// </summary>
+    public float? TextSize
+    {
+        get;
+        set
+        {
+            field = value;
+            Array.Clear(_fonts);
+        }
+    }
+
+    /// <summary>The main font, and the slim one the lists and details use (<c>SlimFont</c>), as the game's text is drawn now, at <see cref="TextSize"/>.</summary>
     public UiFont Main => Font(0);
 
     public UiFont Slim => Font(1);
@@ -52,29 +104,58 @@ public sealed class UiPainter
             return font;
         var record = _plugins.Get<FontRecord>(RecordId.Decimal(RecordTypes.Font, n));
         var face = _face?.Sheet(record);
-        return _fonts[n] = new UiFont(new TextLayout(face?.Record ?? record), Images.Get(record.Image), face);
+        font = new UiFont(new TextLayout(face?.Record ?? record), Images.Get(record.Image), face);
+        return _fonts[n] = TextSize is { } size ? font.Sized(size) : font;
     }
 
     /// <summary>
     /// Prints text from (x, y), wrapping at <paramref name="bounds"/>' right edge and drawing only
-    /// what's inside them, and returns how tall it is (<c>WidgetClipText</c>).
+    /// what's inside them, and returns how tall it is (<c>WidgetClipText</c>). A font drawn smaller is laid out at its own size
+    /// within the bounds made larger to match, and drawn shrunk toward (x, y) and moved down its <see cref="UiFont.Drop"/>.
     /// </summary>
     /// <param name="clip">A box the glyphs are cut to besides, which doesn't move the wrap, as a widget group's is.</param>
-    public int Text(CanvasItem canvas, UiFont font, string text, int x, int y, ScreenRect bounds, Rgba color, Rect2I? clip = null)
+    public int Text(CanvasItem canvas, UiFont font, string text, int x, int y, ScreenRect bounds, Rgba color, Rect2I? clip = null) =>
+        Text(canvas, font, text, x, y, 0, bounds, color, clip);
+
+    /// <summary>
+    /// Prints one line from a point placed to a fraction of a pixel, unbounded but by the screen: letters set one at a time, as a name
+    /// being entered is, where whole pixels spaced them unevenly once the text was drawn smaller.
+    /// </summary>
+    public int Text(CanvasItem canvas, UiFont font, string text, float x, int y, Rgba color)
     {
+        var whole = (int)MathF.Floor(x);
+        return Text(canvas, font, text, whole, y, x - whole, new ScreenRect(-4096, -4096, 4096, 4096), color, null);
+    }
+
+    /// <param name="nudge">How far right of <paramref name="x"/>, less than a pixel, the text is drawn.</param>
+    private int Text(CanvasItem canvas, UiFont font, string text, int x, int y, float nudge, ScreenRect bounds, Rgba color, Rect2I? clip)
+    {
+        var (scale, drop) = (font.Scale, font.Drop);
+        if (scale != 1)
+        {
+            int Across(int edge) => x + (int)Math.Clamp((edge - x) / scale, -8192, 8192);
+            int Down(int edge) => y + (int)Math.Clamp((edge - y - drop) / scale, -8192, 8192);
+            bounds = new ScreenRect(Across(bounds.Left), Down(bounds.Top), Across(bounds.Right), Down(bounds.Bottom));
+        }
         var run = font.Layout.Print(text, x, y, bounds, color);
         foreach (var glyph in run.Glyphs)
-            Glyph(canvas, font, glyph, clip, Tint(glyph.Color));
-        return run.Height;
+        {
+            var rect = new Rect2(x + nudge + (glyph.X - x) * scale, y + drop + (glyph.Y - y) * scale, glyph.Width * scale, glyph.Height * scale);
+            Glyph(canvas, font, glyph, rect, clip, Tint(glyph.Color));
+        }
+        return scale == 1 ? run.Height : (int)MathF.Round(run.Height * scale);
     }
 
     /// <summary>
     /// Draws a placed glyph, cut to a clip if there's one: from the typeface's sheet where it draws the glyph's cell, its texels
     /// <see cref="TextFace.Density"/> a pixel, and else from the font's own sheet, pixel for pixel.
     /// </summary>
-    public static void Glyph(CanvasItem canvas, UiFont font, PlacedGlyph glyph, Rect2I? clip, Color color)
+    public static void Glyph(CanvasItem canvas, UiFont font, PlacedGlyph glyph, Rect2I? clip, Color color) =>
+        Glyph(canvas, font, glyph, new Rect2(glyph.X, glyph.Y, glyph.Width, glyph.Height), clip, color);
+
+    /// <summary>A placed glyph drawn over a rectangle, as a font drawn smaller draws it.</summary>
+    private static void Glyph(CanvasItem canvas, UiFont font, PlacedGlyph glyph, Rect2 rect, Rect2I? clip, Color color)
     {
-        var rect = new Rect2(glyph.X, glyph.Y, glyph.Width, glyph.Height);
         var source = new Rect2(glyph.SourceX, glyph.SourceY, glyph.Width, glyph.Height);
         if (font.Face is { } face && face.Draws(glyph.SourceX, glyph.SourceY))
             DrawCut(canvas, face.Texture, rect, new Rect2(source.Position * TextFace.Density, source.Size * TextFace.Density), clip, color, sampled: false);
@@ -103,7 +184,7 @@ public sealed class UiPainter
     public void Message(CanvasItem canvas, Vector2I screen, string text, int wrap, Rgba color, int extraWidth = 0, int extraHeight = 0)
     {
         var width = Math.Min(Main.Width(text), wrap);
-        MessageBox(canvas, screen, text, width + extraWidth, Main.Layout.Height(text, 0, width) + 5 + extraHeight, color);
+        MessageBox(canvas, screen, text, width + extraWidth, Main.Height(text, 0, width) + 5 + extraHeight, color);
     }
 
     /// <summary>
@@ -167,7 +248,7 @@ public sealed class UiPainter
         var half = width / 2;
         var centre = new Vector2I(screen.X / 2, screen.Y / 2);
         var (left, right) = (centre.X - half, centre.X + half);
-        var textHeight = Main.Layout.Height(text, left, right);
+        var textHeight = Main.Height(text, left, right);
         var top = centre.Y - (choices * Main.LineHeight + textHeight + gap) / 2;
         return (left, top, right, top + textHeight + gap);
     }

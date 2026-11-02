@@ -181,21 +181,102 @@ public sealed class UiImages(PluginSet plugins)
     {
         if (CarriedArt.TryGetValue(name, out var texture))
             return texture;
-        var image = new Image();
-        if (image.LoadPngFromBuffer(Carried(name)) == Error.Ok)
+        if (ArtImage(name).Image?.Duplicate() is Image image)
         {
             // The clear pixels take their colour from the art beside them, so the smaller mipmaps don't pale its edges toward the
             // clear pixels' white or darken them toward their black.
-            image.Convert(Image.Format.Rgba8);
             image.FixAlphaEdges();
             image.GenerateMipmaps();
             texture = new CanvasTexture { DiffuseTexture = ImageTexture.CreateFromImage(image), TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps };
         }
-        else
+        return CarriedArt[name] = texture;
+    }
+
+    private static readonly Dictionary<string, (Image? Image, Rect2 Paper)> CarriedImages = [];
+
+    /// <summary>
+    /// A piece of the game's own UI art as it's painted, RGBA, and its paper: the box its pixels more than half opaque fill, which a
+    /// sheet of parchment is laid by. Read once; no image and an empty box if it can't be read.
+    /// </summary>
+    public static (Image? Image, Rect2 Paper) ArtImage(string name)
+    {
+        if (CarriedImages.TryGetValue(name, out var art))
+            return art;
+        var image = new Image();
+        if (image.LoadPngFromBuffer(Carried(name)) != Error.Ok)
         {
             GD.PushWarning($"The views' {name} couldn't be read.");
+            return CarriedImages[name] = (null, default);
         }
-        return CarriedArt[name] = texture;
+        image.Convert(Image.Format.Rgba8);
+        var (w, h) = (image.GetWidth(), image.GetHeight());
+        var bytes = image.GetData();
+        var (left, top, right, bottom) = (w, h, -1, -1);
+        for (var y = 0; y < h; y++)
+        {
+            for (var x = 0; x < w; x++)
+            {
+                if (bytes[(y * w + x) * 4 + 3] <= 128)
+                    continue;
+                (left, right) = (Math.Min(left, x), Math.Max(right, x));
+                (top, bottom) = (Math.Min(top, y), Math.Max(bottom, y));
+            }
+        }
+        var paper = right < 0 ? new Rect2(0, 0, w, h) : new Rect2(left, top, right + 1 - left, bottom + 1 - top);
+        return CarriedImages[name] = (image, paper);
+    }
+
+    private readonly Dictionary<(RecordId, string), Texture2D?> _cut = [];
+
+    /// <summary>
+    /// An image cut to the outline of a piece of the game's own art, the art's paper stretched over the image, the user's choice
+    /// (Nov 2, 2026): a portrait in the shape of a sheet of parchment, its edges following the sheet's torn ones. An original's
+    /// small portrait is made larger first, pixel for pixel, so the outline isn't lost to its pixels. Mipmapped and filtered, made the
+    /// first time it's asked for; null if no plugin has the image or the art can't be read.
+    /// </summary>
+    public Texture2D? CutTo(RecordId image, string art)
+    {
+        if (_cut.TryGetValue((image, art), out var cut))
+            return cut;
+        if (plugins.FindAsset(image, "png") is { } png && Png.Load(png) is { } data && ArtImage(art) is ({ } mask, var paper))
+        {
+            data.Convert(Image.Format.Rgba8);
+            if (data.GetWidth() < CutSize)
+            {
+                var k = (CutSize + data.GetWidth() - 1) / data.GetWidth();
+                data.Resize(data.GetWidth() * k, data.GetHeight() * k, Image.Interpolation.Nearest);
+            }
+            var (w, h) = (data.GetWidth(), data.GetHeight());
+            var bytes = data.GetData();
+            var outline = mask.GetData();
+            var (mw, mh) = (mask.GetWidth(), mask.GetHeight());
+            for (var y = 0; y < h; y++)
+            {
+                var my = paper.Position.Y + (y + 0.5f) / h * paper.Size.Y - 0.5f;
+                for (var x = 0; x < w; x++)
+                {
+                    var mx = paper.Position.X + (x + 0.5f) / w * paper.Size.X - 0.5f;
+                    var o = (y * w + x) * 4 + 3;
+                    bytes[o] = (byte)MathF.Round(bytes[o] * AlphaAt(outline, mw, mh, mx, my) / 255f);
+                }
+            }
+            var result = Image.CreateFromData(w, h, false, Image.Format.Rgba8, bytes);
+            result.GenerateMipmaps();
+            cut = new CanvasTexture { DiffuseTexture = ImageTexture.CreateFromImage(result), TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps };
+        }
+        return _cut[(image, art)] = cut;
+    }
+
+    /// <summary>How wide an image is made, at least, before it's cut to an outline.</summary>
+    private const int CutSize = 160;
+
+    /// <summary>An RGBA image's alpha at a point between its pixels' centres, blended between the four round it; 0 off the image.</summary>
+    private static float AlphaAt(byte[] rgba, int width, int height, float x, float y)
+    {
+        var (x0, y0) = ((int)MathF.Floor(x), (int)MathF.Floor(y));
+        var (fx, fy) = (x - x0, y - y0);
+        float At(int px, int py) => px < 0 || py < 0 || px >= width || py >= height ? 0 : rgba[(py * width + px) * 4 + 3];
+        return (At(x0, y0) * (1 - fx) + At(x0 + 1, y0) * fx) * (1 - fy) + (At(x0, y0 + 1) * (1 - fx) + At(x0 + 1, y0 + 1) * fx) * fy;
     }
 
     private readonly Dictionary<RecordId, Texture2D?> _feathered = [];

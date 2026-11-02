@@ -9,8 +9,7 @@ The game's own UI art, drawn by the project's author. None of it comes from the 
 - `ui-square-cornered.png`: the knotwork-cornered frame, 512 square, nine-sliced as a frame for any box (`UiPainter.NineSlice`); nothing has it yet.
 - `ui-square-solid.png`: a box, 512 square, which the silhouette's slots and the inventory grid's cells sit in.
 - `ui-square-select-red.png`: the red square round the inventory grid's cursor's cell, 350 square.
-- `ui-square-parchment.png`: a loose slip of paper with its shadow, 428 square, which popups, messages, questions, names and the Party tab's tabs are on.
-- `ui-rectangle-parchment.png`: a loose leaf of parchment with burnt, torn edges and its shadow, 468 × 618: the Party tab's pages.
+- `parchment-bg-400x180.png`, `parchment-bg-500x500.png`, `parchment-bg-1400x1800.png` and `parchment-bg-1500x1800.png`: sheets of parchment with torn edges on a clear background, a wide one, a square and two tall ones. Every paper in the menus is the one nearest its shape (`UiPainter.Slip`): the Party tab's page, its left column's sheets and the gold's, the tabs, the portraits' frames, and the popups, messages, questions and names. The square one is also the outline the portraits are cut to (`UiImages.CutTo`).
 - `ui-wax-seal.png`: the seal on a question's slip, 428 square.
 - `ui-flourish-red.png`: a heading's red flourish, 655 × 115.
 - `silhouette-man.png`, `silhouette-large-man.png` and `silhouette-woman.png`: the figures behind the silhouette's slots, 1024 × 1536, all at one scale, their feet on the same line (`Figures` says whose is whose).

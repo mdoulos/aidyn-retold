@@ -74,16 +74,23 @@ public partial class PartyTabView : Control
     private const int LevelRight = 149, GoldRight = 306;
 
     /// <summary>
-    /// The right column's page, the user's design (Nov 2, 2026): a loose leaf of the user's parchment (ui-rectangle-parchment.png) the
+    /// The right column's page, the user's design (Nov 2, 2026): a loose sheet of the user's parchment (<see cref="UiPainter.Slip"/>) the
     /// list is on, over this rectangle, a page for each section, which one shows standing for the stack without the others being drawn;
-    /// and a paper tab sticking up from its top for each section, the user's slip of paper (ui-square-parchment.png).
+    /// and a paper tab sticking up from its top for each section.
     /// </summary>
     private static readonly Rect2 PageRect = new(151, 40, 162, 177);
 
-    private const string PageArt = "ui-rectangle-parchment.png";
+    /// <summary>
+    /// The sheets of parchment the left column's parts lie on, the user's design (Nov 2, 2026): the portraits with the name, the level,
+    /// the bar and the aspect's and school's icons on one, and the silhouette with its slots on another under it.
+    /// </summary>
+    private static readonly Rect2 HeaderSheet = new(10, 14, 145, 68), EquipmentSheet = new(20, 80, 121, 151);
 
-    /// <summary>The page art's paper, inside its shadow and the clear round it, in its pixels.</summary>
-    private static readonly Rect2 PagePaper = new(16, 16, 430, 578);
+    /// <summary>
+    /// How much bigger than its portrait each portrait's square sheet is, as a share of the portrait, and how far in from the sheet's
+    /// paper the portrait is, cut to the sheet's outline (<see cref="UiImages.CutTo"/>), so a rim of the sheet shows round it.
+    /// </summary>
+    private const float PortraitSheet = 0.08f, PortraitInset = 0.07f;
 
     /// <summary>
     /// The tabs: the first one's corner, each one's paper, and how far apart they start, a pixel less than they're wide, so they
@@ -117,6 +124,9 @@ public partial class PartyTabView : Control
 
     /// <summary>How far down the tabs the gold's middle is, level with the tabs' middles.</summary>
     private const float GoldMiddle = 12;
+
+    /// <summary>How far the gold's sheet reaches past the purse and the gold at the sides, and how tall it is.</summary>
+    private const float GoldSheetSide = 6, GoldSheetHeight = 20;
 
     /// <summary>
     /// The box each of the silhouette's slots sits in, over the figure, the user's art (ui-square-solid.png), a pixel round the
@@ -512,6 +522,7 @@ public partial class PartyTabView : Control
         }
         // The barter, training and post-battle states: the header here, and the window's own parts on their layer (DrawWindow).
         _ui.Tab(_canvas, PauseTab.Party, PlainPatches, plain: true);
+        _ui.Slip(_canvas, HeaderSheet);
         Portraits(PortraitPiece.Position);
         Health();
     }
@@ -611,6 +622,8 @@ public partial class PartyTabView : Control
     private void DrawTab()
     {
         _ui.Tab(_canvas, PauseTab.Party, PlainPatches, plain: true);
+        _ui.Slip(_canvas, EquipmentSheet);
+        _ui.Slip(_canvas, HeaderSheet);
         Portraits(PortraitPiece.Position);
         Health();
         Silhouette(SilhouetteAt);
@@ -648,7 +661,7 @@ public partial class PartyTabView : Control
             _ui.Slip(_canvas, TabRect(i), tint with { A = (byte)(255 * (has ? 1 : MissingTab)) });
             TabFace(i, has ? ClosedIcon : MissingIcon);
         }
-        Page(PageRect, 0, White);
+        _ui.Slip(_canvas, PageRect);
         for (var i = 0; i < open.Length; i++)
         {
             if (open[i] <= 0)
@@ -659,12 +672,15 @@ public partial class PartyTabView : Control
             TabFace(i, Mathf.Lerp(ClosedIcon, 1, open[i]));
         }
 
-        // The gold, after a purse.
+        // The gold, after a purse, on a sheet of its own, which starts after the tabs.
         var gold = Num(Menu.Party.Gold);
         var goldX = GoldRight - SmallWidth(gold);
         var middle = TabsAt.Y + GoldMiddle;
+        var purseX = goldX - PurseSize - 1;
+        var sheetLeft = Math.Max(purseX - GoldSheetSide, TabRect(PartyMenu.Tabs.Count - 1).End.X + 1);
+        _ui.Slip(_canvas, new Rect2(sheetLeft, middle - GoldSheetHeight / 2, GoldRight + GoldSheetSide - sheetLeft, GoldSheetHeight));
         Small(gold, goldX, middle - _ui.Slim.Middle, PartyMenu.TextColor);
-        Art(Purse, new Rect2(goldX - PurseSize - 1, middle - PurseSize / 2f, PurseSize, PurseSize));
+        Art(Purse, new Rect2(purseX, middle - PurseSize / 2f, PurseSize, PurseSize));
     }
 
     /// <summary>A tab's icon and caption, at a strength.</summary>
@@ -676,32 +692,20 @@ public partial class PartyTabView : Control
     }
 
     /// <summary>
-    /// A page of the stack: the user's parchment stretched so its paper covers a rectangle, turned about its middle, in a colour.
-    /// </summary>
-    private void Page(Rect2 paper, float turn, Rgba color)
-    {
-        if (UiImages.Art(PageArt) is not { } texture)
-            return;
-        var scale = paper.Size / PagePaper.Size;
-        var middle = paper.GetCenter();
-        _canvas.DrawSetTransform(_base + middle, turn);
-        _canvas.DrawTextureRect(texture, new Rect2(paper.Position - PagePaper.Position * scale - middle, texture.GetSize() * scale), false, _ui.Tint(color));
-        _canvas.DrawSetTransform(_base);
-    }
-
-    /// <summary>
     /// The tab showing joined to the front page: paper from just inside the page's art's top, at the page's scale, over where the tab's
     /// foot and the page's torn top meet, across the tab but for its sides, its edges faded over <see cref="JoinFeather"/> so it runs
     /// into the papers round it, at a strength.
     /// </summary>
     private void JoinTab(Rect2 tab, float strength)
     {
-        if (UiImages.Art(PageArt) is not { } texture)
+        var sheet = UiPainter.SheetFor(PageRect.Size);
+        if (UiImages.Art(sheet) is not { } texture)
             return;
-        var scale = PageRect.Size / PagePaper.Size;
+        var paper = UiImages.ArtImage(sheet).Paper;
+        var scale = PageRect.Size / paper.Size;
         var patch = new Rect2(tab.Position.X + 2, PageRect.Position.Y - 4, tab.Size.X - 4, 13);
         // From the page's paper below its torn top, so it's the page's own grain and tone there.
-        var source = new Rect2(PagePaper.Position.X + (patch.Position.X - PageRect.Position.X) / scale.X, PagePaper.Position.Y + 22,
+        var source = new Rect2(paper.Position.X + (patch.Position.X - PageRect.Position.X) / scale.X, paper.Position.Y + paper.Size.Y * 0.05f,
             patch.Size / scale);
         var size = texture.GetSize();
         float[] xs = [patch.Position.X, patch.Position.X + JoinFeather, patch.End.X - JoinFeather, patch.End.X];
@@ -877,8 +881,7 @@ public partial class PartyTabView : Control
             var was = previous?.IndexOf(slot) ?? -1;
             var (from, fromSize) = was >= 0 ? PortraitPlace(was) : (to, toSize);
             var size = MenuTween.Value(fromSize, toSize, change);
-            _ui.Image(_canvas, portrait, at.X + MenuTween.Value(from.X, to.X, change), at.Y + MenuTween.Value(from.Y, to.Y, change),
-                new Vector2I(size, size));
+            FramedPortrait(portrait, new Rect2(at.X + MenuTween.Value(from.X, to.X, change), at.Y + MenuTween.Value(from.Y, to.Y, change), size, size));
         }
         if (Menu.Previous is { } before)
             _ui.Text(_canvas, NameFont, before.Name, at.X + NameAt.X, at.Y + NameAt.Y, FadingOut(PartyMenu.TextColor, change));
@@ -890,6 +893,19 @@ public partial class PartyTabView : Control
             _ui.Image(_canvas, icon, at.X + x, at.Y + iconsY, color: FadingOut(White, change));
         foreach (var (icon, x) in icons)
             _ui.Image(_canvas, icon, at.X + x, at.Y + iconsY, color: old.Contains((icon, x)) ? null : FadingIn(White, change));
+    }
+
+    /// <summary>
+    /// A portrait framed by the square sheet of parchment, the user's design (Nov 2, 2026): the sheet a little bigger than the portrait,
+    /// and on it the portrait cut to the sheet's outline (<see cref="UiImages.CutTo"/>) and set in from its edges, so a rim of the
+    /// parchment shows all round and the portrait's corners follow the sheet's torn edges.
+    /// </summary>
+    private void FramedPortrait(RecordId portrait, Rect2 rect)
+    {
+        var paper = rect.Grow(rect.Size.X * PortraitSheet);
+        _ui.Slip(_canvas, paper, sheet: UiPainter.SquareSheet);
+        if (_ui.Images.CutTo(portrait, UiPainter.SquareSheet) is { } cut)
+            _canvas.DrawTextureRect(cut, paper.Grow(-paper.Size.X * PortraitInset), false, _ui.Tint(White));
     }
 
     /// <summary>Where the portrait so far round the party from the member shown goes, from the frames' corner, and how big it is.</summary>
@@ -1075,8 +1091,10 @@ public partial class PartyTabView : Control
             _ui.Image(_canvas, row.Item.Icon, x + (grid.Cell - BoxedSize) / 2, y + (grid.Cell - BoxedSize) / 2, new Vector2I(BoxedSize, BoxedSize));
             if (row.Wearer is { } wearer && Menu.Party.Slots[wearer] is { } who && Menu.Portrait(who.Entity) is { } portrait)
             {
-                _canvas.DrawRect(new Rect2(x + 1.5f, y + 1.5f, WearerSize + 1, WearerSize + 1), _ui.Tint(UiPainter.Ink));
-                _ui.Image(_canvas, portrait, x + 2, y + 2, new Vector2I(WearerSize, WearerSize));
+                // In the bottom left, the count being in the bottom right.
+                var wearerY = y + grid.Cell - 2 - WearerSize;
+                _canvas.DrawRect(new Rect2(x + 1.5f, wearerY - 0.5f, WearerSize + 1, WearerSize + 1), _ui.Tint(UiPainter.Ink));
+                _ui.Image(_canvas, portrait, x + 2, wearerY, new Vector2I(WearerSize, WearerSize));
             }
             if (row.Quantity > 1)
             {

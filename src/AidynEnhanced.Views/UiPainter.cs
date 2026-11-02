@@ -268,20 +268,57 @@ public sealed class UiPainter
     /// </summary>
     private const float SlipSide = 12, SlipTop = 7, SlipFoot = 10, SealSize = 18;
 
-    /// <summary>The slip of paper, the user's art: its paper, inside its shadow and the clear round it, in its pixels.</summary>
-    private const string SlipArt = "ui-square-parchment.png", Seal = "ui-wax-seal.png";
+    private const string Seal = "ui-wax-seal.png";
 
-    private static readonly Rect2 SlipPaper = new(11, 12, 411, 407);
+    /// <summary>
+    /// The sheets of parchment, the user's art (Nov 2, 2026), a shape each: a wide one, a square, and two tall ones, which every paper
+    /// in the menus is laid from, the sheet nearest its shape (<see cref="SheetFor"/>). A third tall one the user drew, 1000 × 1200, is
+    /// the 1500 × 1800's shape at less resolution, and isn't carried.
+    /// </summary>
+    private static readonly string[] Sheets = ["parchment-bg-400x180.png", SquareSheet, "parchment-bg-1400x1800.png", "parchment-bg-1500x1800.png"];
 
-    /// <summary>A loose slip of paper, the user's art, stretched so its paper covers a rectangle, with its soft shadow past it, in a colour.</summary>
-    public void Slip(CanvasItem canvas, Rect2 paper, Rgba? color = null)
+    /// <summary>The square sheet, which frames the portraits and which a portrait is cut to the shape of (<see cref="UiImages.CutTo"/>).</summary>
+    public const string SquareSheet = "parchment-bg-500x500.png";
+
+    /// <summary>The sheet whose paper is nearest a rectangle's shape, by the ratio of their sides.</summary>
+    public static string SheetFor(Vector2 size)
     {
-        if (UiImages.Art(SlipArt) is not { } texture)
+        var shape = size.X / Math.Max(size.Y, 1e-3f);
+        return Sheets.MinBy(sheet => UiImages.ArtImage(sheet).Paper is { Size: var p } && p.Y > 0 ? MathF.Abs(MathF.Log(p.X / p.Y / shape)) : float.MaxValue)!;
+    }
+
+    /// <summary>Where a sheet is drawn so its paper covers a rectangle: the whole picture, stretched alike.</summary>
+    public static Rect2 SheetRect(string sheet, Rect2 paper)
+    {
+        var (image, at) = UiImages.ArtImage(sheet);
+        if (image is null || at.Size.X <= 0)
+            return paper;
+        var scale = paper.Size / at.Size;
+        return new Rect2(paper.Position - at.Position * scale, new Vector2(image.GetWidth(), image.GetHeight()) * scale);
+    }
+
+    /// <summary>
+    /// The shadow under a sheet of paper, soft as it lies on the paper under it: the sheet again, dark and faint, moved down and right a
+    /// little three times, each fainter.
+    /// </summary>
+    private static readonly (Vector2 By, float Alpha)[] Shadow = [(new(0.5f, 0.7f), 0.16f), (new(1f, 1.4f), 0.1f), (new(1.6f, 2.2f), 0.06f)];
+
+    private static readonly Color ShadowColor = new(0.16f, 0.1f, 0.05f);
+
+    /// <summary>
+    /// A loose sheet of parchment, the user's art, the one nearest the rectangle's shape or <paramref name="sheet"/>, stretched so its
+    /// paper covers the rectangle, with a soft shadow under it, in a colour.
+    /// </summary>
+    public void Slip(CanvasItem canvas, Rect2 paper, Rgba? color = null, string? sheet = null)
+    {
+        sheet ??= SheetFor(paper.Size);
+        if (UiImages.Art(sheet) is not { } texture)
             return;
-        var size = texture.GetSize();
-        var scale = paper.Size / SlipPaper.Size;
-        var at = paper.Position - SlipPaper.Position * scale;
-        canvas.DrawTextureRect(texture, new Rect2(at, size * scale), false, color is { } c ? Tint(c) : White);
+        var drawn = SheetRect(sheet, paper);
+        var tint = color is { } c ? Tint(c) : White;
+        foreach (var (by, alpha) in Shadow)
+            canvas.DrawTextureRect(texture, drawn with { Position = drawn.Position + by }, false, ShadowColor with { A = alpha * tint.A });
+        canvas.DrawTextureRect(texture, drawn, false, tint);
     }
 
     /// <summary>

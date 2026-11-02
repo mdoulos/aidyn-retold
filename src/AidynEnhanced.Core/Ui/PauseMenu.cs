@@ -86,7 +86,22 @@ public sealed class PauseMenu
     public bool IsOpen { get; private set; }
 
     /// <summary>Whether the Party tab's inventory shows what's worn: as the setting says, or by the device in use (<see cref="Settings.WornInInventory"/>).</summary>
-    private bool ShowsWorn => _settings.WornInInventory ?? _host.Controller;
+    private bool ShowsWorn => OriginalLook || (_settings.WornInInventory ?? _host.Controller);
+
+    /// <summary>Whether the menus look as the original's do, Graphic Quality's Original (<see cref="Settings.OriginalLook"/>).</summary>
+    private bool OriginalLook => _settings.OriginalLook;
+
+    /// <summary>
+    /// The windows as the settings have them: the tab laid out as the original's or the port's, its inventory the port's grid or, as
+    /// the original's is, a list with what's worn in it.
+    /// </summary>
+    private void Lay(PartyMenu party)
+    {
+        party.OriginalLook = OriginalLook;
+        if (party.Grid == OriginalLook)
+            party.Grid = !OriginalLook;
+        party.ShowWorn = ShowsWorn;
+    }
 
     /// <summary>The tab showing, or being slid to.</summary>
     public PauseTab Tab { get; private set; }
@@ -269,9 +284,9 @@ public sealed class PauseMenu
         // An empty slot steps back to a member's, which is kept (DollMenu::InitMenu).
         _member = party.Member;
         party.Combat = rules;
-        // The tab's own inventory is a grid, showing what's worn as the setting or the device says (Settings.WornInInventory).
-        party.Grid = true;
-        party.ShowWorn = ShowsWorn;
+        // The tab's own inventory is a grid, showing what's worn as the setting or the device says (Settings.WornInInventory), or the
+        // original's list.
+        Lay(party);
         Window = party;
         System = new SystemMenu(_game.Plugins, _settings, _game.Party, _savesFolder, isSet: _game.Flags.Get, combat: _combat?.CanFlee,
             screen: () => _host.Screen, unsaved: () => Unsaved, controller: () => _host.Controller);
@@ -307,9 +322,12 @@ public sealed class PauseMenu
     /// <param name="scrollLength">The length of the state the actor is in, in frames.</param>
     public PauseExit? Step(int scrollFrame, int scrollLength)
     {
-        // The device can change while the menu is open, and the setting on the Enhancements page.
+        // The device can change while the menu is open, and the settings on the Enhancements and Video pages.
         if (IsOpen && Party is { } party)
-            party.ShowWorn = ShowsWorn;
+        {
+            Lay(party);
+            Window.Menu.OriginalLook = OriginalLook;
+        }
         if (IsOpen && _frame.Tick())
             StepFrame(scrollFrame, scrollLength);
         var ended = _ended;

@@ -128,12 +128,62 @@ public class SystemMenuTests(BarterPlugins fixture) : IClassFixture<BarterPlugin
             settings.ObjectDistance, settings.NearestDetail, settings.SurfaceDetail, settings.AnimationBlending, settings.PrecipitationDensity));
         Assert.Equal("High Quality", options.Rows.Current!.ValueName);
 
-        // One set by hand: Custom, which stepping leaves and doesn't come back to.
+        // One set by hand: Custom, which stepping leaves and doesn't come back to, the menus keeping the one chosen's look.
         settings.PrecipitationDensity = 2;
         options.Refresh(ScreenInfo.Default);
-        Assert.Equal((null, "Custom", 4), (settings.Quality, options.Rows.Current!.ValueName, options.Rows.Current.Steps));
+        Assert.Equal((null, "Custom", 4, GraphicQuality.High), (settings.Quality, options.Rows.Current!.ValueName, options.Rows.Current.Steps,
+            settings.GraphicQuality));
         options.Change(1);
-        Assert.Equal((GraphicQuality.Original, 3), (settings.Quality, options.Rows.Current!.Steps));
+        Assert.Equal((GraphicQuality.Original, 3, true), (settings.Quality, options.Rows.Current!.Steps, settings.OriginalLook));
+        settings.PrecipitationDensity = 4;
+        Assert.True(settings.OriginalLook);
+    }
+
+    /// <summary>
+    /// Older settings, which had no Graphic Quality, are Medium's, so their menus look as they did, though their detail may be the
+    /// original's, which shows as Custom.
+    /// </summary>
+    [Fact]
+    public void OlderSettingsAreMediumQuality()
+    {
+        Directory.CreateDirectory(_saves);
+        var path = Path.Combine(_saves, "detail.json");
+        File.WriteAllText(path, """{ "extendedDrawDistance": false, "objectDistance": 1, "nearestDetail": false, "surfaceDetail": false, "animationBlending": false, "precipitationDensity": 1 }""");
+
+        var read = Settings.Load(path);
+
+        Assert.Equal((GraphicQuality.Medium, GraphicQuality.Original, false), (read.GraphicQuality, read.Quality, read.OriginalLook));
+        read.Save(path);
+        Assert.Contains("graphicQuality", File.ReadAllText(path));
+        Assert.DoesNotContain("originalLook", File.ReadAllText(path));
+    }
+
+    /// <summary>
+    /// With the original's look, trek's list is the original's, Theater, Credits and Help in it, and Quit Game, and B on the Theatre's page
+    /// goes back to it on Theater; the list follows Graphic Quality changed in the options as it comes back from them.
+    /// </summary>
+    [Fact]
+    public void TheOriginalLooksListIsTheOriginals()
+    {
+        var party = TradeData.PartyOf(TradeData.Catalog(), ItemData.Flags(), Characters.Create(Characters.Alaron()));
+        var settings = new Settings();
+        settings.SetQuality(GraphicQuality.Original);
+        var system = new SystemMenu(fixture.Plugins, settings, party, _saves);
+
+        Assert.Equal([SystemItem.LoadGame, SystemItem.SaveGame, SystemItem.Options, SystemItem.Theater, SystemItem.Credits, SystemItem.Help,
+            SystemItem.Quit], system.Items.Rows);
+        system.Items.Point(3);
+        system.Accept();
+        Assert.Equal(SystemPage.Theatre, system.Page);
+        system.Back();
+        Assert.Equal((SystemPage.List, SystemItem.Theater), (system.Page, system.Items.Current));
+
+        system.Items.Point(2);
+        system.Accept();
+        settings.SetQuality(GraphicQuality.High);
+        system.Back();
+        Assert.Equal((SystemPage.List, SystemItem.Options), (system.Page, system.Items.Current));
+        Assert.Contains(SystemItem.Extras, system.Items.Rows);
     }
 
     /// <summary>

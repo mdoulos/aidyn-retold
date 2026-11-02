@@ -16,7 +16,7 @@ public sealed class UiImages(PluginSet plugins)
     private static readonly RecordId[] Edges = [.. new[] { 0x01C3, 0x01C2, 0x01C0, 0x01C1 }.Select(i => RecordId.Hex(RecordTypes.Image, i))];
     private static readonly RecordId[] Corners = [.. new[] { 0x01BC, 0x01BD, 0x01BE, 0x01BF }.Select(i => RecordId.Hex(RecordTypes.Image, i))];
 
-    private readonly Dictionary<RecordId, Texture2D?> _textures = [];
+    private readonly Dictionary<RecordId, Texture2D?> _textures = [], _originals = [];
 
     /// <summary>
     /// A UI image, or null if no plugin has it. A mod's replacement larger than the original, as a redrawn pack's at 8 times, is laid
@@ -25,9 +25,12 @@ public sealed class UiImages(PluginSet plugins)
     /// </summary>
     public Texture2D? Get(RecordId image)
     {
-        if (_textures.TryGetValue(image, out var texture))
+        // The original look draws the original's image, the first plugin's, whatever a mod puts over it.
+        var original = UiPainter.Original;
+        var textures = original ? _originals : _textures;
+        if (textures.TryGetValue(image, out var texture))
             return texture;
-        if (plugins.FindAsset(image, "png") is { } png)
+        if ((original ? plugins.FindOriginalAsset(image, "png") : plugins.FindAsset(image, "png")) is { } png)
         {
             var (width, height) = plugins.ImageSize(image);
             texture = Png.Load(png) is not { } data ? null
@@ -38,7 +41,7 @@ public sealed class UiImages(PluginSet plugins)
         {
             GD.PushWarning($"No asset for {image}.");
         }
-        return _textures[image] = texture;
+        return textures[image] = texture;
     }
 
     /// <summary>A larger picture drawn at a smaller size: mipmapped and filtered, the texture saying it's that size.</summary>

@@ -27,7 +27,7 @@ public sealed partial class PartyMenu
     /// The frames a list takes to slide in as the stick changes it (<c>PartyMenu.ListsSlide</c>, <c>0x80031620</c>), and how far it
     /// slides: the list's width, where the original's slide its 140.
     /// </summary>
-    public const int ListFrames = 20, ListDistance = 146;
+    public const int ListFrames = 20, ListDistance = 146, OriginalListDistance = 140;
 
     private MenuSlide<(Character Member, IReadOnlyList<int> Order)>? _memberChange;
     private MenuSlide<HeaderNumbers>? _numbersChange;

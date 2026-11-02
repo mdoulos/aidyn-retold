@@ -140,14 +140,29 @@ public sealed class Settings
     public float PrecipitationDensity { get; set; } = 4;
 
     /// <summary>
-    /// The Graphic Quality the world's detail settings make together, or null where they've been set by hand to none of them, which the
-    /// Video page shows as Custom.
+    /// The Graphic Quality last chosen, which the menus' look goes by (<see cref="OriginalLook"/>): set by hand, the world's detail
+    /// settings leave it as it was, the user's choice (Nov 2, 2026), and the Video page shows Custom. Medium in new settings, and in older
+    /// ones, which had none, so their menus stay as they were.
     /// </summary>
+    public GraphicQuality GraphicQuality { get; set; } = GraphicQuality.Medium;
+
+    /// <summary>
+    /// Whether the game looks as the original did, Graphic Quality's Original, the user's choice (Nov 2, 2026): the menus' layout, text
+    /// and art the original's, as well as the world's detail.
+    /// </summary>
+    [JsonIgnore]
+    public bool OriginalLook => GraphicQuality == GraphicQuality.Original;
+
+    /// <summary>The Graphic Quality the world's detail settings make together, or null where they've been set by hand to none of them.</summary>
+    [JsonIgnore]
     public GraphicQuality? Quality => Enum.GetValues<GraphicQuality>().Cast<GraphicQuality?>().FirstOrDefault(q => Matches(Detail(q!.Value)));
 
-    /// <summary>Sets the world's detail settings to a Graphic Quality's.</summary>
-    public void SetQuality(GraphicQuality quality) =>
+    /// <summary>Chooses a Graphic Quality: the menus' look, and the world's detail settings all set to its.</summary>
+    public void SetQuality(GraphicQuality quality)
+    {
+        GraphicQuality = quality;
         (ExtendedDrawDistance, ObjectDistance, NearestDetail, SurfaceDetail, AnimationBlending, PrecipitationDensity) = Detail(quality);
+    }
 
     /// <summary>
     /// What each Graphic Quality sets, the user's design (Nov 2, 2026): Original the original's look, Medium a step past it on each, and
@@ -256,7 +271,7 @@ public sealed class Settings
 /// </summary>
 public enum GraphicQuality
 {
-    /// <summary>The original's draw distances, models, lighting and rain.</summary>
+    /// <summary>The original's draw distances, models, lighting and rain, and its menus (<see cref="Settings.OriginalLook"/>).</summary>
     Original,
 
     Medium,

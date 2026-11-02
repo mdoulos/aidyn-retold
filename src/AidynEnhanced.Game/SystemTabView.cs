@@ -332,7 +332,7 @@ public partial class SystemTabView : Control
         CentredImage(MenuImages.MenuTitle, ListCentre, ListTop(rows));
         var y = RowsTop(rows);
         var cursor = Menu.Pulse.Now(Style.CursorFrom, Style.CursorTo);
-        if (Style.Parchment)
+        if (Style.Parchment && !UiPainter.Original)
         {
             var width = items.Rows.Select(i => _ui.Main.Width(Menu.Label(i))).DefaultIfEmpty(0).Max() + 2 * RowSlipSide;
             for (var i = 0; i < rows; i++)

@@ -183,7 +183,7 @@ public sealed class SystemMenu
         Items = new MenuList<SystemItem>(combat switch
         {
             null when title => [SystemItem.NewGame, SystemItem.LoadGame, SystemItem.Options, SystemItem.Quit],
-            null => [SystemItem.LoadGame, SystemItem.SaveGame, SystemItem.Options, SystemItem.Extras, SystemItem.Quit],
+            null => TrekItems(),
             true => [SystemItem.Options, SystemItem.Flee, SystemItem.Quit],
             false => [SystemItem.Options, SystemItem.Quit],
         });
@@ -213,6 +213,14 @@ public sealed class SystemMenu
     public Party Party { get; }
 
     public MenuList<SystemItem> Items { get; }
+
+    /// <summary>
+    /// Trek's list: Load Game, Save Game, Options, Extras and Quit Game, or with the original's look (<see cref="Settings.OriginalLook"/>)
+    /// the original's, Theater, Credits and Help in it, and Quit Game.
+    /// </summary>
+    private List<SystemItem> TrekItems() => Settings.OriginalLook
+        ? [SystemItem.LoadGame, SystemItem.SaveGame, SystemItem.Options, SystemItem.Theater, SystemItem.Credits, SystemItem.Help, SystemItem.Quit]
+        : [SystemItem.LoadGame, SystemItem.SaveGame, SystemItem.Options, SystemItem.Extras, SystemItem.Quit];
 
     /// <summary>Extras' list, which the cursor starts at the top of each time it opens.</summary>
     public MenuList<SystemItem> Extras { get; } = new([SystemItem.Theater, SystemItem.Credits, SystemItem.Help]);
@@ -446,6 +454,13 @@ public sealed class SystemMenu
         Saves = null;
         Theatre = null;
         Pulse.Reset();
+        // Graphic Quality may have changed the list, back from the options, the cursor staying on the row it was on.
+        if (!Title && Items.Rows.Contains(SystemItem.LoadGame) && TrekItems() is var items && !items.SequenceEqual(Items.Rows))
+        {
+            var on = Items.Current;
+            Items.Rows = items;
+            Items.Point(Math.Max(0, items.IndexOf(on)));
+        }
     }
 
     /// <summary>Extras' list fading in, the cursor on <paramref name="row"/>: at the top as Extras opens it, or on Theater coming back.</summary>
@@ -689,7 +704,14 @@ public sealed class SystemMenu
 
         public bool Back()
         {
-            menu.ToExtras(menu.Extras.Rows.ToList().IndexOf(SystemItem.Theater));
+            if (menu.Items.Rows.Contains(SystemItem.Extras))
+            {
+                menu.ToExtras(menu.Extras.Rows.ToList().IndexOf(SystemItem.Theater));
+                return true;
+            }
+            // The original's list has Theater in it.
+            menu.Items.Point(menu.Items.Rows.ToList().IndexOf(SystemItem.Theater));
+            menu.ToList();
             return true;
         }
 

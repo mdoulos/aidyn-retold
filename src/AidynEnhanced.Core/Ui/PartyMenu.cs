@@ -36,6 +36,38 @@ public sealed partial class PartyMenu : IPartyWindow
     /// </summary>
     public static readonly ScreenRect ListBounds = new(160, 56, 306, 212);
 
+    /// <summary>
+    /// The original's list's bounds (<c>DollMenuLists</c>), under its title: x 160 to 300, y 101 to 205, eight rows of 13, which the
+    /// original look has (<see cref="OriginalLook"/>).
+    /// </summary>
+    public static readonly ScreenRect OriginalList = new(160, 101, 300, 205);
+
+    /// <summary>
+    /// Whether the tab is laid out as the original's, Graphic Quality's Original (<see cref="Settings.OriginalLook"/>), the user's choice
+    /// (Nov 2, 2026): its lists where the original's are (<see cref="OriginalList"/>), sliding the original's 140.
+    /// </summary>
+    public bool OriginalLook
+    {
+        get;
+        set
+        {
+            if (field == value)
+                return;
+            field = value;
+            if (!Grid)
+                Inventory.Visible = LayoutOf(PartyList.Inventory).Visible;
+            Stats.Visible = LayoutOf(PartyList.Stats).Visible;
+            Skills.Visible = LayoutOf(PartyList.Skills).Visible;
+            Spells.Visible = LayoutOf(PartyList.Spells).Visible;
+        }
+    }
+
+    /// <summary>A list's layout as the tab is laid out: the port's, or the original's (<see cref="OriginalLook"/>).</summary>
+    public ListLayout LayoutOf(PartyList list) => OriginalLook ? new(OriginalList, list == PartyList.Stats ? StatPitch : 13) : Layout(list);
+
+    /// <summary>How far a list slides as the stick changes it: across the port's list's frame, or the original's 140.</summary>
+    public int SlideDistance => OriginalLook ? OriginalListDistance : ListDistance;
+
     /// <summary>A list's place and its rows' pitch: 11 for the stats, 13 for the rest, so the lists show 12 rows.</summary>
     public static ListLayout Layout(PartyList list) => new(ListBounds, list == PartyList.Stats ? StatPitch : 13);
 

@@ -464,7 +464,8 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
     private SessionSettings Playing()
     {
         var playing = _launch?.Session(_settings) ?? SessionSettings.From(_settings);
-        TextFace.Current = _plugins is { } plugins ? TextFace.For(plugins) : null;
+        // The original look draws the text in the fonts' own sheets.
+        TextFace.Current = _plugins is { } plugins && !_settings.OriginalLook ? TextFace.For(plugins) : null;
         return playing with { TextWidths = TextFace.Current?.Widths };
     }
 
@@ -490,6 +491,7 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
             _ => Viewport.Msaa.Disabled,
         };
         ApplyWorldLines();
+        UiPainter.Original = s.OriginalLook;
         _objectDistance = new ObjectDistance(s.ObjectDistance, s.NearestDetail);
         _extendedDrawDistance = s.ExtendedDrawDistance;
         N64Material.SetSurfaceDetail(s.SurfaceDetail);

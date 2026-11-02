@@ -26,6 +26,26 @@ public class PartyMenuGridTests
         return (menu, member);
     }
 
+    /// <summary>
+    /// The original's look lays the lists out where the original's are, eight rows of 13 from (160, 101), sliding 140, and the inventory a
+    /// list again with what's worn in it; the port's look puts them back.
+    /// </summary>
+    [Fact]
+    public void TheOriginalLookHasTheOriginalsLists()
+    {
+        var (menu, _) = Menu(showWorn: false);
+        menu.Grid = false;
+        menu.ShowWorn = true;
+        menu.OriginalLook = true;
+
+        Assert.Equal(PartyMenu.OriginalList, menu.LayoutOf(PartyList.Inventory).Bounds);
+        Assert.Equal((8, 8, 1), (menu.Inventory.Visible, menu.Spells.Visible, menu.Inventory.Columns));
+        Assert.Equal(PartyMenu.OriginalListDistance, menu.SlideDistance);
+        Assert.Equal(Sword.Name, menu.Inventory.Rows[0].Item.Name);
+        menu.OriginalLook = false;
+        Assert.Equal((PartyMenu.Layout(PartyList.Spells).Visible, PartyMenu.ListDistance), (menu.Spells.Visible, menu.SlideDistance));
+    }
+
     /// <summary>A grid scrolls a line at a time, as far as shows the cursor's line, and no further than shows the last.</summary>
     [Fact]
     public void AGridScrollsALineAtATime()

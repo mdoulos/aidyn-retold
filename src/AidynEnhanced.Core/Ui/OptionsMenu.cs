@@ -331,17 +331,19 @@ public sealed partial class OptionsMenu
     }
 
     /// <summary>
-    /// Graphic Quality: Original, Medium or High, each setting the world's detail together (<see cref="Settings.SetQuality"/>). Where those
-    /// have been set by hand to none of them it shows Custom, which stepping leaves for Original or High and doesn't come back to.
+    /// Graphic Quality: Original, Medium or High, each the menus' look and the world's detail together (<see cref="Settings.SetQuality"/>).
+    /// Where the detail has been set by hand away from the one chosen it shows Custom, the menus keeping the one chosen's look, which
+    /// stepping leaves for Original or High and doesn't come back to.
     /// </summary>
     private OptionRow QualityRow()
     {
         var s = Settings;
         List<string> values = ["Original", "Medium Quality", "High Quality"];
         var custom = values.Count;
-        if (s.Quality is null)
+        var chosen = () => s.Quality == s.GraphicQuality;
+        if (!chosen())
             values.Add("Custom");
-        return Choice("Graphic Quality", values, () => s.Quality is { } quality ? (int)quality : custom, v =>
+        return Choice("Graphic Quality", values, () => chosen() ? (int)s.GraphicQuality : custom, v =>
         {
             if (v < custom)
                 s.SetQuality((GraphicQuality)v);

@@ -54,7 +54,7 @@ public sealed partial class PartyMenu
             if (value)
                 InventoryGrid.Apply(Inventory);
             else
-                (Inventory.Columns, Inventory.Visible) = (1, Layout(PartyList.Inventory).Visible);
+                (Inventory.Columns, Inventory.Visible) = (1, LayoutOf(PartyList.Inventory).Visible);
         }
     }
 

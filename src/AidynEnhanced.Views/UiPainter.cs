@@ -56,6 +56,16 @@ public sealed class UiPainter
     private readonly PluginSet _plugins;
     private readonly UiFont?[] _fonts = new UiFont?[2];
     private TextFace? _face;
+    private bool _original;
+
+    /// <summary>
+    /// Whether the menus look as the original's do, Graphic Quality's Original (<c>Settings.OriginalLook</c>), which the runtime sets,
+    /// the user's choice (Nov 2, 2026): the text in the fonts' own size (<see cref="TextSize"/>), the original's feathered black boxes
+    /// rather than slips (<see cref="Slips"/>), no sheets of parchment (<see cref="Slip"/>), the tabs' own images at the original's
+    /// height (<see cref="Tab"/>), and the original's images, not a mod's (<see cref="UiImages.Get"/>). The runtime draws the text in
+    /// the fonts' sheets too (<see cref="TextFace.Current"/>).
+    /// </summary>
+    public static bool Original { get; set; }
 
     public UiPainter(PluginSet plugins)
     {
@@ -79,7 +89,7 @@ public sealed class UiPainter
     /// </summary>
     public float? TextSize
     {
-        get;
+        get => Original ? null : field;
         set
         {
             field = value;
@@ -95,9 +105,9 @@ public sealed class UiPainter
     /// <summary>Font <paramref name="n"/> in its sheet, or in the typeface the Text Font setting draws text in (<see cref="TextFace.Current"/>).</summary>
     private UiFont Font(int n)
     {
-        if (TextFace.Current != _face)
+        if (TextFace.Current != _face || Original != _original)
         {
-            _face = TextFace.Current;
+            (_face, _original) = (TextFace.Current, Original);
             Array.Clear(_fonts);
         }
         if (_fonts[n] is { } font)
@@ -240,7 +250,11 @@ public sealed class UiPainter
     /// text in ink, a question's choice in red ink, and a wax seal on a question, which has to be answered; else the original's
     /// feathered black boxes with their own colours.
     /// </summary>
-    public bool Slips { get; set; }
+    public bool Slips
+    {
+        get => field && !Original;
+        set;
+    }
 
     /// <summary>The ink a slip's text is in, the menus' rows' colour, and a choice's on it, the red of the art's flourish and seal.</summary>
     public static readonly Rgba Ink = new(68, 42, 34, 255), RedInk = new(150, 34, 28, 255);
@@ -311,6 +325,9 @@ public sealed class UiPainter
     /// </summary>
     public void Slip(CanvasItem canvas, Rect2 paper, Rgba? color = null, string? sheet = null)
     {
+        // The original has none.
+        if (Original)
+            return;
         sheet ??= SheetFor(paper.Size);
         if (UiImages.Art(sheet) is not { } texture)
             return;
@@ -437,9 +454,9 @@ public sealed class UiPainter
     {
         var image = MenuImages.Tab(tab);
         var tint = color is { } c ? Tint(c) : White;
-        if (Images.OnParchment(tab) is { } laid)
+        if (!Original && Images.OnParchment(tab) is { } laid)
             canvas.DrawTextureRect(laid, new Rect2(Vector2.Zero, laid.GetSize() / ParchmentSwap.Scale), false, tint);
-        else if (Images.Tall(image, patches, plain) is { } tall)
+        else if (!Original && Images.Tall(image, patches, plain) is { } tall)
             canvas.DrawTextureRect(tall, new Rect2(0, -TallImage.Above, tall.GetSize()), false, tint);
         else if (plain)
             Plain(canvas, image, patches, 0, 0, color ?? new Rgba(255, 255, 255, 255));

@@ -139,13 +139,43 @@ public sealed class UiImages(PluginSet plugins)
     }
 
     /// <summary>The game's own blank parchment's PNG, carried in this assembly.</summary>
-    private static byte[] GameParchment()
+    private static byte[] GameParchment() => Carried("parchment.png");
+
+    /// <summary>A file carried in this assembly, by its name in <c>assets/ui</c>.</summary>
+    private static byte[] Carried(string name)
     {
-        using var stream = typeof(UiImages).Assembly.GetManifestResourceStream("parchment.png")
-            ?? throw new InvalidOperationException("The views' assembly carries no parchment.png.");
+        using var stream = typeof(UiImages).Assembly.GetManifestResourceStream(name)
+            ?? throw new InvalidOperationException($"The views' assembly carries no {name}.");
         using var bytes = new MemoryStream();
         stream.CopyTo(bytes);
         return bytes.ToArray();
+    }
+
+    private static readonly Dictionary<string, Texture2D?> CarriedArt = [];
+
+    /// <summary>
+    /// A piece of the game's own UI art, carried in this assembly by its name in <c>assets/ui</c> (<c>ui-tab-open.png</c>), loaded once.
+    /// It's drawn far smaller than it's painted, so it's mipmapped and filtered, as the parchment is. Null if it can't be read.
+    /// </summary>
+    public static Texture2D? Art(string name)
+    {
+        if (CarriedArt.TryGetValue(name, out var texture))
+            return texture;
+        var image = new Image();
+        if (image.LoadPngFromBuffer(Carried(name)) == Error.Ok)
+        {
+            // The clear pixels take their colour from the art beside them, so the smaller mipmaps don't pale its edges toward the
+            // clear pixels' white or darken them toward their black.
+            image.Convert(Image.Format.Rgba8);
+            image.FixAlphaEdges();
+            image.GenerateMipmaps();
+            texture = new CanvasTexture { DiffuseTexture = ImageTexture.CreateFromImage(image), TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps };
+        }
+        else
+        {
+            GD.PushWarning($"The views' {name} couldn't be read.");
+        }
+        return CarriedArt[name] = texture;
     }
 
     private readonly Dictionary<RecordId, Texture2D?> _feathered = [];

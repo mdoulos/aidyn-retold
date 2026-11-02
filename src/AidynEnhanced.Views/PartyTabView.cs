@@ -41,10 +41,43 @@ public partial class PartyTabView : Control
     /// <summary>The level's right edge, under the small portraits' right edge, and the gold's, at the list's.</summary>
     private const int LevelRight = 149, GoldRight = 306;
 
-    /// <summary>The tabs' row, and how far apart their labels are.</summary>
-    private const int TabsTop = 27, TabsHeight = 14, TabsGap = 6;
+    /// <summary>
+    /// The tabs over the list, the user's art (<c>assets/ui</c>): the first one's corner, the square each one's art is drawn in, and
+    /// the gap between them. A banner hangs from its rod 2 under the square's top, a closed one to 26 down it and an open one to 28.
+    /// </summary>
+    private static readonly Vector2I TabsAt = new(160, 14);
 
-    /// <summary>How big the tabs' labels, the level, the gold and the hit points are drawn, as a share of the slim font's size.</summary>
+    private const int TabSize = 30, TabsGap = 1;
+
+    /// <summary>
+    /// A tab's icon, centred across it, this far down it and this big, with its caption under it, at most this far in from either
+    /// side, inside the banner's stitching.
+    /// </summary>
+    private const int TabIconTop = 6, TabIconSize = 13, CaptionInset = 5;
+
+    /// <summary>How big a tab's caption is drawn, as a share of the slim font's size.</summary>
+    private const float CaptionScale = 0.42f;
+
+    /// <summary>
+    /// How strongly a tab that isn't showing draws its icon and caption, and one the window hasn't got; how strongly one the window
+    /// hasn't got draws its banner; and how strongly the open banner shows over a closed one the mouse is on.
+    /// </summary>
+    private const float ClosedIcon = 0.7f, MissingIcon = 0.3f, MissingTab = 0.5f, HoverOpen = 0.4f;
+
+    /// <summary>The tabs' art, closed and open, and each tab's icon, in <see cref="PartyMenu.Tabs"/>' order.</summary>
+    private const string TabClosed = "ui-tab-closed.png", TabOpen = "ui-tab-open.png";
+
+    private static readonly string[] TabIcons = ["ui-inventory.png", "ui-skills.png", "ui-spells.png"];
+
+    /// <summary>The purse before the gold, the user's art, and how big it's drawn, its middle level with the gold's.</summary>
+    private const string Purse = "ui-gold.png";
+
+    private const int PurseSize = 16;
+
+    /// <summary>How far down the tabs the gold's middle is, level with the banners' middles.</summary>
+    private const float GoldMiddle = 15;
+
+    /// <summary>How big the level, the gold and the hit points are drawn, as a share of the slim font's size.</summary>
     private const float SmallScale = 0.6f;
 
     /// <summary>
@@ -53,6 +86,12 @@ public partial class PartyTabView : Control
     /// into <c>0x00D9</c> is and the user's captures show; at 45 it stood 2 above it.
     /// </summary>
     private static readonly Vector2I SilhouetteAt = new(27, 83);
+
+    /// <summary>
+    /// The figure behind the slots, the user's art (<see cref="Figures"/>): its top and how tall it's drawn, centred under the helmet's
+    /// slot, which puts its head under that slot and its feet at the boots'. Its width is the art's shape.
+    /// </summary>
+    private const float FigureTop = 79, FigureHeight = 145;
 
     private static readonly Vector2I[] Slots =
     [
@@ -108,6 +147,11 @@ public partial class PartyTabView : Control
     ];
 
     private readonly UiPainter _ui;
+    private readonly PluginSet _plugins;
+    /// <summary>Each member's figure, by entity, looked up once.</summary>
+    private readonly Dictionary<RecordId, Figure> _figures = [];
+    /// <summary>The tab the mouse is on, or null.</summary>
+    private int? _hoveredTab;
     /// <summary>Where the tab's list was last drawn, which the mouse is tested against: a list sliding in is drawn off its place.</summary>
     private ListLayout _listLayout = PartyMenu.Layout(PartyList.Inventory);
     private Vector2I _origin;
@@ -137,6 +181,7 @@ public partial class PartyTabView : Control
     public PartyTabView(PluginSet plugins, IPartyWindow window)
     {
         _ui = new UiPainter(plugins);
+        _plugins = plugins;
         _canvas = this;
         Window = window;
         Name = "Party tab";
@@ -197,6 +242,8 @@ public partial class PartyTabView : Control
     {
         if (what == NotificationResized)
             QueueRedraw();
+        else if (what == NotificationMouseExit)
+            _hoveredTab = null;
     }
 
     /// <summary>
@@ -214,6 +261,17 @@ public partial class PartyTabView : Control
 
     public override void _GuiInput(InputEvent @event)
     {
+        if (@event is InputEventMouse mouse)
+            _hoveredTab = TabAt(mouse.Position) is { } tab && HasTab(PartyMenu.Tabs[tab]) ? tab : null;
+        // A click on a tab presses the stick toward it, so it slides and sounds as the stick does, and waits as the stick waits.
+        if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } onTab && _hoveredTab is { } clicked)
+        {
+            var step = PartyMenu.StepToTab(PartyMenu.TabOf(Menu.List), clicked);
+            if (step != 0)
+                UiScreen.Of(this)?.Click(step > 0 ? MenuAction.Right : MenuAction.Left);
+            AcceptEvent();
+            return;
+        }
         // A click on a row chooses it, as A does; anywhere else it chooses nothing.
         if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } click)
         {
@@ -270,6 +328,24 @@ public partial class PartyTabView : Control
                 return false;
         }
     }
+
+    /// <summary>The tab whose banner is under a point on the view, or null.</summary>
+    private int? TabAt(Vector2 point)
+    {
+        if (Menu.Shown is null)
+            return null;
+        var at = point - (Vector2)_origin;
+        for (var i = 0; i < PartyMenu.Tabs.Count; i++)
+        {
+            var rect = TabRect(i);
+            if (at.X >= rect.Position.X + 1 && at.X < rect.End.X - 1 && at.Y >= rect.Position.Y + 2 && at.Y < rect.End.Y - 3)
+                return i;
+        }
+        return null;
+    }
+
+    /// <summary>Where a tab's art is drawn in the frame.</summary>
+    private static Rect2 TabRect(int tab) => new(TabsAt.X + tab * (TabSize + TabsGap), TabsAt.Y, TabSize, TabSize);
 
     /// <summary>
     /// Puts the cursor on the tab's list row under a point in the frame, the crafting popup's while it's open, or the stats and
@@ -436,54 +512,64 @@ public partial class PartyTabView : Control
     }
 
     /// <summary>
-    /// The tabs over the list, in a small slim font: the inventory (a shop's Sell), the stats and skills, and the
-    /// spells, the one showing dark and underlined, the others faded, and those the window hasn't fainter still. The underline
-    /// slides to the tab shown as the lists slide. Beside them, at the list's right edge, the party's gold.
+    /// The tabs over the list, banners on rods, the user's art: the inventory's satchel (a shop's Sell), the stats and skills' sword
+    /// and quill, and the spells' book, each with a small caption under it. The tab showing is the open banner, lighter and hanging
+    /// lower, and the others closed, their icons faded, and those the window hasn't fainter still. As the lists slide, the banner
+    /// left closes as the new one opens, by the slide's eased share; the mouse on a closed one opens it a little. Beside them, at
+    /// the list's right edge, the party's gold after a purse.
     /// </summary>
     private void Tabs()
     {
-        var font = _ui.Slim;
-        var labels = PartyMenu.Tabs.Select(TabLabel).ToList();
-        var places = new List<(float X, float Width)>();
-        var x = (float)PartyMenu.ListBounds.Left;
-        foreach (var label in labels)
-        {
-            var width = SmallWidth(label);
-            places.Add((x, width));
-            x += width + TabsGap;
-        }
-        var y = TabsTop + (TabsHeight - font.LineHeight * SmallScale) / 2;
         var shown = PartyMenu.TabOf(Menu.List);
-        for (var i = 0; i < labels.Count; i++)
+        var from = Menu.Slide is { } slide ? PartyMenu.TabOf(slide.From) : shown;
+        var change = Menu.ListChange;
+        for (var i = 0; i < PartyMenu.Tabs.Count; i++)
         {
-            var alpha = i == shown ? 255 : HasTab(PartyMenu.Tabs[i]) ? 120 : 45;
-            Small(labels[i], places[i].X, y, PartyMenu.TextColor with { A = (byte)alpha });
+            var rect = TabRect(i);
+            var has = HasTab(PartyMenu.Tabs[i]);
+            // How far it's the tab showing: 1 for it, 0 for the others, and between for the two the lists are sliding between.
+            var open = i == shown ? (i == from ? 1 : change) : i == from ? 1 - change : 0;
+            Art(TabClosed, rect, has ? 1 : MissingTab);
+            if (Math.Max(open, i == _hoveredTab ? HoverOpen : 0) is var lift and > 0)
+                Art(TabOpen, rect, lift);
+            var strength = has ? Mathf.Lerp(ClosedIcon, 1, open) : MissingIcon;
+            Art(TabIcons[i], new Rect2(rect.Position.X + (TabSize - TabIconSize) / 2f, rect.Position.Y + TabIconTop, TabIconSize, TabIconSize), strength);
+            Caption(TabLabel(PartyMenu.Tabs[i]), rect, PartyMenu.TextColor with { A = (byte)(255 * strength) });
         }
-        var (toX, toWidth) = places[shown];
-        var (fromX, fromWidth) = Menu.Slide is { } slide ? places[PartyMenu.TabOf(slide.From)] : (toX, toWidth);
-        var underline = y + (font.LineHeight - 2) * SmallScale + 1.5f;
-        _canvas.DrawRect(new Rect2(Mathf.Lerp(fromX, toX, Menu.ListChange), underline, Mathf.Lerp(fromWidth, toWidth, Menu.ListChange), 0.75f),
-            _ui.Tint(PartyMenu.TextColor));
 
-        // The gold, after a coin.
+        // The gold, after a purse.
         var gold = Num(Menu.Party.Gold);
         var goldX = GoldRight - SmallWidth(gold);
-        Small(gold, goldX, y, PartyMenu.TextColor);
-        var coin = new Vector2(goldX - CoinRadius - 1.5f, y + (font.LineHeight - 2) * SmallScale / 2);
-        _canvas.DrawCircle(coin, CoinRadius, _ui.Tint(CoinFace));
-        _canvas.DrawCircle(coin, CoinRadius, _ui.Tint(CoinRim), filled: false, width: 0.5f);
-        _canvas.DrawCircle(coin - new Vector2(0.7f, 0.7f), CoinRadius * 0.35f, _ui.Tint(CoinShine));
+        var middle = TabsAt.Y + GoldMiddle;
+        Small(gold, goldX, middle - (_ui.Slim.LineHeight - 2) * SmallScale / 2, PartyMenu.TextColor);
+        Art(Purse, new Rect2(goldX - PurseSize - 1, middle - PurseSize / 2f, PurseSize, PurseSize));
     }
 
-    /// <summary>The coin before the gold: its size and colours, the original having painted the word into the tab.</summary>
-    private const float CoinRadius = 2.6f;
+    /// <summary>A tab's caption, centred under its icon, squeezed across to stay <see cref="CaptionInset"/> in from its sides.</summary>
+    private void Caption(string text, Rect2 tab, Rgba color)
+    {
+        var width = _ui.Slim.Width(text) * CaptionScale;
+        var squeeze = Math.Min(1, (TabSize - 2 * CaptionInset) / width);
+        var at = new Vector2(tab.Position.X + (TabSize - width * squeeze) / 2, tab.Position.Y + TabIconTop + TabIconSize);
+        _canvas.DrawSetTransform(_base + at, 0, new Vector2(CaptionScale * squeeze, CaptionScale));
+        _ui.Text(_canvas, _ui.Slim, text, 0, 0, color);
+        _canvas.DrawSetTransform(_base);
+    }
 
-    private static readonly Rgba CoinFace = new(214, 168, 62, 255), CoinRim = new(122, 82, 24, 255), CoinShine = new(250, 226, 150, 200);
+    /// <summary>A piece of the game's own UI art (<see cref="UiImages.Art"/>) stretched over a rectangle in the frame, at a strength.</summary>
+    private void Art(string name, Rect2 rect, float strength = 1)
+    {
+        if (UiImages.Art(name) is { } texture)
+            _canvas.DrawTextureRect(texture, rect, false, _ui.Tint(new Rgba(255, 255, 255, (byte)(255 * strength))));
+    }
 
-    /// <summary>A tab's label: the stats and skills page's, the spells', or the inventory's, which beside a shop is what the party sells.</summary>
+    /// <summary>
+    /// A tab's caption: the stats and skills page's, Skills for its icon, as the whole name is too long to go under it; the spells';
+    /// or the inventory's, which beside a shop is what the party sells.
+    /// </summary>
     private string TabLabel(PartyList tab) => tab switch
     {
-        PartyList.Stats => "Stats and Skills",
+        PartyList.Stats => "Skills",
         PartyList.Spells => "Spells",
         _ => (Window as BarterMenu)?.PartyTitle == MenuImages.SellTitle ? "Sell" : "Inventory",
     };
@@ -687,11 +773,24 @@ public partial class PartyTabView : Control
     }
 
     /// <summary>
-    /// The silhouette's slots: what's worn, or each empty slot's image. As the member changes, or an item is put on or
-    /// taken off, the slots the core says crossfade (<see cref="PartyMenu.SlotCrossfades"/>) fade from what they showed.
+    /// The silhouette: the member's figure behind (<see cref="Figures"/>), crossfading to the new member's as the header changes
+    /// over where it's another, and over it the slots, what's worn or each empty slot's image. As the member changes, or an item is
+    /// put on or taken off, the slots the core says crossfade (<see cref="PartyMenu.SlotCrossfades"/>) fade from what they showed.
     /// </summary>
     private void Silhouette(Vector2I at)
     {
+        var middle = at.X + Slots[(int)EquipmentSlot.Helmet].X + SlotSize / 2f;
+        var figure = FigureOf(Menu.Shown!);
+        if (Menu.Previous is { } previous && FigureOf(previous) is var was && was != figure)
+        {
+            FigureArt(was, middle, FadingOut(White, Menu.MemberChange).A / 255f);
+            FigureArt(figure, middle, FadingIn(White, Menu.MemberChange).A / 255f);
+        }
+        else
+        {
+            FigureArt(figure, middle, 1);
+        }
+
         var change = Menu.SlotsChange;
         foreach (var slot in Enum.GetValues<EquipmentSlot>())
         {
@@ -708,6 +807,29 @@ public partial class PartyTabView : Control
                 _ui.Image(_canvas, Menu.SlotImage(slot), x, y, size);
             }
         }
+    }
+
+    /// <summary>A member's figure, by their entity's record.</summary>
+    private Figure FigureOf(Core.Characters.Character member)
+    {
+        if (!_figures.TryGetValue(member.Entity, out var figure))
+            _figures[member.Entity] = figure = Figures.Of(_plugins.TryGet<DbRecord>(member.Entity));
+        return figure;
+    }
+
+    /// <summary>A figure's art, from <see cref="FigureTop"/> and <see cref="FigureHeight"/> tall, centred on <paramref name="middle"/>, at a strength.</summary>
+    private void FigureArt(Figure figure, float middle, float strength)
+    {
+        var name = figure switch
+        {
+            Figure.Woman => "silhouette-woman.png",
+            Figure.LargeMan => "silhouette-large-man.png",
+            _ => "silhouette-man.png",
+        };
+        if (UiImages.Art(name) is not { } texture)
+            return;
+        var width = FigureHeight * texture.GetWidth() / texture.GetHeight();
+        Art(name, new Rect2(middle - width / 2, FigureTop, width, FigureHeight), strength);
     }
 
     /// <summary>

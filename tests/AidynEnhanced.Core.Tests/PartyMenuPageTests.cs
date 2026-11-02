@@ -45,6 +45,31 @@ public class PartyMenuPageTests
         Assert.Equal(2, PartyMenu.TabOf(menu.List));
     }
 
+    /// <summary>A click on a tab presses the stick once, its way, from any tab to any other, as all three are a press apart.</summary>
+    [Fact]
+    public void AClickedTabIsOnePressOfTheStickAway()
+    {
+        var menu = Menu();
+        for (var from = 0; from < PartyMenu.Tabs.Count; from++)
+        {
+            for (var to = 0; to < PartyMenu.Tabs.Count; to++)
+            {
+                ((IPartyWindow)menu).Sideways(PartyMenu.StepToTab(PartyMenu.TabOf(menu.List), from));
+                Slid(menu);
+                Assert.Equal(from, PartyMenu.TabOf(menu.List));
+                var step = PartyMenu.StepToTab(from, to);
+                Assert.Equal(from == to, step == 0);
+                if (step != 0)
+                    ((IPartyWindow)menu).Sideways(step);
+                Slid(menu);
+                Assert.Equal(to, PartyMenu.TabOf(menu.List));
+            }
+        }
+        // The tab to the right slides the lists left, the new one coming in from the right.
+        Assert.Equal(1, PartyMenu.StepToTab(0, 1));
+        Assert.Equal(-1, PartyMenu.StepToTab(0, 2));
+    }
+
     /// <summary>The page's cursor runs from the last stat into the first skill, and from the first stat up to the last skill.</summary>
     [Fact]
     public void ThePagesCursorRunsFromTheStatsIntoTheSkillsAndWrapsRound()

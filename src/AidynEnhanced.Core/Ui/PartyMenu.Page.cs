@@ -21,6 +21,17 @@ public sealed partial class PartyMenu
     /// <summary>Which of <see cref="Tabs"/> shows a list.</summary>
     public static int TabOf(PartyList list) => Tabs.ToList().IndexOf(Page(list));
 
+    /// <summary>
+    /// The stick's way, 1 right or −1 left, whose one press goes from one of <see cref="Tabs"/> to another, as a click on a tab
+    /// presses it, or 0 for the same tab. With three tabs wrapping round, every other tab is one press away.
+    /// </summary>
+    public static int StepToTab(int from, int to) => (((to - from) % Tabs.Count + Tabs.Count) % Tabs.Count) switch
+    {
+        0 => 0,
+        1 => 1,
+        _ => -1,
+    };
+
     /// <summary>Whether the list showing is the stats and skills page.</summary>
     public bool OnPage => Page(List) == PartyList.Stats;
 

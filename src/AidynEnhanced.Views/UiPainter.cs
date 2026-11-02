@@ -291,12 +291,11 @@ public sealed class UiPainter
     /// </summary>
     private static readonly string[] Sheets = [WideSheet, SquareSheet, LargeSheet, TallSheet];
 
-    /// <summary>The wide sheet, 1800 × 800: the Party tab's header and the gold's, and the wide papers, the names on slips and the System list's rows.</summary>
+    /// <summary>The wide sheet, 1800 × 800: the Party tab's header, and the wide papers with no sheet of their own.</summary>
     public const string WideSheet = "parchment-1800x800.png";
 
     /// <summary>
-    /// The small square sheet, 500 × 500: the Party tab's tabs, and the portraits' frames, which a portrait is cut to the shape of
-    /// (<see cref="UiImages.CutTo"/>).
+    /// The small square sheet, 500 × 500: the portraits' frames, which a portrait is cut to the shape of (<see cref="UiImages.CutTo"/>).
     /// </summary>
     public const string SquareSheet = "parchment-500x500.png";
 
@@ -305,6 +304,18 @@ public sealed class UiPainter
 
     /// <summary>The tall sheet, 1800 × 2150: the Party tab's page, which the lists are on.</summary>
     public const string TallSheet = "parchment-1800x2150.png";
+
+    /// <summary>The tabs' sheet, 320 × 320, the user's (Nov 2, 2026).</summary>
+    public const string TabSheet = "parchment-320x320.png";
+
+    /// <summary>The gold's sheet, 512 × 220, the user's.</summary>
+    public const string GoldSheet = "parchment-512x220.png";
+
+    /// <summary>
+    /// The tooltips' sheet, 600 × 150, the user's: the names on slips, and the System list's rows, which are on the tooltip's paper,
+    /// as the user asked.
+    /// </summary>
+    public const string TooltipSheet = "parchment-600x150.png";
 
     /// <summary>The sheet whose paper is nearest a rectangle's shape, by the ratio of their sides.</summary>
     public static string SheetFor(Vector2 size)

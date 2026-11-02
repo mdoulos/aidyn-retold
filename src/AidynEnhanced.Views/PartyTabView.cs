@@ -100,7 +100,7 @@ public partial class PartyTabView : Control
     private const int IconGap = 4;
 
     /// <summary>The level's right edge, under the small portraits' right edge, and the gold's, at the list's.</summary>
-    private const int LevelRight = 149, GoldRight = 306;
+    private const int LevelRight = 149;
 
     /// <summary>
     /// The right column's page, the user's design (Nov 2, 2026): a loose sheet of the user's parchment (<see cref="UiPainter.Slip"/>) the
@@ -112,10 +112,9 @@ public partial class PartyTabView : Control
     /// <summary>
     /// The sheets of parchment the sections lie on, where the user marked their edges (Nov 2, 2026), a gap of 3 or 4 between each and
     /// none overlapping: the portraits with the name, the level, the bar and the aspect's and school's icons on one, the silhouette
-    /// with its slots on another under it, and the gold on one after the tabs; the page (<see cref="PageRect"/>) beside them.
+    /// with its slots on another under it; the page (<see cref="PageRect"/>) beside them. The gold's is snug round it (<see cref="GoldBox"/>).
     /// </summary>
-    private static readonly Rect2 HeaderSheet = new(15.5f, 19, 138, 59.5f), EquipmentSheet = new(15.5f, 81.5f, 138.5f, 142),
-        GoldSheet = new(268, 19, 43, 20);
+    private static readonly Rect2 HeaderSheet = new(15.5f, 19, 138, 59.5f), EquipmentSheet = new(15.5f, 81.5f, 138.5f, 142);
 
     /// <summary>
     /// How far each portrait's square sheet reaches past the portrait, cut to the sheet's outline (<see cref="UiImages.CutTo"/>), so a
@@ -151,7 +150,11 @@ public partial class PartyTabView : Control
     /// <summary>The purse before the gold, the user's art, and how big it's drawn, its middle level with the gold's.</summary>
     private const string Purse = "ui-gold.png";
 
-    private const int PurseSize = 14;
+    /// <summary>
+    /// The gold's box, smaller, the user's choice (Nov 2, 2026): the purse this big, a pixel before the amount, whose capitals are this
+    /// tall; the sheet this tall, reaching this far past them either side, its right edge at the page's.
+    /// </summary>
+    private const float PurseSize = 10, PurseGap = 1, GoldText = 3.4f, GoldHeight = 14, GoldInset = 3.5f;
 
     /// <summary>How far down the tabs the gold's middle is, level with the tabs' middles.</summary>
     private const float GoldMiddle = 12;
@@ -732,7 +735,7 @@ public partial class PartyTabView : Control
                 continue;
             var has = HasTab(PartyMenu.Tabs[i]);
             var tint = i == _hoveredTab ? HoveredTab : BehindTab;
-            _ui.Slip(_canvas, TabRect(i), tint with { A = (byte)(255 * (has ? 1 : MissingTab)) }, UiPainter.SquareSheet);
+            _ui.Slip(_canvas, TabRect(i), tint with { A = (byte)(255 * (has ? 1 : MissingTab)) }, UiPainter.TabSheet);
             TabFace(i, has ? ClosedIcon : MissingIcon);
         }
         _ui.Slip(_canvas, PageRect, sheet: UiPainter.TallSheet);
@@ -741,19 +744,27 @@ public partial class PartyTabView : Control
             if (open[i] <= 0)
                 continue;
             var rect = TabRect(i);
-            _ui.Slip(_canvas, rect, White with { A = (byte)(255 * open[i]) }, UiPainter.SquareSheet);
+            _ui.Slip(_canvas, rect, White with { A = (byte)(255 * open[i]) }, UiPainter.TabSheet);
             JoinTab(rect, open[i]);
             TabFace(i, Mathf.Lerp(ClosedIcon, 1, open[i]));
         }
 
         // The gold, after a purse, on a sheet of its own after the tabs.
+        var font = _ui.Slim.Sized(GoldText);
         var gold = Num(Menu.Party.Gold);
-        var goldX = GoldRight - SmallWidth(gold);
-        var middle = TabsAt.Y + GoldMiddle;
-        var purseX = goldX - PurseSize - 1;
-        _ui.Slip(_canvas, GoldSheet, sheet: UiPainter.WideSheet);
-        Small(gold, goldX, middle - _ui.Slim.Middle, PartyMenu.TextColor);
+        var box = GoldBox(font.ExactWidth(gold));
+        var middle = box.Position.Y + box.Size.Y / 2;
+        var purseX = box.Position.X + GoldInset;
+        _ui.Slip(_canvas, box, sheet: UiPainter.GoldSheet);
+        Small(gold, purseX + PurseSize + PurseGap, middle - font.Middle, PartyMenu.TextColor, font: font);
         Art(Purse, new Rect2(purseX, middle - PurseSize / 2f, PurseSize, PurseSize));
+    }
+
+    /// <summary>The gold's sheet, snug round the purse and an amount so wide, its right edge at the page's and its middle level with the tabs'.</summary>
+    private static Rect2 GoldBox(float amount)
+    {
+        var width = GoldInset + PurseSize + PurseGap + amount + GoldInset;
+        return new Rect2(PageRect.End.X - width, TabsAt.Y + GoldMiddle - GoldHeight / 2, width, GoldHeight);
     }
 
     /// <summary>A tab's icon and caption, at a strength.</summary>
@@ -1310,7 +1321,7 @@ public partial class PartyTabView : Control
         var left = Math.Clamp(middle - width / 2 - SlipSide, 4, FrameWidth - 4 - width - 2 * SlipSide);
         var top = below is { } under && foot - height < PageRect.Position.Y ? under : foot - height;
         var paper = new Rect2(left, top, width + 2 * SlipSide, height);
-        _ui.Slip(_canvas, paper);
+        _ui.Slip(_canvas, paper, sheet: UiPainter.TooltipSheet);
         Small(name, left + SlipSide, paper.Position.Y + height / 2 - font.Middle, UiPainter.Ink);
     }
 

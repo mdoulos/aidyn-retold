@@ -339,7 +339,8 @@ public partial class SystemTabView : Control
         {
             var width = items.Rows.Select(i => _ui.Main.Width(Menu.Label(i))).DefaultIfEmpty(0).Max() + 2 * RowSlipSide;
             for (var i = 0; i < rows; i++)
-                _ui.Slip(this, new Rect2(ListCentre - width / 2, y + i * RowPitch + _ui.Main.Middle - RowSlipHeight / 2, width, RowSlipHeight));
+                _ui.Slip(this, new Rect2(ListCentre - width / 2, y + i * RowPitch + _ui.Main.Middle - RowSlipHeight / 2, width, RowSlipHeight),
+                    sheet: UiPainter.TooltipSheet);
         }
         for (var i = 0; i < rows; i++)
         {

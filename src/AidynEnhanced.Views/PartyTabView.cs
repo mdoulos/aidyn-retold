@@ -97,7 +97,11 @@ public partial class PartyTabView : Control
     /// <summary>The aspect's and school's icons after the bar, from the portraits' frames' corner, and how far apart they are.</summary>
     private static readonly Vector2I IconsAt = new(107, 45);
 
-    private const int IconGap = 4;
+    /// <summary>
+    /// How big the aspect's and school's icons are drawn, a quarter smaller than the original's 10, and how far apart, the user's choice
+    /// (Nov 2, 2026); their top, from the portraits' frames' corner, so their middle is the bar's.
+    /// </summary>
+    private const float IconSize = 7.5f, IconGap = 1, IconsTop = 46.25f;
 
     /// <summary>The level's right edge, under the small portraits' right edge, and the gold's, at the list's.</summary>
     private const int LevelRight = 149;
@@ -174,13 +178,22 @@ public partial class PartyTabView : Control
     /// silhouette's corner (DollEquipmentMenu::SetSlotCoords); the shield's is level with the first scroll's, as its frame painted
     /// into <c>0x00D9</c> is and the user's captures show; at 45 it stood 2 above it.
     /// </summary>
-    private static readonly Vector2I SilhouetteAt = new(27, 84);
+    private static readonly Vector2I SilhouetteAt = new(27, 86);
 
     /// <summary>
     /// The figure behind the slots, the user's art (<see cref="Figures"/>): its top and how tall it's drawn, centred under the helmet's
     /// slot, which puts its head under that slot and its feet at the boots'. Its width is the art's shape.
     /// </summary>
-    private const float FigureTop = 80, FigureHeight = 145;
+    private const float FigureTop = 82.7f, FigureHeight = 138;
+
+    /// <summary>
+    /// The boots' slot in the port's layout, higher than the original's 120 down, so the slots and the figure fit between the lines the
+    /// user drew across the silhouette's sheet (Nov 2, 2026), at about y 85 and 218.
+    /// </summary>
+    private static readonly Vector2I PortBoots = new(40, 114);
+
+    /// <summary>Where a slot is from the silhouette's corner: the original's, but the port's boots.</summary>
+    private Vector2I SlotOffset(EquipmentSlot slot) => !OriginalLook && slot == EquipmentSlot.Boots ? PortBoots : Slots[(int)slot];
 
     private static readonly Vector2I[] Slots =
     [
@@ -196,8 +209,6 @@ public partial class PartyTabView : Control
     /// </summary>
     private static readonly Rect2I ListClip = new(158, 43, 151, 172);
 
-    /// <summary>The arrow that says which tabs of the pause menu are beside this one, under the gap between the columns.</summary>
-    private static readonly Vector2I SliderAt = new(130, 215);
 
     // WidgetItemDetail: the parchment, and its text's left and right edges and top, as the original places them; what goes over
     // the silhouette is drawn Drop lower.
@@ -396,6 +407,14 @@ public partial class PartyTabView : Control
             AcceptEvent();
             return;
         }
+        // The message's Close button closes it, as A does.
+        if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } closing
+            && _ui.OnMessageClose((Vector2I)Size, Window.Overlay, closing.Position))
+        {
+            UiScreen.Of(this)?.Click(MenuAction.Accept);
+            AcceptEvent();
+            return;
+        }
         // A click on a slot of the silhouette with something worn in it selects it, and a double click uses it as A does, taking it off:
         // with what's worn not in the inventory, the silhouette is where the mouse reaches it.
         if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } slotClick && _hoveredSlot is { } slot)
@@ -584,15 +603,24 @@ public partial class PartyTabView : Control
     }
 
     /// <summary>Where an icon of <see cref="Icons"/> is in the frame.</summary>
-    private Rect2 IconRect((RecordId Icon, int X, string Name) icon) =>
-        new(PortraitPiece.Position + new Vector2I(icon.X, IconsY), _ui.Size(icon.Icon));
+    private Rect2 IconRect((RecordId Icon, float X, string Name) icon) =>
+        new(PortraitPiece.Position + new Vector2(icon.X, IconsY), OriginalLook ? _ui.Size(icon.Icon) : new Vector2(IconSize, IconSize));
 
     /// <summary>How far down the portraits' frames the aspect's and school's icons are.</summary>
-    private int IconsY => (OriginalLook ? OriginalIconsAt : IconsAt).Y;
+    private float IconsY => OriginalLook ? OriginalIconsAt.Y : IconsTop;
+
+    /// <summary>An aspect's or school's icon at a place in the frame: the original's own size in its look, else <see cref="IconSize"/>.</summary>
+    private void Icon(RecordId icon, float x, float y, Rgba? color)
+    {
+        if (OriginalLook)
+            _ui.Image(_canvas, icon, (int)x, (int)y, color: color);
+        else
+            _ui.Image(_canvas, icon, new Rect2(x, y, IconSize, IconSize), color);
+    }
 
     /// <summary>Where a slot of the silhouette is in the frame.</summary>
     private Rect2 SlotRect(EquipmentSlot slot) =>
-        new(SilhouetteCorner.X + Slots[(int)slot].X, SilhouetteCorner.Y + Slots[(int)slot].Y, SlotSize, SlotSize);
+        new(SilhouetteCorner.X + SlotOffset(slot).X, SilhouetteCorner.Y + SlotOffset(slot).Y, SlotSize, SlotSize);
 
     /// <summary>The silhouette's slots' corner, the port's or the original's.</summary>
     private Vector2I SilhouetteCorner => OriginalLook ? OriginalSilhouette : SilhouetteAt;
@@ -774,8 +802,6 @@ public partial class PartyTabView : Control
         Health();
         Silhouette(SilhouetteAt);
         Tabs();
-        // Combat's pause turns the arrow to point left only.
-        _ui.Image(_canvas, Menu.Combat is not null ? MenuImages.SliderLeft : MenuImages.SliderBoth, SliderAt.X, SliderAt.Y, color: PartyMenu.TextColor);
     }
 
     /// <summary>
@@ -813,7 +839,7 @@ public partial class PartyTabView : Control
             if (open[i] <= 0)
                 continue;
             var rect = TabRect(i);
-            _ui.Slip(_canvas, rect, White with { A = (byte)(255 * open[i]) }, UiPainter.TabSheet);
+            _ui.Slip(_canvas, rect, White with { A = (byte)(255 * open[i]) }, UiPainter.TabSheet, PageRect.Position.Y + PageEdge);
             JoinTab(rect, open[i]);
             TabFace(i, Mathf.Lerp(ClosedIcon, 1, open[i]));
         }
@@ -856,12 +882,14 @@ public partial class PartyTabView : Control
             return;
         var paper = UiImages.ArtImage(sheet).Paper;
         var scale = PageRect.Size / paper.Size;
-        var patch = new Rect2(tab.Position.X + 2, PageRect.Position.Y - 4, tab.Size.X - 4, 13);
+        // Between the tab's side edges, from above the page's top to under its dark edge, which it covers.
+        var patch = new Rect2(tab.Position.X + TabEdge, PageRect.Position.Y - JoinFeather - 1, tab.Size.X - 2 * TabEdge,
+            JoinFeather + 1 + PageEdge + JoinFeather);
         // From the page's paper below its torn top, so it's the page's own grain and tone there.
         var source = new Rect2(paper.Position.X + (patch.Position.X - PageRect.Position.X) / scale.X, paper.Position.Y + paper.Size.Y * 0.05f,
             patch.Size / scale);
         var size = texture.GetSize();
-        float[] xs = [patch.Position.X, patch.Position.X + JoinFeather, patch.End.X - JoinFeather, patch.End.X];
+        float[] xs = [patch.Position.X, patch.Position.X + JoinSideFeather, patch.End.X - JoinSideFeather, patch.End.X];
         float[] ys = [patch.Position.Y, patch.Position.Y + JoinFeather, patch.End.Y - JoinFeather, patch.End.Y];
         Vector2 Uv(float x, float y) => (source.Position + new Vector2(x - patch.Position.X, y - patch.Position.Y) / scale) / size;
         var solid = _ui.Tint(White with { A = (byte)(255 * strength) });
@@ -878,8 +906,15 @@ public partial class PartyTabView : Control
         }
     }
 
-    /// <summary>How far the join between the tab showing and its page fades out at its edges.</summary>
-    private const float JoinFeather = 2.5f;
+    /// <summary>How far the join between the tab showing and its page fades out above and below, and at its sides.</summary>
+    private const float JoinFeather = 2, JoinSideFeather = 0.4f;
+
+    /// <summary>
+    /// How deep the page's dark top edge is, and a tab's side edges, in the frame's pixels: the sheets' own, about 11 of the tall
+    /// sheet's 2119 down its paper and 8 of the tab sheet's 288 across. The tab showing stops at the page's edge, and the join covers
+    /// the page's edge between the tab's, so the tab and its page share one outline, the user's choice (Nov 2, 2026).
+    /// </summary>
+    private const float PageEdge = 1, TabEdge = 0.8f;
 
     /// <summary>
     /// A tab's caption, the slim font at <see cref="UiPainter.CaptionText"/>, its capitals' top 0.5 under its icon, centred, and
@@ -1043,9 +1078,9 @@ public partial class PartyTabView : Control
         var old = Menu.Previous is { } member ? Icons(member) : icons;
         var iconsY = IconsY;
         foreach (var (icon, x, _) in old.Except(icons))
-            _ui.Image(_canvas, icon, at.X + x, at.Y + iconsY, color: FadingOut(White, change));
+            Icon(icon, at.X + x, at.Y + iconsY, FadingOut(White, change));
         foreach (var (icon, x, name) in icons)
-            _ui.Image(_canvas, icon, at.X + x, at.Y + iconsY, color: old.Contains((icon, x, name)) ? null : FadingIn(White, change));
+            Icon(icon, at.X + x, at.Y + iconsY, old.Contains((icon, x, name)) ? null : FadingIn(White, change));
     }
 
     /// <summary>
@@ -1074,14 +1109,14 @@ public partial class PartyTabView : Control
     /// A member's aspect's and school's icons after the bar, 4 apart, where they go across, and the names the mouse on one shows, the
     /// user's choice (Nov 2, 2026).
     /// </summary>
-    private List<(RecordId Icon, int X, string Name)> Icons(Core.Characters.Character member)
+    private List<(RecordId Icon, float X, string Name)> Icons(Core.Characters.Character member)
     {
-        var icons = new List<(RecordId, int, string)>();
-        var x = (OriginalLook ? OriginalIconsAt : IconsAt).X;
+        var icons = new List<(RecordId, float, string)>();
+        float x = (OriginalLook ? OriginalIconsAt : IconsAt).X;
         if (MenuImages.AspectIcon(member.Aspect) is { } aspect)
         {
             icons.Add((aspect, x, $"{member.Aspect} Aspect"));
-            x += _ui.Size(aspect).X + (OriginalLook ? OriginalIconGap : IconGap);
+            x += OriginalLook ? _ui.Size(aspect).X + OriginalIconGap : IconSize + IconGap;
         }
         if (MenuImages.SchoolIcon(member.School) is { } school)
             icons.Add((school, x, $"School of {member.School}"));
@@ -1217,8 +1252,8 @@ public partial class PartyTabView : Control
         var change = Menu.SlotsChange;
         foreach (var slot in Enum.GetValues<EquipmentSlot>())
         {
-            var x = at.X + Slots[(int)slot].X;
-            var y = at.Y + Slots[(int)slot].Y;
+            var x = at.X + SlotOffset(slot).X;
+            var y = at.Y + SlotOffset(slot).Y;
             var size = new Vector2I(BoxedSize, BoxedSize);
             Art(SlotBox, new Rect2(x - 1, y - 1, SlotSize + 2, SlotSize + 2));
             var (ix, iy) = (x + SlotInset, y + SlotInset);
@@ -1293,6 +1328,9 @@ public partial class PartyTabView : Control
 
     private const float CountText = 3.6f, CellInset = 2.5f;
 
+    /// <summary>How much of a grid's cell its item's icon takes across, inside its box's inner line: 12 of the original's 18.</summary>
+    private const float GridIcon = 12f / 18;
+
     /// <summary>
     /// The inventory's grid (<see cref="PartyMenu.InventoryGrid"/>), the user's design (Nov 2, 2026): a cell for each of its rows in
     /// view, a stack or a worn item, the user's box with the item's icon in it, its count in the bottom right corner where there's more
@@ -1309,7 +1347,8 @@ public partial class PartyTabView : Control
             var (x, y) = grid.CellAt(i - list.First);
             var row = list.Rows[i];
             Art(SlotBox, new Rect2(x + 0.5f, y + 0.5f, grid.Cell - 1, grid.Cell - 1), row.Wearer is null ? White : WornBox);
-            _ui.Image(_canvas, row.Item.Icon, x + (grid.Cell - BoxedSize) / 2, y + (grid.Cell - BoxedSize) / 2, new Vector2I(BoxedSize, BoxedSize));
+            var icon = grid.Cell * GridIcon;
+            _ui.Image(_canvas, row.Item.Icon, new Rect2(x + (grid.Cell - icon) / 2, y + (grid.Cell - icon) / 2, icon, icon));
             if (row.Wearer is { } wearer && Menu.Party.Slots[wearer] is { } who && Menu.Portrait(who.Entity) is { } portrait)
             {
                 // In the bottom left, the count being in the bottom right.
@@ -1328,6 +1367,26 @@ public partial class PartyTabView : Control
                 Art(Selected, new Rect2(x - 1, y - 1, grid.Cell + 2, grid.Cell + 2));
         }
         ScrollBar(grid, list);
+    }
+
+    /// <summary>
+    /// A list's arrows, which say it has rows hidden, in the original's look; in the port's, the original's arrows gone, the user's
+    /// choice (Nov 2, 2026), a thin scroll bar beside its right edge as the grid's, while it has rows hidden.
+    /// </summary>
+    private void ListArrows<TRow>(MenuList<TRow> list, ListLayout layout)
+    {
+        if (OriginalLook)
+        {
+            _ui.Arrows(_canvas, list, layout);
+            return;
+        }
+        if (list.Rows.Count <= list.Visible)
+            return;
+        var b = layout.Bounds;
+        var (x, top, height) = (b.Right + 1.5f, (float)b.Top, (float)list.Visible * layout.RowHeight);
+        _canvas.DrawRect(new Rect2(x, top, 0.75f, height), _ui.Tint(UiPainter.Ink with { A = 70 }));
+        var count = (float)list.Rows.Count;
+        _canvas.DrawRect(new Rect2(x - 0.25f, top + height * list.First / count, 1.25f, height * list.Visible / count), _ui.Tint(UiPainter.Ink));
     }
 
     /// <summary>
@@ -1507,7 +1566,7 @@ public partial class PartyTabView : Control
     private void StatRows(ListLayout layout, UiFont font, Rgba highlight)
     {
         _ui.List(Menu.Stats, layout, PartyMenu.TextColor, highlight, (row, top, c) => StatRowAt(row, layout, top, font, c));
-        _ui.Arrows(_canvas, Menu.Stats, layout);
+        ListArrows(Menu.Stats, layout);
         ExperienceLinesAt(layout, layout.Bounds.Top + Menu.ExperienceAt, font, _ => true);
     }
 
@@ -1550,7 +1609,7 @@ public partial class PartyTabView : Control
     private void SkillRows(MenuList<SkillRow> list, ListLayout layout, UiFont font, Rgba highlight)
     {
         _ui.List(list, layout, PartyMenu.TextColor, highlight, (row, top, c) => SkillRowAt(row, layout, top, font, c));
-        _ui.Arrows(_canvas, list, layout);
+        ListArrows(list, layout);
     }
 
     private void SkillRowAt(SkillRow row, ListLayout layout, int top, UiFont font, Rgba color)
@@ -1584,7 +1643,7 @@ public partial class PartyTabView : Control
             _ui.Text(_canvas, font, Num(row.Rank), x + Columns.Rank, top, b, color);
             OneLine(font, row.Name, x + Columns.SpellName, top, b.Right, c);
         });
-        _ui.Arrows(_canvas, list, layout);
+        ListArrows(list, layout);
     }
 
     /// <summary>
@@ -1604,7 +1663,7 @@ public partial class PartyTabView : Control
                 _ui.Text(_canvas, font, Num(row.Quantity), x + Columns.Quantity, top, b, PartyMenu.TextColor);
             OneLine(font, row.Item.Name, x + (row.Quantity != 0 ? Columns.Name : Columns.NameNoQuantity), top, b.Right, c);
         });
-        _ui.Arrows(_canvas, list, layout);
+        ListArrows(list, layout);
     }
 
     /// <summary>

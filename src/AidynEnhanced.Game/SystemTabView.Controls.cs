@@ -18,7 +18,7 @@ public partial class SystemTabView
     /// Where the Controls page's rows and headings are: each row's top and bottom, off the page for one scrolled out of view, and
     /// each heading in view with its top. The list scrolls to keep the cursor's row in the middle, as far as it can.
     /// </summary>
-    private (List<(int Top, int Bottom)> Rows, List<(string Text, int Top)> Headings, bool Above, bool Below) ControlPlaces(OptionsMenu options)
+    private (List<(int Top, int Bottom)> Rows, List<(string Text, int Top)> Headings, bool Above, bool Below, int First, int Lines) ControlPlaces(OptionsMenu options)
     {
         var rows = options.Rows.Rows;
         // The list's lines: a heading's (row −1) and each row's, after the Device row.
@@ -44,7 +44,7 @@ public partial class SystemTabView
             else if (lines[l].Heading is { } text)
                 headings.Add((text, top));
         }
-        return (places, headings, first > 0, first + ControlsLines < lines.Count);
+        return (places, headings, first > 0, first + ControlsLines < lines.Count, first, lines.Count);
     }
 
     /// <summary>
@@ -54,7 +54,7 @@ public partial class SystemTabView
     /// </summary>
     private void Controls(OptionsMenu options)
     {
-        var (places, headings, above, below) = ControlPlaces(options);
+        var (places, headings, above, below, first, lineCount) = ControlPlaces(options);
         var cursor = options.Pulse.Now(Style.Text, Style.OptionsCursor);
         for (var i = 0; i < places.Count; i++)
         {
@@ -74,12 +74,22 @@ public partial class SystemTabView
         var centre = Style.Parchment ? FrameWidth / 2 + 8 : OptionsCentre(options);
         foreach (var (text, top) in headings)
             CentredText(text, centre, top, Style.Heading);
-        // The list's arrow, turned to point up and down.
-        var arrow = _ui.Size(MenuImages.SliderRight);
-        if (above)
-            TurnedArrow(ControlsRight - arrow.Y, ControlsListTop + arrow.X - 2, -Mathf.Pi / 2);
-        if (below)
-            TurnedArrow(ControlsRight, ControlsListTop + ControlsLines * ControlsPitch - arrow.X - 2, Mathf.Pi / 2);
+        // The list's arrow, turned to point up and down, in the original's look; in the port's, the original's arrows gone, the user's
+        // choice (Nov 2, 2026), a thin scroll bar beside the list, as the Party tab's lists have.
+        if (UiPainter.Original)
+        {
+            var arrow = _ui.Size(MenuImages.SliderRight);
+            if (above)
+                TurnedArrow(ControlsRight - arrow.Y, ControlsListTop + arrow.X - 2, -Mathf.Pi / 2);
+            if (below)
+                TurnedArrow(ControlsRight, ControlsListTop + ControlsLines * ControlsPitch - arrow.X - 2, Mathf.Pi / 2);
+        }
+        else if (above || below)
+        {
+            var (x, top, height) = (ControlsRight + 2f, (float)ControlsListTop, (float)ControlsLines * ControlsPitch);
+            DrawRect(new Rect2(x, top, 0.75f, height), _ui.Tint(UiPainter.Ink with { A = 70 }));
+            DrawRect(new Rect2(x - 0.25f, top + height * first / lineCount, 1.25f, height * ControlsLines / lineCount), _ui.Tint(UiPainter.Ink));
+        }
         var foot = options.Message ?? (options.Prompt is null && options.Rows.Current?.Kind == OptionKind.Binding ? options.ClearHint : null);
         if (foot is not null)
             CentredText(foot, centre, ControlsFoot, Style.Text);

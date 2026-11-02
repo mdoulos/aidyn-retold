@@ -38,7 +38,7 @@ public sealed partial class PartyMenu
     /// The inventory's grid, the user's design (Nov 2, 2026): a cell 18 square for each of the list's rows, a stack or a worn item,
     /// 8 to a line, filling the list's frame under the tabs with 9 lines, and scrolling a line at a time past them.
     /// </summary>
-    public static readonly GridLayout InventoryGrid = new(new ScreenRect(161, 46, 305, 208), 18, 8);
+    public static readonly GridLayout InventoryGrid = new(new ScreenRect(161, 46, 301, 206), 20, 7);
 
     /// <summary>
     /// Whether the inventory is the grid (<see cref="InventoryGrid"/>) rather than a list: the Party tab's own, which the pause menu

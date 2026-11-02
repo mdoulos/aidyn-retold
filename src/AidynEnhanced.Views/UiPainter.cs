@@ -194,21 +194,67 @@ public sealed class UiPainter
     /// </summary>
     public void Message(CanvasItem canvas, Vector2I screen, string text, int wrap, Rgba color, int extraWidth = 0, int extraHeight = 0)
     {
-        var width = Math.Min(Main.Width(text), wrap);
-        MessageBox(canvas, screen, text, width + extraWidth, Main.Height(text, 0, width) + 5 + extraHeight, color);
+        var (width, height) = Fitted(text, wrap);
+        MessageBox(canvas, screen, text, width + extraWidth, height + extraHeight, color);
+    }
+
+    /// <summary>
+    /// How wide and tall a message fitted to its text is: its width a pixel more than the text's, as the text drawn smaller is laid out
+    /// at its own size within the width made larger to match, and a width rounded down wrapped its last word onto a line of its own.
+    /// </summary>
+    private (int Width, int Height) Fitted(string text, int wrap)
+    {
+        var width = Math.Min(Main.Width(text) + 1, wrap);
+        return (width, Main.Height(text, 0, width) + 5);
     }
 
     /// <summary>
     /// A menu's message: fitted to its text and off-white, or in a box of its own size and white (<see cref="MenuMessage.Box"/>);
-    /// a crafting popup's result has 16 more across and 5 more down (<c>WidgetCrafting::TextPopup</c>).
+    /// a crafting popup's result has 16 more across and 5 more down (<c>WidgetCrafting::TextPopup</c>). With <paramref name="close"/>,
+    /// on a slip, a Close button under the text, for the mouse (<see cref="OnMessageClose"/>).
     /// </summary>
-    public void Message(CanvasItem canvas, Vector2I screen, MenuMessage message)
+    public void Message(CanvasItem canvas, Vector2I screen, MenuMessage message, bool close = false)
+    {
+        var (width, height) = MessageSize(message);
+        var closes = close && Slips;
+        MessageBox(canvas, screen, message.Text, width, height + (closes ? (int)CloseRow : 0), message.Box is null ? MenuMessage.Color : MenuMessage.White);
+        if (!closes)
+            return;
+        var button = CloseRect(screen, message);
+        var font = Main.Sized(CloseText);
+        Text(canvas, font, CloseLabel, button.Position.X + CloseInset, (int)MathF.Round(button.Position.Y + button.Size.Y / 2 - font.Middle), RedInk);
+    }
+
+    /// <summary>
+    /// The Close button under a menu's message on a slip, for the mouse, the user's choice (Nov 2, 2026): its label, its capitals' height,
+    /// the row it takes under the message, and how far its place to click reaches past the label.
+    /// </summary>
+    public const string CloseLabel = "Close";
+
+    private const float CloseText = 3.4f, CloseRow = 7, CloseInset = 2;
+
+    /// <summary>How wide and tall a menu's message's text is, before a Close button.</summary>
+    private (int Width, int Height) MessageSize(MenuMessage message)
     {
         if (message.Box is { } box)
-            MessageBox(canvas, screen, message.Text, box.Width, box.Height, MenuMessage.White);
-        else
-            Message(canvas, screen, message.Text, message.Wrap, MenuMessage.Color, message.FromCrafting ? 16 : 0, message.FromCrafting ? 5 : 0);
+            return (box.Width, box.Height);
+        var (width, height) = Fitted(message.Text, message.Wrap);
+        return message.FromCrafting ? (width + 16, height + 5) : (width, height);
     }
+
+    /// <summary>Where a message's Close button is on the screen: right-aligned with its text, in the row under it.</summary>
+    private Rect2 CloseRect(Vector2I screen, MenuMessage message)
+    {
+        var (width, height) = MessageSize(message);
+        var x0 = (screen.X - width) / 2;
+        var y0 = (screen.Y - (height + (int)CloseRow)) / 2;
+        var label = Main.Sized(CloseText).ExactWidth(CloseLabel) + 2 * CloseInset;
+        return new Rect2(x0 + 4 + width - label + CloseInset, y0 + height, label, CloseRow);
+    }
+
+    /// <summary>Whether a point on the screen is on the Close button of the menu's message that's up.</summary>
+    public bool OnMessageClose(Vector2I screen, MenuOverlay overlay, Vector2 point) =>
+        Slips && overlay.Message is { } message && CloseRect(screen, message).HasPoint(point);
 
     /// <summary>A menu's question over choices, with the cursor's option in <paramref name="cursor"/>.</summary>
     public void Choice(CanvasItem canvas, Vector2I screen, MenuChoice choice, Rgba cursor) =>
@@ -220,7 +266,7 @@ public sealed class UiPainter
         if (overlay.Choice is { } choice)
             Choice(canvas, screen, choice, overlay.Highlight);
         if (overlay.Message is { } message)
-            Message(canvas, screen, message);
+            Message(canvas, screen, message, close: true);
     }
 
     /// <summary>
@@ -280,7 +326,7 @@ public sealed class UiPainter
     /// How far a slip's paper reaches past its text's band at the sides, the top and the foot, clear of its torn edges, the foot further
     /// for the text drawn smaller sitting low in its rows; and how big a question's seal is, over the slip's top right corner.
     /// </summary>
-    private const float SlipSide = 12, SlipTop = 7, SlipFoot = 10, SealSize = 18;
+    private const float SlipSide = 6, SlipTop = 4, SlipFoot = 5, SealSize = 18;
 
     private const string Seal = "ui-wax-seal.png";
 
@@ -344,9 +390,10 @@ public sealed class UiPainter
 
     /// <summary>
     /// A loose sheet of parchment, the user's art, the one nearest the rectangle's shape or <paramref name="sheet"/>, stretched so its
-    /// paper covers the rectangle, with a soft shadow under it, in a colour.
+    /// paper covers the rectangle, with a soft shadow under it, in a colour; cut off straight at <paramref name="cutAt"/>, its shadow too,
+    /// as the tab showing is at its page's edge.
     /// </summary>
-    public void Slip(CanvasItem canvas, Rect2 paper, Rgba? color = null, string? sheet = null)
+    public void Slip(CanvasItem canvas, Rect2 paper, Rgba? color = null, string? sheet = null, float? cutAt = null)
     {
         // The original has none.
         if (Original)
@@ -357,8 +404,24 @@ public sealed class UiPainter
         var drawn = SheetRect(sheet, paper);
         var tint = color is { } c ? Tint(c) : White;
         foreach (var (by, alpha) in Shadow)
-            canvas.DrawTextureRect(texture, drawn with { Position = drawn.Position + by }, false, ShadowColor with { A = alpha * tint.A });
-        canvas.DrawTextureRect(texture, drawn, false, tint);
+            Cut(canvas, texture, new Rect2(drawn.Position + by, drawn.Size), cutAt, ShadowColor with { A = alpha * tint.A });
+        Cut(canvas, texture, drawn, cutAt, tint);
+    }
+
+    /// <summary>A texture over a rectangle, the part below <paramref name="cutAt"/> left out.</summary>
+    private static void Cut(CanvasItem canvas, Texture2D texture, Rect2 rect, float? cutAt, Color color)
+    {
+        if (cutAt is not { } cut || cut >= rect.End.Y)
+        {
+            canvas.DrawTextureRect(texture, rect, false, color);
+            return;
+        }
+        if (cut <= rect.Position.Y)
+            return;
+        var share = (cut - rect.Position.Y) / rect.Size.Y;
+        var size = texture.GetSize();
+        canvas.DrawTextureRectRegion(texture, new Rect2(rect.Position, new Vector2(rect.Size.X, rect.Size.Y * share)),
+            new Rect2(0, 0, size.X, size.Y * share), color);
     }
 
     /// <summary>
@@ -432,6 +495,16 @@ public sealed class UiPainter
         var rect = new Rect2(x, y, mirror ? -drawn.X : drawn.X, drawn.Y);
         var source = new Rect2(Vector2.Zero, texture.GetSize());
         canvas.DrawTextureRectRegion(Filtered(texture, drawn, source), rect, Sampled(source, drawn), tint);
+    }
+
+    /// <summary>An image stretched over a rectangle placed to a fraction of a pixel, filtered as a scaled image is, times a colour.</summary>
+    public void Image(CanvasItem canvas, RecordId image, Rect2 rect, Rgba? color = null)
+    {
+        if (Images.Get(image) is not { } texture)
+            return;
+        var source = new Rect2(Vector2.Zero, texture.GetSize());
+        var drawn = new Vector2I(Math.Max(1, (int)MathF.Round(rect.Size.X)), Math.Max(1, (int)MathF.Round(rect.Size.Y)));
+        canvas.DrawTextureRectRegion(Filtered(texture, drawn, source), rect, Sampled(source, drawn), color is { } c ? Tint(c) : White);
     }
 
     /// <summary>A whole texture stretched over a rectangle, filtered as the console's are, and cut to a clip if there's one.</summary>

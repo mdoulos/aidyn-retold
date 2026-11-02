@@ -113,6 +113,15 @@ public partial class SystemTabView : Control
         // The Controls page's prompt binds the wheel and the buttons too (Game.BindPrompted), so they go by.
         if (Menu.Options?.Prompt is not null)
             return;
+        // A message's Close button closes it, as A does: the save screen's, or the tab's.
+        if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } closing
+            && (Menu.Saves?.Overlay is { Message: not null } saving ? saving : Menu.Overlay) is var overlay
+            && _ui.OnMessageClose(new Vector2I((int)Size.X, (int)Size.Y), overlay, closing.Position))
+        {
+            UiScreen.Of(this)?.Click(MenuAction.Accept);
+            AcceptEvent();
+            return;
+        }
         if (Menu.Quitting is { } quitting)
         {
             // The quit box takes the mouse as the stick: hovering points at a choice, and clicking one chooses it.
@@ -348,8 +357,8 @@ public partial class SystemTabView : Control
             var color = i == items.Cursor ? cursor : Style.Text;
             CentredText(Menu.Label(item), ListCentre, y + i * RowPitch, color);
         }
-        // The arrow to the Party tab, on the list the tab can be left from; the title has no tabs.
-        if (!Menu.Title && items == Menu.Items)
+        // The arrow to the Party tab, on the list the tab can be left from, in the original's look alone; the title has no tabs.
+        if (!Menu.Title && items == Menu.Items && UiPainter.Original)
             _ui.Image(this, MenuImages.SliderRight, ListArrow.X, ListArrow.Y, color: Style.Text);
     }
 
@@ -566,7 +575,8 @@ public partial class SystemTabView : Control
             (false, true) => MenuImages.SliderRight,
             _ => (Plugins.RecordId?)null,
         };
-        if (arrow is { } a)
+        // The original's arrow, in its look alone.
+        if (arrow is { } a && UiPainter.Original)
             _ui.Image(this, a, SlotArrow.X + dx, SlotArrow.Y, color: Style.Text, clip: clip);
         if (saves.Slots.ElementAtOrDefault(index) is { } slot)
         {

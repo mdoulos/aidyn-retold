@@ -80,25 +80,25 @@ public class PartyMenuGridTests
 
     /// <summary>
     /// On the grid the stick's left and right move along the line, and off its end onto the tab beside; up and down move a line. The
-    /// tab's grid fills the list's frame, 9 lines of 8.
+    /// tab's grid fills the list's frame, 8 lines of 7, the user's choice (Nov 2, 2026).
     /// </summary>
     [Fact]
     public void TheStickMovesAlongTheGridAndOffItsEndOntoTheTabs()
     {
         var (menu, _) = Menu(showWorn: false);
         IPartyWindow window = menu;
-        Assert.Equal((8, 72), (menu.Inventory.Columns, menu.Inventory.Visible));
+        Assert.Equal((7, 56), (menu.Inventory.Columns, menu.Inventory.Visible));
 
         window.Sideways(1);
         window.MoveCursor(1);
-        Assert.Equal(9, menu.Inventory.Cursor);
-        for (var i = 0; i < 6; i++)
+        Assert.Equal(8, menu.Inventory.Cursor);
+        for (var i = 0; i < 5; i++)
             window.Sideways(1);
-        Assert.Equal((PartyList.Inventory, 15), (menu.List, menu.Inventory.Cursor));
+        Assert.Equal((PartyList.Inventory, 13), (menu.List, menu.Inventory.Cursor));
 
         window.Sideways(1);
         Assert.Equal(PartyList.Stats, menu.List);
-        Assert.Equal(15, menu.Inventory.Cursor);
+        Assert.Equal(13, menu.Inventory.Cursor);
     }
 
     /// <summary>

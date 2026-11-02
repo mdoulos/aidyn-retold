@@ -7,8 +7,11 @@ namespace AidynEnhanced.Core.Ui;
 /// </summary>
 public static class ParchmentSwap
 {
-    /// <summary>How many pixels across the laid parchment has for each of the tab's.</summary>
-    public const int Scale = 4;
+    /// <summary>
+    /// How many pixels across the laid parchment has for each of the tab's: 8, as the game's parchment is painted, so none of its
+    /// detail is lost to a screen drawing the frame 6 times as large or more (1440 lines and up); at 4 it was laid at half its own.
+    /// </summary>
+    public const int Scale = 8;
 
     /// <summary>The lines the parchment's torn edges reach in the full-height menu, where the user marked them (Oct 31, 2026).</summary>
     public const int Top = 6, Bottom = 234;

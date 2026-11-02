@@ -2,7 +2,7 @@
 
 The game's own UI art, drawn by the project's author. None of it comes from the ROM.
 
-- `parchment.png`: the pause menu's blank parchment, 2560 × 1920 with transparent torn top and bottom edges. The tabs are drawn on it, laid across the screen four times as fine as the menu (`ParchmentSwap`), and the menu scroll's rolls are painted with it. It's carried in the views' assembly; a plugin's `assets/aidyn/scene/0x0E63.parchment.png` takes its place.
+- `parchment.png`: the pause menu's blank parchment, 2560 × 1920 with transparent torn top and bottom edges. The tabs are drawn on it, laid across the screen eight times as fine as the menu (`ParchmentSwap`), and the menu scroll's rolls are painted with it. It's carried in the views' assembly; a plugin's `assets/aidyn/scene/0x0E63.parchment.png` takes its place.
 - `ui-inventory.png`, `ui-stats.png`, `ui-skills.png` and `ui-spells.png`: the tabs' icons, a satchel, an arm and brain, a sword with a mortar and flask, and a book with a fireball, 512 square.
 - `ui-gold.png`: the purse before the party's gold, 512 square.
 - `ui-bar-frame.png`, `ui-bar-red.png` and `ui-bar-brown.png`: the hit points bar, 850 × 200 each and drawn over one another: the cartouche, the red fill and the brown track behind it.

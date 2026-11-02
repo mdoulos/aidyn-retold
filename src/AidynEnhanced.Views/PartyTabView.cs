@@ -74,9 +74,9 @@ public partial class PartyTabView : Control
     private const int LevelRight = 149, GoldRight = 306;
 
     /// <summary>
-    /// The right column's pages, the user's design (Nov 2, 2026): loose leaves of the user's parchment (ui-rectangle-parchment.png), the
-    /// front one the list is on, over this rectangle, and two under it, a little askew, as a stack of paper on the scroll; and a paper
-    /// tab sticking up from the top of each section's page, the user's slip of paper (ui-square-parchment.png).
+    /// The right column's page, the user's design (Nov 2, 2026): a loose leaf of the user's parchment (ui-rectangle-parchment.png) the
+    /// list is on, over this rectangle, a page for each section, which one shows standing for the stack without the others being drawn;
+    /// and a paper tab sticking up from its top for each section, the user's slip of paper (ui-square-parchment.png).
     /// </summary>
     private static readonly Rect2 PageRect = new(151, 40, 162, 177);
 
@@ -84,9 +84,6 @@ public partial class PartyTabView : Control
 
     /// <summary>The page art's paper, inside its shadow and the clear round it, in its pixels.</summary>
     private static readonly Rect2 PagePaper = new(16, 16, 430, 578);
-
-    /// <summary>The pages under the front one: how far each is moved from it and how far it's turned, in radians.</summary>
-    private static readonly (Vector2 By, float Turn)[] UnderPages = [(new(2.5f, 2), 0.012f), (new(-1.5f, 3.5f), -0.016f)];
 
     /// <summary>
     /// The tabs: the first one's corner, each one's paper, and how far apart they start, a pixel less than they're wide, so they
@@ -123,9 +120,12 @@ public partial class PartyTabView : Control
 
     /// <summary>
     /// The box each of the silhouette's slots sits in, over the figure, the user's art (ui-square-solid.png), a pixel round the
-    /// slot's 16.
+    /// slot's 16; and how big what's in a box is drawn, and how far in from the slot's corner, inside the box's inner line, which is a
+    /// tenth of the way in, the user's choice (Nov 2, 2026).
     /// </summary>
     private const string SlotBox = "ui-square-solid.png";
+
+    private const int BoxedSize = 12, SlotInset = 2;
 
     /// <summary>
     /// The silhouette's slots' corner, centring them in the column under the bar. Their places are the original's, from its
@@ -620,9 +620,9 @@ public partial class PartyTabView : Control
     }
 
     /// <summary>
-    /// The right column's pages and their tabs, the user's design (Nov 2, 2026): loose leaves of parchment, the front one the list is on
-    /// and two under it a little askew, and a paper tab sticking up from each section's page, a stack of loose paper on the scroll with
-    /// a tab to each section. The tabs behind are drawn a shade darker, their feet under the pages, with their icons faded, and those the
+    /// The right column's page and its tabs, the user's design (Nov 2, 2026): a loose leaf of parchment the list is on, and a paper tab
+    /// sticking up from it for each section, as a stack of loose paper on the scroll with a tab to each section, the stack only
+    /// thought of: the user's choice, only the page showing is drawn. The tabs behind are drawn a shade darker, their feet under the pages, with their icons faded, and those the
     /// window hasn't fainter still; the tab showing is in front, joined to the front page by plain paper over where the two meet. As the
     /// lists slide, the tab left goes behind as the new one comes in front, by the slide's eased share; the mouse on a tab behind lightens
     /// it. Each tab has its icon, the inventory's satchel (a shop's Sell), the stats' arm and brain, the skills' sword with a mortar and
@@ -648,8 +648,6 @@ public partial class PartyTabView : Control
             _ui.Slip(_canvas, TabRect(i), tint with { A = (byte)(255 * (has ? 1 : MissingTab)) });
             TabFace(i, has ? ClosedIcon : MissingIcon);
         }
-        foreach (var (by, turn) in UnderPages)
-            Page(new Rect2(PageRect.Position + by, PageRect.Size), turn, White);
         Page(PageRect, 0, White);
         for (var i = 0; i < open.Length; i++)
         {
@@ -743,10 +741,13 @@ public partial class PartyTabView : Control
     }
 
     /// <summary>A piece of the game's own UI art (<see cref="UiImages.Art"/>) stretched over a rectangle in the frame, at a strength.</summary>
-    private void Art(string name, Rect2 rect, float strength = 1)
+    private void Art(string name, Rect2 rect, float strength = 1) => Art(name, rect, new Rgba(255, 255, 255, (byte)(255 * strength)));
+
+    /// <summary>A piece of the game's own UI art stretched over a rectangle in the frame, times a colour.</summary>
+    private void Art(string name, Rect2 rect, Rgba color)
     {
         if (UiImages.Art(name) is { } texture)
-            _canvas.DrawTextureRect(texture, rect, false, _ui.Tint(new Rgba(255, 255, 255, (byte)(255 * strength))));
+            _canvas.DrawTextureRect(texture, rect, false, _ui.Tint(color));
     }
 
     /// <summary>A tab's caption: the stats', the skills', the spells', or the inventory's, which beside a shop is what the party sells.</summary>
@@ -1001,16 +1002,17 @@ public partial class PartyTabView : Control
         {
             var x = at.X + Slots[(int)slot].X;
             var y = at.Y + Slots[(int)slot].Y;
-            var size = new Vector2I(SlotSize, SlotSize);
+            var size = new Vector2I(BoxedSize, BoxedSize);
             Art(SlotBox, new Rect2(x - 1, y - 1, SlotSize + 2, SlotSize + 2));
+            var (ix, iy) = (x + SlotInset, y + SlotInset);
             if (Menu.PreviousSlots is { } before && Menu.SlotCrossfades(slot))
             {
-                _ui.Image(_canvas, before[(int)slot] ?? MenuImages.EmptySlots[(int)slot], x, y, size, FadingOut(White, change));
-                _ui.Image(_canvas, Menu.SlotImage(slot), x, y, size, FadingIn(White, change));
+                _ui.Image(_canvas, before[(int)slot] ?? MenuImages.EmptySlots[(int)slot], ix, iy, size, FadingOut(White, change));
+                _ui.Image(_canvas, Menu.SlotImage(slot), ix, iy, size, FadingIn(White, change));
             }
             else
             {
-                _ui.Image(_canvas, Menu.SlotImage(slot), x, y, size);
+                _ui.Image(_canvas, Menu.SlotImage(slot), ix, iy, size);
             }
             if (OwnTab && slot == Menu.SelectedSlot)
                 Art(Selected, new Rect2(x - 2, y - 2, SlotSize + 4, SlotSize + 4));
@@ -1047,9 +1049,12 @@ public partial class PartyTabView : Control
     /// How big a worn item's wearer's portrait is in its cell's top left corner, how tall the count's capitals are in its bottom right,
     /// and how far in from the cell's corners they sit.
     /// </summary>
-    private const int WearerSize = 8;
+    private const int WearerSize = 6;
 
-    private const float CountText = 3.6f, CellInset = 1.5f;
+    /// <summary>The colour a worn item's box is drawn in, a little grey, as it's in use, the user's choice (Nov 2, 2026).</summary>
+    private static readonly Rgba WornBox = new(178, 178, 186, 255);
+
+    private const float CountText = 3.6f, CellInset = 2.5f;
 
     /// <summary>
     /// The inventory's grid (<see cref="PartyMenu.InventoryGrid"/>), the user's design (Nov 2, 2026): a cell for each of its rows in
@@ -1066,8 +1071,8 @@ public partial class PartyTabView : Control
         {
             var (x, y) = grid.CellAt(i - list.First);
             var row = list.Rows[i];
-            Art(SlotBox, new Rect2(x + 0.5f, y + 0.5f, grid.Cell - 1, grid.Cell - 1));
-            _ui.Image(_canvas, row.Item.Icon, x + 1, y + 1, new Vector2I(SlotSize, SlotSize));
+            Art(SlotBox, new Rect2(x + 0.5f, y + 0.5f, grid.Cell - 1, grid.Cell - 1), row.Wearer is null ? White : WornBox);
+            _ui.Image(_canvas, row.Item.Icon, x + (grid.Cell - BoxedSize) / 2, y + (grid.Cell - BoxedSize) / 2, new Vector2I(BoxedSize, BoxedSize));
             if (row.Wearer is { } wearer && Menu.Party.Slots[wearer] is { } who && Menu.Portrait(who.Entity) is { } portrait)
             {
                 _canvas.DrawRect(new Rect2(x + 1.5f, y + 1.5f, WearerSize + 1, WearerSize + 1), _ui.Tint(UiPainter.Ink));

@@ -30,13 +30,17 @@ public class ParchmentSwapTests
 
         var w = Width * ParchmentSwap.Scale;
         Assert.Equal(w * Height * ParchmentSwap.Scale * 4, laid.Length);
-        // Line 2 starts at row 8 and line 13 ends at row 51.
-        Assert.Equal(0, At(laid, w, 20, 7)[3]);
-        Assert.Equal(255, At(laid, w, 20, 8)[3]);
-        Assert.Equal(255, At(laid, w, 20, 51)[3]);
-        Assert.Equal(0, At(laid, w, 20, 52)[3]);
+        // Line 2 starts at its first row and line 13 ends at its last: the edge, filtered, is more than half opaque on the line's
+        // side and less beyond it, clear a line out and opaque a line in.
+        var (first, last) = (2 * ParchmentSwap.Scale, 13 * ParchmentSwap.Scale - 1);
+        Assert.InRange(At(laid, w, 20, first - 1)[3], 0, 127);
+        Assert.InRange(At(laid, w, 20, first)[3], 128, 255);
+        Assert.InRange(At(laid, w, 20, last)[3], 128, 255);
+        Assert.InRange(At(laid, w, 20, last + 1)[3], 0, 127);
+        Assert.Equal((0, 0), (At(laid, w, 20, first - ParchmentSwap.Scale)[3], At(laid, w, 20, last + ParchmentSwap.Scale)[3]));
+        Assert.Equal((255, 255), (At(laid, w, 20, first + ParchmentSwap.Scale)[3], At(laid, w, 20, last - ParchmentSwap.Scale)[3]));
         // Beyond the edges, the parchment's own colour rather than the transparent white.
-        Assert.Equal(At(laid, w, 20, 8)[..3], At(laid, w, 20, 0)[..3]);
+        Assert.Equal(At(laid, w, 20, first)[..3], At(laid, w, 20, 0)[..3]);
     }
 
     [Fact]

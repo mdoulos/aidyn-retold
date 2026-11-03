@@ -1540,7 +1540,7 @@ public partial class PartyTabView : Control
             var row = list.Rows[i];
             Art(SlotBox, new Rect2(x + 0.5f, y + 0.5f, grid.Cell - 1, grid.Cell - 1), row.Wearer is null ? White : WornBox);
             var icon = grid.Cell * GridIcon;
-            _ui.Image(_canvas, row.Item.Icon, new Rect2(x + (grid.Cell - icon) / 2, y + (grid.Cell - icon) / 2, icon, icon));
+            _ui.Image(_canvas, MenuImages.ItemIcon(row.Item), new Rect2(x + (grid.Cell - icon) / 2, y + (grid.Cell - icon) / 2, icon, icon));
             if (row.Wearer is { } wearer && Menu.Party.Slots[wearer] is { } who && Menu.Portrait(who.Entity) is { } portrait)
             {
                 // In the bottom left, the count being in the bottom right.
@@ -1854,7 +1854,7 @@ public partial class PartyTabView : Control
         {
             if (row.Wearer is { } wearer && Menu.Party.Slots[wearer] is { } who && Menu.Portrait(who.Entity) is { } portrait)
                 _ui.Image(_canvas, portrait, x, top, new Vector2I(12, 12));
-            _ui.Image(_canvas, row.Item.Icon, x + 13, top, new Vector2I(12, 12));
+            _ui.Image(_canvas, MenuImages.ItemIcon(row.Item), x + 13, top, new Vector2I(12, 12));
             if (row.Quantity != 0)
                 _ui.Text(_canvas, font, Num(row.Quantity), x + Columns.Quantity, top, b, PartyMenu.TextColor);
             OneLine(font, row.Item.Name, x + (row.Quantity != 0 ? Columns.Name : Columns.NameNoQuantity), top, b.Right, c);

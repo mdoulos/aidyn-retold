@@ -20,9 +20,11 @@ public sealed class UiImages(PluginSet plugins)
 
     /// <summary>
     /// The game's own art in place of the original's images, the user's (Nov 2, 2026), carried in this assembly: the aspects' and the
-    /// schools' icons, wherever they're drawn, laid out at the original's size as a larger replacement is.
+    /// schools' icons, wherever they're drawn, laid out at the original's size as a larger replacement is; and each potion's and
+    /// flask's picture (<see cref="MenuImages.PotionPictures"/>), <c>potion-sleep-gas.png</c> for <c>aidyn_enhanced:image/potion_sleep_gas</c>,
+    /// laid out at the flask's size it stands in for.
     /// </summary>
-    private static readonly Dictionary<RecordId, string> OwnArt = new()
+    private static readonly Dictionary<RecordId, string> OwnArt = new Dictionary<RecordId, string>
     {
         [MenuImages.AspectIcon(Aspect.Lunar)!.Value] = "icon-lunar.png",
         [MenuImages.AspectIcon(Aspect.Solar)!.Value] = "icon-solar.png",
@@ -31,13 +33,14 @@ public sealed class UiImages(PluginSet plugins)
         [MenuImages.SchoolIcon(MagicSchool.Naming)!.Value] = "icon-naming.png",
         [MenuImages.SchoolIcon(MagicSchool.Necromancy)!.Value] = "icon-necromancy.png",
         [MenuImages.SchoolIcon(MagicSchool.Star)!.Value] = "icon-star.png",
-    };
+    }.Concat(MenuImages.PotionPictures.Values.Select(p => KeyValuePair.Create(p, p.Key.Replace('_', '-') + ".png"))).ToDictionary();
 
     /// <summary>
     /// A UI image, or null if no plugin has it: the game's own art where it has its own (<see cref="OwnArt"/>), else the plugins'. A
     /// replacement larger than the original, as a redrawn pack's at 8 times or the game's own, is laid out at the original's size
     /// (<see cref="PluginSet.ImageSize"/>) and drawn into it, mipmapped and filtered, so it's sharper rather than larger; one at the
-    /// original's size is drawn pixel for pixel as the original is.
+    /// original's size is drawn pixel for pixel as the original is. One of the port's own pictures draws the image it stands in for
+    /// (<see cref="MenuImages.Shared"/>) in the original look.
     /// </summary>
     public Texture2D? Get(RecordId image)
     {
@@ -46,9 +49,12 @@ public sealed class UiImages(PluginSet plugins)
         var textures = original ? _originals : _textures;
         if (textures.TryGetValue(image, out var texture))
             return texture;
+        var shared = MenuImages.Shared(image);
         if (!original && OwnArt.TryGetValue(image, out var own) && ArtImage(own).Image?.Duplicate() is Image art
-            && plugins.ImageSize(image) is var (ownWidth, ownHeight) && ownWidth > 0)
+            && plugins.ImageSize(shared ?? image) is var (ownWidth, ownHeight) && ownWidth > 0)
             return textures[image] = Sharper(art, new Vector2I(ownWidth, ownHeight));
+        if (shared is { } stoodFor)
+            return textures[image] = Get(stoodFor);
         if ((original ? plugins.FindOriginalAsset(image, "png") : plugins.FindAsset(image, "png")) is { } png)
         {
             var (width, height) = plugins.ImageSize(image);

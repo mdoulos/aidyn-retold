@@ -1,3 +1,4 @@
+using AidynEnhanced.Core.Items;
 using AidynEnhanced.Plugins;
 using AidynEnhanced.Plugins.Records;
 
@@ -97,6 +98,37 @@ public static class MenuImages
         MagicSchool.Star => Image(0x01A8),
         _ => null,
     };
+
+    /// <summary>The flask the original draws for every potion and flask, 16 square (<c>ItemTables.PotionIcon</c>).</summary>
+    public static readonly RecordId Potion = Image(0x35E5);
+
+    /// <summary>
+    /// The namespace of the port's own pictures, which no plugin has: the views carry them, and draw the image each stands in for
+    /// (<see cref="Shared"/>) in the original look.
+    /// </summary>
+    public const string OwnNamespace = "aidyn_enhanced";
+
+    /// <summary>
+    /// Each potion's and flask's own picture, by its item, the user's art (Nov 2, 2026), where the original draws all of them with
+    /// <see cref="Potion"/>: in potion number order from 0x1000, the cut A and J having none.
+    /// </summary>
+    public static readonly IReadOnlyDictionary<RecordId, RecordId> PotionPictures = new[]
+        {
+            "fire", "inferno", "sleep_gas", "acid", "healing", "stamina", "curing", "antidote", "restore", "strength", "dexterity", null,
+            null, "clarity", "charisma", "defense", "stealth",
+        }
+        .Select((name, n) => (name, n))
+        .Where(p => p.name is not null)
+        .ToDictionary(p => RecordId.Hex(RecordTypes.Item, 0x1000 + p.n), p => RecordId.Parse($"{OwnNamespace}:image/potion_{p.name}"));
+
+    /// <summary>
+    /// An item's icon as the menus draw it: a potion's own picture (<see cref="PotionPictures"/>) while its record keeps the shared
+    /// flask, else its record's, so a mod's icon for a potion is drawn. The editor shows the record's.
+    /// </summary>
+    public static RecordId ItemIcon(Item item) => item.Icon == Potion && PotionPictures.TryGetValue(item.Id, out var own) ? own : item.Icon;
+
+    /// <summary>The original's image one of the port's own pictures stands in for, or null for any other image.</summary>
+    public static RecordId? Shared(RecordId image) => image.Namespace == OwnNamespace && PotionPictures.Values.Contains(image) ? Potion : null;
 
     private static RecordId Image(int borg8) => RecordId.Hex(RecordTypes.Image, borg8);
 }

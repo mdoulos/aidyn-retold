@@ -253,7 +253,7 @@ public sealed partial class Battle
             if (!Potions.Use(item).HasFlag(PotionUse.DrinkInBattle) || !inventory.Has(item.Id))
                 continue;
             if (Potions.CanDrink(c.Sheet, item, inBattle: true) == DrinkResult.Drunk)
-                rows.Add(new(CombatMenuChoice.Potion, item.Name, CombatMenu.PotionIcon, CombatMenu.PotionColor, Potion: item));
+                rows.Add(new(CombatMenuChoice.Potion, item.Name, MenuImages.ItemIcon(item), CombatMenu.PotionColor, Potion: item));
         }
         var equipment = c.Sheet.Equipment;
         AddItemSpell(equipment.Weapon, new SpellChoice(SpellSourceKind.Weapon));

@@ -51,8 +51,11 @@ public sealed class CombatMenu
     /// <summary>What the cursor's row pulses from (the list's default, <c>WidgetScrollMenu.Create</c>).</summary>
     public static readonly Rgba PulseFrom = new(100, 100, 100, 100);
 
-    /// <summary>The Healer's icon (a red cross), the Troubadour's (a lute), and a potion's (a flask).</summary>
-    public static readonly RecordId HealerIcon = HudSprite.Id(0x0185), PerformIcon = HudSprite.Id(0x018C), PotionIcon = HudSprite.Id(0x35E5);
+    /// <summary>
+    /// The Healer's icon (a red cross) and the Troubadour's (a lute). A potion's row has the flask, <see cref="MenuImages.Potion"/>, or
+    /// in the port's look the potion's own picture (<see cref="MenuImages.ItemIcon"/>).
+    /// </summary>
+    public static readonly RecordId HealerIcon = HudSprite.Id(0x0185), PerformIcon = HudSprite.Id(0x018C);
 
     /// <summary>The scroll arrows, up and down, 5 × 8.</summary>
     public static readonly RecordId UpArrow = HudSprite.Id(0x38D0), DownArrow = HudSprite.Id(0x38CF);

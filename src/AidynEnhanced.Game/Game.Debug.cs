@@ -108,7 +108,8 @@ public partial class Game
     /// it's let go and the next comes, or with a + after it (<c>menu_details:2+</c>) while it's still held. A binding's name
     /// (<c>Key:P</c>, <c>Joy:Y</c>, <c>Axis:LeftX-</c>) presses that input itself, as the Controls page's prompt hears one, and
     /// <c>hover:1100x432</c> moves the mouse to that point of the window, <c>click:</c> and <c>rclick:</c> click the left or right button
-    /// there, and <c>shot:&lt;png&gt;</c> saves the window as it is then.
+    /// there, <c>drag:1466x336&gt;560x846</c> drags from the first point to the second and <c>drop:560x846</c> lets go, and
+    /// <c>shot:&lt;png&gt;</c> saves the window as it is then.
     /// Returns how long that takes after the half second before the first, or 0 with none.
     /// </summary>
     private double Press(string? presses)
@@ -130,6 +131,47 @@ public partial class Game
             {
                 var png = token["shot:".Length..];
                 GetTree().CreateTimer(at).Timeout += () => CommandLine.Save(GetViewport().GetTexture().GetImage(), png);
+                at += 0.2;
+                continue;
+            }
+            // drag:1475x335>700x400 presses the left button at the first point and moves the mouse to the second with it held, as a drag
+            // does, and drop:700x400 lets it go there, to each UI screen that takes the mouse as hover: and click: do.
+            if (token.Split(':') is [var verb and ("drag" or "drop"), var path])
+            {
+                var points = path.Split('>').Select(p => p.Split('x') is [var px, var py]
+                    ? new Vector2(float.Parse(px, CultureInfo.InvariantCulture), float.Parse(py, CultureInfo.InvariantCulture))
+                    : throw new FormatException($"\"{p}\" isn't a point, 1100x432.")).ToArray();
+                GetTree().CreateTimer(at).Timeout += () =>
+                {
+                    (_controller, _pointing) = (false, true);
+                    foreach (var screen in GetTree().Root.FindChildren("*", "", true, false).OfType<UiScreen>())
+                    {
+                        if (!screen.IsVisibleInTree() || screen.MouseFilter == Control.MouseFilterEnum.Ignore)
+                            continue;
+                        var (from, to) = (points[0], points[^1]);
+                        if (verb == "drop")
+                        {
+                            screen._GuiInput(screen.MakeInputLocal(new InputEventMouseButton
+                            {
+                                Position = from, GlobalPosition = from, ButtonIndex = MouseButton.Left, Pressed = false,
+                            }));
+                            continue;
+                        }
+                        screen._GuiInput(screen.MakeInputLocal(new InputEventMouseMotion { Position = from, GlobalPosition = from }));
+                        screen._GuiInput(screen.MakeInputLocal(new InputEventMouseButton
+                        {
+                            Position = from, GlobalPosition = from, ButtonIndex = MouseButton.Left, Pressed = true, ButtonMask = MouseButtonMask.Left,
+                        }));
+                        foreach (var share in new[] { 0.5f, 1f })
+                        {
+                            var p = from.Lerp(to, share);
+                            screen._GuiInput(screen.MakeInputLocal(new InputEventMouseMotion
+                            {
+                                Position = p, GlobalPosition = p, ButtonMask = MouseButtonMask.Left,
+                            }));
+                        }
+                    }
+                };
                 at += 0.2;
                 continue;
             }

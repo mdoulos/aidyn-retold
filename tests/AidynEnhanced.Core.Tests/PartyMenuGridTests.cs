@@ -80,8 +80,8 @@ public class PartyMenuGridTests
 
     /// <summary>
     /// On the grid the stick's left and right move along the line and up and down a line, and at an edge go to what's that way on the
-    /// tab, the user's choice (Nov 3, 2026): right and down stop, left goes onto the silhouette and up onto the tabs. The tab's grid fills
-    /// the list's frame, 8 lines of 7, the user's choice (Nov 2, 2026).
+    /// tab, the user's choice (Nov 3, 2026): right stops, down goes onto the filter and order under it, left onto the silhouette and up onto
+    /// the tabs. The tab's grid fills the list's frame, 8 lines of 7, the user's choice (Nov 2, 2026).
     /// </summary>
     [Fact]
     public void TheStickMovesAlongTheGridAndOffItsEdgesOntoWhatsBeside()
@@ -97,8 +97,11 @@ public class PartyMenuGridTests
             window.Sideways(1);
         Assert.Equal((PartyList.Inventory, 13, PartyFocus.List), (menu.List, menu.Inventory.Cursor, menu.Focus));
         window.MoveCursor(1);
-        window.MoveCursor(1);
         Assert.Equal((19, PartyFocus.List), (menu.Inventory.Cursor, menu.Focus));
+        window.MoveCursor(1);
+        Assert.Equal((19, PartyFocus.Foot), (menu.Inventory.Cursor, menu.Focus));
+        window.MoveCursor(-1);
+        Assert.Equal(PartyFocus.List, menu.Focus);
 
         menu.Point(7);
         window.Sideways(-1);
@@ -110,19 +113,50 @@ public class PartyMenuGridTests
     }
 
     /// <summary>
-    /// With what's worn hidden, the grid holds only what's carried, and the sword comes back into it as it's taken off; shown, the
-    /// sword's cell is the wearer's, first.
+    /// The grid holds only what's carried, the silhouette being where what's worn is reached; its Equipped filter shows what's worn, the
+    /// sword's cell the wearer's, whatever the list's setting for what's worn.
     /// </summary>
     [Fact]
-    public void WornItemsShowInTheGridOnlyWhenTheyreShown()
+    public void WornItemsShowInTheGridOnlyUnderTheEquippedFilter()
     {
-        var (menu, _) = Menu(showWorn: false);
+        var (menu, _) = Menu(showWorn: true);
         Assert.Equal(20, menu.Inventory.Rows.Count);
         Assert.All(menu.Inventory.Rows, r => Assert.Null(r.Wearer));
 
-        menu.ShowWorn = true;
-        Assert.Equal(21, menu.Inventory.Rows.Count);
-        Assert.Equal((Sword.Id, (int?)0), (menu.Inventory.Rows[0].Item.Id, menu.Inventory.Rows[0].Wearer));
+        menu.CycleFilter(-1);
+        Assert.Equal(InventoryFilter.Equipped, menu.Filter);
+        Assert.Equal([(Sword.Id, (int?)0)], menu.Inventory.Rows.Select(r => (r.Item.Id, r.Wearer)));
+    }
+
+    /// <summary>
+    /// The filter shows what's carried of a kind and the order sorts it, A with the stick on either stepping it on, a click too; the grid
+    /// starts again at its first item.
+    /// </summary>
+    [Fact]
+    public void TheFilterAndOrderUnderTheGridStepOn()
+    {
+        var sword = ItemData.NewWeapon(2, WeaponClass.Sword) with { Name = "Zweihander", Price = 10 };
+        var dagger = ItemData.NewWeapon(3, WeaponClass.Sword) with { Name = "Dagger", Price = 500 };
+        var member = PotionData.Member("Alaron", 0, null);
+        var party = TradeData.PartyOf(ItemData.CatalogWith(TradeData.Rules(40), [sword, dagger, .. Things]), null, [member]);
+        foreach (var id in new[] { sword.Id, dagger.Id }.Concat(Things.Select(t => t.Id)))
+            Assert.True(party.Inventory.Add(id));
+        var menu = new PartyMenu(party, new MenuText([]), _ => null, _ => null) { Grid = true };
+        IPartyWindow window = menu;
+        menu.Point(21);
+        window.MoveCursor(1);
+        Assert.Equal((PartyFocus.Foot, 0), (menu.Focus, menu.FootChoice));
+
+        menu.Accept();
+        Assert.Equal(InventoryFilter.Weapons, menu.Filter);
+        Assert.Equal(["Dagger", "Zweihander"], menu.Inventory.Rows.Select(r => r.Item.Name));
+        window.Sideways(1);
+        menu.Accept();
+        menu.Accept();
+        Assert.Equal(InventorySort.Value, menu.Sort);
+        Assert.Equal(["Dagger", "Zweihander"], menu.Inventory.Rows.Select(r => r.Item.Name));
+        menu.ChooseFoot(1);
+        Assert.Equal((InventorySort.Type, 0), (menu.Sort, menu.Inventory.Cursor));
     }
 
     /// <summary>

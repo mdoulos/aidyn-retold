@@ -55,14 +55,15 @@ public sealed partial class PartyMenu
                 InventoryGrid.Apply(Inventory);
             else
                 (Inventory.Columns, Inventory.Visible) = (1, LayoutOf(PartyList.Inventory).Visible);
-            SyncFitting();
+            // The grid's rows are the port's (GridRows), the list's the original's.
+            Refresh();
         }
     }
 
     /// <summary>
-    /// Whether the inventory shows what the party wears, with the wearer's portrait, as the original's list does: always with a controller,
-    /// so worn items are in the stick's reach, and with the keyboard and mouse, which reach them on the silhouette (<see cref="SelectSlot"/>),
-    /// as the user's setting says (<see cref="Settings.WornInInventory"/>), off until it's set. The pause menu sets it.
+    /// Whether the inventory list shows what the party wears, with the wearer's portrait, as the original's does: the original's look's
+    /// list. The port's grid shows what's worn only with its Equipped filter (<see cref="Filter"/>), the silhouette being where it's
+    /// reached, by the stick as by the mouse.
     /// </summary>
     public bool ShowWorn
     {
@@ -75,13 +76,6 @@ public sealed partial class PartyMenu
             Refresh();
         }
     } = true;
-
-    /// <summary>
-    /// The quick toggle under the grid for what's worn showing (<see cref="ShowWorn"/>), the user's design (Nov 2, 2026): turns the setting
-    /// over. The pause menu offers it with the keyboard and mouse, and not with a controller, which always shows what's worn, nor in the
-    /// original's look. Null when it's not offered.
-    /// </summary>
-    public Action? ToggleWorn { get; set; }
 
     /// <summary>How many items the party carries, every stack's count, which the grid's foot shows.</summary>
     public int CarriedCount => Party.Inventory.Stacks.Sum(s => s.Quantity);

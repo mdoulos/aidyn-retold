@@ -116,6 +116,8 @@ public sealed partial class PartyMenu
         }
         else if (Focus == PartyFocus.Tabs)
             _focus = PartyFocus.List;
+        else if (Focus == PartyFocus.Foot)
+            ChooseFoot(FootChoice);
         // In the port's look A on a slot goes onto the grid of what fits it to choose one (Picking).
         else if (SelectedSlot is { } slot && Spatial)
         {

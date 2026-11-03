@@ -182,14 +182,6 @@ public sealed class Settings
     public SkyPlacement SkyPlacement { get; set; } = SkyPlacement.Projected;
 
     /// <summary>
-    /// Whether the Party tab's inventory shows what the party wears with the keyboard and mouse, with the wearer's portrait
-    /// (<see cref="Ui.PartyMenu.ShowWorn"/>): the Equipped Inventory row and the grid's quick toggle, hidden until it's set. A controller
-    /// always shows them, and so does the original look's list, the user's choice (Nov 2, 2026). Null, which went by the device in
-    /// use before, is hidden.
-    /// </summary>
-    public bool? WornInInventory { get; set; }
-
-    /// <summary>
     /// How fast the conversation box prints a line (<see cref="Ui.TextReveal"/>): whole at once as the original's, or a few glyphs a
     /// tick. Normal, the user's choice.
     /// </summary>

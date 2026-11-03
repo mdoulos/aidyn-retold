@@ -404,17 +404,17 @@ public partial class PartyTabView : Control
             _hoveredIcon = IconAt(mouse.Position);
             _hoveredCell = null;
         }
-        if (TipInput(@event))
+        if (TipInput(@event) || DragInput(@event))
         {
             AcceptEvent();
             return;
         }
-        // The grid's quick toggle for what's worn showing.
-        if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } toggle && OwnTab && Menu.ToggleWorn is { } turn
+        // A click on the filter or the order under the grid steps it on.
+        if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } footClick && OwnTab && !OriginalLook
             && Menu.List == PartyList.Inventory && Menu.Grid && Menu.Slide is null && !Menu.HasPopup && Menu.Fitting is null
-            && WornToggleRect().HasPoint(toggle.Position - (Vector2)_origin))
+            && FootControlAt(footClick.Position - (Vector2)_origin) is { } choice)
         {
-            turn();
+            Menu.ChooseFoot(choice);
             AcceptEvent();
             return;
         }
@@ -499,6 +499,106 @@ public partial class PartyTabView : Control
         QueueRedraw();
         AcceptEvent();
     }
+
+    /// <summary>What a drag picked up: a carried item from the grid, or what's worn in a slot of the silhouette.</summary>
+    private readonly record struct DragSource(InventoryRow Row, EquipmentSlot? Slot);
+
+    /// <summary>What the left button was pressed on that could be dragged, and where; and the drag under way, with where the mouse is.</summary>
+    private (DragSource From, Vector2 At)? _press, _drag;
+
+    /// <summary>How far the mouse moves with the button down before a press on an item becomes a drag, in the frame's pixels.</summary>
+    private const float DragDistance = 2.5f;
+
+    /// <summary>
+    /// Dragging items with the mouse in the port's look, the user's choice (Nov 3, 2026): a press on a carried item in the grid or on what's
+    /// worn in a slot, which still selects it, becomes a drag once the mouse moves with the button down; let go, a carried item on a slot
+    /// it fits is put on in it (<see cref="PartyMenu.DropOnSlot"/>), on a portrait goes to that member (<see cref="PartyMenu.DropOnMember"/>),
+    /// and what's worn let go on the grid comes off (<see cref="PartyMenu.DropOffSlot"/>); anywhere else nothing. True if the event was the drag's.
+    /// </summary>
+    private bool DragInput(InputEvent e)
+    {
+        if (!OwnTab || OriginalLook)
+            return false;
+        switch (e)
+        {
+            case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } press:
+                _drag = null;
+                _press = Menu.HasPopup || Menu.Slide is not null ? null : DragFrom(press.Position) is { } from ? (from, press.Position) : null;
+                return false;
+            case InputEventMouseMotion motion when _press is { } pressed && (motion.ButtonMask & MouseButtonMask.Left) != 0:
+                if (_drag is null && (motion.Position - pressed.At).Length() < DragDistance)
+                    return false;
+                _drag = (pressed.From, motion.Position);
+                QueueRedraw();
+                return true;
+            case InputEventMouseButton { Pressed: false, ButtonIndex: MouseButton.Left } release:
+                var drag = _drag;
+                (_press, _drag) = (null, null);
+                if (drag is null)
+                    return false;
+                LetGo(drag.Value.From, release.Position);
+                QueueRedraw();
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>What a press at a point on the view would drag: a carried item in the grid, or what's worn in a slot.</summary>
+    private DragSource? DragFrom(Vector2 point)
+    {
+        var at = point - (Vector2)_origin;
+        if (SlotAt(point) is { } slot)
+            return Menu.Worn(slot) is { } worn ? new DragSource(new InventoryRow(worn, 1, Menu.Member), slot) : null;
+        return Menu.List == PartyList.Inventory && Menu.Grid && _gridLayout.RowAt(Menu.Inventory, at.X, at.Y) is { } cell
+            && Menu.Inventory.Rows[cell] is { Wearer: null } row ? new DragSource(row, null) : null;
+    }
+
+    /// <summary>Where a drag was let go: on a slot or a portrait for a carried item, on the grid for what's worn.</summary>
+    private void LetGo(DragSource from, Vector2 point)
+    {
+        var at = point - (Vector2)_origin;
+        if (from.Slot is { } worn)
+        {
+            var b = _gridLayout.Bounds;
+            if (new Rect2(b.Left, b.Top, _gridLayout.Columns * _gridLayout.Cell, _gridLayout.Lines * _gridLayout.Cell).HasPoint(at))
+                Menu.DropOffSlot(worn);
+            return;
+        }
+        if (SlotAt(point) is { } slot)
+            Menu.DropOnSlot(from.Row, slot);
+        else if (MemberAt(point) is { } member)
+            Menu.DropOnMember(from.Row, member);
+        else if (new Rect2(PortraitPiece.Position + ShownPortrait, ShownSize, ShownSize).HasPoint(at))
+            Menu.DropOnMember(from.Row, Menu.Member);
+    }
+
+    /// <summary>
+    /// A drag under way: the slots a carried item fits outlined in green, or the grid for what's worn, and the item's icon under the mouse.
+    /// </summary>
+    private void DragArt((DragSource From, Vector2 At) drag)
+    {
+        var green = _ui.Tint(MenuDetailsBuilder.Gain);
+        if (drag.From.Slot is null)
+        {
+            foreach (var slot in Enum.GetValues<EquipmentSlot>())
+            {
+                if (PartyMenu.Fits(drag.From.Row.Item, slot))
+                    _canvas.DrawRect(SlotRect(slot).Grow(1.5f), green, false, DragOutline);
+            }
+        }
+        else
+        {
+            var b = _gridLayout.Bounds;
+            _canvas.DrawRect(new Rect2(b.Left, b.Top, _gridLayout.Columns * _gridLayout.Cell, _gridLayout.Lines * _gridLayout.Cell), green, false,
+                DragOutline);
+        }
+        var at = drag.At - (Vector2)_origin;
+        _ui.Image(_canvas, Menu.ItemIcon(drag.From.Row.Item), new Rect2(at - new Vector2(DragIcon, DragIcon) / 2, DragIcon, DragIcon),
+            new Rgba(255, 255, 255, 220));
+    }
+
+    /// <summary>How big the dragged item's icon is drawn, and the outlines' thickness.</summary>
+    private const float DragIcon = 14, DragOutline = 0.6f;
 
     /// <summary>
     /// The mouse and the actiontip (<see cref="ActionTip"/>): a click while the details it held open show lets them go; while it's up,
@@ -834,6 +934,8 @@ public partial class PartyTabView : Control
             PromptStrip();
         if (OwnTab && Menu.Tip is { } tip)
             ActionTipBox(tip);
+        if (_drag is { } drag)
+            DragArt(drag);
         _overlay.DrawSetTransform(Vector2.Zero);
         Popups();
     }
@@ -1500,8 +1602,9 @@ public partial class PartyTabView : Control
 
     /// <summary>
     /// The grid's foot, the user's design (Nov 2, 2026): "Total Inventory" and how many items the party carries on the left, and on the
-    /// right the quick toggle for what's worn showing, "Equipped Items" and an eye, open while they show and shut while they don't,
-    /// with the keyboard and mouse (<see cref="PartyMenu.ToggleWorn"/>).
+    /// right, where the quick toggle for what's worn was, the grid's filter and order, the user's choice (Nov 3, 2026): "Show All" and
+    /// "Sort Type", each a label and its choice in red ink, which a click or A with the stick on it steps on (<see cref="PartyMenu.Filter"/>,
+    /// <see cref="PartyMenu.Sort"/>), the one the stick is on outlined in red; or, with a slot's fitting items, which slot.
     /// </summary>
     private void InventoryFoot(GridLayout grid)
     {
@@ -1510,66 +1613,63 @@ public partial class PartyTabView : Control
         var middle = b.Top + grid.Lines * grid.Cell + FootMiddle;
         var total = $"{TotalInventory} {Num(Menu.CarriedCount)}";
         Small(total, b.Left, middle - font.Middle, PartyMenu.TextColor, font: font);
-        // The grid showing what fits a slot says which, where the toggle is.
+        if (OriginalLook)
+            return;
+        // The grid showing what fits a slot says which, where the filter and order are.
         if (Menu.Fitting is { } slot)
         {
             var fits = $"{FitsLabel} {PartyMenu.SlotName(slot)}";
             Small(fits, b.Left + grid.Columns * grid.Cell - font.ExactWidth(fits), middle - font.Middle, UiPainter.RedInk, font: font);
             return;
         }
-        if (Menu.ToggleWorn is null)
-            return;
-        var eye = new Rect2(b.Left + grid.Columns * grid.Cell - EyeWidth, middle - EyeHeight / 2, EyeWidth, EyeHeight);
-        Small(EquippedItems, eye.Position.X - EyeGap - font.ExactWidth(EquippedItems), middle - font.Middle, UiPainter.RedInk, font: font);
-        Eye(eye, Menu.ShowWorn);
+        var controls = FootControls(font, grid);
+        for (var i = 0; i < controls.Count; i++)
+        {
+            var (rect, label, value) = controls[i];
+            Small(label, rect.Position.X, middle - font.Middle, PartyMenu.TextColor, font: font);
+            Small(value, rect.Position.X + font.ExactWidth(label) + FootLabelGap, middle - font.Middle, UiPainter.RedInk, font: font);
+            if (Menu.Focus == PartyFocus.Foot && Menu.FootChoice == i)
+                _canvas.DrawRect(rect.Grow(1), _ui.Tint(UiPainter.RedInk), false, FootOutline);
+        }
     }
 
-    /// <summary>Where the grid's quick toggle is in the frame, label and eye, to click.</summary>
-    private Rect2 WornToggleRect()
+    /// <summary>The filter's and the order's places under the grid, right-aligned at its edge, each its label and its choice.</summary>
+    private List<(Rect2 Rect, string Label, string Value)> FootControls(UiFont font, GridLayout grid)
     {
-        var font = _ui.Slim.Sized(FootText);
-        var grid = PartyMenu.InventoryGrid;
         var b = grid.Bounds;
-        var right = b.Left + grid.Columns * grid.Cell;
-        var width = font.ExactWidth(EquippedItems) + EyeGap + EyeWidth;
         var middle = b.Top + grid.Lines * grid.Cell + FootMiddle;
-        return new Rect2(right - width - 1, middle - FootRow / 2, width + 2, FootRow);
+        (string Label, string Value)[] parts = [(ShowLabel, Menu.Filter.ToString()), (SortLabel, Menu.Sort.ToString())];
+        float right = b.Left + grid.Columns * grid.Cell;
+        var controls = new List<(Rect2, string, string)>();
+        for (var i = parts.Length - 1; i >= 0; i--)
+        {
+            var width = font.ExactWidth(parts[i].Label) + FootLabelGap + font.ExactWidth(parts[i].Value);
+            controls.Insert(0, (new Rect2(right - width, middle - FootRow / 2, width, FootRow), parts[i].Label, parts[i].Value));
+            right -= width + FootControlGap;
+        }
+        return controls;
     }
 
-    /// <summary>An eye in red ink across a rectangle: open, its lids and pupil, or shut, its lid and lashes.</summary>
-    private void Eye(Rect2 rect, bool open)
+    /// <summary>The control under the grid at a point in the frame, the filter 0 and the order 1, or null.</summary>
+    private int? FootControlAt(Vector2 at)
     {
-        var ink = _ui.Tint(UiPainter.RedInk);
-        var (left, right, middle) = (rect.Position.X, rect.End.X, rect.Position.Y + rect.Size.Y / 2);
-        Vector2[] Lid(float bulge) => [.. Enumerable.Range(0, 13).Select(i =>
+        var controls = FootControls(_ui.Slim.Sized(FootText), PartyMenu.InventoryGrid);
+        for (var i = 0; i < controls.Count; i++)
         {
-            var t = i / 12f;
-            return new Vector2(Mathf.Lerp(left, right, t), middle + bulge * Mathf.Sin(t * Mathf.Pi));
-        })];
-        var half = rect.Size.Y / 2;
-        _canvas.DrawPolyline(Lid(half), ink, EyeLine, true);
-        if (open)
-        {
-            _canvas.DrawPolyline(Lid(-half), ink, EyeLine, true);
-            _canvas.DrawCircle(new Vector2((left + right) / 2, middle), half * 0.55f, ink);
-            return;
+            if (controls[i].Rect.Grow(1).HasPoint(at))
+                return i;
         }
-        // Shut: the lid's curve, and three lashes under it.
-        foreach (var t in new[] { 0.3f, 0.5f, 0.7f })
-        {
-            var at = new Vector2(Mathf.Lerp(left, right, t), middle + half * Mathf.Sin(t * Mathf.Pi));
-            _canvas.DrawLine(at, at + new Vector2((t - 0.5f) * 1.6f, half * 0.8f), ink, EyeLine, true);
-        }
+        return null;
     }
 
     /// <summary>
-    /// The grid's foot: its text's capitals this tall, its middle this far under the grid's last line, the row this tall to click, and the
-    /// eye this big, this far after its label, its lines this thick.
+    /// The grid's foot: its text's capitals this tall, its middle this far under the grid's last line, the row this tall to click, the gap
+    /// after a control's label and between the controls, and the outline round the one the stick is on.
     /// </summary>
-    private const float FootText = 3.4f, FootMiddle = 8.5f, FootRow = 7, EyeWidth = 6, EyeHeight = 3.4f, EyeGap = 1.5f, EyeLine = 0.45f;
+    private const float FootText = 3.4f, FootMiddle = 8.5f, FootRow = 7, FootLabelGap = 1.5f, FootControlGap = 6, FootOutline = 0.4f;
 
-    private const string TotalInventory = "Total Inventory", EquippedItems = "Equipped Items", FitsLabel = "Fits the",
-        NothingFits = "Nothing to put here";
+    private const string TotalInventory = "Total Inventory", FitsLabel = "Fits the", ShowLabel = "Show", SortLabel = "Sort",
+        NothingFits = "Nothing to put here", NothingHere = "Nothing here";
 
     /// <summary>A member's figure, by their entity's record.</summary>
     private Figure FigureOf(Core.Characters.Character member)
@@ -1642,12 +1742,13 @@ public partial class PartyTabView : Control
     {
         var list = Menu.Inventory;
         var count = _ui.Slim.Sized(CountText);
-        // The grid of what fits a slot, with nothing in it, says so.
-        if (list.Rows.Count == 0 && Menu.Fitting is not null)
+        // The grid of what fits a slot or what the filter shows, with nothing in it, says so.
+        if (list.Rows.Count == 0 && !OriginalLook)
         {
             var font = _ui.Slim.Sized(FootText);
             var b = grid.Bounds;
-            Small(NothingFits, b.Left + (grid.Columns * grid.Cell - font.ExactWidth(NothingFits)) / 2, b.Top + grid.Cell - font.Middle,
+            var nothing = Menu.Fitting is not null ? NothingFits : NothingHere;
+            Small(nothing, b.Left + (grid.Columns * grid.Cell - font.ExactWidth(nothing)) / 2, b.Top + grid.Cell - font.Middle,
                 PartyMenu.TextColor, font: font);
         }
         var last = Math.Min(list.Rows.Count, list.First + grid.Visible);

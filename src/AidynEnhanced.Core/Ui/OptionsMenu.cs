@@ -417,10 +417,6 @@ public sealed partial class OptionsMenu
         [
             Choice("Menu Size", ["Original", "Smaller", "Smallest"], () => Array.IndexOf(UiLines, s.UiLines) is var i and >= 0 ? i : 0,
                 v => s.UiLines = UiLines[v]),
-            // The keyboard and mouse's, hidden until it's set: a controller always shows what's worn. The original look's list always shows
-            // it, so there it's greyed, showing Show.
-            Choice("Equipped Inventory", ["Show", "Hide"], () => s.OriginalLook || s.WornInInventory == true ? 0 : 1,
-                v => s.WornInInventory = v == 0, disabled: () => s.OriginalLook),
             Choice("Text Speed", ["Original", "Slow", "Normal", "Fast"], () => (int)s.TextSpeed, v => s.TextSpeed = (TextSpeed)v),
             Choice("Status Auras", ["Original", "More Often"], () => s.SpellAuras == Combat.AuraTurns.EachCharacter ? 1 : 0,
                 v => s.SpellAuras = v == 1 ? Combat.AuraTurns.EachCharacter : Combat.AuraTurns.Battle),

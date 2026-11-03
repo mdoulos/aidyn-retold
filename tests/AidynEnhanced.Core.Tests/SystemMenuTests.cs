@@ -92,10 +92,9 @@ public class SystemMenuTests(BarterPlugins fixture) : IClassFixture<BarterPlugin
         options.Back();
         options.Point(2);
         options.Accept();
-        Assert.Equal(["Menu Size", "Equipped Inventory", "Text Speed", "Status Auras", "Intro Logos"], options.Rows.Rows.Select(r => r.Label));
-        // Worn items stay out of the inventory with the keyboard and mouse, the text prints at Normal, and the intro logos are skipped, the
-        // user's choice.
-        Assert.Equal(["Original", "Hide", "Normal", "Original", "Skip"], options.Rows.Rows.Select(r => r.ValueName));
+        Assert.Equal(["Menu Size", "Text Speed", "Status Auras", "Intro Logos"], options.Rows.Rows.Select(r => r.Label));
+        // The text prints at Normal, and the intro logos are skipped, the user's choice.
+        Assert.Equal(["Original", "Normal", "Original", "Skip"], options.Rows.Rows.Select(r => r.ValueName));
     }
 
     /// <summary>
@@ -184,33 +183,6 @@ public class SystemMenuTests(BarterPlugins fixture) : IClassFixture<BarterPlugin
         system.Back();
         Assert.Equal((SystemPage.List, SystemItem.Options), (system.Page, system.Items.Current));
         Assert.Contains(SystemItem.Extras, system.Items.Rows);
-    }
-
-    /// <summary>
-    /// Equipped Inventory is the keyboard and mouse's, Hide until it's set, a controller always showing what's worn; under the original look
-    /// it's greyed, showing Show, and doesn't change.
-    /// </summary>
-    [Fact]
-    public void EquippedInventoryIsHiddenUntilItsSet()
-    {
-        var settings = new Settings();
-        var options = new OptionsMenu(settings, inGame: true, controller: () => true);
-        options.Point(2);
-        options.Accept();
-        var row = options.Rows.Rows.First(r => r.Label == "Equipped Inventory");
-        Assert.Equal("Hide", row.ValueName);
-        Assert.Null(settings.WornInInventory);
-
-        row.Set(0);
-        Assert.Equal((true, "Show"), (settings.WornInInventory, row.ValueName));
-        row.Set(1);
-        Assert.Equal((false, "Hide"), (settings.WornInInventory, row.ValueName));
-
-        settings.SetQuality(GraphicQuality.Original);
-        options.Point(options.Rows.Rows.ToList().IndexOf(row));
-        options.Change(1);
-        options.Accept();
-        Assert.Equal((true, "Show", false), (row.IsDisabled, row.ValueName, settings.WornInInventory));
     }
 
     [Fact]

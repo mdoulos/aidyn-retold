@@ -85,9 +85,6 @@ public sealed class PauseMenu
 
     public bool IsOpen { get; private set; }
 
-    /// <summary>Whether the Party tab's inventory shows what's worn: as the setting says, or by the device in use (<see cref="Settings.WornInInventory"/>).</summary>
-    private bool ShowsWorn => OriginalLook || _host.Controller || _settings.WornInInventory == true;
-
     /// <summary>Whether the menus look as the original's do, Graphic Quality's Original (<see cref="Settings.OriginalLook"/>).</summary>
     private bool OriginalLook => _settings.OriginalLook;
 
@@ -100,8 +97,6 @@ public sealed class PauseMenu
         party.OriginalLook = OriginalLook;
         if (party.Grid == OriginalLook)
             party.Grid = !OriginalLook;
-        party.ShowWorn = ShowsWorn;
-        party.ToggleWorn = OriginalLook || _host.Controller ? null : ToggleWorn;
         party.Pointing = _host.Pointing && !OriginalLook;
         party.KeyName ??= KeyName;
     }
@@ -113,15 +108,6 @@ public sealed class PauseMenu
     private string? KeyName(string control) =>
         _settings.Controls.Get(control, _host.Controller ? Controls.ControlDevice.Controller : Controls.ControlDevice.Keyboard)
             .FirstOrDefault() is { } binding ? Controls.Binding.Name(binding) : null;
-
-    /// <summary>The grid's quick toggle: turns the setting for what's worn showing over, which the runtime keeps, and lays the tab again.</summary>
-    private void ToggleWorn()
-    {
-        _settings.WornInInventory = _settings.WornInInventory != true;
-        _settings.Notify();
-        if (Party is { } party)
-            Lay(party);
-    }
 
     /// <summary>The tab showing, or being slid to.</summary>
     public PauseTab Tab { get; private set; }
@@ -304,8 +290,7 @@ public sealed class PauseMenu
         // An empty slot steps back to a member's, which is kept (DollMenu::InitMenu).
         _member = party.Member;
         party.Combat = rules;
-        // The tab's own inventory is a grid, showing what's worn as the setting or the device says (Settings.WornInInventory), or the
-        // original's list.
+        // The tab's own inventory is a grid, or the original's list.
         Lay(party);
         Window = party;
         System = new SystemMenu(_game.Plugins, _settings, _game.Party, _savesFolder, isSet: _game.Flags.Get, combat: _combat?.CanFlee,

@@ -59,7 +59,7 @@ public sealed partial class PartyMenu : IPartyWindow
             Stats.Visible = LayoutOf(PartyList.Stats).Visible;
             Skills.Visible = LayoutOf(PartyList.Skills).Visible;
             Spells.Visible = LayoutOf(PartyList.Spells).Visible;
-            SyncFitting();
+            Refresh();
         }
     }
 
@@ -439,8 +439,7 @@ public sealed partial class PartyMenu : IPartyWindow
     {
         var rows = PartyMenuRows.Inventory(Party, Member);
         _rowsFitting = Fitting;
-        Inventory.Replace(_rowsFitting is { } fits ? [.. rows.Where(r => r.Wearer is null && Fits(r.Item, fits))]
-            : ShowWorn ? rows : [.. rows.Where(r => r.Wearer is null)], resetPastEnd: false);
+        Inventory.Replace(Spatial ? GridRows(rows) : ShowWorn ? rows : [.. rows.Where(r => r.Wearer is null)], resetPastEnd: false);
         if (Shown is { } shown)
         {
             Stats.Replace(PartyMenuRows.Stats(shown), resetPastEnd: false);

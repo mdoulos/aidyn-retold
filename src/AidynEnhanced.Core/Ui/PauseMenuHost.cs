@@ -22,7 +22,7 @@ public interface IPauseMenuHost
 
     /// <summary>
     /// Whether the player is using a controller: their last input came from one rather than the keyboard or mouse. What goes by the
-    /// device does by it, as the Party tab's inventory showing what's worn (<see cref="Settings.WornInInventory"/>).
+    /// device does by it, as the Party tab's prompts naming the controller's buttons (<see cref="PartyMenu.KeyName"/>).
     /// </summary>
     bool Controller => false;
 

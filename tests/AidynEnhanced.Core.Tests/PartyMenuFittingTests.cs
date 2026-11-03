@@ -121,4 +121,32 @@ public class PartyMenuFittingTests
         Assert.Equal(new Dictionary<Stat, int> { [Stat.Strength] = -2 }, menu.StatChanges(menu.Party.Inventory.Catalog[Cap.Id]));
         Assert.Empty(menu.StatChanges(menu.Party.Inventory.Catalog[Things[0].Id]));
     }
+
+    /// <summary>
+    /// A carried item dragged onto a slot it fits is put on in it, and not onto one it doesn't; onto another member's portrait it's put on
+    /// them; and what's worn dragged off onto the grid comes off.
+    /// </summary>
+    [Fact]
+    public void DraggingPutsOnAndTakesOff()
+    {
+        var alaron = PotionData.Member("Alaron", 0, null);
+        var brenna = PotionData.Member("Brenna", 1, null);
+        var party = TradeData.PartyOf(ItemData.CatalogWith(TradeData.Rules(40), [Cap, Crown, .. Rings, .. Things]), null, alaron, brenna);
+        foreach (var item in new[] { Cap, Crown })
+            Assert.True(party.Inventory.Add(item.Id));
+        var menu = new PartyMenu(party, new MenuText([]), _ => null, _ => null) { Grid = true };
+        InventoryRow Row(ItemRecord item) => menu.Inventory.Rows.Single(r => r.Item.Id == item.Id);
+
+        menu.DropOnSlot(Row(Cap), EquipmentSlot.Boots);
+        Assert.Null(alaron.Equipment.Gear.OfType<ItemInstance>().FirstOrDefault());
+        menu.DropOnSlot(Row(Cap), EquipmentSlot.Helmet);
+        Assert.Equal(Cap.Id, menu.Worn(EquipmentSlot.Helmet)?.Id);
+
+        menu.DropOnMember(Row(Crown), 1);
+        Assert.Equal(Crown.Id, PartyMenu.Worn(EquipmentSlot.Helmet, brenna)?.Id);
+
+        menu.DropOffSlot(EquipmentSlot.Helmet);
+        Assert.Null(menu.Worn(EquipmentSlot.Helmet));
+        Assert.Contains(menu.Inventory.Rows, r => r.Item.Id == Cap.Id);
+    }
 }

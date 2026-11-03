@@ -301,21 +301,6 @@ public sealed partial class PartyMenu
         }
     }
 
-    /// <summary>Whether the grid has controls under it the stick can step down onto.</summary>
-    private bool HasFoot => false;
-
-    /// <summary>A step of the stick on the controls under the grid: up goes back onto the grid.</summary>
-    private void StepFoot(int across, int down)
-    {
-        if (down < 0)
-            _focus = PartyFocus.List;
-    }
-
-    /// <summary>The prompts of the controls under the grid.</summary>
-    private static void FootPrompts(Action<string, string[]> add)
-    {
-    }
-
     /// <summary>
     /// Finishes the header's, the silhouette's and the lists' changes at once, in the port's look, so a press made while they move is
     /// taken rather than lost, the user's choice (Nov 3, 2026); the original's waits for them (<c>PartyMenu.CanChange</c>).

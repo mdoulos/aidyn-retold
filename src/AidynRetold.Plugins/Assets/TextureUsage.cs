@@ -1,4 +1,3 @@
-using System.Buffers.Binary;
 using System.Text.Json;
 
 namespace AidynRetold.Plugins.Assets;
@@ -41,23 +40,22 @@ public sealed class TextureUsage
     /// <summary>The textures a model file's materials use, each once, in order; none for a file that isn't a glTF binary.</summary>
     public static IReadOnlyList<int> TexturesIn(string path)
     {
-        using var file = File.OpenRead(path);
-        Span<byte> header = stackalloc byte[20];
-        if (file.Read(header) < 20 || BinaryPrimitives.ReadUInt32LittleEndian(header) != 0x46546C67)
+        try
+        {
+            using var json = GlbReader.ReadJson(path);
+            return TexturesIn(json.RootElement);
+        }
+        catch (Exception e) when (e is InvalidDataException or JsonException or EndOfStreamException)
+        {
             return [];
-        var length = (int)BinaryPrimitives.ReadUInt32LittleEndian(header[12..]);
-        var json = new byte[length];
-        file.ReadExactly(json);
-        return TexturesIn(json);
+        }
     }
 
     /// <summary>The textures a glTF's JSON names on its materials, each once, in order.</summary>
-    public static IReadOnlyList<int> TexturesIn(ReadOnlySpan<byte> gltfJson)
+    public static IReadOnlyList<int> TexturesIn(JsonElement gltf)
     {
-        var reader = new Utf8JsonReader(gltfJson);
-        using var doc = JsonDocument.ParseValue(ref reader);
         var found = new List<int>();
-        if (!doc.RootElement.TryGetProperty("materials", out var materials))
+        if (!gltf.TryGetProperty("materials", out var materials))
             return found;
         foreach (var material in materials.EnumerateArray())
         {

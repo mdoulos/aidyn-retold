@@ -38,6 +38,24 @@ public sealed class GlbReader : IDisposable
         return new GlbReader(glb, JsonDocument.Parse(glb.AsMemory(JsonOffset, jsonLength)), JsonOffset + jsonLength + ChunkHeader);
     }
 
+    /// <summary>
+    /// A binary glTF's JSON chunk alone, read from its file without the binary chunk, for what's said of a model without loading it:
+    /// its names, animations and extras. Throws <see cref="InvalidDataException"/> if it isn't one. The caller disposes it.
+    /// </summary>
+    public static JsonDocument ReadJson(string path)
+    {
+        using var file = File.OpenRead(path);
+        Span<byte> header = stackalloc byte[JsonOffset];
+        if (file.Read(header) < JsonOffset || BinaryPrimitives.ReadUInt32LittleEndian(header) != Magic)
+            throw new InvalidDataException($"{Path.GetFileName(path)} isn't a binary glTF file.");
+        var length = BinaryPrimitives.ReadInt32LittleEndian(header[JsonLengthOffset..]);
+        if (length < 0 || JsonOffset + length > file.Length)
+            throw new InvalidDataException($"{Path.GetFileName(path)}'s JSON chunk runs past its end.");
+        var json = new byte[length];
+        file.ReadExactly(json);
+        return JsonDocument.Parse(json);
+    }
+
     /// <summary>The JSON chunk's root.</summary>
     public JsonElement Root => _json.RootElement;
 

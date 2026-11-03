@@ -8,7 +8,7 @@ using AidynEnhanced.Rom.Quests;
 namespace AidynEnhanced.Rom.Import;
 
 /// <summary>
-/// The base game's triggers (roadmap 2.10): what the original's engine code does when a new game begins, a cut-scene's
+/// The original game's triggers (roadmap 2.10): what the original's engine code does when a new game begins, a cut-scene's
 /// script ends and a cinematic ends, as records a plugin can change. docs/systems/events.md has each with its address.
 /// </summary>
 internal static class TriggerImporter

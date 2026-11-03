@@ -593,7 +593,7 @@ public sealed record ReferencePointObject(
 /// A secret door: using it while the flag is clear finds it and sets the flag, and only then does
 /// it work.
 /// </param>
-/// <param name="SecretLevel">The skill a secret door needs before it's there at all, until it's found. 0 in the base game.</param>
+/// <param name="SecretLevel">The skill a secret door needs before it's there at all, until it's found. 0 in the original game.</param>
 /// <param name="Name">For tools.</param>
 public sealed record TeleporterObject(
     int Index,

@@ -101,7 +101,7 @@ public partial class RecordBrowser : Control
     /// <summary>Shows the Preview, Fields or Used by tab.</summary>
     public void SelectTab(string tab) => _tabs.CurrentTab = tab.ToLowerInvariant() switch { "fields" => 1, "used-by" => 2, "atlas" => 3, _ => 0 };
 
-    /// <summary>Loads the plugins in a folder, as the runtime does: <c>aidyn.base</c> first, then the rest in <see cref="PluginSet.LoadOrder"/>.</summary>
+    /// <summary>Loads the plugins in a folder, as the runtime does: <c>aidyn.rom</c> first, then the rest in <see cref="PluginSet.LoadOrder"/>.</summary>
     public async Task LoadAsync(string pluginsDirectory)
     {
         _pluginsDirectory = pluginsDirectory;
@@ -116,13 +116,13 @@ public partial class RecordBrowser : Control
         UpdateHistoryButtons();
         Populate();
         ShowNothing("");
-        if (!File.Exists(Path.Combine(pluginsDirectory, BasePlugin.Folder, PluginManifest.FileName)))
+        if (!File.Exists(Path.Combine(pluginsDirectory, RomPlugin.Folder, PluginManifest.FileName)))
         {
-            _status.Text = $"No {BasePlugin.Folder} in {pluginsDirectory}. Import a ROM to make one.";
+            _status.Text = $"No {RomPlugin.Folder} in {pluginsDirectory}. Import a ROM to make one.";
             return;
         }
         // Out of date: the game refuses it, so the editor shows the same words and waits for an import.
-        if (BasePlugin.Diagnose(pluginsDirectory) is { } problem)
+        if (RomPlugin.Diagnose(pluginsDirectory) is { } problem)
         {
             _status.Text = $"{problem}\nOr press Import ROM… here.";
             return;
@@ -331,12 +331,12 @@ public partial class RecordBrowser : Control
             FileMode = FileDialog.FileModeEnum.OpenDir,
             Access = FileDialog.AccessEnum.Filesystem,
             UseNativeDialog = true,
-            Title = "The plugins folder, which holds aidyn.base",
+            Title = "The plugins folder, which holds aidyn.rom",
         };
         folderDialog.DirSelected += dir =>
         {
-            // Picking aidyn.base itself means the folder it's in.
-            if (string.Equals(Path.GetFileName(dir.TrimEnd('/', '\\')), BasePlugin.Folder, StringComparison.OrdinalIgnoreCase))
+            // Picking aidyn.rom itself means the folder it's in.
+            if (string.Equals(Path.GetFileName(dir.TrimEnd('/', '\\')), RomPlugin.Folder, StringComparison.OrdinalIgnoreCase))
                 dir = Path.GetDirectoryName(dir.TrimEnd('/', '\\'))!;
             _ = Report(LoadAsync(dir));
         };

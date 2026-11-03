@@ -38,7 +38,7 @@ public class RecordIdTests
     }
 
     [Fact]
-    public void BaseIdsAreBuiltCanonically()
+    public void RomIdsAreBuiltCanonically()
     {
         Assert.Equal("aidyn:scene/0x0A0E", RecordId.Hex(RecordTypes.Scene, 0xA0E).ToString());
         Assert.Equal("aidyn:voxel/0x1A20/12", RecordId.Hex(RecordTypes.Voxel, 0x1A20, 12).ToString());

@@ -48,7 +48,7 @@ public sealed class TempPlugins : IDisposable
         return dir;
     }
 
-    /// <summary>Writes the base plugin, <c>aidyn</c>, with these record files and loads it alone.</summary>
+    /// <summary>Writes the ROM plugin, <c>aidyn</c>, with these record files and loads it alone.</summary>
     public PluginSet Aidyn(params (string File, string Json)[] files) => PluginSet.Load([Add("aidyn", null, files)]);
 
     public void Dispose()

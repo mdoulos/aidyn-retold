@@ -1,6 +1,6 @@
 namespace AidynEnhanced.Plugins.Tests;
 
-/// <summary>The order installed plugins load in, and the check that the base plugin was imported by the current importer.</summary>
+/// <summary>The order installed plugins load in, and the check that the ROM plugin was imported by the current importer.</summary>
 public sealed class PluginLoadOrderTests : IDisposable
 {
     private readonly TempPlugins _temp = new();
@@ -16,7 +16,7 @@ public sealed class PluginLoadOrderTests : IDisposable
         return $$"""{ "id": "{{id}}", "name": "{{id}}", "version": "1.0.0"{{extra}} }""";
     }
 
-    private void Base(int? importer = null) => _temp.AddRaw(BasePlugin.Folder, Manifest("aidyn",
+    private void Rom(int? importer = null) => _temp.AddRaw(RomPlugin.Folder, Manifest("aidyn",
         import: importer is { } n ? $$"""{ "importer": {{n}}, "rom": "abc", "romVersion": "NA 1.0" }""" : null));
 
     private void Mod(string id, string[]? dependencies = null, string[]? loadAfter = null) =>
@@ -25,9 +25,9 @@ public sealed class PluginLoadOrderTests : IDisposable
     private string[] Order() => [.. PluginSet.LoadInstalled(_temp.Root).Plugins.Select(p => p.Manifest.Id)];
 
     [Fact]
-    public void WithoutConstraintsPluginsLoadByIdAfterTheBase()
+    public void WithoutConstraintsPluginsLoadByIdAfterTheRomPlugin()
     {
-        Base();
+        Rom();
         Mod("zeta");
         Mod("alpha");
         Mod("mid");
@@ -38,19 +38,43 @@ public sealed class PluginLoadOrderTests : IDisposable
     [Fact]
     public void AnImportKilledPartwayDoesntStopTheLoad()
     {
-        // Its staging folder and the old import moved aside both hold the base's manifest.
-        Base();
-        _temp.AddRaw(BasePlugin.Folder + BasePlugin.StagingSuffix, Manifest("aidyn"));
-        _temp.AddRaw(BasePlugin.Folder + BasePlugin.ReplacedSuffix, Manifest("aidyn"));
+        // Its staging folder and the old import moved aside both hold the ROM plugin's manifest.
+        Rom();
+        _temp.AddRaw(RomPlugin.Folder + RomPlugin.StagingSuffix, Manifest("aidyn"));
+        _temp.AddRaw(RomPlugin.Folder + RomPlugin.ReplacedSuffix, Manifest("aidyn"));
         Mod("alpha");
 
         Assert.Equal(["aidyn", "alpha"], Order());
     }
 
+    /// <summary>An import from before the ROM plugin had its name is moved to its folder, rather than imported again (ADR 0037).</summary>
+    [Fact]
+    public void AnImportInTheOldFolderIsMovedToTheRomPluginsFolder()
+    {
+        _temp.AddRaw(RomPlugin.OldFolder, Manifest("aidyn", import: $$"""{ "importer": {{RomPlugin.ImporterVersion}}, "rom": "abc", "romVersion": "NA 1.0" }"""));
+        Mod("alpha");
+
+        Assert.Null(RomPlugin.Diagnose(_temp.Root));
+        Assert.True(Directory.Exists(Path.Combine(_temp.Root, RomPlugin.Folder)));
+        Assert.False(Directory.Exists(Path.Combine(_temp.Root, RomPlugin.OldFolder)));
+        Assert.Equal(["aidyn", "alpha"], Order());
+    }
+
+    [Fact]
+    public void AnOldFolderBesideTheRomPluginsIsLeftOutOfTheLoad()
+    {
+        Rom();
+        _temp.AddRaw(RomPlugin.OldFolder, Manifest("aidyn"));
+        Mod("alpha");
+
+        Assert.Equal(["aidyn", "alpha"], Order());
+        Assert.True(Directory.Exists(Path.Combine(_temp.Root, RomPlugin.OldFolder)));
+    }
+
     [Fact]
     public void ADependencyThatSortsLaterStillLoadsFirst()
     {
-        Base();
+        Rom();
         Mod("alpha", dependencies: ["zeta"]);
         Mod("zeta", dependencies: ["aidyn"]);
 
@@ -60,7 +84,7 @@ public sealed class PluginLoadOrderTests : IDisposable
     [Fact]
     public void LoadAfterOrdersWhenThePluginIsThere()
     {
-        Base();
+        Rom();
         Mod("alpha", loadAfter: ["zeta"]);
         Mod("zeta");
         Mod("beta");
@@ -71,7 +95,7 @@ public sealed class PluginLoadOrderTests : IDisposable
     [Fact]
     public void ALoadAfterThatIsntInstalledIsNotAnError()
     {
-        Base();
+        Rom();
         Mod("alpha", loadAfter: ["missing", "aidyn"]);
 
         Assert.Equal(["aidyn", "alpha"], Order());
@@ -80,7 +104,7 @@ public sealed class PluginLoadOrderTests : IDisposable
     [Fact]
     public void AMissingDependencyIsStillAnError()
     {
-        Base();
+        Rom();
         Mod("alpha", dependencies: ["missing"]);
 
         var error = Assert.Throws<InvalidDataException>(Order);
@@ -90,7 +114,7 @@ public sealed class PluginLoadOrderTests : IDisposable
     [Fact]
     public void ACycleIsAnErrorNamingThePluginsInIt()
     {
-        Base();
+        Rom();
         Mod("one", dependencies: ["two"]);
         Mod("two", loadAfter: ["three"]);
         Mod("three", dependencies: ["one"]);
@@ -106,7 +130,7 @@ public sealed class PluginLoadOrderTests : IDisposable
     [Fact]
     public void AFolderMustBeNamedForItsPluginsId()
     {
-        Base();
+        Rom();
         _temp.AddRaw("some_folder", Manifest("other_id"));
 
         var error = Assert.Throws<InvalidDataException>(Order);
@@ -117,51 +141,51 @@ public sealed class PluginLoadOrderTests : IDisposable
     [Fact]
     public void ANotImportedGameIsDiagnosedWithTheFolderItLookedIn()
     {
-        var diagnosis = BasePlugin.Diagnose(_temp.Root);
+        var diagnosis = RomPlugin.Diagnose(_temp.Root);
 
         Assert.NotNull(diagnosis);
         Assert.Contains("hasn't been imported", diagnosis, StringComparison.Ordinal);
-        Assert.Contains(Path.Combine(_temp.Root, BasePlugin.Folder), diagnosis, StringComparison.Ordinal);
+        Assert.Contains(Path.Combine(_temp.Root, RomPlugin.Folder), diagnosis, StringComparison.Ordinal);
         Assert.Throws<IOException>(() => PluginSet.LoadInstalledChecked(_temp.Root));
     }
 
     [Fact]
     public void AnOldImportIsDiagnosedWithBothVersions()
     {
-        Base(importer: BasePlugin.ImporterVersion - 1);
+        Rom(importer: RomPlugin.ImporterVersion - 1);
 
-        var diagnosis = BasePlugin.Diagnose(_temp.Root);
+        var diagnosis = RomPlugin.Diagnose(_temp.Root);
 
         Assert.Equal(
-            $"The import is out of date (imported by importer {BasePlugin.ImporterVersion - 1}, now {BasePlugin.ImporterVersion}). Run: aidyn-enhanced import <rom>",
+            $"The import is out of date (imported by importer {RomPlugin.ImporterVersion - 1}, now {RomPlugin.ImporterVersion}). Run: aidyn-enhanced import <rom>",
             diagnosis);
         var error = Assert.Throws<IOException>(() => PluginSet.LoadInstalledChecked(_temp.Root));
         Assert.Equal(diagnosis, error.Message);
     }
 
     [Fact]
-    public void ABaseWithNoImportInfoIsOutOfDate()
+    public void ARomPluginWithNoImportInfoIsOutOfDate()
     {
-        Base();
+        Rom();
 
-        Assert.Contains("imported by importer unknown", BasePlugin.Diagnose(_temp.Root), StringComparison.Ordinal);
+        Assert.Contains("imported by importer unknown", RomPlugin.Diagnose(_temp.Root), StringComparison.Ordinal);
     }
 
     [Fact]
     public void AManifestThatCantBeReadIsDiagnosedRatherThanThrown()
     {
-        _temp.AddRaw(BasePlugin.Folder, "{ not json");
+        _temp.AddRaw(RomPlugin.Folder, "{ not json");
 
-        Assert.StartsWith("The import can't be read (", BasePlugin.Diagnose(_temp.Root), StringComparison.Ordinal);
+        Assert.StartsWith("The import can't be read (", RomPlugin.Diagnose(_temp.Root), StringComparison.Ordinal);
     }
 
     [Fact]
     public void ACurrentImportPassesAndLoads()
     {
-        Base(importer: BasePlugin.ImporterVersion);
+        Rom(importer: RomPlugin.ImporterVersion);
         Mod("alpha", dependencies: ["aidyn"]);
 
-        Assert.Null(BasePlugin.Diagnose(_temp.Root));
+        Assert.Null(RomPlugin.Diagnose(_temp.Root));
         Assert.Equal(["aidyn", "alpha"], PluginSet.LoadInstalledChecked(_temp.Root).Plugins.Select(p => p.Manifest.Id));
     }
 }

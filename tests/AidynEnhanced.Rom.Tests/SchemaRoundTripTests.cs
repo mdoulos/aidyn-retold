@@ -6,7 +6,7 @@ using Json.Schema;
 namespace AidynEnhanced.Rom.Tests;
 
 /// <summary>
-/// The exported JSON Schema (<see cref="RecordSchema.JsonSchema"/>, <c>aidyn-enhanced schema</c>) against the base plugin's records:
+/// The exported JSON Schema (<see cref="RecordSchema.JsonSchema"/>, <c>aidyn-enhanced schema</c>) against the ROM plugin's records:
 /// what the importer writes validates, and what strict reading refuses the schema refuses too.
 /// </summary>
 [Collection(ImportedPluginCollection.Name)]

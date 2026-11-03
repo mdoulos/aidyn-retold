@@ -348,7 +348,7 @@ public sealed class PluginSetTests : IDisposable
     }
 
     [Fact]
-    public void ASingletonIsTheBaseGamesRecordZero()
+    public void ASingletonIsTheOriginalGamesRecordZero()
     {
         var set = PluginSet.Load([
             Plugin("aidyn", null, ("camping.json", """{ "id": "aidyn:camping/0", "name": "Camping" }""")),

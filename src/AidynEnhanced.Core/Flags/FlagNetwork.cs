@@ -40,13 +40,13 @@ public sealed class FlagNetwork
     public FlagNetwork(IEnumerable<FlagRecord> flags, RecordId newJournalEntry, Func<RecordId, int>? loadOrder = null)
     {
         var all = flags.ToList();
-        var numbered = all.Where(f => f.Id.Namespace == RecordId.BaseNamespace).OrderBy(f => int.Parse(f.Id.Key, CultureInfo.InvariantCulture)).ToList();
+        var numbered = all.Where(f => f.Id.Namespace == RecordId.RomNamespace).OrderBy(f => int.Parse(f.Id.Key, CultureInfo.InvariantCulture)).ToList();
         for (var i = 0; i < numbered.Count; i++)
         {
             if (numbered[i].Id != RecordId.Decimal(RecordTypes.Flag, i))
-                throw new InvalidDataException($"The base game's flags skip from {(i == 0 ? "the start" : numbered[i - 1].Id)} to {numbered[i].Id}.");
+                throw new InvalidDataException($"The original game's flags skip from {(i == 0 ? "the start" : numbered[i - 1].Id)} to {numbered[i].Id}.");
         }
-        var others = all.Where(f => f.Id.Namespace != RecordId.BaseNamespace)
+        var others = all.Where(f => f.Id.Namespace != RecordId.RomNamespace)
             .OrderBy(f => loadOrder?.Invoke(f.Id) ?? 0).ThenBy(f => f.Id.ToString(), StringComparer.Ordinal);
         var ordered = numbered.Concat(others).ToList();
 
@@ -100,7 +100,7 @@ public sealed class FlagNetwork
     public bool HasJournalEntry(RecordId entry) => _entries.Contains(entry);
 
     /// <summary>
-    /// Every journal entry a flag adds, in the order of the flags that add them, the network's: for the base game, the journal
+    /// Every journal entry a flag adds, in the order of the flags that add them, the network's: for the original game, the journal
     /// table's.
     /// </summary>
     public IEnumerable<RecordId> JournalEntries => _journal.OfType<RecordId>().Distinct();
@@ -140,7 +140,7 @@ public sealed class FlagNetwork
 
     /// <summary>
     /// Whether a flag is set, an unknown one reading as clear. A mod can remove a flag that another plugin's records
-    /// still name, which the base game's never do (all of the original's are here), and the rules read such a flag as
+    /// still name, which the original game's never do (all of the original's are here), and the rules read such a flag as
     /// clear rather than fail.
     /// </summary>
     public bool IsSet(RecordId id) => TryHandle(id, out var handle) && Get(handle);

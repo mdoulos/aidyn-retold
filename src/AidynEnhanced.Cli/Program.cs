@@ -18,8 +18,8 @@ const string Usage = """
     Usage:
       aidyn-enhanced identify <rom>
       aidyn-enhanced import <rom> [--out <dir>] [--keep-mushroom]
-                                           the ROM as the base plugin the game loads (ADR 0001);
-                                           default dir: aidyn.base in the data folder (AIDYN_ENHANCED_DATA);
+                                           the ROM as the ROM plugin the game loads (ADR 0001);
+                                           default dir: aidyn.rom in the data folder (AIDYN_ENHANCED_DATA);
                                            --keep-mushroom leaves the Roog Cave's mushroom where the ROM has it,
                                            in the way, rather than moving it aside
       aidyn-enhanced borg summary <rom>
@@ -134,9 +134,9 @@ static int Identify(string path)
 static int Import(string path, string? outDir, ImportOptions options)
 {
     var rom = RomImage.Load(path);
-    outDir ??= DataPaths.Base;
+    outDir ??= DataPaths.RomPluginDirectory;
     var watch = System.Diagnostics.Stopwatch.StartNew();
-    BaseImporter.Import(rom, outDir, new Progress<string>(step => Console.Error.WriteLine(step)), options);
+    RomImporter.Import(rom, outDir, new Progress<string>(step => Console.Error.WriteLine(step)), options);
     var mushroom = options.FixMushroom ? "" : ", with the Roog Cave's mushroom where the ROM has it";
     Console.WriteLine($"Imported {rom.Version.Name} to {Path.GetFullPath(outDir)}{mushroom} in {watch.Elapsed.TotalSeconds:F0} s");
     return 0;

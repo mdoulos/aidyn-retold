@@ -26,8 +26,8 @@ public sealed class Na10Import : IDisposable
     private Loaded Load()
     {
         var rom = TestRoms.Get(RomVersionId.Na10);
-        var dir = Path.Combine(_temp.Root, BasePlugin.Folder);
-        BaseImporter.Import(rom, dir);
+        var dir = Path.Combine(_temp.Root, RomPlugin.Folder);
+        RomImporter.Import(rom, dir);
         var set = PluginSet.Load([dir]);
         var maps = set.All<MapRecord>(RecordTypes.Map).ToList();
         var chunks = Maps.MapChunks.Read(rom);

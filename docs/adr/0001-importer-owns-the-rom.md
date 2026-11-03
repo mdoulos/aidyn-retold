@@ -1,6 +1,6 @@
 # 0001. The runtime never reads the ROM
 
-Status: Accepted · Sep 27, 2026
+Status: Accepted · Sep 27, 2026 · Its names are amended by [0037](0037-the-rom-plugin-base-plugins-and-mods.md): the import is the ROM plugin, `aidyn.rom`
 
 ## Context
 

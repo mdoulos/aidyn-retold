@@ -114,7 +114,7 @@ public static class Casting
         _ => CastRefusal.None,
     };
 
-    /// <summary>Whether the battle's part of the day allows the spell (<c>Spell.TimeRequirement</c>, <c>0x80071260</c>). No spell of the base game has one.</summary>
+    /// <summary>Whether the battle's part of the day allows the spell (<c>Spell.TimeRequirement</c>, <c>0x80071260</c>). No spell of the original game has one.</summary>
     public static bool TimeAllows(SpellRecord spell, PartOfDay partOfDay) => spell.Special switch
     {
         SpellSpecial.Day => partOfDay != PartOfDay.Night,

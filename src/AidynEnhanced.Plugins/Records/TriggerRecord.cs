@@ -4,7 +4,7 @@ namespace AidynEnhanced.Plugins.Records;
 
 /// <summary>
 /// A trigger (ADR 0008's layer 2, roadmap 2.10): <i>on</i> one of the core's named events, <i>if</i> its conditions hold,
-/// <i>do</i> its effects, in order. The base plugin's carry what the original's engine code does at an event's place, such
+/// <i>do</i> its effects, in order. The ROM plugin's carry what the original's engine code does at an event's place, such
 /// as a cinematic after a script's end (<c>aidyn:trigger/0</c> on); a plugin adds its own or patches these like any record.
 /// docs/systems/events.md lists the events and what each effect does.
 /// </summary>

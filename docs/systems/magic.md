@@ -68,10 +68,10 @@ No spell both deals damage and leaves a record: the damage byte of Immolation, A
 
 ## How effects land
 
-`EffectLanding.Land` is the one place a spell's, a potion's or a flask's effects land on a target (ADR 0021), so a plugin's spell that heals or potion that dispels does what the base game's carriers do. In the record's order:
+`EffectLanding.Land` is the one place a spell's, a potion's or a flask's effects land on a target (ADR 0021), so a plugin's spell that heals or potion that dispels does what the original game's carriers do. In the record's order:
 
 - **Once:** `damage` adds its dice and `banish` the target's hit points to the d6 over the margin, which the carrier rolls (the cast through the resistances; drinking and a flask as that many d6, no margin); `dispel` (`Entity.Dispel`, `0x80071CD8`), `cure` (`Entity.CurePoison`, `0x80071A6C`) and `heal` (`Entity.HealPercent`, `0x800715DC`, none in the Shadow's battle: `Battle.HealingBarred`) act on the sheet; `flee`, `teleport`, `senseAura` and `revealPhase` ask the battle (`IMagicHost`), and do nothing in trek.
-- **A lasting effect on a record with no duration** starts and leaves nothing: the Stamina potion's Stamina, the base game's one.
+- **A lasting effect on a record with no duration** starts and leaves nothing: the Stamina potion's Stamina, the original game's one.
 - **`blast` and `corrode`** burst together about a cell (`IMagicHost.Burst`, [below](#potions-and-flasks)): where a flask landed, or the target's cell for a spell or a drunk potion. A flask's blast has the damage its throw rolled; anyone else's rolls its dice as it lands.
 - **With a duration**, the lasting effects go on the target as one record (`Character.AddEffect`), Tap Stamina's gain on the caster as another.
 
@@ -135,8 +135,8 @@ The user chose to keep these, which look like bugs, as the original has them:
 ## Where the port differs
 
 - The Defence potion and the Acid flask's corrosion change the sheet's protection, as the shields do, where the original adds them when it works out the total (`Combatant.TotalProtection`). The sheet's protection isn't kept as a byte, so corrosion past it leaves it below 0 and the total floors at 0, as the original's does; kept as a byte, 3 less 7 wrapped to 252, and every blow on the corroded did 1. The totals differ only past 255.
-- One record can hold several effects; the original keys one per kind. The base game's records hold one each but Web of Starlight's (immobilise and 2d6) and Tap Stamina's.
-- Any spell, potion or flask can carry any effect type ([How effects land](#how-effects-land)); the original's code carries each instant one for its own kinds only. The base game's records hold them where the original has them, so nothing it plays changes.
+- One record can hold several effects; the original keys one per kind. The original game's records hold one each but Web of Starlight's (immobilise and 2d6) and Tap Stamina's.
+- Any spell, potion or flask can carry any effect type ([How effects land](#how-effects-land)); the original's code carries each instant one for its own kinds only. The original game's records hold them where the original has them, so nothing it plays changes.
 - Trek's ageing runs every tick, and what the effects do each round once a 30 fps frame (`Cadence.FrameTicks`), as the original does once a drawn frame.
 - The battle's held part of the day is the battle's alone (`Battle.PartOfDay`, `PartOfDayHeld`): it isn't written to the part-of-day flags. The original's lock (`World+5`) also stops the weather rolling; the port's battle still steps the clock and the weather each turn (`GameState.AdvanceTurn`), and doesn't stop the roll while a Day or Night spell holds the part of the day ([weather](weather.md)).
 

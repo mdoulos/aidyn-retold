@@ -7,7 +7,7 @@ using AidynEnhanced.Plugins.Records;
 
 namespace AidynEnhanced.Rom.Tests;
 
-/// <summary>The surfaces the loaded chunks draw, which rain and snow land on, from the base plugin.</summary>
+/// <summary>The surfaces the loaded chunks draw, which rain and snow land on, from the ROM plugin.</summary>
 [Collection(ImportedPluginCollection.Name)]
 public sealed class ChunkSurfacesTests(Na10Import fixture)
 {

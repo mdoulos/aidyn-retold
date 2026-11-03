@@ -39,7 +39,7 @@ public partial class ImportPage : VBoxContainer
     /// <summary>Whether the importer is running, when the page can't be closed.</summary>
     public bool Busy { get; private set; }
 
-    /// <param name="pluginsDirectory">The plugins folder the base plugin goes in.</param>
+    /// <param name="pluginsDirectory">The plugins folder the ROM plugin goes in.</param>
     /// <param name="fromGame">The game started the editor for this: it ends with Play, which starts the game and closes the editor.</param>
     public ImportPage(string pluginsDirectory, bool fromGame)
     {
@@ -48,7 +48,7 @@ public partial class ImportPage : VBoxContainer
         AddThemeConstantOverride("separation", 10);
 
         // Out of date rather than missing: the import has to be done again.
-        if (BasePlugin.IsImported(pluginsDirectory) && BasePlugin.Diagnose(pluginsDirectory) is not null)
+        if (RomPlugin.IsImported(pluginsDirectory) && RomPlugin.Diagnose(pluginsDirectory) is not null)
             AddChild(Wrapped("Your import is from an older version of Aidyn Chronicles Enhanced and has to be done again."));
         AddChild(Wrapped("A North American 1.0 ROM is required, or a ROM hack of it that edits only the game's data, such as its stats, items and shops."));
 
@@ -79,7 +79,7 @@ public partial class ImportPage : VBoxContainer
         // What the last import was made from and with, to do again.
         if (File.Exists(DataPaths.LastRomFor(pluginsDirectory)))
             _rom.Text = File.ReadAllText(DataPaths.LastRomFor(pluginsDirectory)).Trim();
-        FixMushroom = (BasePlugin.ImportOf(pluginsDirectory)?.Options ?? ImportOptions.Default).FixMushroom;
+        FixMushroom = (RomPlugin.ImportOf(pluginsDirectory)?.Options ?? ImportOptions.Default).FixMushroom;
 
         _browse.Pressed += () =>
         {
@@ -126,8 +126,8 @@ public partial class ImportPage : VBoxContainer
         try
         {
             var progress = new Progress<string>(step => Say($"Importing: {step}…"));
-            var directory = Path.Combine(_pluginsDirectory, BasePlugin.Folder);
-            await Task.Run(() => BaseImporter.Import(ImportableRom.Open(path), directory, progress, options));
+            var directory = Path.Combine(_pluginsDirectory, RomPlugin.Folder);
+            await Task.Run(() => RomImporter.Import(ImportableRom.Open(path), directory, progress, options));
         }
         catch (Exception e)
         {

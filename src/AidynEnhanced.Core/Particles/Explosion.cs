@@ -79,7 +79,7 @@ public static class Explosion
     /// The explosion at <paramref name="at"/>, the container's place in the world: the fire, the three thrown, then the
     /// burst, each with its light, in the pool if there is one.
     /// </summary>
-    /// <param name="texture">What the particles are drawn with: the particle texture slot 2 the code names, as the base plugin's explosion record holds it.</param>
+    /// <param name="texture">What the particles are drawn with: the particle texture slot 2 the code names, as the ROM plugin's explosion record holds it.</param>
     public static void Start(Vector3 at, DynamicLights lights, ParticleHead? particles, RecordId? texture)
     {
         if (particles is null)

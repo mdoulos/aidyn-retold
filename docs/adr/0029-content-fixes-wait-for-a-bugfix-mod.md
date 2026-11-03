@@ -1,6 +1,6 @@
 # 0029. The base import fixes only content that breaks the game; the rest waits for a bugfix mod
 
-Status: Accepted · Oct 25, 2026 · Adds to [0018](0018-the-port-fixes-bugs-and-sets-enhancements.md)
+Status: Accepted · Oct 25, 2026 · Adds to [0018](0018-the-port-fixes-bugs-and-sets-enhancements.md) · Its names are amended by [0037](0037-the-rom-plugin-base-plugins-and-mods.md): the bugfix mod is the bugfix base plugin
 
 ## Context
 

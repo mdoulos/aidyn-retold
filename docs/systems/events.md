@@ -1,6 +1,6 @@
 # Events and triggers (roadmap 2.10)
 
-ADR 0008's layer 2: *on an event, if its conditions hold, do its effects*. The core fires named events where the original's engine code does something the data doesn't say, and the plugins' trigger records say what follows. The base plugin's triggers carry what the original hardcodes at those places, so a mod changes or adds to them like any record, with no hook the base game has and mods don't.
+ADR 0008's layer 2: *on an event, if its conditions hold, do its effects*. The core fires named events where the original's engine code does something the data doesn't say, and the plugins' trigger records say what follows. The ROM plugin's triggers carry what the original hardcodes at those places, so a mod changes or adds to them like any record, with no hook the original game has and mods don't.
 
 `GameEvents` and `Triggers` in `AidynEnhanced.Core.Events`, `TriggerRecord` in `AidynEnhanced.Plugins.Records`, `TriggerImporter` in `AidynEnhanced.Rom.Import`. `GameSession` fires the events and carries out what takes over.
 
@@ -36,7 +36,7 @@ An effect that takes over from trek ends the firing: the triggers after it on th
 
 `script.ended` fires for cut-scenes alone: the table is read only by `CutScene.Free`, reached only from `CutScene.ModeFrame` (`0x8005039c`); a conversation's end (`Conversation.End`, `0x80051ccc`) never reads it, and all six of its scripts are cut-scenes.
 
-## The base plugin's
+## The ROM plugin's
 
 `TriggerImporter` writes them, the endings table's from the ROM (`CodeTable.ScriptEndings`) and the rest as facts checked in 1.0's code:
 

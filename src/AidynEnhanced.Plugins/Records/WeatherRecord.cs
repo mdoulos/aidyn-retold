@@ -11,7 +11,7 @@ namespace AidynEnhanced.Plugins.Records;
 /// terrain. Each time, a d100 over <paramref name="KeepAtMost"/> clears the weather and tries for precipitation: a
 /// second d100 at most the season's chance plus the terrain's brings it. A third d100 under
 /// <paramref name="FallBelow"/> makes it rain (or snow), and otherwise it's fog. Every d100 is 1 to 100, so with the
-/// base game's 75 and 70, a quarter of the chances change the weather, and precipitation is rain or snow 69% of the
+/// original game's 75 and 70, a quarter of the chances change the weather, and precipitation is rain or snow 69% of the
 /// time and fog 31%.
 /// </remarks>
 /// <param name="Seasons">Each season's chance of precipitation in percent, by season.</param>

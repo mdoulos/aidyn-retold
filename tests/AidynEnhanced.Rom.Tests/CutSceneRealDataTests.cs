@@ -12,7 +12,7 @@ using AidynEnhanced.Plugins.Records;
 namespace AidynEnhanced.Rom.Tests;
 
 /// <summary>
-/// Every cut-scene the base game starts, from a dialogue object or a talker, played on its real stage in a new game,
+/// Every cut-scene the original game starts, from a dialogue object or a talker, played on its real stage in a new game,
 /// pressing A through every page and taking the first choice, until it's over.
 /// </summary>
 [Collection(ImportedPluginCollection.Name)]

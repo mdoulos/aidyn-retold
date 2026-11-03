@@ -5,7 +5,7 @@ namespace AidynEnhanced.Plugins;
 /// </summary>
 /// <param name="Dependencies">Plugins that must be loaded, and load, before this one.</param>
 /// <param name="LoadAfter">Plugins this one loads after when they're present.</param>
-/// <param name="Import">Set on the base plugin only: what the importer made it from.</param>
+/// <param name="Import">Set on the ROM plugin only: what the importer made it from.</param>
 public sealed record PluginManifest(
     string Id,
     string Name,
@@ -18,15 +18,15 @@ public sealed record PluginManifest(
 }
 
 /// <summary>
-/// Where <c>aidyn.base</c> came from (ADR 0001). The runtime re-imports when the importer's
-/// <see cref="BasePlugin.ImporterVersion"/> or the ROM changes.
+/// Where <c>aidyn.rom</c> came from (ADR 0001). The runtime re-imports when the importer's
+/// <see cref="RomPlugin.ImporterVersion"/> or the ROM changes.
 /// </summary>
 /// <param name="Rom">The ROM's SHA-1.</param>
 /// <param name="Options">The player's choices for the import. An import without them, before they were recorded, had the defaults.</param>
 public sealed record ImportInfo(int Importer, string Rom, string RomVersion, ImportOptions? Options = null);
 
 /// <summary>
-/// The player's choices for an import, which the base plugin's manifest records (<see cref="ImportInfo.Options"/>), so the editor
+/// The player's choices for an import, which the ROM plugin's manifest records (<see cref="ImportInfo.Options"/>), so the editor
 /// and a re-import can tell.
 /// </summary>
 /// <param name="FixMushroom">
@@ -38,11 +38,39 @@ public sealed record ImportOptions(bool FixMushroom = true)
     public static ImportOptions Default { get; } = new();
 }
 
-/// <summary>The base game's plugin, which the importer writes from the user's ROM.</summary>
-public static class BasePlugin
+/// <summary>The original game's plugin, which the importer writes from the user's ROM.</summary>
+public static class RomPlugin
 {
     /// <summary>The folder it's imported to, under <see cref="DataPaths.Plugins"/>.</summary>
-    public const string Folder = "aidyn.base";
+    public const string Folder = "aidyn.rom";
+
+    /// <summary>
+    /// The folder imports went to before the ROM plugin had its name (ADR 0037), which <see cref="MoveFromOldFolder"/> moves to
+    /// <see cref="Folder"/>, and loading skips should both be there.
+    /// </summary>
+    public const string OldFolder = "aidyn.base";
+
+    /// <summary>
+    /// Moves an import from <see cref="OldFolder"/> to <see cref="Folder"/> under <paramref name="pluginsDirectory"/>, when there's one
+    /// there and nothing in its place, so an install from before ADR 0037 carries on without importing again. A move that fails, as
+    /// with a file held open, leaves it where it is, and the ROM plugin is then missing until the next import, which deletes it.
+    /// Everything that reads the ROM plugin's folder calls it first: <see cref="Diagnose"/>, <see cref="IsImported"/>,
+    /// <see cref="ImportOf"/> and <see cref="PluginSet.LoadInstalled"/>.
+    /// </summary>
+    public static void MoveFromOldFolder(string pluginsDirectory)
+    {
+        var old = Path.Combine(pluginsDirectory, OldFolder);
+        var current = Path.Combine(pluginsDirectory, Folder);
+        if (!File.Exists(Path.Combine(old, PluginManifest.FileName)) || Directory.Exists(current))
+            return;
+        try
+        {
+            Directory.Move(old, current);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+        }
+    }
 
     /// <summary>What an import's folder is suffixed with while it's written, before it replaces the old one.</summary>
     public const string StagingSuffix = ".importing";
@@ -52,7 +80,7 @@ public static class BasePlugin
 
     /// <summary>
     /// Whether a folder of the plugins' is one an import of <see cref="Folder"/> works in (<see cref="StagingSuffix"/>,
-    /// <see cref="ReplacedSuffix"/>), which an import killed partway can leave behind, holding the base's manifest, and
+    /// <see cref="ReplacedSuffix"/>), which an import killed partway can leave behind, holding the ROM plugin's manifest, and
     /// which loading skips.
     /// </summary>
     public static bool IsImportWork(string folder) =>
@@ -124,12 +152,13 @@ public static class BasePlugin
     public const int ImporterVersion = 61;
 
     /// <summary>
-    /// What's wrong with the imported base plugin under <paramref name="pluginsDirectory"/>, worded for the player, or null if
+    /// What's wrong with the imported ROM plugin under <paramref name="pluginsDirectory"/>, worded for the player, or null if
     /// it's there and the current importer wrote it: it hasn't been imported, or it was imported by another importer, so
-    /// it's to be imported again. It reads only the base plugin's manifest. The runtime, the CLI and the editor all go by this.
+    /// it's to be imported again. It reads only the ROM plugin's manifest. The runtime, the CLI and the editor all go by this.
     /// </summary>
     public static string? Diagnose(string pluginsDirectory)
     {
+        MoveFromOldFolder(pluginsDirectory);
         var directory = Path.Combine(pluginsDirectory, Folder);
         if (!File.Exists(Path.Combine(directory, PluginManifest.FileName)))
             return $"The game hasn't been imported. Run: aidyn-enhanced import <rom>\n(looked in {directory})";
@@ -147,10 +176,14 @@ public static class BasePlugin
             : $"The import is out of date (imported by importer {import?.Importer.ToString() ?? "unknown"}, now {ImporterVersion}). Run: aidyn-enhanced import <rom>";
     }
 
-    /// <summary>Whether there's a base plugin under <paramref name="pluginsDirectory"/>, current or not.</summary>
-    public static bool IsImported(string pluginsDirectory) => File.Exists(Path.Combine(pluginsDirectory, Folder, PluginManifest.FileName));
+    /// <summary>Whether there's a ROM plugin under <paramref name="pluginsDirectory"/>, current or not.</summary>
+    public static bool IsImported(string pluginsDirectory)
+    {
+        MoveFromOldFolder(pluginsDirectory);
+        return File.Exists(Path.Combine(pluginsDirectory, Folder, PluginManifest.FileName));
+    }
 
-    /// <summary>What the base plugin under <paramref name="pluginsDirectory"/> was imported from, or null if there's none to read.</summary>
+    /// <summary>What the ROM plugin under <paramref name="pluginsDirectory"/> was imported from, or null if there's none to read.</summary>
     public static ImportInfo? ImportOf(string pluginsDirectory)
     {
         if (!IsImported(pluginsDirectory))
@@ -165,7 +198,7 @@ public static class BasePlugin
         }
     }
 
-    /// <summary>Throws an <see cref="IOException"/> with <see cref="Diagnose"/>'s words if the base plugin isn't there and current.</summary>
+    /// <summary>Throws an <see cref="IOException"/> with <see cref="Diagnose"/>'s words if the ROM plugin isn't there and current.</summary>
     public static void Require(string pluginsDirectory)
     {
         if (Diagnose(pluginsDirectory) is { } problem)
@@ -198,7 +231,7 @@ public static class DataPaths
 
     /// <summary>
     /// The data folder: <c>AIDYN_ENHANCED_DATA</c> if set; else a portable install's <c>data</c> beside the executables, when the app folder
-    /// holds <c>portable.txt</c> or already holds an import there (<c>data/plugins/aidyn.base</c>); else <c>AidynEnhanced</c> in the local
+    /// holds <c>portable.txt</c> or already holds an import there (<c>data/plugins/aidyn.rom</c>); else <c>AidynEnhanced</c> in the local
     /// application data folder (<c>%LOCALAPPDATA%</c> on Windows, <c>~/.local/share</c> on Linux).
     /// </summary>
     public static string Root => Resolve(Environment.GetEnvironmentVariable(Variable), _appFolder,
@@ -212,7 +245,8 @@ public static class DataPaths
         if (appFolder is { Length: > 0 })
         {
             var portable = Path.Combine(appFolder, PortableFolder);
-            if (File.Exists(Path.Combine(appFolder, PortableMarker)) || Directory.Exists(Path.Combine(portable, "plugins", BasePlugin.Folder)))
+            if (File.Exists(Path.Combine(appFolder, PortableMarker)) || Directory.Exists(Path.Combine(portable, "plugins", RomPlugin.Folder)) ||
+                Directory.Exists(Path.Combine(portable, "plugins", RomPlugin.OldFolder)))
                 return portable;
         }
         return Path.Combine(localApplicationData, InstalledFolder);
@@ -227,7 +261,7 @@ public static class DataPaths
 
     public static string Plugins => Path.Combine(Root, "plugins");
 
-    public static string Base => Path.Combine(Plugins, BasePlugin.Folder);
+    public static string RomPluginDirectory => Path.Combine(Plugins, RomPlugin.Folder);
 
     /// <summary>Where saved games go (<see cref="Saves.SaveGame"/>).</summary>
     public static string Saves => Path.Combine(Root, "saves");

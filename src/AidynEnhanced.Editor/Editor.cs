@@ -57,7 +57,7 @@ public partial class Editor : Control
         if (args.TryGetValue("tab", out var tab))
             _records.SelectTab(tab);
         var plugins = args.GetValueOrDefault("data") ?? DataPaths.Plugins;
-        if (BasePlugin.Diagnose(plugins) is not null && !await ImportFirstAsync(plugins, args, png))
+        if (RomPlugin.Diagnose(plugins) is not null && !await ImportFirstAsync(plugins, args, png))
             return;
         await _records.LoadAsync(plugins);
         // A bad checkpoint or save shouldn't stop the record opening, or a script waits for the watchdog.

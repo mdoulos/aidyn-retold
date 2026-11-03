@@ -1,6 +1,6 @@
 # DB tables (roadmap 0.4)
 
-The fixed databases at the end of the ROM: entities, items, spells, shops, camp encounters and the string tables (`AidynEnhanced.Rom.Db`, `AidynEnhanced.Rom.Text`). What each string table holds, and how the base plugin carries them, is in [text](text.md).
+The fixed databases at the end of the ROM: entities, items, spells, shops, camp encounters and the string tables (`AidynEnhanced.Rom.Db`, `AidynEnhanced.Rom.Text`). What each string table holds, and how the ROM plugin carries them, is in [text](text.md).
 
 - **Layout.** `RomVersions` places every table of the DB block in all three ROMs; [rom](rom.md#where-each-version-has-its-tables) has the moves. ShopDB starts at 1.0 `0x1FD31B0`. The debug ROM's credits are shorter than 1.0's: three names are missing and one date differs.
 - **All records are identical in all three ROMs.** Only the text tables noted in [rom.md](rom.md) differ.
@@ -9,7 +9,7 @@ The fixed databases at the end of the ROM: entities, items, spells, shops, camp 
 - **Shops.** The game stocks a priced slot only when its third byte is nonzero, and it always stocks one item. The first byte is never read. The three trailing slots are always stocked at base price.
 - **Camp encounters** are 27 terrains of ten 8-byte slots, at `terrain × 80 + level tier × 8` (`0x80009728` in 1.0): two groups of a big-endian entity ID, unlike the DB tables, and a minimum and maximum. The code reads only slots 0–4, the five level tiers (an average party level of 5 or less, then 6–10, 11–15, 16–20 and over 20); slots 5–9 look like a second set of tiers it never reads. Terrain 27, which six Overworld chunks have and where camping is allowed, has no row: an ambush there would read past the table ([camping](../systems/camping.md)).
 - **Odd values the game tolerates.** A few entities have an "is heavy" byte other than 0 or 1 (Alaron's is 220). The game only tests it for nonzero.
-- **Entities' fields** (see [characters](../systems/characters.md) for what the base plugin makes of them):
+- **Entities' fields** (see [characters](../systems/characters.md) for what the ROM plugin makes of them):
   - **Categories** are 0 plain NPCs and trainers, 1 humanoids, 2 named characters, 3 recruits, 5 Chaos troops and bosses, and 6 animals; 4 is empty. The code tests 5 for Chaos (Charming fails on it).
   - **A skill of 255** can never be learnt. Values above 10 occur (13 and 15), which read as 10.
   - **Attributes** can be above their caps: some enemies have 120 Stamina, which reads as 90 but counts in full once modified.

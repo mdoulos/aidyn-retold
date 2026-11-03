@@ -156,7 +156,7 @@ public sealed class QuestIndex
         _outOf = edges.OrderBy(e => e, Comparer<QuestEdge>.Create((a, b) => CompareEdges(a, b, a.To, b.To))).ToLookup(e => e.From);
     }
 
-    /// <summary>Reads every script, flag, journal entry, map and the state flags. The base plugin takes a second or two.</summary>
+    /// <summary>Reads every script, flag, journal entry, map and the state flags. The ROM plugin takes a second or two.</summary>
     public static QuestIndex Build(PluginSet plugins)
     {
         var uses = new List<FlagUse>();
@@ -380,7 +380,7 @@ public sealed class QuestIndex
 
     /// <summary>Flag 0 always reads as clear and flag 1 as set, so a gate on either is a constant, not quest state.</summary>
     private static bool IsConstant(RecordId flag) =>
-        flag.Namespace == RecordId.BaseNamespace && flag.Type == RecordTypes.Flag && flag.Key is "0" or "1";
+        flag.Namespace == RecordId.RomNamespace && flag.Type == RecordTypes.Flag && flag.Key is "0" or "1";
 
     private static FlagAccess? ScriptAccess(DialogueCommand command) => command switch
     {

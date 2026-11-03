@@ -4,7 +4,7 @@ This guide is for anyone who wants to change the game's world: move a chest, add
 
 ## How it works
 
-The world is a set of **chunks**, the squares the game loads around you as you walk. Each chunk is three things in the base plugin: its scenery, a 3D model; its collision, the invisible mesh you walk on and bump into, whose faces know what they're made of; and its map objects, the chests, doors, lights, sounds, people and triggers placed in it ([replacing graphics](replacing-graphics.md#how-it-works) says how the base plugin and mods fit together).
+The world is a set of **chunks**, the squares the game loads around you as you walk. Each chunk is three things in the ROM plugin: its scenery, a 3D model; its collision, the invisible mesh you walk on and bump into, whose faces know what they're made of; and its map objects, the chests, doors, lights, sounds, people and triggers placed in it ([replacing graphics](replacing-graphics.md#how-it-works) says how the ROM plugin and mods fit together).
 
 Two commands carry a chunk out to one glTF file and back:
 
@@ -13,7 +13,7 @@ dotnet run --project src\AidynEnhanced.Cli -- chunk export Overworld M07
 dotnet run --project src\AidynEnhanced.Cli -- chunk import "out\chunks\Overworld M07.glb" --mod my_village
 ```
 
-The first writes the chunk as a single `.glb`, which Blender opens. You edit it there. The second reads your file and writes into a mod only what you changed: scenery you reshaped, collision you touched, and the objects you moved, changed, added or removed. The game then plays with your mod over the base game. The base plugin is never written, so importing the ROM again or deleting the mod's folder puts everything back.
+The first writes the chunk as a single `.glb`, which Blender opens. You edit it there. The second reads your file and writes into a mod only what you changed: scenery you reshaped, collision you touched, and the objects you moved, changed, added or removed. The game then plays with your mod over the original game. The ROM plugin is never written, so importing the ROM again or deleting the mod's folder puts everything back.
 
 In a release, the commands are `aidyn-enhanced chunk export` and `aidyn-enhanced chunk import`, with the tool beside the game.
 

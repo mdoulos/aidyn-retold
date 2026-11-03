@@ -10,7 +10,7 @@ using AidynEnhanced.Plugins.Records;
 namespace AidynEnhanced.Rom.Tests;
 
 /// <summary>
-/// What starts the story's cinematics and what follows them, as the base plugin's triggers carry them (roadmap 2.10), end
+/// What starts the story's cinematics and what follows them, as the ROM plugin's triggers carry them (roadmap 2.10), end
 /// to end on NA 1.0's data: a new game's opening, the Rooughah scene's end into Roog's and the last scene's into the ending's.
 /// </summary>
 public sealed partial class GameSessionTests
@@ -29,7 +29,7 @@ public sealed partial class GameSessionTests
     }
 
     [Fact]
-    public void TheBasePluginsTriggersAreOnEventsTheCoreFires()
+    public void TheRomPluginsTriggersAreOnEventsTheCoreFires()
     {
         var triggers = new Triggers(Data.Set);
         Assert.Empty(triggers.Problems);

@@ -55,7 +55,7 @@ public sealed class PotionRecordTests(Na10Import fixture)
         Assert.True(fireball.Placed);
     }
 
-    /// <summary>The base plugin with a hand-written one after it: a spell that heals and a potion that dispels the Elemental school.</summary>
+    /// <summary>The ROM plugin with a hand-written one after it: a spell that heals and a potion that dispels the Elemental school.</summary>
     private (PluginSet Set, TempPlugins Temp) Modded()
     {
         var shield = Set.Get<SpellRecord>(AirShield);

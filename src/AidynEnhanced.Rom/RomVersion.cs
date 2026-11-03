@@ -45,7 +45,7 @@ public sealed record RomLayout
 }
 
 /// <param name="Sha1">Lowercase hex SHA-1 of the big-endian image.</param>
-/// <param name="ResearchOnly">Readable, but the importer must never build <c>aidyn.base</c> from it.</param>
+/// <param name="ResearchOnly">Readable, but the importer must never build <c>aidyn.rom</c> from it.</param>
 public sealed record RomVersion(RomVersionId Id, string Name, string Sha1, bool ResearchOnly, RomLayout Layout)
 {
     /// <summary>

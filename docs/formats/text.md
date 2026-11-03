@@ -4,7 +4,7 @@ The string tables, the fonts and the portraits beside what characters say. Dialo
 
 ## String tables
 
-`aidyn-enhanced strings <rom>` writes every table to `out/<version>/strings/`, and `aidyn-enhanced strings <rom> <table>` prints one. The base plugin has each as a record, `aidyn:strings/0` to `/11`, numbered in the order they sit in the ROM, with the escapes decoded as the game does when it loads a table: `\n` is a newline and `\xHH` that character. Nothing else is escaped; the only button glyphs are `\x83` (C-down) and `\x84` (C-up), in Common. `%s` and `%d` are for the engine to fill in.
+`aidyn-enhanced strings <rom>` writes every table to `out/<version>/strings/`, and `aidyn-enhanced strings <rom> <table>` prints one. The ROM plugin has each as a record, `aidyn:strings/0` to `/11`, numbered in the order they sit in the ROM, with the escapes decoded as the game does when it loads a table: `\n` is a newline and `\xHH` that character. Nothing else is escaped; the only button glyphs are `\x83` (C-down) and `\x84` (C-up), in Common. `%s` and `%d` are for the engine to fill in.
 
 | # | Table | Lines (1.0) | What reads it |
 | --- | --- | --- | --- |
@@ -37,8 +37,8 @@ Engine code holds the fonts in three tables in the code segment, identical in al
 - **The slim font has no buttons.** Its button cells are blank, apart from a 2-texel mark.
 - A glyph is drawn a whole cell tall, from its cell's left edge, and the next character starts where it ends. There's no other kerning.
 
-The base plugin has each font as a record, `aidyn:font/0` (main) and `aidyn:font/1` (slim), with its sheet, grid, cell size, the widths the importer measured, the character map and the buttons' colours. The runtime reads the widths from the record, so a mod that redraws a sheet sets them too; the sheets are the images `aidyn:image/0x001C` and `0x001D`.
+The ROM plugin has each font as a record, `aidyn:font/0` (main) and `aidyn:font/1` (slim), with its sheet, grid, cell size, the widths the importer measured, the character map and the buttons' colours. The runtime reads the widths from the record, so a mod that redraws a sheet sets them too; the sheets are the images `aidyn:image/0x001C` and `0x001D`.
 
 ## Portraits
 
-Each entity and dialogue entity has a portrait, a 40 × 40 CI8 Borg8, in the same code tables as its model (see [actors](actors.md)); `EntityDB::GetPortrait` reads them. The base plugin puts it on the entity and dialogue entity records as `portrait`. All 221 entities have one, and 32 of the 37 dialogue entities. The other five, and a speaker that isn't an entity at all (a script with no speaker, or the tools' `0xCCCC`), get `0x0125`, a fallback in code.
+Each entity and dialogue entity has a portrait, a 40 × 40 CI8 Borg8, in the same code tables as its model (see [actors](actors.md)); `EntityDB::GetPortrait` reads them. The ROM plugin puts it on the entity and dialogue entity records as `portrait`. All 221 entities have one, and 32 of the 37 dialogue entities. The other five, and a speaker that isn't an entity at all (a script with no speaker, or the tools' `0xCCCC`), get `0x0125`, a fallback in code.

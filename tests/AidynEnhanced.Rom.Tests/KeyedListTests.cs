@@ -4,14 +4,14 @@ using AidynEnhanced.Plugins;
 namespace AidynEnhanced.Rom.Tests;
 
 /// <summary>
-/// The keyed lists of the base plugin's records (<see cref="KeyedListAttribute"/>, ADR 0005): every element carries its key
+/// The keyed lists of the ROM plugin's records (<see cref="KeyedListAttribute"/>, ADR 0005): every element carries its key
 /// and no two share one, so a patch that names an element names exactly one.
 /// </summary>
 [Collection(ImportedPluginCollection.Name)]
 public sealed class KeyedListTests(Na10Import fixture)
 {
     [Fact]
-    public void EveryKeyedListOfTheBasePluginHasUniqueKeys()
+    public void EveryKeyedListOfTheRomPluginHasUniqueKeys()
     {
         var set = fixture.Data.Set;
         var lists = 0;

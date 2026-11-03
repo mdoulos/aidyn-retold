@@ -43,7 +43,7 @@ public sealed class DataPathsTests : IDisposable
     [Fact]
     public void AnImportBesideTheExecutablesIsUsedWithoutTheMarker()
     {
-        Directory.CreateDirectory(Path.Combine(App, "data", "plugins", BasePlugin.Folder));
+        Directory.CreateDirectory(Path.Combine(App, "data", "plugins", RomPlugin.Folder));
         Assert.Equal(Path.Combine(App, "data"), DataPaths.Resolve(null, App, Local));
     }
 
@@ -65,26 +65,26 @@ public sealed class DataPathsTests : IDisposable
     [Fact]
     public void TheManifestRecordsTheImportsOptions()
     {
-        _temp.AddRaw(BasePlugin.Folder, """
+        _temp.AddRaw(RomPlugin.Folder, """
             { "id": "aidyn", "name": "Base", "version": "1.0.0",
               "import": { "importer": 61, "rom": "x", "romVersion": "NA 1.0", "options": { "fixMushroom": false } } }
             """);
-        Assert.True(BasePlugin.IsImported(_temp.Root));
-        Assert.Equal(new ImportOptions(FixMushroom: false), BasePlugin.ImportOf(_temp.Root)?.Options);
+        Assert.True(RomPlugin.IsImported(_temp.Root));
+        Assert.Equal(new ImportOptions(FixMushroom: false), RomPlugin.ImportOf(_temp.Root)?.Options);
     }
 
     [Fact]
     public void AnImportWithoutOptionsHadTheDefaults()
     {
-        _temp.AddRaw(BasePlugin.Folder, """{ "id": "aidyn", "name": "Base", "version": "1.0.0", "import": { "importer": 60, "rom": "x", "romVersion": "NA 1.0" } }""");
-        Assert.Null(BasePlugin.ImportOf(_temp.Root)?.Options);
-        Assert.True((BasePlugin.ImportOf(_temp.Root)?.Options ?? ImportOptions.Default).FixMushroom);
+        _temp.AddRaw(RomPlugin.Folder, """{ "id": "aidyn", "name": "Base", "version": "1.0.0", "import": { "importer": 60, "rom": "x", "romVersion": "NA 1.0" } }""");
+        Assert.Null(RomPlugin.ImportOf(_temp.Root)?.Options);
+        Assert.True((RomPlugin.ImportOf(_temp.Root)?.Options ?? ImportOptions.Default).FixMushroom);
     }
 
     [Fact]
     public void NoImportHasNothingToRead()
     {
-        Assert.False(BasePlugin.IsImported(_temp.Root));
-        Assert.Null(BasePlugin.ImportOf(_temp.Root));
+        Assert.False(RomPlugin.IsImported(_temp.Root));
+        Assert.Null(RomPlugin.ImportOf(_temp.Root));
     }
 }

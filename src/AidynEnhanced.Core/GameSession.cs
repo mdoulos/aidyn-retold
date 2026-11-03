@@ -756,7 +756,7 @@ public sealed class GameSession
         foreach (var problem in scene.Problems)
             _host.Warn(problem);
         Send(new Transition.EndCutScene(scene));
-        // CutScene.Free's ending kinds, as the base plugin's triggers: the game over, Roog's cinematic and the ending's,
+        // CutScene.Free's ending kinds, as the ROM plugin's triggers: the game over, Roog's cinematic and the ending's,
         // in place of trek.
         if (Fire(GameEvents.ScriptEnded, scene.Runner.Script.Id))
             return;
@@ -1165,7 +1165,7 @@ public sealed class GameSession
 
     /// <summary>
     /// A new game begins (<c>Title.Leave</c>'s New Game), its world built where the player arrives: the triggers on
-    /// <see cref="GameEvents.GameStarted"/> go off, the base plugin's playing the opening cinematic. False if none takes
+    /// <see cref="GameEvents.GameStarted"/> go off, the ROM plugin's playing the opening cinematic. False if none takes
     /// over, and trek simply starts.
     /// </summary>
     public bool StartNewGame()
@@ -1237,7 +1237,7 @@ public sealed class GameSession
         return (set, chunk.Name, new Vector3(start.Position.X, start.Height, start.Position.Y));
     }
 
-    /// <summary>The player's body's actor: the party leader's (<see cref="EntityBody.Actor"/>), Alaron's in the base game.</summary>
+    /// <summary>The player's body's actor: the party leader's (<see cref="EntityBody.Actor"/>), Alaron's in the original game.</summary>
     public RecordId? PlayerActor =>
         Game.Party.Members.FirstOrDefault() is { } leader ? Game.Plugins.TryGet<EntityRecord>(leader.Entity)?.Body?.Actor : null;
 

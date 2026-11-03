@@ -1,6 +1,6 @@
 # Camping (roadmap 2.7)
 
-How the party camps from the World tab's Camp ([ui](ui.md#the-world-tab)): the check, the ambush, the half heal, the camp scene and the eight hours. From 1.0's machine code (`campMenuController` at `0x80041020`, `Party::CampAmbushCheck` `0x80078d14`, `Camping.Ambushed` `0x800788cc`, `Party::CampHeal` `0x80078ba4`, `TrekLoop.CampScene` `0x80004b0c`, `TrekLoop.CampsiteScene` `0x80004cd4`, `World::Lapse8Hours` `0x8007c098`) and the base plugin's records.
+How the party camps from the World tab's Camp ([ui](ui.md#the-world-tab)): the check, the ambush, the half heal, the camp scene and the eight hours. From 1.0's machine code (`campMenuController` at `0x80041020`, `Party::CampAmbushCheck` `0x80078d14`, `Camping.Ambushed` `0x800788cc`, `Party::CampHeal` `0x80078ba4`, `TrekLoop.CampScene` `0x80004b0c`, `TrekLoop.CampsiteScene` `0x80004cd4`, `World::Lapse8Hours` `0x8007c098`) and the ROM plugin's records.
 
 ## Where
 

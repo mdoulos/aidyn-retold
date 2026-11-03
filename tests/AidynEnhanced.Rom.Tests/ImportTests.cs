@@ -9,12 +9,12 @@ namespace AidynEnhanced.Rom.Tests;
 public sealed class ImportTests(Na10Import fixture)
 {
     [Fact]
-    public void TheBasePluginLoadsAndItsReferencesResolve()
+    public void TheRomPluginLoadsAndItsReferencesResolve()
     {
         var rom = TestRoms.Get(RomVersionId.Na10);
         var set = fixture.Data.Set;
         var import = set.Plugins[0].Manifest.Import!;
-        Assert.Equal((BasePlugin.ImporterVersion, rom.Sha1), (import.Importer, import.Rom));
+        Assert.Equal((RomPlugin.ImporterVersion, rom.Sha1), (import.Importer, import.Rom));
         // The manifest records the player's choices, the defaults here.
         Assert.Equal(ImportOptions.Default, import.Options);
 
@@ -269,8 +269,8 @@ public sealed class ImportTests(Na10Import fixture)
         // The shared import against a fresh one.
         using var temp = new TempPlugins();
         var first = fixture.Data.Dir;
-        var second = Path.Combine(temp.Root, BasePlugin.Folder);
-        BaseImporter.Import(rom, second);
+        var second = Path.Combine(temp.Root, RomPlugin.Folder);
+        RomImporter.Import(rom, second);
 
         var files = Directory.EnumerateFiles(first, "*", SearchOption.AllDirectories).Select(f => Path.GetRelativePath(first, f)).Order().ToList();
         Assert.Equal(files, Directory.EnumerateFiles(second, "*", SearchOption.AllDirectories).Select(f => Path.GetRelativePath(second, f)).Order());
@@ -283,6 +283,6 @@ public sealed class ImportTests(Na10Import fixture)
     {
         var rom = TestRoms.Get(RomVersionId.Debug);
         using var temp = new TempPlugins();
-        Assert.Throws<UnsupportedRomException>(() => BaseImporter.Import(rom, Path.Combine(temp.Root, "debug")));
+        Assert.Throws<UnsupportedRomException>(() => RomImporter.Import(rom, Path.Combine(temp.Root, "debug")));
     }
 }

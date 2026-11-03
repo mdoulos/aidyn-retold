@@ -50,7 +50,7 @@ public sealed class MemoryEntry(Memory key, int value, int lifetime)
 /// <para>
 /// The original keys a memory by the object's index in its map, the map set and the chunk. The port
 /// keys it by the object's record ID, which names its map, so a map placed in two chunks would share
-/// its objects' memories. In the base game only the battle arenas and an empty overworld map are
+/// its objects' memories. In the original game only the battle arenas and an empty overworld map are
 /// placed twice, and they hold nothing that remembers.
 /// </para>
 /// <para>

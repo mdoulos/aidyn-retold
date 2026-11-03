@@ -65,7 +65,7 @@ An event of 0 does nothing, and most events are. A track's first event always se
 
 **Tempo** sets how many sequencer milliseconds pass between rows. A sequence starts with a row every 20 (tracker tempo 125). A tempo byte `x` makes it every `2500 / x`, in integers (`125000 / (x × 25 × 2) − 1` calls between rows). The data's tempos run 89 to 196, mostly 118 to 134. The longest sequence is 0x0632, the Expansion Pak's title music, at 4 minutes 6 seconds.
 
-## In the base plugin
+## In the ROM plugin
 
 - **A sequence** is `aidyn:sequence/0xHHHH` in `records/sequences.json`: its tracks, its loop position and its instruments, each naming its sample with its loop. Its event stream is the asset `sequence/0xHHHH.dcm`, as the ROM has it ([ADR 0016](../adr/0016-sequences-keep-the-originals-events.md)).
 - **What plays them** is on other records: the sounds engine code names in `aidyn:sounds/0`, the music on the map sets and their chunks, the audio keys on the entities, and weapons' and spells' sounds on theirs ([audio](../systems/audio.md#whats-ported)).

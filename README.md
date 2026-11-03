@@ -115,7 +115,7 @@ Aidyn Renewed until October 28, 2026
   freely, both ways. Its findings and designs (fixes to the original's bugs,
   its rendering and sound work, its play aids) guide work here, rebuilt in
   this project's own code and checked against the ROM, and its painted art
-  and restored sound are this project's to carry in mods and releases
+  and restored sound are this project's to carry in base plugins and releases
   ([ADR 0032](docs/adr/0032-rechronicled-is-read-for-its-findings.md),
   [ADR 0034](docs/adr/0034-enhanced-and-rechronicled-collaborate.md)).
 - [Marcellus SC](https://fonts.google.com/specimen/Marcellus+SC) by Astigmatic (Brian J. Bonislawsky), under the SIL Open Font

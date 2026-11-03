@@ -22,7 +22,7 @@ public sealed record Plugin(string Directory, PluginManifest Manifest)
 
 /// <summary>
 /// A field that more than one plugin patched, and which one won (ADR 0005's conflict report). The record's definer isn't
-/// among them: the base plugin sets every field of its records, and one mod patching a field is a patch, not a conflict.
+/// among them: the ROM plugin sets every field of its records, and one mod patching a field is a patch, not a conflict.
 /// </summary>
 /// <param name="Path">
 /// A top-level field, such as <c>damage</c>, or through a keyed list (<see cref="KeyedListAttribute"/>) a keyed element or a
@@ -53,7 +53,7 @@ public sealed class ValidationReport
     public bool IsClean => Problems.Count == 0;
 
     /// <summary>
-    /// The report worded for the player, as <see cref="BasePlugin.Diagnose"/> words an import's: a line per problem under its
+    /// The report worded for the player, as <see cref="RomPlugin.Diagnose"/> words an import's: a line per problem under its
     /// plugin, up to <paramref name="limit"/> of them, and how many more there are.
     /// </summary>
     public string Describe(int limit = int.MaxValue)
@@ -153,17 +153,20 @@ public sealed class PluginSet
     }
 
     /// <summary>
-    /// Loads the base plugin and every other plugin in <paramref name="pluginsDirectory"/>: the base first, then the rest in
-    /// <see cref="LoadOrder"/>. A plugin's folder must be named for its ID, as the ID is also its namespace; only the base
-    /// plugin's, <see cref="BasePlugin.Folder"/>, differs (it holds <c>aidyn</c>). The folders an import works in are skipped
-    /// (<see cref="BasePlugin.IsImportWork"/>).
+    /// Loads the ROM plugin and every other plugin in <paramref name="pluginsDirectory"/>: the ROM plugin first, then the rest in
+    /// <see cref="LoadOrder"/>. A plugin's folder must be named for its ID, as the ID is also its namespace; only the ROM
+    /// plugin's, <see cref="RomPlugin.Folder"/>, differs (it holds <c>aidyn</c>). The folders an import works in are skipped
+    /// (<see cref="RomPlugin.IsImportWork"/>), and so is an import left in <see cref="RomPlugin.OldFolder"/>.
     /// </summary>
     public static PluginSet LoadInstalled(string pluginsDirectory)
     {
-        var baseDir = Path.Combine(pluginsDirectory, BasePlugin.Folder);
+        RomPlugin.MoveFromOldFolder(pluginsDirectory);
+        var romDir = Path.Combine(pluginsDirectory, RomPlugin.Folder);
         var others = Directory.EnumerateDirectories(pluginsDirectory)
-            .Where(d => !string.Equals(Path.GetFileName(d), BasePlugin.Folder, StringComparison.OrdinalIgnoreCase) &&
-                !BasePlugin.IsImportWork(Path.GetFileName(d)) && File.Exists(Path.Combine(d, PluginManifest.FileName)))
+            .Where(d => Path.GetFileName(d) is var name &&
+                !string.Equals(name, RomPlugin.Folder, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(name, RomPlugin.OldFolder, StringComparison.OrdinalIgnoreCase) &&
+                !RomPlugin.IsImportWork(name) && File.Exists(Path.Combine(d, PluginManifest.FileName)))
             .Select(Plugin.Open)
             .ToList();
         foreach (var plugin in others)
@@ -172,20 +175,20 @@ public sealed class PluginSet
             if (!string.Equals(folder, plugin.Manifest.Id, StringComparison.Ordinal))
                 throw new InvalidDataException($"The plugin in folder \"{folder}\" says its ID is \"{plugin.Manifest.Id}\"; a plugin's folder must be named for its ID.");
         }
-        var basePlugin = Plugin.Open(baseDir);
-        return Load([basePlugin, .. LoadOrder(others, basePlugin.Manifest.Id)]);
+        var romPlugin = Plugin.Open(romDir);
+        return Load([romPlugin, .. LoadOrder(others, romPlugin.Manifest.Id)]);
     }
 
     /// <summary>
-    /// <see cref="LoadInstalled"/> after <see cref="BasePlugin.Require"/>, then <see cref="Validate"/>: it throws an
-    /// <see cref="IOException"/> saying to import if the base plugin isn't there, or was written by an importer other than
+    /// <see cref="LoadInstalled"/> after <see cref="RomPlugin.Require"/>, then <see cref="Validate"/>: it throws an
+    /// <see cref="IOException"/> saying to import if the ROM plugin isn't there, or was written by an importer other than
     /// the current one, and an <see cref="InvalidDataException"/> with the <see cref="ValidationReport"/> if a record can't
     /// be read. The runtime and the CLI load by it, so a mod's mistake stops the game with its name rather than being
     /// played around.
     /// </summary>
     public static PluginSet LoadInstalledChecked(string pluginsDirectory)
     {
-        BasePlugin.Require(pluginsDirectory);
+        RomPlugin.Require(pluginsDirectory);
         var set = LoadInstalled(pluginsDirectory);
         var report = set.Validate();
         return report.IsClean ? set : throw new InvalidDataException(report.Describe());
@@ -196,7 +199,7 @@ public sealed class PluginSet
     /// once, and reports every one that can't be read, blaming the plugin that last set the field at fault: a field the type
     /// lacks, a kind no discriminator names, a null or a missing field the type doesn't allow, a value of the wrong shape, and
     /// a keyed list with two elements of one key. The records that read are kept, so later reads of them are what this read;
-    /// the base plugin's 8,900 records take under a second. A problem is a problem whichever plugin has it: an unknown field or
+    /// the ROM plugin's 8,900 records take under a second. A problem is a problem whichever plugin has it: an unknown field or
     /// kind in a mod is never what its author meant, and is an error rather than a warning so that it's found and not played
     /// around.
     /// </summary>
@@ -320,7 +323,7 @@ public sealed class PluginSet
     /// Puts plugins in the order they load: each after its <see cref="PluginManifest.Dependencies"/> and, when the plugin is
     /// present, its <see cref="PluginManifest.LoadAfter"/>, and otherwise by ID, so the order doesn't depend on the folders'
     /// names. A dependency that isn't among the plugins is left for <see cref="Load(IEnumerable{string})"/> to refuse, and a
-    /// <c>LoadAfter</c> that isn't is ignored. The base plugin loads before all of them, so it's named by
+    /// <c>LoadAfter</c> that isn't is ignored. The ROM plugin loads before all of them, so it's named by
     /// <paramref name="loadedFirst"/> rather than ordered. A cycle is an <see cref="InvalidDataException"/> naming the
     /// plugins in it.
     /// </summary>

@@ -8,7 +8,7 @@ namespace AidynEnhanced.Core.Tests;
 public class FlagNetworkTests
 {
     /// <summary>
-    /// Plain flags 0–9 (1 set, as in the base game), then the derived flags given, numbered from 10.
+    /// Plain flags 0–9 (1 set, as in the original game), then the derived flags given, numbered from 10.
     /// Flag 9 is the new journal entry flag.
     /// </summary>
     private static FlagNetwork Network(params FlagFormula[] derived) => JournalNetwork([.. derived.Select(f => (f, (RecordId?)null))]);
@@ -178,7 +178,7 @@ public class FlagNetworkTests
     }
 
     [Fact]
-    public void OtherPluginsFlagsComeAfterTheBaseGames()
+    public void OtherPluginsFlagsComeAfterTheOriginalGames()
     {
         var flags = new FlagNetwork(
             [

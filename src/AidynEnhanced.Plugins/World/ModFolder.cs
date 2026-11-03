@@ -7,7 +7,7 @@ namespace AidynEnhanced.Plugins.World;
 /// A mod's folder as a tool writes it (ADR 0005): its manifest, a record file of patches and new records that the tool
 /// keeps up to date an object at a time, and its assets. The folder is named for the mod's ID, as
 /// <see cref="PluginSet.LoadInstalled"/> requires, and a folder that isn't there yet is made with a manifest that depends
-/// on the base plugin.
+/// on the ROM plugin.
 /// </summary>
 public sealed class ModFolder
 {
@@ -25,14 +25,14 @@ public sealed class ModFolder
 
     /// <summary>
     /// Opens the mod <paramref name="id"/> in <paramref name="pluginsDirectory"/>, making it if it isn't there: a plugin ID is
-    /// <c>[a-z0-9_]+</c>, and can't be the base plugin's.
+    /// <c>[a-z0-9_]+</c>, and can't be the ROM plugin's.
     /// </summary>
     public static ModFolder OpenOrCreate(string pluginsDirectory, string id, string? name = null)
     {
         if (id.Length == 0 || !id.All(c => c is >= 'a' and <= 'z' or >= '0' and <= '9' or '_'))
             throw new InvalidDataException($"\"{id}\" isn't a mod ID: use lower-case letters, digits and underscores, such as my_village.");
-        if (id == "aidyn" || string.Equals(id, BasePlugin.Folder, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException("The base plugin isn't a mod to write to: name your own.");
+        if (id == "aidyn" || string.Equals(id, RomPlugin.Folder, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The ROM plugin isn't a mod to write to: name your own.");
         var directory = Path.Combine(pluginsDirectory, id);
         var manifestPath = Path.Combine(directory, PluginManifest.FileName);
         PluginManifest manifest;

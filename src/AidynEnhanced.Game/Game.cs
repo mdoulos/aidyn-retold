@@ -23,7 +23,7 @@ namespace AidynEnhanced.Game;
 /// <summary>
 /// The runtime (roadmap M1, M2): loads the installed plugins and a game, a new one or a save, and
 /// walks the player through a map set. It never reads the ROM; <c>aidyn-enhanced import &lt;rom&gt;</c> writes
-/// the base plugin it loads (ADR 0001).
+/// the ROM plugin it loads (ADR 0001).
 /// </summary>
 /// <remarks>
 /// The player and camera are the core's port of the original, stepped once per 60 Hz tick in the
@@ -138,7 +138,7 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
             or ArgumentException)
         {
             GD.PrintErr(e.ToString());
-            _message.Text = BasePlugin.Diagnose(DataPaths.Plugins) is null ? e.Message : $"{e.Message}\nOr open Aidyn Chronicles Enhanced Editor, beside the game, which imports it.";
+            _message.Text = RomPlugin.Diagnose(DataPaths.Plugins) is null ? e.Message : $"{e.Message}\nOr open Aidyn Chronicles Enhanced Editor, beside the game, which imports it.";
             if (options.Screenshot is not null)
                 GetTree().Quit(1);
         }
@@ -150,7 +150,7 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
     /// </summary>
     private bool HandOffToEditor()
     {
-        if (_loadedPlugins is not null || BasePlugin.Diagnose(DataPaths.Plugins) is not { } problem
+        if (_loadedPlugins is not null || RomPlugin.Diagnose(DataPaths.Plugins) is not { } problem
             || LaunchOptions.Parse(OS.GetCmdlineUserArgs()).Screenshot is not null)
             return false;
         GD.Print($"{problem}\nStarting the editor to import.");
@@ -601,7 +601,7 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
             : Math.Clamp(_settings.RenderScale, 0.25f, 2);
     }
 
-    /// <summary>The installed plugins, after checking the base plugin is there and up to date.</summary>
+    /// <summary>The installed plugins, after checking the ROM plugin is there and up to date.</summary>
     private static PluginSet LoadPlugins() => PluginSet.LoadInstalledChecked(DataPaths.Plugins);
 
     public override void _ExitTree()

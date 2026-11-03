@@ -22,7 +22,7 @@ public sealed class ModFolderTests
     [Theory]
     [InlineData("My Village")]
     [InlineData("aidyn")]
-    [InlineData("aidyn.base")]
+    [InlineData("aidyn.rom")]
     [InlineData("")]
     public void Refuses_a_bad_id(string id)
     {

@@ -6,7 +6,7 @@ namespace AidynEnhanced.Core.Events;
 
 /// <summary>
 /// The core's named events (roadmap 2.10, ADR 0008): what <see cref="TriggerRecord.On"/> names. Each is fired where the
-/// original's engine code does what the base plugin's triggers carry, and is public mod surface, the base game's too.
+/// original's engine code does what the ROM plugin's triggers carry, and is public mod surface, the original game's too.
 /// docs/systems/events.md says what each is about and where it's fired.
 /// </summary>
 public static class GameEvents

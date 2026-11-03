@@ -11,7 +11,7 @@ namespace AidynEnhanced.Rom.Import;
 
 /// <summary>
 /// What one import shares: the ROM, its archive and DB, each code-segment table read once on first use, and the
-/// staging folder the records and assets are written to. The importers of each family (<see cref="BaseImporter"/>
+/// staging folder the records and assets are written to. The importers of each family (<see cref="RomImporter"/>
 /// runs them) build from this and write through it. The tables are read on the importing thread, before any
 /// parallel work that uses them.
 /// </summary>

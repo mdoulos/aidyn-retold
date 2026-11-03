@@ -121,7 +121,7 @@ public sealed record ItemRecord(
     PotionUse? Use = null);
 
 /// <summary>
-/// How a potion is used (ADR 0021). The base game's potions are drunk anywhere but Stealth, which C-up's menu leaves out
+/// How a potion is used (ADR 0021). The original game's potions are drunk anywhere but Stealth, which C-up's menu leaves out
 /// (<c>CombatMenu.ListPotions</c>, <c>0x80088190</c>, skips kind 16), and the four flasks are thrown.
 /// </summary>
 [Flags]
@@ -287,7 +287,7 @@ public sealed record LootDrop(RecordId? Item, int Chance, int Min = 1, int Max =
 /// </param>
 public sealed record ShopRecord(RecordId Id, RecordId Shopkeeper, [property: KeyedList(nameof(ShopStock.Item))] IReadOnlyList<ShopStock> Stock);
 
-/// <param name="PriceMultiplier">One of ×0.5, ×0.75, ×1, ×1.25, ×1.5, ×2, ×3 and ×5 in the base game.</param>
+/// <param name="PriceMultiplier">One of ×0.5, ×0.75, ×1, ×1.25, ×1.5, ×2, ×3 and ×5 in the original game.</param>
 public sealed record ShopStock(RecordId Item, float PriceMultiplier = 1);
 
 /// <summary>

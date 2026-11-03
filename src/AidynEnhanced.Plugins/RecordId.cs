@@ -10,8 +10,8 @@ namespace AidynEnhanced.Plugins;
 /// </summary>
 public readonly record struct RecordId
 {
-    /// <summary>The base game's namespace, which only the importer writes.</summary>
-    public const string BaseNamespace = "aidyn";
+    /// <summary>The original game's namespace, which only the importer writes.</summary>
+    public const string RomNamespace = "aidyn";
 
     private RecordId(string ns, string type, string key)
     {
@@ -60,7 +60,7 @@ public readonly record struct RecordId
             ArgumentOutOfRangeException.ThrowIfNegative(n);
             key += "/" + n.ToString(CultureInfo.InvariantCulture);
         }
-        return new RecordId(BaseNamespace, type, key);
+        return new RecordId(RomNamespace, type, key);
     }
 
     private static string Spelling(KeyKind kind) => kind switch
@@ -120,7 +120,7 @@ public readonly record struct RecordId
         if (segments.Length != (nested ? 2 : 1))
             return nested ? $"a {info.Name} key is its parent's key then its index" : $"a {info.Name} key is one segment";
         var first = segments[0];
-        if (ns != BaseNamespace)
+        if (ns != RomNamespace)
         {
             if (!IsName(first))
                 return "a mod's key is [a-z0-9_]+";

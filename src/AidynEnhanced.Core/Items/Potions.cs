@@ -25,7 +25,7 @@ public enum DrinkResult
 /// </summary>
 public static class Potions
 {
-    /// <summary>How long the base game's stat and skill potions last: 3 hours of game time (<c>HOURS(3)</c>).</summary>
+    /// <summary>How long the original game's stat and skill potions last: 3 hours of game time (<c>HOURS(3)</c>).</summary>
     public const uint Duration = 3 * GameClock.Hour;
 
     /// <summary>
@@ -73,7 +73,7 @@ public static class Potions
     /// <summary>
     /// A member drinks a potion from the party's inventory (<c>Entity::UsePotion</c>, and in a battle <c>Combatant.DrinkPotion</c>,
     /// <c>0x80064C84</c>), if <see cref="CanDrink"/> allows: its effects land on the member, in order, at <see cref="Margin"/>
-    /// (<see cref="EffectLanding"/>), any damage among them rolled as that many d6; then one is used up. The base game's Healing heals
+    /// (<see cref="EffectLanding"/>), any damage among them rolled as that many d6; then one is used up. The original game's Healing heals
     /// 15–25% of the maximum hit points and Curing 40–60%; the Stamina potion ends Exhaustion and restores Stamina to its base; the
     /// Antidote ends poison and Restore the weakening spells; the rest work for <see cref="Duration"/>.
     /// </summary>

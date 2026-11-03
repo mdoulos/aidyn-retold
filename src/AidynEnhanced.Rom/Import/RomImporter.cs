@@ -4,9 +4,9 @@ using AidynEnhanced.Plugins.Records;
 namespace AidynEnhanced.Rom.Import;
 
 /// <summary>
-/// Turns a ROM into <c>aidyn.base</c> (ADR 0001): records under <c>records/</c> and converted assets
+/// Turns a ROM into <c>aidyn.rom</c> (ADR 0001): records under <c>records/</c> and converted assets
 /// under <c>assets/aidyn/</c>, keyed by record ID. The output is deterministic: the same ROM and
-/// <see cref="BasePlugin.ImporterVersion"/> always give the same bytes.
+/// <see cref="RomPlugin.ImporterVersion"/> always give the same bytes.
 /// </summary>
 /// <remarks>
 /// The families of records each have an importer, which builds them from what an <see cref="ImportContext"/>
@@ -15,13 +15,14 @@ namespace AidynEnhanced.Rom.Import;
 /// <see cref="TextImporter"/>, <see cref="DialogueImporter"/>, <see cref="CinematicImporter"/>,
 /// <see cref="TriggerImporter"/>, <see cref="MapImporter"/>, <see cref="GraphicsImporter"/> and <see cref="AudioImporter"/>.
 /// </remarks>
-public static class BaseImporter
+public static class RomImporter
 {
     /// <summary>
     /// Imports <paramref name="rom"/> into <paramref name="directory"/>, replacing what's there, with the player's choices
     /// (<see cref="ImportOptions.Default"/> if none), which the manifest records. It writes to a sibling folder first, so a failed
     /// import leaves the old one in place, and deletes it on a failure; one killed partway is left for the next import to
-    /// clear, and loading skips it (<see cref="BasePlugin.IsImportWork"/>).
+    /// clear, and loading skips it (<see cref="RomPlugin.IsImportWork"/>). An import into <see cref="RomPlugin.Folder"/> replaces one
+    /// left in <see cref="RomPlugin.OldFolder"/> beside it too.
     /// </summary>
     public static void Import(RomImage rom, string directory, IProgress<string>? progress = null, ImportOptions? options = null)
     {
@@ -30,8 +31,8 @@ public static class BaseImporter
         options ??= ImportOptions.Default;
 
         directory = Path.GetFullPath(directory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        var staging = directory + BasePlugin.StagingSuffix;
-        var replaced = directory + BasePlugin.ReplacedSuffix;
+        var staging = directory + RomPlugin.StagingSuffix;
+        var replaced = directory + RomPlugin.ReplacedSuffix;
         if (Directory.Exists(staging))
             Directory.Delete(staging, recursive: true);
         Directory.CreateDirectory(staging);
@@ -40,8 +41,8 @@ public static class BaseImporter
         {
             var context = new ImportContext(rom, staging, progress, options);
             context.WriteJson(PluginManifest.FileName, new PluginManifest(
-                RecordId.BaseNamespace, "Aidyn Chronicles: The First Mage", "1.0.0",
-                Import: new ImportInfo(BasePlugin.ImporterVersion, rom.Sha1, rom.Version.Name, options)));
+                RecordId.RomNamespace, "Aidyn Chronicles: The First Mage", "1.0.0",
+                Import: new ImportInfo(RomPlugin.ImporterVersion, rom.Sha1, rom.Version.Name, options)));
 
             WorldImporter.Import(context);
             CombatImporter.Import(context);
@@ -70,6 +71,9 @@ public static class BaseImporter
             Directory.Move(directory, replaced);
         Directory.Move(staging, directory);
         TryDelete(replaced);
+        if (string.Equals(Path.GetFileName(directory), RomPlugin.Folder, StringComparison.OrdinalIgnoreCase) &&
+            Path.GetDirectoryName(directory) is { } parent)
+            TryDelete(Path.Combine(parent, RomPlugin.OldFolder));
     }
 
     private static void TryDelete(string directory)

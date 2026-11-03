@@ -175,7 +175,7 @@ public sealed partial class PartyMenu : IPartyWindow
     /// <summary>
     /// The icon a slot of the silhouette shows for the member shown: what it wears, but in a battle the weapon's slot shows the flask
     /// or potion its combatant holds in hand (<c>DollEquipmentMenu::GetEntityItemId</c>'s weapon slot, <c>0x8003E66C</c>, which
-    /// gives the Fire Flask's icon, <c>0x1000</c>, for any held; the port gives the held one's own, the same in the base game).
+    /// gives the Fire Flask's icon, <c>0x1000</c>, for any held; the port gives the held one's own, the same in the original game).
     /// </summary>
     private RecordId? ShownIcon(EquipmentSlot slot) =>
         slot == EquipmentSlot.Weapon && Shown is { } member && Combat?.Held?.Invoke(member) is { } held ? ItemIcon(held)

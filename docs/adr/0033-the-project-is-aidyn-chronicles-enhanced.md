@@ -1,6 +1,6 @@
 # 0033. The project is Aidyn Chronicles Enhanced, its code `AidynEnhanced.*`, with a logo and an icon of its own
 
-Status: Accepted · Oct 28, 2026 · Partly supersedes [0030](0030-the-project-is-aidyn-renewed.md) (its names; the fork, its provenance and its rule on citations stand)
+Status: Accepted · Oct 28, 2026 · Partly supersedes [0030](0030-the-project-is-aidyn-renewed.md) (its names; the fork, its provenance and its rule on citations stand) · `aidyn.base` is renamed `aidyn.rom` by [0037](0037-the-rom-plugin-base-plugins-and-mods.md)
 
 ## Context
 

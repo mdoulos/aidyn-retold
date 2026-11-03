@@ -9,7 +9,7 @@ namespace AidynEnhanced.Rom.Tests;
 public sealed class QuestIndexImportTests(Na10Import fixture)
 {
     [Fact]
-    public void TheBasePluginsFlagsAreUsedByScriptsJournalAndMaps()
+    public void TheRomPluginsFlagsAreUsedByScriptsJournalAndMaps()
     {
         var plugins = fixture.Data.Set;
         var index = fixture.Data.Index;

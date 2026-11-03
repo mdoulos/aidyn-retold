@@ -12,7 +12,7 @@ namespace AidynEnhanced.Plugins;
 public sealed record CatalogEntry(RecordId Id, bool HasRecord, IReadOnlyList<AssetFile> Assets, string Summary)
 {
     /// <summary>The Borg a base-game record or asset was imported from, for those keyed by archive index.</summary>
-    public int? Borg => Id.Namespace == RecordId.BaseNamespace && RecordTypes.Info(Id.Type).Key == KeyKind.Borg
+    public int? Borg => Id.Namespace == RecordId.RomNamespace && RecordTypes.Info(Id.Type).Key == KeyKind.Borg
         ? int.Parse(Id.Key.AsSpan(2, 4), NumberStyles.HexNumber, CultureInfo.InvariantCulture)
         : null;
 
@@ -53,7 +53,7 @@ public sealed class PluginCatalog
     /// <summary>The records that name <paramref name="id"/>, whether or not it exists.</summary>
     public IReadOnlyList<RecordReference> ReferencesTo(RecordId id) => _references.GetValueOrDefault(id) ?? [];
 
-    /// <summary>Reads every record and lists every asset. The base plugin takes a second or two.</summary>
+    /// <summary>Reads every record and lists every asset. The ROM plugin takes a second or two.</summary>
     public static PluginCatalog Build(PluginSet plugins)
     {
         var references = new Dictionary<RecordId, List<RecordReference>>();

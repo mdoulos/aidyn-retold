@@ -7,7 +7,7 @@ namespace AidynEnhanced.Core.Tests;
 
 public class WeatherTests
 {
-    /// <summary>The base game's rules, as the importer writes them.</summary>
+    /// <summary>The original game's rules, as the importer writes them.</summary>
     internal static readonly WeatherRecord Rules = new(RecordId.Decimal(RecordTypes.Weather, 0), [43, 48, 33, 25, 36, 40],
         KeepAtMost: 75, FallBelow: 70, IntensitySpread: 0.15f, FallFog: new WeatherRange(0.1f, 0.35f), Fog: new WeatherRange(0.1f, 0.75f),
         WindChance: 0.05f, WindTurn: 0.1f, WindRise: new WeatherRange(-0.004f, 0.001f), WindGust: 1.5f / 648, WindMaxSpeed: 150f / 648,

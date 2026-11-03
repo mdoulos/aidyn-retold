@@ -15,7 +15,7 @@ public class WeatherParticleTests
     private static readonly RecordId Streak = RecordId.Hex(RecordTypes.Texture, 2), Ripple = RecordId.Hex(RecordTypes.Texture, 12),
         Flake = RecordId.Hex(RecordTypes.Texture, 3);
 
-    /// <summary>The base game's rules, with rain and snow as the importer writes them.</summary>
+    /// <summary>The original game's rules, with rain and snow as the importer writes them.</summary>
     private static readonly WeatherRecord Rules = WeatherTests.Rules with
     {
         Rain = new PrecipitationLook(Streak, Ripple, new WeatherColor(0.546875f, 0.7421875f, 0.8203125f, 0.8f), true, 0.075, 0, 6, -4, 240, 0, 2),

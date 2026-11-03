@@ -128,11 +128,11 @@ public sealed class ValidationTests : IDisposable
     [Fact]
     public void LoadInstalledCheckedRefusesASetWithProblems()
     {
-        var baseDir = Path.Combine(_temp.Root, BasePlugin.Folder);
-        Directory.CreateDirectory(Path.Combine(baseDir, "records"));
-        File.WriteAllText(Path.Combine(baseDir, "plugin.json"),
-            $$"""{ "id": "aidyn", "name": "Base", "version": "1.0.0", "import": { "importer": {{BasePlugin.ImporterVersion}}, "rom": "x", "romVersion": "NA 1.0" } }""");
-        File.WriteAllText(Path.Combine(baseDir, "records", "maps.json"), Map);
+        var romDir = Path.Combine(_temp.Root, RomPlugin.Folder);
+        Directory.CreateDirectory(Path.Combine(romDir, "records"));
+        File.WriteAllText(Path.Combine(romDir, "plugin.json"),
+            $$"""{ "id": "aidyn", "name": "Base", "version": "1.0.0", "import": { "importer": {{RomPlugin.ImporterVersion}}, "rom": "x", "romVersion": "NA 1.0" } }""");
+        File.WriteAllText(Path.Combine(romDir, "records", "maps.json"), Map);
         Plugin("mymod", ["aidyn"], ("map.json", """{ "patch": "aidyn:map/0x0E87", "objects": [{ "index": 0, "radious": 3 }] }"""));
 
         var error = Assert.Throws<InvalidDataException>(() => PluginSet.LoadInstalledChecked(_temp.Root));

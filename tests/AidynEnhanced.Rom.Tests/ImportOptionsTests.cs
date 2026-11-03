@@ -64,15 +64,38 @@ public sealed class ImportOptionsTests : IDisposable
         Assert.Equal((RomVersionId.Na10, RomByteOrder.ByteSwapped), (opened.Version.Id, opened.OriginalByteOrder));
     }
 
-    /// <summary>A ROM hack that edits only 1.0's data tables, such as the stats of its entities, is imported as 1.0 (ADR 0031).</summary>
-    [Fact]
-    public void TheImportPageTakesADataEditOfNa10()
+    private static byte[] DataEditOfNa10()
     {
         var na10 = TestRoms.Get(RomVersionId.Na10);
         var edited = na10.Data.ToArray();
         edited[na10.Layout.DbTables[DbTable.Entities].Offset + 0x30] ^= 0xFF;
-        var opened = ImportableRom.Open(Write("edit.z64", edited));
-        Assert.Equal((RomVersionId.Na10, true), (opened.Version.Id, opened.Version.DataEdit));
+        return edited;
+    }
+
+    /// <summary>
+    /// A ROM hack that edits only 1.0's data tables, such as the stats of its entities, is still told as one (ADR 0031), but isn't
+    /// imported: the ROM plugin is 1.0's for every player (ADR 0038).
+    /// </summary>
+    [Fact]
+    public void TheImportPageRefusesADataEditOfNa10()
+    {
+        var e = Assert.Throws<InvalidDataException>(() => ImportableRom.Open(Write("edit.z64", DataEditOfNa10())));
+        Assert.Equal(
+            "This is a ROM hack of the North American 1.0 ROM: its game data has been edited. Aidyn Chronicles Enhanced needs the unmodified North American 1.0 ROM.",
+            e.Message);
+    }
+
+    [Fact]
+    public void TheImporterRefusesADataEditOfNa10()
+    {
+        var rom = RomImage.FromBytes(DataEditOfNa10());
+        Assert.True(rom.Version.DataEdit);
+        var directory = Path.Combine(_temp.Root, RomPlugin.Folder);
+
+        var e = Assert.Throws<InvalidDataException>(() => RomImporter.Import(rom, directory));
+        Assert.Contains($"Its SHA-1 is {rom.Sha1}", e.Message, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(directory));
+        Assert.False(Directory.Exists(directory + RomPlugin.StagingSuffix));
     }
 
     [Fact]

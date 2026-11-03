@@ -22,12 +22,15 @@ public static class RomImporter
     /// (<see cref="ImportOptions.Default"/> if none), which the manifest records. It writes to a sibling folder first, so a failed
     /// import leaves the old one in place, and deletes it on a failure; one killed partway is left for the next import to
     /// clear, and loading skips it (<see cref="RomPlugin.IsImportWork"/>). An import into <see cref="RomPlugin.Folder"/> replaces one
-    /// left in <see cref="RomPlugin.OldFolder"/> beside it too.
+    /// left in <see cref="RomPlugin.OldFolder"/> beside it too. A data edit of 1.0 is refused (ADR 0038): the ROM plugin is the original's
+    /// content as 1.0 has it, and changes to it are base plugins.
     /// </summary>
     public static void Import(RomImage rom, string directory, IProgress<string>? progress = null, ImportOptions? options = null)
     {
         if (rom.Version.ResearchOnly)
             throw new UnsupportedRomException(rom.Sha1, rom.Header);
+        if (rom.Version.DataEdit)
+            throw new InvalidDataException($"{ImportableRom.EditedRom} (Its SHA-1 is {rom.Sha1}; NA 1.0's is {RomVersions.Na10.Sha1}.)");
         options ??= ImportOptions.Default;
 
         directory = Path.GetFullPath(directory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);

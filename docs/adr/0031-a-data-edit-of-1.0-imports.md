@@ -1,6 +1,6 @@
 # 0031. A data edit of NA 1.0 imports as 1.0
 
-Status: Accepted · Oct 27, 2026 · Supersedes part of [0007](0007-rom-versions.md) (refusing every ROM hack)
+Status: Accepted · Oct 27, 2026 · Supersedes part of [0007](0007-rom-versions.md) (refusing every ROM hack) · Its import of a data edit is superseded by [0038](0038-only-the-unmodified-1.0-rom-imports.md), which refuses one
 
 ## Context
 

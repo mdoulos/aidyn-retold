@@ -11,10 +11,9 @@ The goal is a largely console-accurate version of the game, with a set of
 optional enhancements, and a comprehensive mod editor, similar to something
 like OpenMW-CS.
 
-No game content is included. You must bring your own copy of the US 1.0 ROM.
-A ROM hack of 1.0 that edits only the game's data, such as its stats, items and
-shops, imports too: the Action Edition is one
-([ADR 0031](docs/adr/0031-a-data-edit-of-1.0-imports.md)).
+No game content is included. You must bring your own copy of the US 1.0 ROM,
+unmodified: a ROM hack isn't imported, so the game is the same for everyone
+([ADR 0038](docs/adr/0038-only-the-unmodified-1.0-rom-imports.md)).
 Not affiliated with H2O Entertainment or THQ; Aidyn Chronicles is their
 trademark.
 

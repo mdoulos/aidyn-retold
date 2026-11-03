@@ -66,7 +66,7 @@ A new table is one row: its length, 1.0's offset and the debug ROM's. 1.1 needs 
 
 ## Data edits of 1.0
 
-A ROM hack that changed only bytes inside the tables 1.0's layout places, the DB block's databases and string tables and the code segment's tables, imports as NA 1.0 under its own hash ([ADR 0031](../adr/0031-a-data-edit-of-1.0-imports.md)). `RomVersions.FindDataEdit` tells one by its **frame**: the SHA-1 of the image with the header's two checksums (`0x10`–`0x17`) and every placed table zeroed. 1.0's frame is `bfffd55d661378dc94133f1e263e04be0fc05d69` (`RomVersions.Na10Frame`), and a data edit's is the same.
+A ROM hack that changed only bytes inside the tables 1.0's layout places, the DB block's databases and string tables and the code segment's tables, is told as NA 1.0 under its own hash ([ADR 0031](../adr/0031-a-data-edit-of-1.0-imports.md)). The importer refuses one, so the ROM plugin is 1.0's for every player ([ADR 0038](../adr/0038-only-the-unmodified-1.0-rom-imports.md)), but the CLI's dumps read it, to compare its tables with 1.0's when its changes are made as base plugins. `RomVersions.FindDataEdit` tells one by its **frame**: the SHA-1 of the image with the header's two checksums (`0x10`–`0x17`) and every placed table zeroed. 1.0's frame is `bfffd55d661378dc94133f1e263e04be0fc05d69` (`RomVersions.Na10Frame`), and a data edit's is the same.
 
 The 26 hacks of 1.0 the project's owner made, the Action Edition and the Doulos Edit, are all data edits. The Action Edition of Feb 7, 2026 (SHA-1 `4bbb9fcd…262e`) differs from 1.0 in these tables and nowhere else but the checksums:
 
@@ -84,7 +84,7 @@ The 26 hacks of 1.0 the project's owner made, the Action Edition and the Doulos 
 | Weapon training costs (code) | 6 |
 | Stat training costs (code) | 5 |
 
-It moves weapons between positions as well as changing their numbers: position 53, the Bow of Accuracy in 1.0, is the Poisoned Bow. The original's code keys a flying weapon's speed by its position, so the importer's checks of a fact's name against 1.0's data apply to 1.0 alone.
+It moves weapons between positions as well as changing their numbers: position 53, the Bow of Accuracy in 1.0, is the Poisoned Bow. The original's code keys a flying weapon's speed by its position, and the ROM plugin's combat record names the weapon at each (`missiles`), so a base plugin that brings the Poisoned Bow across patches that list as well as the weapon.
 
 ## The Borg archive
 

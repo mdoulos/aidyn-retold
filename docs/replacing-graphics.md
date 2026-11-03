@@ -11,7 +11,6 @@ To change a graphic, you don't edit the ROM plugin. You make a **mod**: a second
 This keeps your work safe and separate:
 
 - Importing the ROM again replaces the ROM plugin, but leaves your mods alone.
-- Switching to another ROM, such as the Action Edition, keeps your mods too.
 - Deleting a mod's folder turns it off.
 
 ## What you can replace today

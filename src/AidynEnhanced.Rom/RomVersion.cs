@@ -50,7 +50,8 @@ public sealed record RomVersion(RomVersionId Id, string Name, string Sha1, bool 
 {
     /// <summary>
     /// Whether this is a data edit of the version <see cref="RomVersion.Id"/> names (<see cref="RomVersions.FindDataEdit"/>): a ROM hack
-    /// that changed only bytes of the tables <see cref="RomVersion.Layout"/> places, so it's that version under its own name and hash (ADR 0031).
+    /// that changed only bytes of the tables <see cref="RomVersion.Layout"/> places, so it reads as that version under its own name and hash
+    /// (ADR 0031). The importer refuses one (ADR 0038); the CLI's dumps read it.
     /// </summary>
     public bool DataEdit { get; init; }
 }
@@ -247,9 +248,9 @@ public static class RomVersions
 
     /// <summary>
     /// The version <paramref name="image"/> is a data edit of, if it's one (ADR 0031): NA 1.0 under its own name and hash, with
-    /// 1.0's layout, when every byte but the header's checksums and the tables NA 1.0's layout places is NA 1.0's. Those tables
-    /// are what the importer reads the records from, so what an edit changed in them is imported; every other byte, the code
-    /// and the Borg archive among them, is the game the port reimplements. Null for anything else, NA 1.0 itself included.
+    /// 1.0's layout, when every byte but the header's checksums and the tables NA 1.0's layout places is NA 1.0's: the code and the
+    /// Borg archive among them. The importer refuses it, so the ROM plugin is 1.0's for every player (ADR 0038), but the CLI's dumps
+    /// read its tables, to compare them with 1.0's. Null for anything else, NA 1.0 itself included.
     /// </summary>
     public static RomVersion? FindDataEdit(ReadOnlySpan<byte> image, string sha1) =>
         !string.Equals(sha1, Na10.Sha1, StringComparison.OrdinalIgnoreCase) && FrameSha1(image, Na10.Layout) == Na10Frame

@@ -42,12 +42,12 @@ public sealed class CombatImportTests(Na10Import fixture)
     };
 
     /// <summary>
-    /// The original keys a flying weapon's speed by its position in the weapon DB, so in a data edit that puts another weapon at a bow's
-    /// position, that weapon flies as the bow did (ADR 0031): here 1.0 with the Bow of Accuracy, position 53, renamed, as the Action
-    /// Edition replaces it with the Poisoned Bow. In 1.0 the name is checked, which catches a misread position.
+    /// The original keys a flying weapon's speed by its position in the weapon DB, and the importer checks the weapon there is the one
+    /// the fact names, which catches a misread position: here 1.0 with the Bow of Accuracy, position 53, renamed, as the Action
+    /// Edition replaces it with the Poisoned Bow.
     /// </summary>
     [Fact]
-    public void ADataEditsWeaponAtABowsPositionFliesAsThatBow()
+    public void AnotherWeaponAtABowsPositionIsCaught()
     {
         var na10 = TestRoms.Get(RomVersionId.Na10);
         var bytes = na10.Data.ToArray();
@@ -56,15 +56,12 @@ public sealed class CombatImportTests(Na10Import fixture)
         "Renamed Bow\0\0\0\0\0"u8.CopyTo(bytes.AsSpan(at));
 
         var rom = RomImage.FromBytes(bytes);
-        Assert.True(rom.Version.DataEdit);
         var db = GameDb.Read(rom);
         Assert.Equal("Renamed Bow", db.Weapons[53].Name);
-        CombatRecord Build(bool checkNames) => CombatImporter.BuildCombat(EngineTables.Read(rom), db, ItemTables.Read(rom),
-            rom.Table(CodeTable.BowKindWeapons), rom.Table(CodeTable.ThrownKindWeapons), CombatImporter.ReadText(rom, db), checkNames);
 
-        Assert.Equal("Weapon position 53 is Renamed Bow, not Bow of Accuracy.", Assert.Throws<InvalidDataException>(() => Build(true)).Message);
-        var missile = Assert.Single(Build(false).Missiles!, m => m.Weapon == Weapon(db.Weapons[53].Id.Value));
-        Assert.Equal((Arrow, 9.9f), (missile.Scene, missile.Speed));
+        var e = Assert.Throws<InvalidDataException>(() => CombatImporter.BuildCombat(EngineTables.Read(rom), db, ItemTables.Read(rom),
+            rom.Table(CodeTable.BowKindWeapons), rom.Table(CodeTable.ThrownKindWeapons), CombatImporter.ReadText(rom, db)));
+        Assert.Equal("Weapon position 53 is Renamed Bow, not Bow of Accuracy.", e.Message);
     }
 
     [Fact]

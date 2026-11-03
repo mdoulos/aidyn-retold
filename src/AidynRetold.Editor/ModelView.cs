@@ -208,6 +208,9 @@ public partial class ModelView : VBoxContainer
 
     public void SetWireframe(bool on) => _wireframe.ButtonPressed = on;
 
+    /// <summary>Shows an actor's states as a graph rather than a table (<c>--states graph</c>).</summary>
+    public void ShowStatesAsGraph(bool graph) => _actorPanel.ShowAsGraph(graph);
+
     public void SetSceneCamera(bool on) => _sceneCamera.ButtonPressed = on;
 
     public void Clear()

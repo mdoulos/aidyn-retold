@@ -100,6 +100,8 @@ public partial class Editor : Control
             _records.PressPartyTab(presses.Split(','));
         if (args.TryGetValue("drive", out var request))
             _records.Model.Drive(int.Parse(request, CultureInfo.InvariantCulture));
+        if (args.GetValueOrDefault("states") == "graph")
+            _records.Model.ShowStatesAsGraph(true);
         if (args.TryGetValue("open", out var sections))
             _records.Inspector?.OpenOnly(sections.Split(','));
         if (args.TryGetValue("part", out var part))

@@ -57,7 +57,9 @@ public partial class ActorPanel : VBoxContainer
             if (!_selecting && _states.GetSelected() is { } row)
                 StateClicked?.Invoke(row.GetMetadata(0).AsInt32());
         };
+        AddChild(ViewBar());
         AddChild(_states);
+        AddChild(_graph);
 
         _drive.Toggled += on => DriveChanged?.Invoke(on);
         _request.ItemSelected += _ => RequestChanged?.Invoke(Request);
@@ -113,11 +115,20 @@ public partial class ActorPanel : VBoxContainer
                      .Append(0).Distinct().Order())
             _request.AddItem(RequestName(r), r);
         _request.Select(0);
+        KeepForGraph(actor, length);
+    }
+
+    /// <summary>Shows the states as a graph rather than a table, or back (<c>--states graph</c>).</summary>
+    public void ShowAsGraph(bool graph)
+    {
+        (graph ? _graphButton : _tableButton).ButtonPressed = true;
+        ShowGraph(graph);
     }
 
     /// <summary>Highlights a state.</summary>
     public void Mark(int state)
     {
+        MarkCard(state);
         if (state < 0 || state >= _rows.Count || _states.GetSelected() == _rows[state])
             return;
         _selecting = true;

@@ -73,23 +73,39 @@ public sealed partial class Combatant
         Drawn = Action == CombatAction.Flask
             ? Potion is { } potion && Items.Potions.IsFlask(potion)
             : Sheet.Equipment.Weapon?.Item.Weapon is { } held && rules?.Missiles?.Any(m => m.Weapon == held.Id) == true;
-        _held[HandSlot] = _held[ArmSlot] = null;
+        var shield = Sheet.Record.ShieldSkill is null ? null : Sheet.Equipment.Shield?.Item.Armor?.Model;
+        var weapon = Action is CombatAction.None or CombatAction.Flask ? null : Sheet.Equipment.Weapon?.Item.Weapon;
+        var (hand, arm, handLocator) = Holding(Entity, weapon, shield, rules, Action == CombatAction.Flask ? Battle.FlaskScene : null);
+        _held[HandSlot] = hand;
+        _held[ArmSlot] = arm;
+        HandLocator = handLocator;
+    }
+
+    /// <summary>
+    /// What a body holds in its hand and its arm (<see cref="EquipVisuals"/>'s choice, which the editor shows too): the arm holds
+    /// <paramref name="shield"/>'s model at locator 2; a bow holds its arrow in the hand and the bow in the arm in its place, at
+    /// locators 0 and 1, or 1 and 0 for <see cref="CombatRecord.OtherHand"/>; any other weapon holds its own model in the hand, none for
+    /// a bite or a claw; a flask in hand holds <paramref name="flask"/>; and the hand holds nothing for
+    /// <see cref="CombatRecord.UndrawnWeapons"/>, whose models have their weapons.
+    /// </summary>
+    /// <param name="weapon">The weapon drawn, or null for none: no action, or no weapon.</param>
+    /// <param name="shield">The shield's model, or null for none, or for an entity that can never learn the shield skill.</param>
+    /// <param name="flask">The flask's scene, while one is in hand, which takes the weapon's place.</param>
+    public static (HeldModel? Hand, HeldModel? Arm, int HandLocator) Holding(RecordId entity, WeaponRecord? weapon, RecordId? shield, CombatRecord? rules,
+        RecordId? flask = null)
+    {
         var handLocator = DefaultLocators[HandSlot];
         var armLocator = DefaultLocators[ArmSlot];
-        var arm = Sheet.Record.ShieldSkill is null ? null : Sheet.Equipment.Shield?.Item.Armor?.Model;
-        RecordId? hand = null;
-        if (Action == CombatAction.Flask)
-        {
-            hand = Battle.FlaskScene;
-        }
-        else if (Action != CombatAction.None && Sheet.Equipment.Weapon?.Item.Weapon is { } weapon)
+        var arm = shield;
+        var hand = flask;
+        if (flask is null && weapon is not null)
         {
             // Combatant.WeaponIsBowKind (0x80066908): the weapons that fly as the arrow.
             if (rules?.Missiles?.FirstOrDefault(m => m.Weapon == weapon.Id) is { Scene: { } arrow })
             {
                 hand = arrow;
                 arm = weapon.Model;
-                var other = rules.OtherHand?.Contains(Entity) == true;
+                var other = rules.OtherHand?.Contains(entity) == true;
                 armLocator = other ? 0 : 1;
                 handLocator = other ? 1 : 0;
             }
@@ -98,11 +114,8 @@ public sealed partial class Combatant
                 hand = weapon.Model;
             }
         }
-        if (arm is { } a)
-            _held[ArmSlot] = new HeldModel(a, armLocator);
-        if (hand is { } h && rules?.UndrawnWeapons?.Contains(Entity) != true)
-            _held[HandSlot] = new HeldModel(h, handLocator);
-        HandLocator = handLocator;
+        return (hand is { } h && rules?.UndrawnWeapons?.Contains(entity) != true ? new HeldModel(h, handLocator) : null,
+            arm is { } a ? new HeldModel(a, armLocator) : null, handLocator);
     }
 
     /// <summary>The arrow, flask or thrown weapon leaves the hand as it flies (<c>Combat.StartCastCamera</c>, <c>0x80023434</c>).</summary>

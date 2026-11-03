@@ -311,31 +311,8 @@ public abstract partial class BodyView : Node3D
         }
     }
 
-    /// <summary>
-    /// The node what's held at locator <paramref name="locator"/> hangs from: the body's actor's own, not its head's, whose scene hangs
-    /// from another locator. A plugin from before importer 51 has only the locator's node, which leaves out the locator model's rotation.
-    /// </summary>
-    private Node3D? Attachment(int locator)
-    {
-        if (Model is not { } model)
-            return null;
-        var nodes = Nodes.FindAll<Node3D>(model);
-        return Own(SceneNames.Attachment(locator)) ?? Own(SceneNames.Locator(locator));
-
-        Node3D? Own(string name) => nodes.FirstOrDefault(n => n.Name == name && LocatorsAbove(n, model) <= 1);
-    }
-
-    /// <summary>How many locators <paramref name="node"/> is or is under, up to <paramref name="root"/>: more than one is in a scene hung from another.</summary>
-    private static int LocatorsAbove(Node node, Node root)
-    {
-        var count = 0;
-        for (var n = node; n is not null && n != root; n = n.GetParent())
-        {
-            if (SceneNames.TryLocator(n.Name.ToString(), out _))
-                count++;
-        }
-        return count;
-    }
+    /// <summary>The node what's held at locator <paramref name="locator"/> hangs from (<see cref="Attachments.Find"/>), on the body's actor's own model.</summary>
+    private Node3D? Attachment(int locator) => Model is { } model ? Attachments.Find(model, locator) : null;
 
     /// <summary>
     /// Fades the body by its distance from the camera's aim (<c>PlayerShadowAlpha</c>), over trek's distance or

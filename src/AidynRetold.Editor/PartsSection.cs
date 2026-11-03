@@ -44,7 +44,7 @@ public partial class PartsSection : VBoxContainer
     }
 
     /// <summary>What to say after the section's title: how many parts and locators.</summary>
-    public string Summary => $"{_parts} parts, {_locators} locators";
+    public string Summary => $"{_parts} {(_parts == 1 ? "part" : "parts")}, {_locators} {(_locators == 1 ? "locator" : "locators")}";
 
     private int? Root => _ctx.View.Actor?.RootTransform;
 

@@ -87,6 +87,11 @@ public partial class ModelInspector : VBoxContainer
         Add("Textures", textures, textures.Summary);
         var parts = new PartsSection(_ctx);
         Add("Parts", parts, parts.Summary);
+        if (_ctx.View.Actor is { } dressed)
+        {
+            var held = new HeldSection(_ctx, dressed, Shown?.Entity);
+            Add("Outfits and held", held, held.Summary);
+        }
         if (Shown is { } wearer)
         {
             var alaron = wearer.Id == GameState.Alaron ? null : _ctx.Plugins.TryGet<EntityRecord>(GameState.Alaron)?.Body;

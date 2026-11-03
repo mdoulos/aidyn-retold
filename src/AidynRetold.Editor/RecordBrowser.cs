@@ -656,7 +656,7 @@ public partial class RecordBrowser : Control
             var animation = (string?)json["states"]?[initial]?["animation"] is { } a && RecordId.TryParse(a, out var animationId)
                 ? SceneNames.Animation(Convert.ToInt32(animationId.Key, 16))
                 : "";
-            var note = $"Scene {scene.Key}, in its initial state ({initial})." + (json["head"] is not null ? " Its head isn't drawn here yet." : "");
+            var note = $"Scene {scene.Key}, in its initial state ({initial}).";
             return (await File.ReadAllBytesAsync(path), animation, note);
         }
         if (MapFocus(plugins, id) is { } focus)

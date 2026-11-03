@@ -22,12 +22,10 @@ public partial class ModelView : VBoxContainer
     };
     private readonly OptionButton _animations = new() { TooltipText = "Animation" };
     private readonly Button _play = new() { Text = "Pause", CustomMinimumSize = new Vector2(64, 0), TooltipText = "Play or pause (space)" };
-    private readonly HSlider _time = new()
-    {
-        CustomMinimumSize = new Vector2(160, 0), SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ShrinkCenter, Step = 1,
-        TooltipText = "Scrub by the tick (comma and full stop step)",
-    };
+    /// <summary>The clip's ticks under the view, with what happens when, which scrubs (comma and full stop step).</summary>
+    private readonly Timeline _time = new() { TooltipText = "Scrub by the tick (comma and full stop step)" };
     private readonly Label _tick = new() { CustomMinimumSize = new Vector2(150, 0) };
+    private readonly HBoxContainer _legend = EditorStyle.Row(10);
     private readonly VSeparator _actorSeparator = new() { Visible = false };
     private readonly HSplitContainer _body = new() { SizeFlagsVertical = SizeFlags.ExpandFill };
     private readonly ScrollContainer _inspectorScroll = new()
@@ -75,8 +73,8 @@ public partial class ModelView : VBoxContainer
         var bar = EditorStyle.Row(6);
         bar.AddChild(_play);
         bar.AddChild(_animations);
-        bar.AddChild(_time);
         bar.AddChild(_tick);
+        bar.AddChild(EditorStyle.Spacer());
         bar.AddChild(_actorSeparator);
         _actorPanel.Bar.Visible = false;
         bar.AddChild(_actorPanel.Bar);
@@ -96,7 +94,21 @@ public partial class ModelView : VBoxContainer
         _frame.AddChild(_note);
         _frame.Resized += Layout;
         split.AddChild(_frame);
-        split.AddChild(_actorPanel);
+        // Under the view: the timeline and its legend, then the actor's states.
+        var under = new VBoxContainer();
+        under.AddThemeConstantOverride("separation", 2);
+        under.AddChild(_time);
+        foreach (var (kind, what) in new[] { (TimelineMarkKind.Footstep, "footstep"), (TimelineMarkKind.Sound, "sound"), (TimelineMarkKind.Emitter, "emitter starts"),
+                     (TimelineMarkKind.Strike, "blow lands") })
+        {
+            var key = EditorStyle.DimLabel($"▼ {what}", 12);
+            key.AddThemeColorOverride("font_color", Timeline.ColorOf(kind));
+            _legend.AddChild(key);
+        }
+        _legend.Visible = false;
+        under.AddChild(_legend);
+        under.AddChild(_actorPanel);
+        split.AddChild(under);
         _body.AddChild(split);
         Inspector.AddThemeConstantOverride("separation", 6);
         Inspector.SizeFlagsHorizontal = SizeFlags.ExpandFill;
@@ -124,7 +136,7 @@ public partial class ModelView : VBoxContainer
 
         _animations.ItemSelected += _ => PlaySelected();
         _play.Pressed += TogglePlay;
-        _time.ValueChanged += OnScrub;
+        _time.Scrubbed += OnScrub;
         _wireframe.Toggled += on => _viewport.DebugDraw = on ? Viewport.DebugDrawEnum.Wireframe : Viewport.DebugDrawEnum.Disabled;
         _sceneCamera.Toggled += _ => UseCamera();
         _emitters.Toggled += on => _markers.ForEach(m => m.Marker.Visible = on);
@@ -217,6 +229,10 @@ public partial class ModelView : VBoxContainer
         _animations.Visible = _play.Visible = _time.Visible = _tick.Visible = false;
         // Driving an actor locks the scrub (SetDrive), and the next actor's panel turns Drive off without saying so.
         _time.Editable = true;
+        _time.Marks = [];
+        _legend.Visible = false;
+        _markedState = -1;
+        Marks = null;
         _emitters.Visible = _sceneCamera.Visible = false;
         _actorPanel.Visible = _actorPanel.Bar.Visible = _actorSeparator.Visible = false;
         _note.Text = "";
@@ -312,7 +328,9 @@ public partial class ModelView : VBoxContainer
             return;
         _player.Play(name);
         _player.Seek(0, update: true);
-        _time.MaxValue = Ticks(name);
+        _time.Length = Ticks(name);
+        _markedState = -1;
+        RefreshMarks();
         UseShotPlanes(name);
         SetPlaying(true);
         ShowFrame();
@@ -371,19 +389,49 @@ public partial class ModelView : VBoxContainer
                 ActorAnimator.HoldRoot(_root, _pivot);
             _mirroring?.Update();
             tick = (int)Math.Round(_player.CurrentAnimationPosition * 60);
-            _time.SetValueNoSignal(tick);
+            if (_animator is null)
+                _time.Tick = Math.Min(tick + 1, _time.Length);
         }
         if (_animator is { Machine: var machine })
         {
             _tick.Text = $"state {machine.State} · {machine.Clock} / {machine.Length(machine.State)}";
             _actorPanel.Mark(machine.State);
+            _time.Length = machine.Length(machine.State);
+            _time.Tick = machine.Clock;
+            if (machine.State != _markedState)
+                RefreshMarks();
         }
         else if (_player is not null)
         {
-            _tick.Text = $"tick {tick + 1} / {(int)_time.MaxValue}";
+            _tick.Text = $"tick {tick + 1} / {_time.Length}";
             if (_actor is not null)
                 _actorPanel.Mark(_actor.States.ToList().FindIndex(s => ActorAnimator.AnimationName(s) == Selected()));
         }
+    }
+
+    /// <summary>
+    /// What happens when in a clip, for the timeline, given its animation's name and its length in ticks: the inspector's, which
+    /// knows who the model is shown as (<see cref="TimelineMarks"/>). Null for none.
+    /// </summary>
+    public Func<string, int, IReadOnlyList<TimelineMark>>? Marks { get; set; }
+
+    private int _markedState = -1;
+
+    /// <summary>The timeline's marks afresh, for the driven state's clip or the one picked.</summary>
+    public void RefreshMarks()
+    {
+        string? clip;
+        if (_animator is { Machine: var machine } && _actor is not null && machine.State < _actor.States.Count)
+        {
+            clip = ActorAnimator.AnimationName(_actor.States[machine.State]);
+            _markedState = machine.State;
+        }
+        else
+        {
+            clip = Selected();
+        }
+        _time.Marks = Marks is { } marks && clip is not null ? marks(clip, _time.Length) : [];
+        _legend.Visible = _time.Marks.Count > 0;
     }
 
     private void TogglePlay() => SetPlaying(!_playing);
@@ -394,12 +442,13 @@ public partial class ModelView : VBoxContainer
         _play.Text = playing ? "Pause" : "Play";
     }
 
-    private void OnScrub(double tick)
+    /// <summary>The timeline's tick counts from 1, as the label and the state machine's clock do.</summary>
+    private void OnScrub(int tick)
     {
         if (_player is null || _animator is not null)
             return;
         SetPlaying(false);
-        _player.Seek(tick / 60, update: true);
+        _player.Seek(Math.Max(tick - 1, 0) / 60.0, update: true);
         ShowFrame();
     }
 
@@ -408,7 +457,7 @@ public partial class ModelView : VBoxContainer
         if (_player is null || _animator is not null)
             return;
         SetPlaying(false);
-        var tick = Math.Clamp(Math.Round(_player.CurrentAnimationPosition * 60) + by, 0, _time.MaxValue);
+        var tick = Math.Clamp(Math.Round(_player.CurrentAnimationPosition * 60) + by, 0, _time.Length);
         _player.Seek(tick / 60, update: true);
         ShowFrame();
     }

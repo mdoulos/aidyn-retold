@@ -74,6 +74,13 @@ public partial class ModelInspector : VBoxContainer
             _sections.RemoveChild(child);
             child.QueueFree();
         }
+        // The timeline's marks are the character's: its footsteps, its sounds and its strike.
+        if (_ctx.View.Actor is { } actor)
+        {
+            var shown = Shown;
+            _ctx.View.Marks = (clip, length) => TimelineMarks.For(_ctx.Plugins, actor, _ctx.Scene, shown, clip, length);
+            _ctx.View.RefreshMarks();
+        }
         var model = new ModelSection(_ctx);
         Add("Model", model, model.Summary);
         var textures = new TexturesSection(_ctx);

@@ -69,6 +69,7 @@ public sealed class PluginCatalog
         var assets = plugins.Assets().ToLookup(a => a.Id);
         var ids = plugins.Ids.Concat(assets.Select(g => g.Key)).ToHashSet();
         var placements = MapPlacements.For(plugins);
+        var whose = Whose(plugins);
         var entries = new Dictionary<RecordId, CatalogEntry>();
         foreach (var id in ids)
         {
@@ -77,7 +78,7 @@ public sealed class PluginCatalog
             string summary;
             try
             {
-                summary = Summary(id, json, files, placements, references.GetValueOrDefault(id)?.Count ?? 0);
+                summary = Summary(id, json, files, placements, references.GetValueOrDefault(id)?.Count ?? 0, whose.GetValueOrDefault(id));
             }
             catch (Exception e) when (e is InvalidOperationException or FormatException or IOException)
             {
@@ -87,6 +88,51 @@ public sealed class PluginCatalog
         }
         return new PluginCatalog(plugins, entries, references);
     }
+
+    /// <summary>
+    /// Who an actor or a model is, for its summary, so it can be found by name: an actor by the characters whose body it is (entities
+    /// and dialogue entities), a scene by the actors it's the model or head of, under their characters' names, and by the items
+    /// whose model it is. A name is given once, and after the first three the rest are counted.
+    /// </summary>
+    private static Dictionary<RecordId, string> Whose(PluginSet plugins)
+    {
+        static RecordId? Id(JsonNode? node) => (string?)node is { } s && RecordId.TryParse(s, out var id) ? id : null;
+        var wearers = new Dictionary<RecordId, List<string>>();
+        var models = new Dictionary<RecordId, List<string>>();
+        void Add(Dictionary<RecordId, List<string>> to, RecordId? key, string? name)
+        {
+            if (key is not { } k || string.IsNullOrWhiteSpace(name))
+                return;
+            if (!to.TryGetValue(k, out var list))
+                to[k] = list = [];
+            if (!list.Contains(name))
+                list.Add(name);
+        }
+        // Entities before dialogue entities, each by ID, so a name's place doesn't change from one load to the next.
+        foreach (var id in plugins.Ids.OrderBy(i => i.Type == RecordTypes.Entity ? 0 : 1).ThenBy(i => i.ToString(), StringComparer.Ordinal))
+        {
+            var json = plugins.GetJson(id)!;
+            switch (id.Type)
+            {
+                case RecordTypes.Entity or RecordTypes.DialogEntity:
+                    Add(wearers, Id(json["body"]?["actor"]), (string?)json["name"]);
+                    break;
+                case RecordTypes.Weapon or RecordTypes.Armor or RecordTypes.Item:
+                    Add(models, Id(json["model"]), (string?)json["name"]);
+                    break;
+            }
+        }
+        foreach (var id in plugins.Ids.Where(i => i.Type == RecordTypes.Actor))
+        {
+            var json = plugins.GetJson(id)!;
+            var who = wearers.TryGetValue(id, out var names) ? Names(names) : $"actor {id.Key}";
+            Add(models, Id(json["scene"]), who);
+            Add(models, Id(json["head"]?["scene"]), $"{who}'s head");
+        }
+        return wearers.Select(w => (w.Key, Names(w.Value))).Concat(models.Select(m => (m.Key, Names(m.Value)))).ToDictionary(p => p.Key, p => p.Item2);
+    }
+
+    private static string Names(List<string> names) => names.Count <= 3 ? string.Join(", ", names) : $"{string.Join(", ", names.Take(3))} and {names.Count - 3} more";
 
     private static void FindReferences(RecordId from, string path, JsonNode? node, Dictionary<RecordId, List<RecordReference>> references)
     {
@@ -137,9 +183,12 @@ public sealed class PluginCatalog
         return $"{Describe(MapRecord.Find(Plugins, voxel))}, in {where}";
     }
 
-    private static string Summary(RecordId id, JsonObject? json, List<AssetFile> files, MapPlacements placements, int usedBy)
+    /// <param name="whose">Who the actor or model is (<see cref="Whose"/>), which leads its summary.</param>
+    private static string Summary(RecordId id, JsonObject? json, List<AssetFile> files, MapPlacements placements, int usedBy, string? whose)
     {
         var parts = new List<string>();
+        if (whose is not null && id.Type is RecordTypes.Actor or RecordTypes.Scene)
+            parts.Add(whose);
         switch (id.Type)
         {
             case RecordTypes.MapSet when json is not null:
@@ -198,7 +247,7 @@ public sealed class PluginCatalog
         }
         if (files.FirstOrDefault(f => f.Extension == "png") is { } png && Assets.PngHeader.Size(png.Path) is var (w, h))
             parts.Add($"{w}×{h}");
-        if (json is null && parts.Count == 0)
+        if (json is null && (parts.Count == 0 || id.Type == RecordTypes.Scene))
             parts.Add(usedBy == 0 ? "used by nothing" : $"used by {Plural(usedBy, "record")}");
         return string.Join(", ", parts);
     }

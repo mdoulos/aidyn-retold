@@ -304,6 +304,45 @@ public sealed class PluginSetTests : IDisposable
         Assert.Equal("objects[0].visible.flag", Assert.Single(catalog.ReferencesTo(RecordId.Parse("aidyn:flag/5"))).Path);
     }
 
+    /// <summary>
+    /// An actor is summed up by the characters whose body it is, and a model by the actors it's the scene or head of, under their
+    /// characters' names, and by the items whose model it is, so the editor's search finds them by name.
+    /// </summary>
+    [Fact]
+    public void ActorsAndModelsAreNamedByWhoWearsThem()
+    {
+        using var temp = new TempPlugins();
+        var dir = temp.Add("aidyn", null,
+            ("entities.json", """
+                [{ "id": "aidyn:entity/0x0243", "name": "Brenna", "body": { "actor": "aidyn:actor/0x29E3" } },
+                 { "id": "aidyn:entity/0x0201", "name": "Goblin", "body": { "actor": "aidyn:actor/0x1000" } },
+                 { "id": "aidyn:entity/0x0202", "name": "Goblin", "body": { "actor": "aidyn:actor/0x1000" } },
+                 { "id": "aidyn:entity/0x0203", "name": "Goblin Chief", "body": { "actor": "aidyn:actor/0x1000" } }]
+                """),
+            ("dialogentities.json", """[{ "id": "aidyn:dialogentity/0x1400", "name": "Amann", "body": { "actor": "aidyn:actor/0x1000" } }]"""),
+            ("actors.json", """
+                [{ "id": "aidyn:actor/0x29E3", "scene": "aidyn:scene/0x29C8", "states": [{}, {}] },
+                 { "id": "aidyn:actor/0x1000", "scene": "aidyn:scene/0x1001", "states": [{}], "head": { "scene": "aidyn:scene/0x1002", "locator": 3 } },
+                 { "id": "aidyn:actor/0x2000", "scene": "aidyn:scene/0x2001", "states": [] }]
+                """),
+            ("weapons.json", """[{ "id": "aidyn:weapon/0x0700", "name": "Short Sword", "model": "aidyn:scene/0x3000" }]"""));
+        // A scene is an asset alone, listed by its file.
+        Directory.CreateDirectory(Path.Combine(dir, "assets", "aidyn", "scene"));
+        foreach (var scene in new[] { "0x29C8", "0x1001", "0x1002", "0x2001", "0x3000" })
+            File.WriteAllBytes(Path.Combine(dir, "assets", "aidyn", "scene", scene + ".glb"), []);
+        var catalog = PluginCatalog.Build(PluginSet.Load([dir]));
+
+        string Summary(string id) => catalog.Find(RecordId.Parse(id))?.Summary ?? "";
+        Assert.Equal("Brenna, 2 states, scene 0x29C8", Summary("aidyn:actor/0x29E3"));
+        // A name once, dialogue entities after the entities.
+        Assert.Equal("Goblin, Goblin Chief, Amann, 1 state, scene 0x1001, head 0x1002", Summary("aidyn:actor/0x1000"));
+        Assert.Equal("0 states, scene 0x2001", Summary("aidyn:actor/0x2000"));
+        Assert.Equal("Brenna, used by 1 record", Summary("aidyn:scene/0x29C8"));
+        Assert.Equal("Goblin, Goblin Chief, Amann's head, used by 1 record", Summary("aidyn:scene/0x1002"));
+        Assert.Equal("actor 0x2000, used by 1 record", Summary("aidyn:scene/0x2001"));
+        Assert.Equal("Short Sword, used by 1 record", Summary("aidyn:scene/0x3000"));
+    }
+
     [Fact]
     public void TypedRecordsAreReadOnceAndHoldTheMerge()
     {

@@ -73,9 +73,25 @@ public partial class Game
         };
         if (controller is { } c)
             _controller = c;
+        // An action pressed for the press harness counts as a key's.
+        bool? pointing = e switch
+        {
+            InputEventMouseButton { Pressed: true } => true,
+            InputEventMouseMotion motion when motion.Relative.LengthSquared() > 4 => true,
+            InputEventKey { Pressed: true } or InputEventJoypadButton { Pressed: true } or InputEventAction { Pressed: true } => false,
+            InputEventJoypadMotion motion when Math.Abs(motion.AxisValue) > 0.5f => false,
+            _ => null,
+        };
+        if (pointing is { } p)
+            _pointing = p;
     }
 
+    /// <summary>Whether the player is using the mouse (<see cref="Core.Ui.IPauseMenuHost.Pointing"/>): their last input was the mouse.</summary>
+    private bool _pointing;
+
     bool Core.Ui.IPauseMenuHost.Controller => _controller;
+
+    bool Core.Ui.IPauseMenuHost.Pointing => _pointing;
 
     /// <summary>A button down or up over the world: held back, ending a drag, or a click let through.</summary>
     private void MouseDrag(CameraRig camera, InputEventMouseButton button)

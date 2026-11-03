@@ -488,7 +488,19 @@ public partial class PartyTabView : Control
         {
         }
         else if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.WheelUp or MouseButton.WheelDown } wheel)
-            Window.MoveCursor(wheel.ButtonIndex == MouseButton.WheelUp ? -1 : 1);
+        {
+            var by = wheel.ButtonIndex == MouseButton.WheelUp ? -1 : 1;
+            // The wheel scrolls the grid, the name's slip going to the cell now under the mouse; elsewhere it moves the cursor.
+            if (OwnTab && Menu.List == PartyList.Inventory && Menu.Grid)
+            {
+                Menu.ScrollGrid(by);
+                Hover(wheel.Position, select: false);
+            }
+            else
+            {
+                Window.MoveCursor(by);
+            }
+        }
         else
             return;
         QueueRedraw();
@@ -1555,7 +1567,7 @@ public partial class PartyTabView : Control
                 Small(text, x + grid.Cell - CellInset - count.ExactWidth(text), foot - count.Capitals / 2 - count.Middle, BarText,
                     BarShadow, count);
             }
-            if (i == list.Cursor && Menu.SelectedSlot is null)
+            if (i == list.Cursor && Menu.SelectedSlot is null && Menu.CursorShows)
                 Art(Selected, new Rect2(x - 1, y - 1, grid.Cell + 2, grid.Cell + 2));
         }
         ScrollBar(grid, list);
@@ -1600,7 +1612,8 @@ public partial class PartyTabView : Control
     /// <summary>
     /// The name of what the mouse is on, else of what's selected, on a slip over it: the member's aspect or school by its icon, in any
     /// window with no popup up; or on the tab itself, its lists still and no popup up, an item worn in a slot of the silhouette, or one in
-    /// the inventory grid's cells, the selected one the cursor's, moved by the stick or a click.
+    /// the inventory grid's cells. With the mouse in use only what it's on has one, the user's choice (Nov 3, 2026); with a key or a
+    /// controller the grid's is the cursor's (<see cref="PartyMenu.Pointing"/>).
     /// </summary>
     private void Tooltip()
     {
@@ -1613,12 +1626,13 @@ public partial class PartyTabView : Control
         if (!OwnTab || Menu.Slide is not null || Window.HasPopup || Menu.Crafting is not null)
             return;
         var grid = Menu.List == PartyList.Inventory && Menu.Grid;
-        if ((_hoveredSlot ?? Menu.SelectedSlot) is { } slot && Menu.Worn(slot) is { } worn)
+        var pointing = Menu.Pointing;
+        if ((pointing ? _hoveredSlot : _hoveredSlot ?? Menu.SelectedSlot) is { } slot && Menu.Worn(slot) is { } worn)
         {
             var rect = SlotRect(slot);
             NameSlip(worn.Item.Name, rect.Position.X + rect.Size.X / 2, rect.Position.Y - 1);
         }
-        else if (grid && (_hoveredCell ?? Menu.Inventory.Cursor) is var cell && Menu.Inventory.Rows.ElementAtOrDefault(cell) is { } row
+        else if (grid && (pointing ? _hoveredCell : Menu.Inventory.Cursor) is { } cell && Menu.Inventory.Rows.ElementAtOrDefault(cell) is { } row
             && cell >= Menu.Inventory.First && cell < Menu.Inventory.First + _gridLayout.Visible)
         {
             var (x, y) = _gridLayout.CellAt(cell - Menu.Inventory.First);

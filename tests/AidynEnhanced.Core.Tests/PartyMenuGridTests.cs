@@ -217,4 +217,71 @@ public class PartyMenuGridTests
         menu.OriginalLook = true;
         Assert.False(menu.OpenTip());
     }
+
+    /// <summary>The wheel scrolls a grid a line at a time, no further than shows its first line or its last, leaving the cursor where it is.</summary>
+    [Fact]
+    public void ScrollingMovesTheViewNotTheCursor()
+    {
+        var list = new MenuList<int>([.. Enumerable.Range(0, 30)], 16) { Columns = 8 };
+        list.ScrollLines(1);
+        Assert.Equal((8, 0), (list.First, list.Cursor));
+        list.ScrollLines(5);
+        Assert.Equal(16, list.First);
+        list.ScrollLines(-9);
+        Assert.Equal(0, list.First);
+    }
+
+    /// <summary>
+    /// With the mouse in use nothing on the grid is selected until a click selects a cell, the user's choice (Nov 3, 2026), and a
+    /// change of member lets the cell go; with a key or a controller the cursor always shows.
+    /// </summary>
+    [Fact]
+    public void WithTheMouseNothingIsSelectedUntilAClick()
+    {
+        var alaron = PotionData.Member("Alaron", 0, null);
+        var party = TradeData.PartyOf(ItemData.CatalogWith(TradeData.Rules(40), Things), null, alaron, PotionData.Member("Brenna", 1, null));
+        foreach (var thing in Things)
+            Assert.True(party.Inventory.Add(thing.Id));
+        var menu = new PartyMenu(party, new MenuText([]), _ => null, _ => null) { Grid = true };
+
+        Assert.True(menu.CursorShows);
+        menu.Pointing = true;
+        Assert.False(menu.CursorShows);
+        menu.Point(5);
+        Assert.True(menu.CursorShows);
+        menu.ChangeMember(1);
+        Assert.False(menu.CursorShows);
+    }
+
+    /// <summary>The first press on the hidden cursor from a key or a controller only shows it, where it is; the next moves it.</summary>
+    [Fact]
+    public void AKeyFirstShowsTheHiddenCursor()
+    {
+        var (menu, _) = Menu(showWorn: false);
+        menu.Pointing = true;
+
+        Assert.False(menu.ShowCursor(MenuAction.MemberLeft));
+        Assert.True(menu.ShowCursor(MenuAction.Accept));
+        Assert.True(menu.CursorShows);
+        Assert.Equal(0, menu.Inventory.Cursor);
+        Assert.False(menu.ShowCursor(MenuAction.Down));
+    }
+
+    /// <summary>The wheel scrolls the grid: the hidden cursor goes with the view, and one a click put on a cell stays on its item.</summary>
+    [Fact]
+    public void TheWheelScrollsTheGrid()
+    {
+        ItemRecord[] many = [.. Enumerable.Range(20, 84).Select(n => ItemData.NewItem(n))];
+        var party = TradeData.PartyOf(ItemData.CatalogWith(TradeData.Rules(128), many), null, PotionData.Member("Alaron", 0, null));
+        foreach (var thing in many)
+            Assert.True(party.Inventory.Add(thing.Id));
+        var menu = new PartyMenu(party, new MenuText([]), _ => null, _ => null) { Grid = true, Pointing = true };
+        var line = menu.Inventory.Columns;
+
+        menu.ScrollGrid(2);
+        Assert.Equal((2 * line, 2 * line), (menu.Inventory.First, menu.Inventory.Cursor));
+        menu.Point(2 * line + 1);
+        menu.ScrollGrid(1);
+        Assert.Equal((3 * line, 2 * line + 1), (menu.Inventory.First, menu.Inventory.Cursor));
+    }
 }

@@ -142,6 +142,8 @@ public partial class Game
                 var button = kind == "rclick" ? MouseButton.Right : MouseButton.Left;
                 GetTree().CreateTimer(at).Timeout += () =>
                 {
+                    // The mouse is in use, as a real one's moving says (NoteDevice).
+                    (_controller, _pointing) = (false, true);
                     foreach (var screen in GetTree().Root.FindChildren("*", "", true, false).OfType<UiScreen>())
                     {
                         if (!screen.IsVisibleInTree() || screen.MouseFilter == Control.MouseFilterEnum.Ignore)

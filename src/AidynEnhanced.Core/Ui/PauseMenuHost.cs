@@ -25,6 +25,12 @@ public interface IPauseMenuHost
     /// device does by it, as the Party tab's inventory showing what's worn (<see cref="Settings.WornInInventory"/>).
     /// </summary>
     bool Controller => false;
+
+    /// <summary>
+    /// Whether the player is using the mouse: their last input was the mouse moved or a mouse button, rather than a key or a controller.
+    /// With it, nothing on the Party tab's grid is selected until a click selects it (<see cref="PartyMenu.CursorShows"/>).
+    /// </summary>
+    bool Pointing => false;
 }
 
 /// <summary>A one-off the pause menu asks its host for.</summary>

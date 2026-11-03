@@ -91,6 +91,16 @@ public sealed class MenuList<TRow>
     }
 
     /// <summary>
+    /// Scrolls the view by lines, as a mouse's wheel does, no further than shows the first line or the last, leaving the cursor where it
+    /// is, in view or not, until it moves.
+    /// </summary>
+    public void ScrollLines(int by)
+    {
+        var rows = (_rows.Count + Columns - 1) / Columns * Columns;
+        First = Math.Clamp(First + by * Columns, 0, Math.Max(0, rows - _visible)) / Columns * Columns;
+    }
+
+    /// <summary>
     /// Replaces the rows, keeping the cursor and the scroll as a member change does: past the end, the
     /// cursor goes to the last row, or with <paramref name="resetPastEnd"/>, back to the top.
     /// </summary>

@@ -251,6 +251,7 @@ public sealed partial class PartyMenu : IPartyWindow
             return;
         var at = order.IndexOf(Member);
         SelectedSlot = null;
+        _clicked = false;
         StartMemberChange();
         Member = aim is { } slot && order.Contains(slot) ? slot : order[((at + by) % order.Count + order.Count) % order.Count];
         Refresh();
@@ -323,6 +324,49 @@ public sealed partial class PartyMenu : IPartyWindow
         }
     }
 
+    /// <summary>
+    /// Whether the player's last input was the mouse rather than a key or a controller (<see cref="IPauseMenuHost.Pointing"/>), which the
+    /// pause menu sets as it lays the tab out.
+    /// </summary>
+    public bool Pointing { get; set; }
+
+    /// <summary>Whether a click has put the grid's cursor on a cell since the member shown changed.</summary>
+    private bool _clicked;
+
+    /// <summary>
+    /// Whether the grid's cursor shows, its red square and its item's name: always with a key or a controller, which move it; with the
+    /// mouse only once a click has selected a cell, the user's choice (Nov 3, 2026), nothing being selected until then and the names
+    /// following the mouse.
+    /// </summary>
+    public bool CursorShows => !Pointing || _clicked;
+
+    /// <summary>
+    /// The first press on the grid's hidden cursor from a key or a controller, which only shows it, as the stick, A, C-down or C-up would
+    /// otherwise move from, or use, an item the player never saw selected. True if it was taken.
+    /// </summary>
+    public bool ShowCursor(MenuAction action)
+    {
+        if (CursorShows || List != PartyList.Inventory || !Grid || HasPopup || SelectedSlot is not null || Slide is not null
+            || action is not (MenuAction.Up or MenuAction.Down or MenuAction.Left or MenuAction.Right or MenuAction.Accept
+                or MenuAction.Details or MenuAction.Appraise))
+            return false;
+        Pointing = false;
+        return true;
+    }
+
+    /// <summary>
+    /// Scrolls the inventory's grid by lines, as the mouse's wheel does, rather than moving the cursor. A cursor a click put on a cell
+    /// stays on its item; a hidden one goes with the view, so a key shows it where the player's looking.
+    /// </summary>
+    public void ScrollGrid(int lines)
+    {
+        if (Message is not null || DetailsPane.Showing || HasPopup || List != PartyList.Inventory || !Grid)
+            return;
+        Inventory.ScrollLines(lines);
+        if (!_clicked)
+            Inventory.Point(Inventory.First);
+    }
+
     /// <summary>Puts the cursor of the popup, or of the list showing, on a row.</summary>
     public void Point(int row)
     {
@@ -337,7 +381,10 @@ public sealed partial class PartyMenu : IPartyWindow
         }
         switch (List)
         {
-            case PartyList.Inventory: Inventory.Point(row); break;
+            case PartyList.Inventory:
+                Inventory.Point(row);
+                _clicked |= Grid;
+                break;
             case PartyList.Stats: Stats.Point(row); break;
             case PartyList.Skills: Skills.Point(row); break;
             default: Spells.Point(row); break;

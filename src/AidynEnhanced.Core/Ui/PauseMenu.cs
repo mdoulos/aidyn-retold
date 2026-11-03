@@ -102,6 +102,7 @@ public sealed class PauseMenu
             party.Grid = !OriginalLook;
         party.ShowWorn = ShowsWorn;
         party.ToggleWorn = OriginalLook || _host.Controller ? null : ToggleWorn;
+        party.Pointing = _host.Pointing && !OriginalLook;
     }
 
     /// <summary>The grid's quick toggle: turns the setting for what's worn showing over, which the runtime keeps, and lays the tab again.</summary>
@@ -561,6 +562,8 @@ public sealed class PauseMenu
     /// </summary>
     private bool HandleParty(MenuAction action)
     {
+        if (Window is PartyMenu party && party.ShowCursor(action))
+            return true;
         var taken = Window.Press(action);
         if (Window.Closed)
             Close(PauseExit.Close);

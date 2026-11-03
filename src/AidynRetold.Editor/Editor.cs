@@ -100,6 +100,10 @@ public partial class Editor : Control
             _records.PressPartyTab(presses.Split(','));
         if (args.TryGetValue("drive", out var request))
             _records.Model.Drive(int.Parse(request, CultureInfo.InvariantCulture));
+        if (args.TryGetValue("open", out var sections))
+            _records.Inspector?.OpenOnly(sections.Split(','));
+        if (args.TryGetValue("part", out var part))
+            _records.Inspector?.Parts?.Select(part);
         _records.Model.SetWireframe(args.GetValueOrDefault("wireframe") == "1");
         _records.Model.SetSceneCamera(args.GetValueOrDefault("scene-camera") == "1");
         if (args.TryGetValue("collision", out var collision))

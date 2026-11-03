@@ -678,6 +678,9 @@ public partial class RecordBrowser : Control
         return Message(json is null ? "" : "No preview for this type. See the fields.");
     }
 
+    /// <summary>The model page's inspector, if a model's page is showing.</summary>
+    public ModelInspector? Inspector => _model.Inspector.GetChildren().OfType<ModelInspector>().FirstOrDefault();
+
     /// <summary>The model view's inspector, for an actor's or a scene's model; none for a map's collision or anything else.</summary>
     private void ShowInspector(PluginCatalog catalog, RecordId id, ActorRecord? actor)
     {

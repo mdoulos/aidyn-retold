@@ -38,6 +38,9 @@ public partial class Section : VBoxContainer
 
     public Control Content { get; }
 
+    /// <summary>Its title, without the fold's arrow.</summary>
+    public string Title => _name;
+
     /// <summary>The section was folded or unfolded.</summary>
     public event Action<bool>? Toggled;
 

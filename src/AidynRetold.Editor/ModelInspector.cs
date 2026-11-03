@@ -44,6 +44,16 @@ public partial class ModelInspector : VBoxContainer
         Build();
     }
 
+    /// <summary>The Parts section, for <c>--part</c>.</summary>
+    public PartsSection? Parts => _sections.GetChildren().OfType<Section>().Select(s => s.Content).OfType<PartsSection>().FirstOrDefault();
+
+    /// <summary>Opens the sections named, by their titles in any case, and folds the rest (<c>--open</c>).</summary>
+    public void OpenOnly(IReadOnlyCollection<string> names)
+    {
+        foreach (var section in _sections.GetChildren().OfType<Section>())
+            section.Open = names.Contains(section.Title, StringComparer.OrdinalIgnoreCase);
+    }
+
     /// <summary>The character the model is shown as, or null for a model no character wears.</summary>
     public Wearer? Shown => _wearers.Count == 0 ? null : _wearers[Math.Max(_shownAs.Selected, 0)];
 
@@ -68,6 +78,8 @@ public partial class ModelInspector : VBoxContainer
         Add("Model", model, model.Summary);
         var textures = new TexturesSection(_ctx);
         Add("Textures", textures, textures.Summary);
+        var parts = new PartsSection(_ctx);
+        Add("Parts", parts, parts.Summary);
         if (Shown is { } wearer)
         {
             var alaron = wearer.Id == GameState.Alaron ? null : _ctx.Plugins.TryGet<EntityRecord>(GameState.Alaron)?.Body;

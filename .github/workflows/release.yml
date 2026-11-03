@@ -63,9 +63,25 @@ jobs:
         with:
           path: .tools/godot
           key: godot-${{ runner.os }}-${{ hashFiles('tools/godot-pin.ps1') }}
+      # The base plugins (ADR 0039), from the owner's private repository: the repository variable
+      # BASE_PLUGINS_REPO names it (owner/name), BASE_PLUGINS_PATH the folder in it that holds
+      # them and their NOTICE.md (plugins if unset), and the secret BASE_PLUGINS_TOKEN reads it.
+      # Without the variable, the packages have none.
+      - name: Check out the base plugins
+        if: vars.BASE_PLUGINS_REPO != ''
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ vars.BASE_PLUGINS_REPO }}
+          token: ${{ secrets.BASE_PLUGINS_TOKEN }}
+          path: out/base-plugins-repo
+          lfs: true
       - name: Build the packages
         shell: pwsh
-        run: ./tools/package.ps1 -Version ${{ needs.number.outputs.version }}
+        env:
+          BASE_PLUGINS: ${{ vars.BASE_PLUGINS_REPO != '' && format('out/base-plugins-repo/{0}', vars.BASE_PLUGINS_PATH || 'plugins') || '' }}
+        run: |
+          $base = if ($env:BASE_PLUGINS) { @{ BasePlugins = $env:BASE_PLUGINS } } else { @{} }
+          ./tools/package.ps1 -Version ${{ needs.number.outputs.version }} @base
       - name: Keep Godot's logs
         if: failure()
         uses: actions/upload-artifact@v7

@@ -14,6 +14,16 @@ The plugins, the saves and `settings.json` live in the data folder (`DataPaths.R
 
 `AidynEnhanced.Plugins` doesn't know Godot, so the app folder is handed in: both Godot apps call `AppLauncher.UseAppFolder` (in `AidynEnhanced.Views`) from their main node's static constructor, before any field reads a path, and it calls `DataPaths.UseAppFolder` with the executable's folder only when exported (`OS.HasFeature("template")`) and not on macOS, whose app bundles have no portable mode. The CLI never calls it, nor do the apps run in development, so those go by steps 1 and 3. `DataPaths.Resolve` is the rule over its inputs, which `DataPathsTests` checks.
 
+### The base plugins
+
+The base plugins, the owner's own that ship with the remake ([ADR 0039](../adr/0039-base-plugins-ship-beside-the-apps.md)), are part of the install, not the data folder (`DataPaths.BasePlugins`):
+
+1. `AIDYN_ENHANCED_BASE_PLUGINS` if it's set. In development the owner points it at the base plugins in their private repository, and the game, the editor and the CLI load them from there.
+2. Else, exported, `plugins` beside the executables on Windows and Linux, and `Contents/Resources/plugins` in each app's bundle on macOS, which `AppLauncher.UseAppFolder` hands in (`DataPaths.UseBasePluginsFolder`), on macOS too.
+3. Else none: the CLI and the apps in development without the variable.
+
+`PluginSet.LoadInstalled` loads them after the ROM plugin and before the mods in the data folder's `plugins` ([plugins](plugins.md)). The packages put them there ([releases](releases.md#base-plugins)).
+
 ## With no import
 
 At startup, before anything loads, `Game` asks `RomPlugin.Diagnose` whether the ROM plugin is there and current. If it isn't, the game starts the editor with `--from-game 1` and quits, and the editor's import page imports and then offers **Play** ([editor](editor.md#the-import-page)). `AppLauncher.LaunchEditor` finds the editor beside the game: exported on Windows and Linux, `aidyn-enhanced-editor(.exe)` in the same folder; on macOS, `Aidyn Chronicles Enhanced Editor.app` beside `Aidyn Chronicles Enhanced.app`, through `open -n … --args`; in development, the same Godot binary with `--path` the repository's `src/AidynEnhanced.Editor`, found from `res://`. If it can't find or start it, or the run takes a screenshot, the game shows `Diagnose`'s words in its window as before, with a line saying to open the editor.

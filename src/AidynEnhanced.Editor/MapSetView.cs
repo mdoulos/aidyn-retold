@@ -1141,7 +1141,7 @@ public partial class MapSetView : VBoxContainer
             {
                 _modId = id.Text.Trim();
                 var pluginsDirectory = Path.GetDirectoryName(catalog.Plugins.Plugins[0].Directory.TrimEnd('/', '\\'))!;
-                var mod = ModFolder.OpenOrCreate(pluginsDirectory, _modId);
+                var mod = ModFolder.OpenOrCreate(pluginsDirectory, _modId, basePluginsDirectory: DataPaths.BasePlugins);
                 var report = Edits.Save(catalog.Plugins, mod);
                 SetStatus(summary: $"Saved to {mod.Directory}: {string.Join("; ", report)}");
                 UpdateSaveButton();

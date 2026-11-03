@@ -153,30 +153,44 @@ public sealed class PluginSet
     }
 
     /// <summary>
-    /// Loads the ROM plugin and every other plugin in <paramref name="pluginsDirectory"/>: the ROM plugin first, then the rest in
-    /// <see cref="LoadOrder"/>. A plugin's folder must be named for its ID, as the ID is also its namespace; only the ROM
-    /// plugin's, <see cref="RomPlugin.Folder"/>, differs (it holds <c>aidyn</c>). The folders an import works in are skipped
-    /// (<see cref="RomPlugin.IsImportWork"/>), and so is an import left in <see cref="RomPlugin.OldFolder"/>.
+    /// Loads the ROM plugin and every other plugin in <paramref name="pluginsDirectory"/>, the mods, with the base plugins in
+    /// <paramref name="basePluginsDirectory"/> between them (ADR 0039, <see cref="DataPaths.BasePlugins"/>): the ROM plugin first, then
+    /// the base plugins in <see cref="LoadOrder"/>, then the mods in theirs. A plugin's folder must be named for its ID, as the ID is
+    /// also its namespace; only the ROM plugin's, <see cref="RomPlugin.Folder"/>, differs (it holds <c>aidyn</c>). A mod can't have a
+    /// base plugin's ID. The folders an import works in are skipped (<see cref="RomPlugin.IsImportWork"/>), and so is an import left in
+    /// <see cref="RomPlugin.OldFolder"/>.
     /// </summary>
-    public static PluginSet LoadInstalled(string pluginsDirectory)
+    public static PluginSet LoadInstalled(string pluginsDirectory, string? basePluginsDirectory = null)
     {
         RomPlugin.MoveFromOldFolder(pluginsDirectory);
-        var romDir = Path.Combine(pluginsDirectory, RomPlugin.Folder);
-        var others = Directory.EnumerateDirectories(pluginsDirectory)
+        var romPlugin = Plugin.Open(Path.Combine(pluginsDirectory, RomPlugin.Folder));
+        var basePlugins = basePluginsDirectory is not null && Directory.Exists(basePluginsDirectory) ? InFolder(basePluginsDirectory) : [];
+        var mods = InFolder(pluginsDirectory);
+        foreach (var mod in mods)
+        {
+            if (basePlugins.Find(p => p.Manifest.Id == mod.Manifest.Id) is { } shipped)
+                throw new InvalidDataException($"The plugin {mod.Manifest.Id} is both a base plugin, in {shipped.Directory}, and a mod, in {mod.Directory}. Remove the mod's folder.");
+        }
+        return Load([romPlugin, .. LoadOrder(basePlugins, romPlugin.Manifest.Id), .. LoadOrder(mods, romPlugin.Manifest.Id)]);
+    }
+
+    /// <summary>The plugins in a folder's folders, each named for its ID, but the ROM plugin's and its import's.</summary>
+    private static List<Plugin> InFolder(string directory)
+    {
+        var plugins = Directory.EnumerateDirectories(directory)
             .Where(d => Path.GetFileName(d) is var name &&
                 !string.Equals(name, RomPlugin.Folder, StringComparison.OrdinalIgnoreCase) &&
                 !string.Equals(name, RomPlugin.OldFolder, StringComparison.OrdinalIgnoreCase) &&
                 !RomPlugin.IsImportWork(name) && File.Exists(Path.Combine(d, PluginManifest.FileName)))
             .Select(Plugin.Open)
             .ToList();
-        foreach (var plugin in others)
+        foreach (var plugin in plugins)
         {
             var folder = Path.GetFileName(plugin.Directory.TrimEnd('/', '\\'));
             if (!string.Equals(folder, plugin.Manifest.Id, StringComparison.Ordinal))
                 throw new InvalidDataException($"The plugin in folder \"{folder}\" says its ID is \"{plugin.Manifest.Id}\"; a plugin's folder must be named for its ID.");
         }
-        var romPlugin = Plugin.Open(romDir);
-        return Load([romPlugin, .. LoadOrder(others, romPlugin.Manifest.Id)]);
+        return plugins;
     }
 
     /// <summary>
@@ -186,10 +200,10 @@ public sealed class PluginSet
     /// be read. The runtime and the CLI load by it, so a mod's mistake stops the game with its name rather than being
     /// played around.
     /// </summary>
-    public static PluginSet LoadInstalledChecked(string pluginsDirectory)
+    public static PluginSet LoadInstalledChecked(string pluginsDirectory, string? basePluginsDirectory = null)
     {
         RomPlugin.Require(pluginsDirectory);
-        var set = LoadInstalled(pluginsDirectory);
+        var set = LoadInstalled(pluginsDirectory, basePluginsDirectory);
         var report = set.Validate();
         return report.IsClean ? set : throw new InvalidDataException(report.Describe());
     }

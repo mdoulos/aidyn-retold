@@ -263,6 +263,30 @@ public static class DataPaths
 
     public static string RomPluginDirectory => Path.Combine(Plugins, RomPlugin.Folder);
 
+    /// <summary>
+    /// The environment variable that names the base plugins' folder outright (ADR 0039): in development, the owner's own, in the
+    /// repository they keep them in.
+    /// </summary>
+    public const string BasePluginsVariable = "AIDYN_ENHANCED_BASE_PLUGINS";
+
+    private static string? _basePluginsFolder;
+
+    /// <summary>
+    /// Where an exported app's base plugins are, which the Godot apps hand in first thing (<c>AppLauncher.UseAppFolder</c>): <c>plugins</c>
+    /// beside the executables, or in a macOS bundle's <c>Contents/Resources</c>. The CLI, the tests and the apps in development never set it.
+    /// </summary>
+    public static void UseBasePluginsFolder(string? folder) => _basePluginsFolder = folder;
+
+    /// <summary>
+    /// The base plugins' folder (ADR 0039): <c>AIDYN_ENHANCED_BASE_PLUGINS</c> if set, else the exported app's, else null, for none.
+    /// <see cref="PluginSet.LoadInstalled"/> loads them after the ROM plugin and before the mods in <see cref="Plugins"/>.
+    /// </summary>
+    public static string? BasePlugins => ResolveBasePlugins(Environment.GetEnvironmentVariable(BasePluginsVariable), _basePluginsFolder);
+
+    /// <summary><see cref="BasePlugins"/>'s rule over what it reads: the variable's value and the folder the app handed in.</summary>
+    public static string? ResolveBasePlugins(string? variable, string? appFolder) =>
+        variable is { Length: > 0 } ? variable : appFolder is { Length: > 0 } ? appFolder : null;
+
     /// <summary>Where saved games go (<see cref="Saves.SaveGame"/>).</summary>
     public static string Saves => Path.Combine(Root, "saves");
 

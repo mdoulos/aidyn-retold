@@ -131,6 +131,7 @@ The original game is a plugin, so the mod format is exercised all the time; Phas
 | Task | Size | Status |
 | --- | --- | --- |
 | Plugin loader: load order, dependencies, field-level merge, conflict report | M | Done: `PluginSet`, `aidyn-enhanced conflicts`, `aidyn-enhanced schema` |
+| Base plugins: the owner's own, loaded from beside the apps between the ROM plugin and the mods, and packaged into releases from the owner's private repository with a `NOTICE.md` ([ADR 0039](adr/0039-base-plugins-ship-beside-the-apps.md), [releases](systems/releases.md#base-plugins)) | S | Done Nov 3, 2026. Left for the owner: the private repository's plugins and notice, and the release workflow's `BASE_PLUGINS_REPO` variable and `BASE_PLUGINS_TOKEN` secret |
 | Flag and ID allocation for mod namespaces | S | |
 | Asset overrides (glTF, PNG, OGG) and new assets | M | Overrides work: a plugin's asset of a record's ID replaces the ROM plugin's, which Alaron's remodel, a base plugin, and the chunk import rely on. New assets in a mod's namespace work for animations. Textures on models from a mod's PNG and higher-resolution UI images are left ([replacing graphics](replacing-graphics.md#whats-planned)) |
 | Scripting: a Borg13 superset for dialogue and cut-scenes, plus sandboxed Lua event handlers on the 2.10 events (ADR 0008). Mods can't load .NET assemblies. | L | |

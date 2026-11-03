@@ -25,7 +25,7 @@ The editor's map view edits the objects on its own, without Blender. Open a map 
 - **Set its numbers** in the panel: its position, and for a placed model its rotation in degrees and its scale.
 - **Drop to ground** puts it on the collision under it. **Duplicate** (Ctrl+D) makes a copy beside it with the next free number, and **Delete** takes it out.
 - **Edit fields…** shows its fields as JSON to change and apply: a chest's loot, a light's colours, a door's destination. A value the game can't read is refused with what was wrong.
-- **Save … to mod…** at the top writes everything changed into a mod, asking the mod's ID, and loads the plugins again so the view shows the mod. **Discard edits** throws them away. Edits are kept until one or the other, even through a reload.
+- **Save … to mod…** at the top writes everything changed into a mod, asking the mod's ID, and loads the plugins again so the view shows the mod. Given a base plugin's ID, it writes into that base plugin's own folder, as `chunk import --mod` does ([ADR 0039](adr/0039-base-plugins-ship-beside-the-apps.md), `ModFolder.OpenOrCreate`). **Discard edits** throws them away. Edits are kept until one or the other, even through a reload.
 
 The editor writes the same patches the chunk import does, so a chunk edited here and one edited in Blender make the same kind of mod, and both can be used on one mod. The ground and the collision are Blender's: the editor moves what stands on them.
 

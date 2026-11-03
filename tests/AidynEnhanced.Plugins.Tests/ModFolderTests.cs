@@ -19,6 +19,26 @@ public sealed class ModFolderTests
         Assert.Equal("My village", again.Manifest.Name);
     }
 
+    /// <summary>A tool writing to a base plugin's ID writes into the base plugin, not a mod of the same ID beside it (ADR 0039).</summary>
+    [Fact]
+    public void Opens_a_base_plugin_of_the_id_where_it_is()
+    {
+        using var data = new TempPlugins();
+        using var shipped = new TempPlugins();
+        shipped.AddRaw("music", TempPlugins.Manifest("music"));
+        Directory.CreateDirectory(data.Root);
+
+        var opened = ModFolder.OpenOrCreate(data.Root, "music", basePluginsDirectory: shipped.Root);
+        Assert.Equal(Path.Combine(shipped.Root, "music"), opened.Directory);
+        Assert.False(opened.Made);
+        Assert.False(Directory.Exists(Path.Combine(data.Root, "music")));
+
+        // Any other ID is a mod in the data folder's plugins, made as it's opened.
+        var mod = ModFolder.OpenOrCreate(data.Root, "my_village", basePluginsDirectory: shipped.Root);
+        Assert.Equal(Path.Combine(data.Root, "my_village"), mod.Directory);
+        Assert.True(mod.Made);
+    }
+
     [Theory]
     [InlineData("My Village")]
     [InlineData("aidyn")]

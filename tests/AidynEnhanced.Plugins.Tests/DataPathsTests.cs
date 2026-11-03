@@ -54,6 +54,18 @@ public sealed class DataPathsTests : IDisposable
         Assert.Equal(Path.Combine(Local, "AidynEnhanced"), DataPaths.Resolve(null, App, Local));
     }
 
+    /// <summary>The base plugins' folder (ADR 0039): the variable, else the exported app's, else none.</summary>
+    [Fact]
+    public void TheBasePluginsAreTheVariablesElseTheAppsElseNone()
+    {
+        var app = Path.Combine(App, "plugins");
+        Assert.Equal(Path.Combine(_temp.Root, "mine"), DataPaths.ResolveBasePlugins(Path.Combine(_temp.Root, "mine"), app));
+        Assert.Equal(app, DataPaths.ResolveBasePlugins(null, app));
+        Assert.Equal(app, DataPaths.ResolveBasePlugins("", app));
+        // The CLI, the tests and the apps in development hand in none.
+        Assert.Null(DataPaths.ResolveBasePlugins(null, null));
+    }
+
     [Fact]
     public void TheLastRomIsKeptBesideThePluginsFolder()
     {

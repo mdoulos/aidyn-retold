@@ -601,8 +601,8 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
             : Math.Clamp(_settings.RenderScale, 0.25f, 2);
     }
 
-    /// <summary>The installed plugins, after checking the ROM plugin is there and up to date.</summary>
-    private static PluginSet LoadPlugins() => PluginSet.LoadInstalledChecked(DataPaths.Plugins);
+    /// <summary>The installed plugins, with the base plugins (ADR 0039), after checking the ROM plugin is there and up to date.</summary>
+    private static PluginSet LoadPlugins() => PluginSet.LoadInstalledChecked(DataPaths.Plugins, DataPaths.BasePlugins);
 
     public override void _ExitTree()
     {

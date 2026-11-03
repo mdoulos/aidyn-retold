@@ -4,38 +4,46 @@ using System.Text.Json.Nodes;
 namespace AidynEnhanced.Plugins.World;
 
 /// <summary>
-/// A mod's folder as a tool writes it (ADR 0005): its manifest, a record file of patches and new records that the tool
-/// keeps up to date an object at a time, and its assets. The folder is named for the mod's ID, as
-/// <see cref="PluginSet.LoadInstalled"/> requires, and a folder that isn't there yet is made with a manifest that depends
+/// A plugin's folder as a tool writes it (ADR 0005), a mod's or a base plugin's: its manifest, a record file of patches and new
+/// records that the tool keeps up to date an object at a time, and its assets. The folder is named for the plugin's ID, as
+/// <see cref="PluginSet.LoadInstalled"/> requires, and a folder that isn't there yet is made as a mod, with a manifest that depends
 /// on the ROM plugin.
 /// </summary>
 public sealed class ModFolder
 {
-    private ModFolder(string directory, PluginManifest manifest)
+    private ModFolder(string directory, PluginManifest manifest, bool made)
     {
         Directory = directory;
         Manifest = manifest;
+        Made = made;
     }
 
     public string Directory { get; }
     public PluginManifest Manifest { get; }
 
-    /// <summary>The mod's ID, which is its records' namespace.</summary>
+    /// <summary>The plugin's ID, which is its records' namespace.</summary>
     public string Id => Manifest.Id;
 
+    /// <summary>Whether <see cref="OpenOrCreate"/> made the folder, so a tool whose write then fails can take it away again.</summary>
+    public bool Made { get; }
+
     /// <summary>
-    /// Opens the mod <paramref name="id"/> in <paramref name="pluginsDirectory"/>, making it if it isn't there: a plugin ID is
-    /// <c>[a-z0-9_]+</c>, and can't be the ROM plugin's.
+    /// Opens the plugin <paramref name="id"/>: the base plugin of that ID in <paramref name="basePluginsDirectory"/> if there's one
+    /// (ADR 0039), so a tool writes into it rather than making a mod of the same ID beside it, else the mod in
+    /// <paramref name="pluginsDirectory"/>, made if it isn't there. A plugin ID is <c>[a-z0-9_]+</c>, and can't be the ROM plugin's.
     /// </summary>
-    public static ModFolder OpenOrCreate(string pluginsDirectory, string id, string? name = null)
+    public static ModFolder OpenOrCreate(string pluginsDirectory, string id, string? name = null, string? basePluginsDirectory = null)
     {
         if (id.Length == 0 || !id.All(c => c is >= 'a' and <= 'z' or >= '0' and <= '9' or '_'))
             throw new InvalidDataException($"\"{id}\" isn't a mod ID: use lower-case letters, digits and underscores, such as my_village.");
         if (id == "aidyn" || string.Equals(id, RomPlugin.Folder, StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("The ROM plugin isn't a mod to write to: name your own.");
-        var directory = Path.Combine(pluginsDirectory, id);
+        var directory = basePluginsDirectory is not null && File.Exists(Path.Combine(basePluginsDirectory, id, PluginManifest.FileName))
+            ? Path.Combine(basePluginsDirectory, id)
+            : Path.Combine(pluginsDirectory, id);
         var manifestPath = Path.Combine(directory, PluginManifest.FileName);
         PluginManifest manifest;
+        var made = !System.IO.Directory.Exists(directory);
         if (File.Exists(manifestPath))
         {
             manifest = PluginJson.ReadFile<PluginManifest>(manifestPath) ?? throw new InvalidDataException($"{manifestPath} is empty.");
@@ -48,7 +56,7 @@ public sealed class ModFolder
             System.IO.Directory.CreateDirectory(directory);
             File.WriteAllBytes(manifestPath, JsonSerializer.SerializeToUtf8Bytes(manifest, PluginJson.Options));
         }
-        return new ModFolder(directory, manifest);
+        return new ModFolder(directory, manifest, made);
     }
 
     /// <summary>

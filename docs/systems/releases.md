@@ -1,6 +1,6 @@
 # Releases and packages
 
-Aidyn Chronicles Enhanced ships as two programs, the game (`aidyn-enhanced`, the Godot project `src/AidynEnhanced.Game`) and the editor (`aidyn-enhanced-editor`, `src/AidynEnhanced.Editor`), with no game content: players import their own ROM on first run. `tools/package.ps1` builds the packages for the machine it runs on, and the release workflow (`.github/workflows/release.yml`) runs it on Windows, Linux and macOS and publishes the result as a numbered prerelease.
+Aidyn Chronicles Enhanced ships as two programs, the game (`aidyn-enhanced`, the Godot project `src/AidynEnhanced.Game`) and the editor (`aidyn-enhanced-editor`, `src/AidynEnhanced.Editor`), with the owner's base plugins when the build is given them ([below](#base-plugins)) and no content of the original's: players import their own ROM on first run. `tools/package.ps1` builds the packages for the machine it runs on, and the release workflow (`.github/workflows/release.yml`) runs it on Windows, Linux and macOS and publishes the result as a numbered prerelease.
 
 ## The packages
 
@@ -17,12 +17,31 @@ On Windows and Linux both apps are in one folder, side by side, as Godot's .NET 
 aidyn-enhanced(.exe)            aidyn-enhanced-editor(.exe)
 aidyn-enhanced.pck              aidyn-enhanced-editor.pck
 data_AidynEnhanced.Game_<platform>_x86_64/     data_AidynEnhanced.Editor_<platform>_x86_64/
+plugins/   NOTICE.md    (with base plugins only)
 LICENSE   README.md   portable.txt (the portable zip only)
 ```
 
 `<platform>` is `windows` or `linuxbsd`. The two exports don't collide: each executable finds the PCK with its own name, and its .NET assemblies and runtime in the data folder named after its assembly. The Windows zip has the files at its root (Explorer's Extract All makes the folder); the Linux tarball has them in a folder `AidynEnhanced-alpha-N/`. The first-run code finds the other app, and `portable.txt`, by these names, so they don't change.
 
-On macOS the disk image holds `Aidyn Chronicles Enhanced.app` (executable `Contents/MacOS/aidyn-enhanced`) and `Aidyn Chronicles Enhanced Editor.app` (`Contents/MacOS/aidyn-enhanced-editor`), `LICENSE`, `README.md` and a link to Applications. Each bundle has its PCK and two data folders, `data_<assembly>_macos_arm64` and `_x86_64`, in `Contents/Resources`: the export is universal, and the .NET export publishes each architecture's runtime.
+On macOS the disk image holds `Aidyn Chronicles Enhanced.app` (executable `Contents/MacOS/aidyn-enhanced`) and `Aidyn Chronicles Enhanced Editor.app` (`Contents/MacOS/aidyn-enhanced-editor`), `LICENSE`, `README.md` and a link to Applications. Each bundle has its PCK and two data folders, `data_<assembly>_macos_arm64` and `_x86_64`, in `Contents/Resources`: the export is universal, and the .NET export publishes each architecture's runtime. With base plugins, each bundle has its own copy in `Contents/Resources/plugins`, as a player may move the two apps apart, and `NOTICE.md` is beside `LICENSE`.
+
+## Base plugins
+
+The owner's base plugins ([ADR 0039](../adr/0039-base-plugins-ship-beside-the-apps.md)) live in the owner's private repository, not this one: their art and music are the owner's to ship, and nothing derived from the ROM is committed here. A package carries them when the build is given their folder:
+
+```
+<folder>/
+  NOTICE.md            whose the art and music are, on what terms, and any credit their licences ask for
+  alaron_remodel/      one plugin per folder, named for its ID, with its plugin.json
+  music/
+  …
+```
+
+- **`NOTICE.md` is required.** The MIT [LICENSE](../../LICENSE) covers the code and docs, not the art and music, so a package with base plugins says what does. It goes beside `LICENSE`, and the MSI's license page shows it under the MIT text. Licensed work names its licence and credit there: a CC BY track, such as Kevin MacLeod's on incompetech.com, gives its title, its author and the licence, as the author's site words it.
+- **Each folder holding a `plugin.json` is a plugin**, copied whole into the package's `plugins`, beside the executables or in each macOS bundle's `Contents/Resources` (`Copy-BasePlugins`). Other folders, such as `.git`, are left out. The script doesn't check the plugins' records: load them once in the game with `AIDYN_ENHANCED_BASE_PLUGINS` pointing at the folder first ([runtime](runtime.md#the-base-plugins)).
+- **A local build** takes the folder: `tools/package.ps1 -Version 7 -BasePlugins ..\aidyn-art\plugins`.
+- **The release workflow** checks the private repository out before packaging when the repository's Actions variable `BASE_PLUGINS_REPO` names it (`owner/name`). `BASE_PLUGINS_PATH` is the folder in it that holds the plugins and `NOTICE.md`, `plugins` if unset, and the secret `BASE_PLUGINS_TOKEN` reads it: a fine-grained personal access token with read-only Contents access to that one repository. The checkout fetches Git LFS files too. Without the variable, the packages carry no base plugins, as before.
+- **A release is public,** wherever its files came from: anyone can download a package and take its plugins out. What goes in a base plugin is published by being in one.
 
 Every package is built with Godot's **release** templates, so `OS.IsDebugBuild()` is false in it, which is what keeps the debug keys out of a player's hands. The exports don't embed the PCK and have no console wrapper.
 

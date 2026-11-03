@@ -449,7 +449,7 @@ static string Summary(BorgArchive archive)
         $"{ls.Min(l => l.UncompressedSize),9:N0} {ls.Max(l => l.UncompressedSize),9:N0}";
 }
 
-static PluginSet InstalledPlugins() => PluginSet.LoadInstalledChecked(DataPaths.Plugins);
+static PluginSet InstalledPlugins() => PluginSet.LoadInstalledChecked(DataPaths.Plugins, DataPaths.BasePlugins);
 
 static int ChunkExportCommand(string mapSetName, string chunkName, string? file)
 {
@@ -472,14 +472,13 @@ static int ChunkImportCommand(string file, string mod, bool force)
     var plugins = InstalledPlugins();
     var bytes = File.ReadAllBytes(file);
     // A mod made for this import goes again if the import fails, so a bad file or a mistyped ID leaves no empty mod installed.
-    var made = !Directory.Exists(Path.Combine(DataPaths.Plugins, mod));
-    var folder = ModFolder.OpenOrCreate(DataPaths.Plugins, mod);
+    var folder = ModFolder.OpenOrCreate(DataPaths.Plugins, mod, basePluginsDirectory: DataPaths.BasePlugins);
     ChunkImportResult result;
     try
     {
         result = ChunkImport.Import(plugins, bytes, folder, force);
     }
-    catch when (made)
+    catch when (folder.Made)
     {
         Directory.Delete(folder.Directory, recursive: true);
         throw;

@@ -27,13 +27,19 @@ public static class AppLauncher
     private static bool MacOS => OS.HasFeature("macos");
 
     /// <summary>
-    /// Hands <see cref="DataPaths"/> the folder the app runs from, when exported and not on macOS, so a portable install is found.
-    /// Both apps call it before anything reads a path.
+    /// Hands <see cref="DataPaths"/> the folder the app runs from, when exported and not on macOS, so a portable install is found, and
+    /// where an exported app's base plugins are (ADR 0039): <c>plugins</c> beside the executable, or in the bundle's
+    /// <c>Contents/Resources</c> on macOS, beside the PCK. Both apps call it before anything reads a path.
     /// </summary>
     public static void UseAppFolder()
     {
-        if (Exported && !MacOS)
-            DataPaths.UseAppFolder(Path.GetDirectoryName(OS.GetExecutablePath()));
+        if (!Exported)
+            return;
+        var folder = Path.GetDirectoryName(OS.GetExecutablePath());
+        if (!MacOS)
+            DataPaths.UseAppFolder(folder);
+        if (folder is not null)
+            DataPaths.UseBasePluginsFolder(MacOS ? Path.GetFullPath(Path.Combine(folder, "..", "Resources", "plugins")) : Path.Combine(folder, "plugins"));
     }
 
     /// <summary>Whether the command line's user arguments hold <c>--from-game</c>, with a value or without.</summary>

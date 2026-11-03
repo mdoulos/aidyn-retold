@@ -5,7 +5,14 @@ public sealed class PluginLoadOrderTests : IDisposable
 {
     private readonly TempPlugins _temp = new();
 
-    public void Dispose() => _temp.Dispose();
+    /// <summary>The base plugins' folder, beside the apps rather than in the data folder (ADR 0039).</summary>
+    private readonly TempPlugins _shipped = new();
+
+    public void Dispose()
+    {
+        _temp.Dispose();
+        _shipped.Dispose();
+    }
 
     private static string Manifest(string id, string[]? dependencies = null, string[]? loadAfter = null, string? import = null)
     {
@@ -22,7 +29,73 @@ public sealed class PluginLoadOrderTests : IDisposable
     private void Mod(string id, string[]? dependencies = null, string[]? loadAfter = null) =>
         _temp.AddRaw(id, Manifest(id, dependencies, loadAfter));
 
+    private void Shipped(string id, string[]? dependencies = null, string[]? loadAfter = null) =>
+        _shipped.AddRaw(id, Manifest(id, dependencies, loadAfter));
+
     private string[] Order() => [.. PluginSet.LoadInstalled(_temp.Root).Plugins.Select(p => p.Manifest.Id)];
+
+    private string[] OrderWithBase() => [.. PluginSet.LoadInstalled(_temp.Root, _shipped.Root).Plugins.Select(p => p.Manifest.Id)];
+
+    [Fact]
+    public void BasePluginsLoadAfterTheRomPluginAndBeforeTheMods()
+    {
+        Rom();
+        Mod("alpha");
+        Shipped("zeta");
+        Shipped("music");
+
+        Assert.Equal(["aidyn", "music", "zeta", "alpha"], OrderWithBase());
+    }
+
+    [Fact]
+    public void AModCanDependOnABasePlugin()
+    {
+        Rom();
+        Shipped("music", dependencies: ["aidyn"]);
+        Mod("alpha", dependencies: ["music"]);
+
+        Assert.Equal(["aidyn", "music", "alpha"], OrderWithBase());
+    }
+
+    [Fact]
+    public void ABasePluginCantDependOnAMod()
+    {
+        Rom();
+        Shipped("music", dependencies: ["alpha"]);
+        Mod("alpha");
+
+        Assert.Equal("Plugin music needs alpha to load before it.", Assert.Throws<InvalidDataException>(OrderWithBase).Message);
+    }
+
+    [Fact]
+    public void APluginIsABasePluginOrAModButNotBoth()
+    {
+        Rom();
+        Shipped("music");
+        Mod("music");
+
+        var e = Assert.Throws<InvalidDataException>(OrderWithBase);
+        Assert.StartsWith("The plugin music is both a base plugin, in ", e.Message, StringComparison.Ordinal);
+        Assert.EndsWith(". Remove the mod's folder.", e.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ABasePluginsFolderMustBeNamedForItsId()
+    {
+        Rom();
+        _shipped.AddRaw("Music", Manifest("music"));
+
+        Assert.Contains("a plugin's folder must be named for its ID", Assert.Throws<InvalidDataException>(OrderWithBase).Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ABasePluginsFolderThatIsntThereHoldsNone()
+    {
+        Rom();
+        Mod("alpha");
+
+        Assert.Equal(["aidyn", "alpha"], [.. PluginSet.LoadInstalled(_temp.Root, Path.Combine(_shipped.Root, "missing")).Plugins.Select(p => p.Manifest.Id)]);
+    }
 
     [Fact]
     public void WithoutConstraintsPluginsLoadByIdAfterTheRomPlugin()

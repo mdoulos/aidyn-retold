@@ -1,5 +1,5 @@
 # Build the release packages for the machine it runs on (docs/systems/releases.md).
-# Usage: tools/package.ps1 [-Version <n>] [-OutDir <folder>]
+# Usage: tools/package.ps1 [-Version <n>] [-OutDir <folder>] [-BasePlugins <folder>]
 #
 #   Windows: AidynEnhanced-alpha-<n>-windows.msi and AidynEnhanced-alpha-<n>-windows-portable.zip
 #   Linux:   AidynEnhanced-alpha-<n>-linux-x86_64.tar.gz
@@ -12,13 +12,19 @@
 # left as it was: the version written into project.godot and the files the export needs
 # beside each project are put back or removed afterwards.
 #
+# -BasePlugins is a folder of base plugins (ADR 0039), one plugin per folder, with a
+# NOTICE.md beside them saying whose the art and music are and on what terms. Each package
+# gets the plugins beside the apps (in each bundle's Contents/Resources on macOS) and the
+# notice beside LICENSE. Without it, a package has no base plugins.
+#
 # PowerShell 7 on Windows, Linux or macOS. The workflow, .github/workflows/release.yml,
 # runs this same script on each runner.
 [CmdletBinding()]
 param(
     [ValidateRange(0, 255)] # an MSI's major version is at most 255
     [int]$Version = 0,
-    [string]$OutDir
+    [string]$OutDir,
+    [string]$BasePlugins
 )
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
@@ -30,6 +36,36 @@ $OutDir = [IO.Path]::GetFullPath($OutDir)
 $platform = Get-HostPlatform
 $name = "AidynEnhanced-alpha-$Version"
 $work = Join-Path $OutDir "work-$platform"
+
+# The base plugins, checked before anything is exported: each a folder with a plugin.json,
+# and the notice the release needs, as the MIT license covers only the code and docs.
+$basePluginFolders = @()
+$notice = $null
+if ($BasePlugins) {
+    $BasePlugins = (Resolve-Path -LiteralPath $BasePlugins).Path
+    $notice = Join-Path $BasePlugins 'NOTICE.md'
+    if (-not (Test-Path -LiteralPath $notice)) {
+        throw "$BasePlugins has no NOTICE.md. A release with base plugins says whose their art and music are and on what terms, with any credit their licences ask for (ADR 0039)."
+    }
+    $basePluginFolders = @(Get-ChildItem -LiteralPath $BasePlugins -Directory |
+        Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'plugin.json') } | Sort-Object Name)
+    if ($basePluginFolders.Count -eq 0) { throw "$BasePlugins holds no plugin: each is a folder with a plugin.json." }
+    Write-Host "Base plugins: $(($basePluginFolders | ForEach-Object Name) -join ', ')"
+}
+
+# Puts the base plugins in <folder>/plugins, where the apps beside or above it look (AppLauncher.UseAppFolder).
+function Copy-BasePlugins([string]$folder) {
+    if ($basePluginFolders.Count -eq 0) { return }
+    $plugins = Join-Path $folder 'plugins'
+    New-Item -ItemType Directory -Force $plugins | Out-Null
+    foreach ($plugin in $basePluginFolders) { Copy-Item -LiteralPath $plugin.FullName -Destination $plugins -Recurse }
+}
+
+# LICENSE and README.md, and the base plugins' NOTICE.md when there are any.
+function Copy-Papers([string]$folder) {
+    Copy-Item (Join-Path $repo 'LICENSE'), (Join-Path $repo 'README.md') $folder
+    if ($notice) { Copy-Item -LiteralPath $notice -Destination $folder }
+}
 
 # The two apps: the Godot project, the executable (and PCK) name, the macOS bundle name.
 $apps = @(
@@ -183,7 +219,8 @@ function New-WindowsPackages {
             (Join-Path $stage "$($app.Exe).pck"),
             (Join-Path $stage "data_$($app.Project)_windows_x86_64"))
     }
-    Copy-Item (Join-Path $repo 'LICENSE'), (Join-Path $repo 'README.md') $stage
+    Copy-Papers $stage
+    Copy-BasePlugins $stage
 
     # The portable zip: the same folder with portable.txt, which keeps the data beside it.
     $zip = Join-Path $OutDir "$name-windows-portable.zip"
@@ -204,7 +241,10 @@ function New-WindowsPackages {
     $wixDir = Join-Path $repo '.tools/wix'
     New-Item -ItemType Directory -Force $wixDir | Out-Null
     $rtf = Join-Path $work 'License.rtf'
-    [IO.File]::WriteAllText($rtf, (ConvertTo-Rtf (Get-Content -Raw (Join-Path $repo 'LICENSE'))), [Text.Encoding]::ASCII)
+    # The license page shows the base plugins' notice under the MIT license, which covers only the code.
+    $licenseText = Get-Content -Raw (Join-Path $repo 'LICENSE')
+    if ($notice) { $licenseText += "`n`n" + (Get-Content -Raw -LiteralPath $notice) }
+    [IO.File]::WriteAllText($rtf, (ConvertTo-Rtf $licenseText), [Text.Encoding]::ASCII)
     $msi = Join-Path $OutDir "$name-windows.msi"
     Push-Location $repo
     try { Invoke-Native dotnet @('tool', 'restore') } finally { Pop-Location }
@@ -237,7 +277,8 @@ function New-LinuxPackage {
             (Join-Path $stage "data_$($app.Project)_linuxbsd_x86_64"))
         Invoke-Native chmod @('+x', (Join-Path $stage $app.Exe))
     }
-    Copy-Item (Join-Path $repo 'LICENSE'), (Join-Path $repo 'README.md') $stage
+    Copy-Papers $stage
+    Copy-BasePlugins $stage
     $tar = Join-Path $OutDir "$name-linux-x86_64.tar.gz"
     Invoke-Native tar @('-czf', $tar, '-C', $work, $name)
     Write-Host "Wrote $tar"
@@ -274,12 +315,14 @@ function New-MacPackage {
             Move-Item -LiteralPath (Join-Path $contents "Resources/$($app.Exe).pck.tmp") -Destination (Join-Path $contents "Resources/$($app.Exe).pck")
             Invoke-Native plutil @('-replace', 'CFBundleExecutable', '-string', $app.Exe, (Join-Path $contents 'Info.plist'))
         }
+        # The base plugins beside the PCK, where AppLauncher.UseAppFolder looks, before the bundle is signed.
+        Copy-BasePlugins (Join-Path $contents 'Resources')
         # Renaming broke Godot's ad-hoc signature. Sign again, ad hoc: arm64 Macs run
         # nothing unsigned. There's no Developer ID, so Gatekeeper still asks (releases.md).
         Invoke-Native codesign @('--force', '--deep', '--sign', '-', $bundle)
         Invoke-Native codesign @('--verify', '--deep', '--verbose=2', $bundle)
     }
-    Copy-Item (Join-Path $repo 'LICENSE'), (Join-Path $repo 'README.md') $stage
+    Copy-Papers $stage
     # A link to /Applications, so the disk image's window says where the apps go.
     Invoke-Native ln @('-s', '/Applications', (Join-Path $stage 'Applications'))
     $dmg = Join-Path $OutDir "$name-macos.dmg"

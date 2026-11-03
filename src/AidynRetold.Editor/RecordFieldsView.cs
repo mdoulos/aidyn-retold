@@ -13,11 +13,14 @@ namespace AidynRetold.Editor;
 public partial class RecordFieldsView : Tree
 {
     private const int PageSize = 256;
-    private static readonly Color LinkColor = new(0.5f, 0.72f, 1f);
-    private static readonly Color MissingLinkColor = new(0.5f, 0.72f, 1f, 0.6f);
+    /// <summary>A link in the theme's accent, readable in either mode; a link to a record no plugin has, faded.</summary>
+    private static Color LinkColor => EditorTheme.IsLight ? EditorTheme.Current.Accent : EditorTheme.Current.Accent.Lightened(0.3f);
+
+    private static Color MissingLinkColor => LinkColor with { A = 0.6f };
 
     private readonly Dictionary<TreeItem, Action<TreeItem>> _pending = [];
     private Func<RecordId, bool> _exists = _ => false;
+    private Func<RecordId, string?> _describe = _ => null;
 
     public RecordFieldsView()
     {
@@ -45,11 +48,13 @@ public partial class RecordFieldsView : Tree
 
     /// <param name="setBy">The plugins that set a top-level field, in load order.</param>
     /// <param name="exists">Whether a record or asset is there to open, for how its links are drawn.</param>
-    public void Show(JsonObject? record, Func<string, IReadOnlyList<string>> setBy, Func<RecordId, bool> exists)
+    /// <param name="describe">What a linked record is, such as a character's name, shown after its ID; null for nothing.</param>
+    public void Show(JsonObject? record, Func<string, IReadOnlyList<string>> setBy, Func<RecordId, bool> exists, Func<RecordId, string?>? describe = null)
     {
         Clear();
         _pending.Clear();
         _exists = exists;
+        _describe = describe ?? (_ => null);
         var root = CreateItem();
         if (record is null)
             return;
@@ -57,7 +62,7 @@ public partial class RecordFieldsView : Tree
         {
             // The record's own ID isn't a link.
             var item = field == "id" ? Add(root, field, value?.ToString()) : Add(root, field, value);
-            item.SetText(2, string.Join(" → ", setBy(field)));
+            item.SetText(2, string.Join(" → ", setBy(field).Select(EditorStyle.PluginName)));
         }
     }
 
@@ -89,6 +94,8 @@ public partial class RecordFieldsView : Tree
                 break;
             case JsonValue v when v.TryGetValue(out string? text) && RecordId.TryParse(text, out var id):
                 item.SetMetadata(1, text);
+                if (_describe(id) is { Length: > 0 } what)
+                    item.SetText(1, $"{text}  ·  {PluginCatalog.Truncate(what.ReplaceLineEndings(" "), 70)}");
                 item.SetCustomColor(1, _exists(id) ? LinkColor : MissingLinkColor);
                 item.SetTooltipText(1, _exists(id) ? "Double-click to open." : "No plugin has this yet. Double-click to see what names it.");
                 break;
@@ -140,7 +147,7 @@ public partial class RecordFieldsView : Tree
     {
         null => "null",
         JsonArray a when IsInline(a) => "[" + string.Join(", ", a.Select(n => n!.ToJsonString())) + "]",
-        JsonArray a => string.Create(CultureInfo.InvariantCulture, $"{a.Count:N0} items"),
+        JsonArray a => a.Count == 1 ? "1 item" : string.Create(CultureInfo.InvariantCulture, $"{a.Count:N0} items"),
         // A map object reads as its type and index.
         JsonObject o when o["type"] is JsonValue t && o["index"] is JsonValue i => $"{t} {i}",
         JsonObject o => o.Count == 1 ? "1 field" : $"{o.Count} fields",

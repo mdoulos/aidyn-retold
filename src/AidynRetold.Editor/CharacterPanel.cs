@@ -235,7 +235,7 @@ public partial class CharacterPanel : PagePanel
         {
             if (item is null)
                 continue;
-            worn.AddChild(new Label { Text = slot, Modulate = Dim });
+            worn.AddChild(new Label { Text = slot, ThemeTypeVariation = "DimLabel" });
             worn.AddChild(ItemLink(item.Id, item.Item.Icon, item.Item.Name));
             var does = ItemText.Does(NameOf, item.Item).Append(ItemText.State(item)).Where(t => t.Length > 0).ToList();
             worn.AddChild(new Label { Text = does.Count == 0 ? "—" : string.Join("; ", does) });
@@ -289,19 +289,8 @@ public partial class CharacterPanel : PagePanel
         var c = _character;
         var row = new HBoxContainer();
         row.AddThemeConstantOverride("separation", 12);
-        if (_entity.Portrait is { } portrait && Catalog.Find(portrait)?.Asset("png") is { } png)
-        {
-            if (Png.Load(png.Path) is { } image)
-            {
-                row.AddChild(new TextureRect
-                {
-                    Texture = ImageTexture.CreateFromImage(image),
-                    TextureFilter = TextureFilterEnum.Nearest,
-                    ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-                    CustomMinimumSize = new Vector2(image.GetWidth(), image.GetHeight()) * 2,
-                });
-            }
-        }
+        if (_entity.Portrait is { } portrait && Picture(portrait, 2) is { } picture)
+            row.AddChild(picture);
         var text = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         var name = new Label { Text = c.Name };
         name.AddThemeFontSizeOverride("font_size", 20);
@@ -315,7 +304,7 @@ public partial class CharacterPanel : PagePanel
             traits.Add($"True Name from {flag}");
         if (c.Heavy)
             traits.Add("heavy");
-        text.AddChild(new Label { Text = string.Join(" · ", traits), Modulate = Dim });
+        text.AddChild(new Label { Text = string.Join(" · ", traits), ThemeTypeVariation = "DimLabel" });
         row.AddChild(text);
         return row;
     }

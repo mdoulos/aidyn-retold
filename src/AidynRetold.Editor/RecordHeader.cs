@@ -4,7 +4,8 @@ namespace AidynRetold.Editor;
 
 /// <summary>
 /// The record page's header, one row: the record's name, large; its ID and Borg, dim; a chip for each plugin it comes from, in load
-/// order, the definer's first and each patcher's or replacing file's after an arrow; and the page's tabs, at the row's end.
+/// order, the definer's first and each patcher's or replacing file's after an arrow; and the page's tabs, at the row's end. Clicking the
+/// ID copies it.
 /// </summary>
 public partial class RecordHeader : HBoxContainer
 {
@@ -15,12 +16,22 @@ public partial class RecordHeader : HBoxContainer
     };
     private readonly Label _id = EditorStyle.DimLabel(size: 13);
     private readonly HBoxContainer _sources = EditorStyle.Row(3);
+    private string _copied = "";
 
     public RecordHeader()
     {
         AddThemeConstantOverride("separation", 10);
         _title.ThemeTypeVariation = "TitleLabel";
         AddChild(_title);
+        _id.MouseFilter = MouseFilterEnum.Stop;
+        _id.MouseDefaultCursorShape = CursorShape.PointingHand;
+        _id.GuiInput += e =>
+        {
+            if (e is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } || _copied.Length == 0)
+                return;
+            DisplayServer.ClipboardSet(_copied);
+            Toast.Show(this, $"Copied {_copied}.");
+        };
         AddChild(_id);
         AddChild(_sources);
         AddChild(EditorStyle.Spacer());
@@ -42,6 +53,9 @@ public partial class RecordHeader : HBoxContainer
         // A long title gives up its room before the tabs do.
         _title.CustomMinimumSize = new Vector2(Math.Min(_title.GetThemeFont("font").GetStringSize(_title.Text, fontSize: 20).X, 520), 0);
         _id.Text = id;
+        // The ID alone, without the Borg or the object's place that follow it.
+        _copied = id.Split(" · ")[0];
+        _id.TooltipText = _copied.Length == 0 ? "" : $"{_copied}: click to copy it.";
         foreach (var child in _sources.GetChildren())
             child.QueueFree();
         for (var i = 0; i < sources.Count; i++)

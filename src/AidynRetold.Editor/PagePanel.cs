@@ -10,8 +10,8 @@ namespace AidynRetold.Editor;
 /// </summary>
 public partial class PagePanel : ScrollContainer
 {
-    protected static readonly Color Dim = new(0.65f, 0.65f, 0.65f);
-    protected static readonly Color Refused = new(0.85f, 0.55f, 0.45f);
+    /// <summary>The theme's dim text, for notes under what a page shows.</summary>
+    protected static Color Dim => EditorStyle.Dim;
 
     private readonly Dictionary<RecordId, Texture2D?> _icons = [];
 
@@ -45,14 +45,14 @@ public partial class PagePanel : ScrollContainer
     protected void Heading(string text)
     {
         Body.AddChild(new Control { CustomMinimumSize = new Vector2(0, 6) });
-        var label = new Label { Text = text };
-        label.AddThemeFontSizeOverride("font_size", 16);
-        Body.AddChild(label);
+        Body.AddChild(new Label { Text = text, ThemeTypeVariation = "HeadingLabel" });
     }
 
     protected Label Line(string text, Color? color = null)
     {
-        var label = new Label { Text = text, AutowrapMode = TextServer.AutowrapMode.WordSmart, Modulate = color ?? Colors.White };
+        var label = new Label { Text = text, AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        if (color is { } c)
+            label.AddThemeColorOverride("font_color", c);
         Body.AddChild(label);
         return label;
     }
@@ -65,7 +65,7 @@ public partial class PagePanel : ScrollContainer
         if (headings.All(h => h.Length == 0))
             return grid;
         foreach (var heading in headings)
-            grid.AddChild(new Label { Text = heading, Modulate = Dim });
+            grid.AddChild(new Label { Text = heading, ThemeTypeVariation = "DimLabel" });
         return grid;
     }
 
@@ -86,28 +86,41 @@ public partial class PagePanel : ScrollContainer
     protected Control ItemLink(RecordId id, RecordId? icon, string text, int scale = 1)
     {
         var row = new HBoxContainer();
-        if (icon is { } i && Icon(i) is { } texture)
-        {
-            row.AddChild(new TextureRect
-            {
-                Texture = texture,
-                TextureFilter = TextureFilterEnum.Nearest,
-                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-                CustomMinimumSize = texture.GetSize() * scale,
-                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-                SizeFlagsVertical = SizeFlags.ShrinkCenter,
-            });
-        }
+        if (icon is { } i && Picture(i, scale) is { } picture)
+            row.AddChild(picture);
         row.AddChild(LinkButton(id, text));
         return row;
     }
 
-    /// <summary>An image or texture record's PNG, read once per page.</summary>
+    /// <summary>
+    /// An image or texture record's picture as the page shows it, or null if no plugin has it: at the size the game draws it
+    /// (<see cref="PluginSet.ImageSize"/>), <paramref name="scale"/> times, pixel for pixel; a larger replacement, as the redrawn art's,
+    /// drawn into that size, smoothed, so it's sharper rather than larger, as the game draws it (<c>UiImages</c>).
+    /// </summary>
+    protected TextureRect? Picture(RecordId id, int scale = 1)
+    {
+        if (Icon(id) is not { } texture)
+            return null;
+        var (width, height) = Plugins.ImageSize(id);
+        var size = width > 0 ? new Vector2(width, height) : texture.GetSize();
+        return new TextureRect
+        {
+            Texture = texture,
+            TextureFilter = texture.GetSize().X > size.X ? TextureFilterEnum.LinearWithMipmaps : TextureFilterEnum.Nearest,
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            CustomMinimumSize = size * scale,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            SizeFlagsVertical = SizeFlags.ShrinkCenter,
+        };
+    }
+
+    /// <summary>An image or texture record's PNG, read once per page; mipmapped if it's larger than the original's (<see cref="Picture"/>).</summary>
     protected Texture2D? Icon(RecordId id)
     {
         if (_icons.TryGetValue(id, out var texture))
             return texture;
-        texture = Catalog.Find(id)?.Asset("png") is { } png ? Png.Texture(png.Path) : null;
+        if (Catalog.Find(id)?.Asset("png") is { } png && Png.Load(png.Path) is { } image)
+            texture = ImageTexture.CreateFromImage(image.GetWidth() > Plugins.ImageSize(id).Width ? Png.Mipmapped(image) : image);
         return _icons[id] = texture;
     }
 

@@ -30,9 +30,10 @@ public partial class RecordBrowser : Control
     private readonly OptionButton _types = new() { TooltipText = "Type" };
     private readonly LineEdit _search = new()
     {
-        PlaceholderText = "Record ID, Borg index, summary or script text",
+        PlaceholderText = "Search records (Ctrl+F)",
         CustomMinimumSize = new Vector2(280, 0),
-        TooltipText = "Filters the list. Enter opens a record ID, or the only match.",
+        ClearButtonEnabled = true,
+        TooltipText = "Filters the list (Ctrl+F). Enter opens a record ID, or the only match; Escape clears it.",
     };
     private readonly Label _status = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, HorizontalAlignment = HorizontalAlignment.Right };
     private readonly Tree _list = new();
@@ -152,14 +153,31 @@ public partial class RecordBrowser : Control
         _rules = rules;
         _items = items;
 
+        // The types in plain words under their headings (TypeGroups), each item's ID its place in _typeNames, plus one.
         _typeNames.Clear();
-        _typeNames.AddRange(catalog.Types);
         _types.Clear();
-        _types.AddItem("All types", 0);
-        for (var i = 0; i < _typeNames.Count; i++)
-            _types.AddItem($"{_typeNames[i]} ({catalog.Entries.Count(e => e.Id.Type == _typeNames[i]):N0})", i + 1);
+        _types.AddItem($"All types ({catalog.Entries.Count:N0})", 0);
+        var counts = catalog.Entries.GroupBy(e => e.Id.Type).ToDictionary(g => g.Key, g => g.Count());
+        foreach (var group in TypeGroups.For(counts.Keys))
+        {
+            _types.AddSeparator(group.Name);
+            foreach (var type in group.Types)
+            {
+                _typeNames.Add(type.Type);
+                _types.AddItem($"{type.Name} ({counts[type.Type]:N0})", _typeNames.Count);
+                _types.SetItemTooltip(_types.ItemCount - 1, $"{type.Type} records");
+            }
+        }
         Populate();
-        ShowNothing(report.IsClean ? Welcome(catalog) : $"{report.Describe(limit: 12)}\nThe game refuses to load these; the editor shows them as they are.\n{Welcome(catalog)}");
+        ShowStart(catalog, report.IsClean ? null : report.Describe(limit: 12));
+    }
+
+    /// <summary>Lists one type's records, as picking it in the type dropdown does, or every record's for null.</summary>
+    public void SelectType(string? type)
+    {
+        var id = type is null ? 0 : _typeNames.IndexOf(type) + 1;
+        _types.Select(_types.GetItemIndex(Math.Max(id, 0)));
+        Populate();
     }
 
     /// <summary>
@@ -362,6 +380,21 @@ public partial class RecordBrowser : Control
     {
         if (!IsVisibleInTree())
             return;
+        // Ctrl+F to the search box, Escape there to clear it.
+        if (e is InputEventKey { Pressed: true, CtrlPressed: true, Keycode: Key.F })
+        {
+            _search.GrabFocus();
+            _search.SelectAll();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+        if (e is InputEventKey { Pressed: true, Keycode: Key.Escape } && _search.HasFocus() && _search.Text.Length > 0)
+        {
+            _search.Clear();
+            Populate();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
         var step = e switch
         {
             InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Xbutton1 } => -1,
@@ -405,10 +438,12 @@ public partial class RecordBrowser : Control
                 continue;
             var row = _list.CreateItem(root);
             var id = entry.Id.ToString();
-            row.SetText(0, id);
+            // The ROM plugin's records without its namespace, which they all share; a mod's with theirs, to tell them by.
+            row.SetText(0, entry.Id.Namespace == RecordId.RomNamespace ? $"{entry.Id.Type}/{entry.Id.Key}" : id);
             row.SetTooltipText(0, id);
             row.SetText(1, entry.Borg?.ToString(CultureInfo.InvariantCulture) ?? "");
-            row.SetTextAlignment(1, HorizontalAlignment.Right);
+            row.SetTextAlignment(1, HorizontalAlignment.Center);
+            row.SetCustomColor(1, EditorStyle.Dim);
             row.SetText(2, line ?? entry.Summary);
             row.SetTooltipText(2, line ?? entry.Summary);
             row.SetMetadata(0, id);
@@ -510,13 +545,14 @@ public partial class RecordBrowser : Control
         _header.Tabs.SetTabTitle(tab, title);
     }
 
-    private static string Welcome(PluginCatalog catalog)
+    /// <summary>The start page (<see cref="StartPage"/>), before a record is picked, with the validation report's problems if any.</summary>
+    private void ShowStart(PluginCatalog catalog, string? problems)
     {
-        var plugins = string.Join(", ", catalog.Plugins.Plugins.Select(p =>
-            p.Manifest.Import is { } import ? $"{p.Manifest.Id} ({p.Manifest.Name}, imported from {import.RomVersion} by importer {import.Importer})" : p.Manifest.Id));
-        var conflicts = catalog.Plugins.Conflicts.Count();
-        var conflicted = conflicts == 0 ? "" : $" {conflicts:N0} {(conflicts == 1 ? "field is" : "fields are")} patched by more than one plugin (acre conflicts lists them).";
-        return $"Loaded {plugins}.{conflicted} Pick a record, or type an ID such as aidyn:mapset/0 and press Enter.";
+        ShowNothing("");
+        // The page's tabs are a record's; the start page has none.
+        _header.Visible = false;
+        _tabs.CurrentTab = 0;
+        SetPreview(new StartPage(catalog, problems, FollowLink, SelectType));
     }
 
     private async Task ShowAsync(RecordId id)
@@ -524,6 +560,7 @@ public partial class RecordBrowser : Control
         if (_catalog is not { } catalog)
             return;
         _current = id;
+        _header.Visible = true;
         var plugins = catalog.Plugins;
         var entry = catalog.Find(id);
         var voxel = id.Type == RecordTypes.Voxel;
@@ -536,7 +573,7 @@ public partial class RecordBrowser : Control
         else
             ShowHeader(catalog, id, entry, json, references.Count);
         _fields.Show(json, field => voxel ? plugins.Setters(MapRecord.MapOf(id), $"objects[{MapRecord.IndexOf(id)}].{field}") : plugins.Setters(id, field),
-            other => catalog.Find(other) is not null || other.Type == RecordTypes.Voxel);
+            other => catalog.Find(other) is not null || other.Type == RecordTypes.Voxel, other => catalog.Find(other)?.Summary);
         ShowUsedBy(catalog, references);
         if (_quests is { } quests)
         {
@@ -594,8 +631,11 @@ public partial class RecordBrowser : Control
             if (original != asset.Plugin)
                 sources.Add(new(asset.Plugin, $"replaces its .{asset.Extension}, {size}"));
         }
+        // A one-of-a-kind record by its type's name, such as Combat rules; another by its summary, which starts with its name.
         var title = entry is null
             ? usedBy > 0 ? "No plugin has this record yet, but records name it" : "No plugin has this record"
+            : RecordTypes.TryInfo(id.Type)?.Singleton == true ? TypeGroups.Name(id.Type)
+            : TypeGroups.One(id.Type) is { } one ? $"{one} {id.Key}"
             : entry.Summary.Length > 0 ? entry.Summary : id.ToString();
         _header.Show(title, id + (entry?.Borg is { } borg ? $" · Borg {borg}" : ""), sources);
     }
@@ -699,7 +739,14 @@ public partial class RecordBrowser : Control
         }
         if (json is not null && await ImagesNamedAsync(catalog, json) is { Count: > 0 } images)
             return ImageGallery.Create(images);
-        return Message(json is null ? "" : "No preview for this type. See the fields.");
+        if (json is null)
+            return Message(entry is null ? "No plugin has it, so there's nothing to show. The Used by tab lists what names it." : "");
+        // A record with no page of its own shows its fields here, as the Fields tab does.
+        var fields = new RecordFieldsView { SizeFlagsVertical = SizeFlags.ExpandFill };
+        fields.Show(json, field => plugins.Setters(id, field), other => catalog.Find(other) is not null || other.Type == RecordTypes.Voxel,
+            other => catalog.Find(other)?.Summary);
+        fields.Opened += FollowLink;
+        return fields;
     }
 
     /// <summary>The model page's inspector, if a model's page is showing.</summary>

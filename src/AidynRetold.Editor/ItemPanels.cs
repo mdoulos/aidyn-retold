@@ -110,16 +110,8 @@ public partial class ItemPanel : PagePanel
         var item = _item;
         var header = new HBoxContainer();
         header.AddThemeConstantOverride("separation", 12);
-        if (Icon(item.Icon) is { } icon)
-        {
-            header.AddChild(new TextureRect
-            {
-                Texture = icon,
-                TextureFilter = TextureFilterEnum.Nearest,
-                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-                CustomMinimumSize = icon.GetSize() * 3,
-            });
-        }
+        if (Picture(item.Icon, 3) is { } icon)
+            header.AddChild(icon);
         var text = new VBoxContainer();
         var name = new Label { Text = item.Name };
         name.AddThemeFontSizeOverride("font_size", 20);
@@ -131,7 +123,7 @@ public partial class ItemPanel : PagePanel
             traits.Add("loot can't be left with it");
         if (item.Weapon?.Fixed == true)
             traits.Add("can't be taken off");
-        text.AddChild(new Label { Text = string.Join(" · ", traits), Modulate = Dim });
+        text.AddChild(new Label { Text = string.Join(" · ", traits), ThemeTypeVariation = "DimLabel" });
         header.AddChild(text);
         Body.AddChild(header);
 
@@ -340,7 +332,7 @@ public partial class ShopPanel : PagePanel
         Heading("The window");
         var again = new Button
         {
-            Text = "Open again",
+            Text = "Open again", SizeFlagsHorizontal = SizeFlags.ShrinkBegin,
             TooltipText = "Open the shop's window afresh on the game's party, as a script does: the barterer pays its Stamina again.",
         };
         again.Pressed += OpenWindow;
@@ -403,7 +395,7 @@ public partial class LootPanel : PagePanel
             if (drop.Item is { } id && _items.TryGet(id) is { } item)
                 grid.AddChild(ItemLink(id, item.Icon, item.Name));
             else
-                grid.AddChild(new Label { Text = drop.Item?.ToString() ?? "nothing", Modulate = Dim });
+                grid.AddChild(new Label { Text = drop.Item?.ToString() ?? "nothing", ThemeTypeVariation = "DimLabel" });
             // Only the first two rolls give a count between their bounds.
             Row(grid, $"{drop.Chance}%", i < 2 ? Count(drop.Min, drop.Max) : "1");
         }
@@ -477,7 +469,7 @@ public partial class LootPanel : PagePanel
         {
             Text = $"Over {times:N0} rolls: {(double)gold / times:0.#} gold on average; " + (given.Count == 0 ? "no items." : string.Join(", ", parts) + "."),
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
-            Modulate = Dim,
+            ThemeTypeVariation = "DimLabel",
         });
     }
 }

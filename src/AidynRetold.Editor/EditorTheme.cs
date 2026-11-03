@@ -232,6 +232,7 @@ public static class EditorTheme
         Label(t, "GoodLabel", p.Good);
         Label(t, "TitleLabel", p.Text, 20, bold);
         Label(t, "DialogTitleLabel", p.Text, 15, bold);
+        Label(t, "HeadingLabel", p.Text, 16, bold);
         Label(t, "ChipLabel", p.Text, 13);
         Label(t, "ChangedChipLabel", p.Changed, 13);
         t.SetTypeVariation("Chip", "PanelContainer");

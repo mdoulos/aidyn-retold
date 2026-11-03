@@ -343,6 +343,37 @@ public sealed class PluginSetTests : IDisposable
         Assert.Equal("Short Sword, used by 1 record", Summary("aidyn:scene/0x3000"));
     }
 
+    /// <summary>
+    /// A record with no name of its own is summed up by what it holds, naming the records it names by their names: a shop by its
+    /// shopkeeper, a recipe by what it makes, a new game by who leads where; a flag with no label by what names it.
+    /// </summary>
+    [Fact]
+    public void NamelessRecordsAreSummedUpByWhatTheyHold()
+    {
+        using var temp = new TempPlugins();
+        var dir = temp.Add("aidyn", null,
+            ("entities.json", """[{ "id": "aidyn:entity/0x023F", "name": "Alaron" }, { "id": "aidyn:entity/0x0202", "name": "Female Dryad" }]"""),
+            ("items.json", """[{ "id": "aidyn:item/0x0112", "name": "Herb" }, { "id": "aidyn:item/0x1000", "name": "Healing Potion" }]"""),
+            ("skills.json", """[{ "id": "aidyn:skill/0", "name": "Alchemist" }]"""),
+            ("mapsets.json", """[{ "id": "aidyn:mapset/0", "label": "Overworld", "chunks": [] }]"""),
+            ("shops.json", """[{ "id": "aidyn:shop/0", "shopkeeper": "aidyn:entity/0x0202", "stock": [{ "item": "aidyn:item/0x0112" }] }]"""),
+            ("recipes.json", """[{ "id": "aidyn:recipe/0", "skill": "aidyn:skill/0", "product": "aidyn:item/0x1000", "level": 1, "ingredients": [{}, {}] }]"""),
+            ("triggers.json", """[{ "id": "aidyn:trigger/0", "on": "game.started", "do": [{ "type": "cinematic" }, { "type": "cinematic" }, { "type": "flag" }] }]"""),
+            ("newgame.json", """{ "id": "aidyn:newgame/0", "chunk": { "mapSet": "aidyn:mapset/0" }, "leader": "aidyn:entity/0x023F", "gold": 1 }"""),
+            ("credits.json", """{ "id": "aidyn:credits/0", "cards": [{}, {}, {}] }"""),
+            ("flags.json", """[{ "id": "aidyn:flag/7" }, { "id": "aidyn:flag/8", "label": "Dougal is dead" }]"""));
+        var catalog = PluginCatalog.Build(PluginSet.Load([dir]));
+
+        string Summary(string id) => catalog.Find(RecordId.Parse(id))?.Summary ?? "";
+        Assert.Equal("Female Dryad, 1 item in stock", Summary("aidyn:shop/0"));
+        Assert.Equal("Healing Potion, Alchemist 1, 2 ingredients", Summary("aidyn:recipe/0"));
+        Assert.Equal("on game.started: cinematic, flag", Summary("aidyn:trigger/0"));
+        Assert.Equal("Alaron in Overworld, 1 gold", Summary("aidyn:newgame/0"));
+        Assert.Equal("3 cards", Summary("aidyn:credits/0"));
+        Assert.Equal("used by nothing", Summary("aidyn:flag/7"));
+        Assert.Equal("Dougal is dead", Summary("aidyn:flag/8"));
+    }
+
     [Fact]
     public void TypedRecordsAreReadOnceAndHoldTheMerge()
     {

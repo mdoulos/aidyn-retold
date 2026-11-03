@@ -81,21 +81,9 @@ public sealed class UiImages
     /// <summary>A larger picture drawn at a smaller size: mipmapped and filtered, the texture saying it's that size.</summary>
     private static Texture2D Sharper(Image data, Vector2I size)
     {
-        var texture = ImageTexture.CreateFromImage(Mipmapped(data));
+        var texture = ImageTexture.CreateFromImage(Png.Mipmapped(data));
         texture.SetSizeOverride(size);
         return new CanvasTexture { DiffuseTexture = texture, TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps };
-    }
-
-    /// <summary>
-    /// An image with mipmaps made by coverage (<see cref="CoverageMipmaps"/>), so the colour its clear pixels hold never reaches its
-    /// edges at the smaller sizes, where Godot's own left dark smudges on the icons' edges (Nov 2, 2026).
-    /// </summary>
-    private static Image Mipmapped(Image data)
-    {
-        data.Convert(Image.Format.Rgba8);
-        data.ClearMipmaps();
-        var (width, height) = (data.GetWidth(), data.GetHeight());
-        return Image.CreateFromData(width, height, true, Image.Format.Rgba8, CoverageMipmaps.Chain(data.GetData(), width, height));
     }
 
     private readonly Dictionary<RecordId, Texture2D?> _plain = [];
@@ -253,7 +241,7 @@ public sealed class UiImages
         {
             // Mipmapped by coverage, so the smaller sizes don't pale its edges toward the clear pixels' white or darken them toward
             // their black or grey.
-            texture = new CanvasTexture { DiffuseTexture = ImageTexture.CreateFromImage(Mipmapped(image)), TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps };
+            texture = new CanvasTexture { DiffuseTexture = ImageTexture.CreateFromImage(Png.Mipmapped(image)), TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps };
         }
         return OwnTextures[key] = texture;
     }

@@ -84,7 +84,7 @@ public sealed class PluginCatalog
             string summary;
             try
             {
-                summary = Summary(id, json, files, placements, references.GetValueOrDefault(id)?.Count ?? 0, whose.GetValueOrDefault(id));
+                summary = Summary(plugins, id, json, files, placements, references.GetValueOrDefault(id)?.Count ?? 0, whose.GetValueOrDefault(id));
             }
             catch (Exception e) when (e is InvalidOperationException or FormatException or IOException)
             {
@@ -190,8 +190,11 @@ public sealed class PluginCatalog
     }
 
     /// <param name="whose">Who the actor or model is (<see cref="Whose"/>), which leads its summary.</param>
-    private static string Summary(RecordId id, JsonObject? json, List<AssetFile> files, MapPlacements placements, int usedBy, string? whose)
+    private static string Summary(PluginSet plugins, RecordId id, JsonObject? json, List<AssetFile> files, MapPlacements placements, int usedBy, string? whose)
     {
+        // A record named in this one, by its name or label, or its key.
+        string Name(JsonNode? named) => (string?)named is { } s && RecordId.TryParse(s, out var r)
+            ? (string?)plugins.GetJson(r)?["name"] ?? (string?)plugins.GetJson(r)?["label"] ?? r.Key : "?";
         var parts = new List<string>();
         if (whose is not null && id.Type is RecordTypes.Actor or RecordTypes.Scene)
             parts.Add(whose);
@@ -225,6 +228,9 @@ public sealed class PluginCatalog
                     parts.Add(label);
                 if (json["journal"] is { } journal)
                     parts.Add($"journal entry {Key(journal)}");
+                // A flag nothing names by a label is known by what reads or sets it.
+                if (parts.Count == 0)
+                    parts.Add(usedBy == 0 ? "used by nothing" : $"used by {Plural(usedBy, "record")}");
                 break;
             case RecordTypes.Journal when json is not null:
                 parts.Add($"flag {Key(json["flag"])}: {Truncate((string?)json["text"] ?? "", 80)}");
@@ -250,6 +256,70 @@ public sealed class PluginCatalog
             case RecordTypes.Sky when json is not null:
                 parts.Add($"{Count(json["stars"], "star")}, {Count(json["clouds"], "cloud")}, {Count(json["lensFlare"], "flare piece")}");
                 break;
+            case RecordTypes.Cinematic when json is not null:
+                parts.Add($"{(string?)json["title"]}, {Count(json["shots"], "shot")}");
+                break;
+            case RecordTypes.Shop when json is not null:
+                parts.Add($"{Name(json["shopkeeper"])}, {Count(json["stock"], "item")} in stock");
+                break;
+            case RecordTypes.Trigger when json is not null:
+                var effects = (json["do"] as JsonArray ?? []).OfType<JsonObject>().Select(e => (string?)e["type"]).Distinct();
+                parts.Add($"on {(string?)json["on"]}: {string.Join(", ", effects)}");
+                break;
+            case RecordTypes.Recipe when json is not null:
+                parts.Add($"{Name(json["product"])}, {Name(json["skill"])} {(int?)json["level"]}, {Count(json["ingredients"], "ingredient")}");
+                break;
+            case RecordTypes.Strings when json is not null:
+                parts.Add($"{(string?)json["name"]}, {Count(json["lines"], "line")}");
+                break;
+            case RecordTypes.Font when json is not null:
+                parts.Add($"{(json["glyphs"] as JsonObject)?.Count ?? 0} characters, cells {(int?)json["cellWidth"]}×{(int?)json["cellHeight"]}");
+                break;
+            case RecordTypes.Minimap when json is not null:
+                parts.Add($"{Name(json["mapSet"])}, {Count(json["sections"], "section")}");
+                break;
+            case RecordTypes.Emitters when json is not null:
+                parts.Add(Count(json["emitters"], "emitter"));
+                break;
+            case RecordTypes.Sequence when json is not null:
+                parts.Add($"{Plural((int?)json["tracks"] ?? 0, "track")}, {Count(json["instruments"], "instrument")}");
+                break;
+            case RecordTypes.Combat when json is not null:
+                parts.Add($"allies, bystanders, fleeing, missiles, {Count(json["bosses"], "boss")}");
+                break;
+            case RecordTypes.Magic when json is not null:
+                parts.Add($"casting chance, resisting, spells up to level {(int?)json["maxLevel"]}");
+                break;
+            case RecordTypes.Camping when json is not null:
+                parts.Add($"ambushes, heals {(double?)json["heal"] * 100:0}%, camp scenes");
+                break;
+            case RecordTypes.Credits when json is not null:
+                parts.Add(Count(json["cards"], "card"));
+                break;
+            case RecordTypes.Weather when json is not null:
+                parts.Add("the seasons' rain, fog and wind");
+                break;
+            case RecordTypes.NewGame when json is not null:
+                parts.Add($"{Name(json["leader"])} in {Name(json["chunk"]?["mapSet"])}, {Plural((int?)json["gold"] ?? 0, "gold")}");
+                break;
+            case RecordTypes.Title when json is not null:
+                parts.Add($"{Count(json["flycams"], "fly-through")} behind the menu");
+                break;
+            case RecordTypes.WorldMap when json is not null:
+                parts.Add($"{Count(json["pieces"], "piece")}, {Count(json["towns"], "town")}");
+                break;
+            case RecordTypes.Inventory when json is not null:
+                parts.Add($"{(int?)json["generalSlots"]} slots, stacks of {(int?)json["stackLimit"]}, sells at {(double?)json["sellShare"] * 100:0}%");
+                break;
+            case RecordTypes.Sounds when json is not null:
+                parts.Add("menus, scripts, gold, containers, weather");
+                break;
+            case RecordTypes.StateFlags when json is not null:
+                parts.Add("time, season, weather, terrain");
+                break;
+            case RecordTypes.Explosion when json is not null:
+                parts.Add($"texture {Key(json["texture"])}");
+                break;
         }
         if (files.FirstOrDefault(f => f.Extension == "png") is { } png && Assets.PngHeader.Size(png.Path) is var (w, h))
             parts.Add($"{w}×{h}");
@@ -266,5 +336,5 @@ public sealed class PluginCatalog
     private static string Count(JsonNode? list, string one) => Plural((list as JsonArray)?.Count ?? 0, one);
 
     private static string Plural(int n, string one) => string.Create(CultureInfo.InvariantCulture,
-        $"{n:N0} {(n == 1 ? one : one.EndsWith('y') ? one[..^1] + "ies" : one + "s")}");
+        $"{n:N0} {(n == 1 || one == "gold" ? one : one.EndsWith('y') ? one[..^1] + "ies" : one.EndsWith('s') ? one + "es" : one + "s")}");
 }

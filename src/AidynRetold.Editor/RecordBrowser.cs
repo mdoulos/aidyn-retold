@@ -36,7 +36,7 @@ public partial class RecordBrowser : Control
     };
     private readonly Label _status = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, HorizontalAlignment = HorizontalAlignment.Right };
     private readonly Tree _list = new();
-    private readonly Label _header = new() { AutowrapMode = TextServer.AutowrapMode.WordSmart };
+    private readonly RecordHeader _header = new();
     private readonly TabContainer _tabs = new() { SizeFlagsVertical = SizeFlags.ExpandFill };
     private readonly Control _preview = new MarginContainer { Name = Preview };
     private readonly RecordFieldsView _fields = new() { Name = Fields };
@@ -282,6 +282,7 @@ public partial class RecordBrowser : Control
         split.AddChild(_list);
 
         var right = new VBoxContainer();
+        right.AddThemeConstantOverride("separation", 4);
         right.AddChild(_header);
         right.AddChild(_tabs);
         split.AddChild(right);
@@ -289,6 +290,12 @@ public partial class RecordBrowser : Control
         _tabs.AddChild(_fields);
         _tabs.AddChild(_usedBy);
         _tabs.AddChild(_atlas);
+        // The tabs are the header's, at the end of its row; the container below only shows the page.
+        _tabs.TabsVisible = false;
+        foreach (var name in new[] { Preview, Fields, UsedBy, Atlas })
+            _header.Tabs.AddTab(name);
+        _header.Tabs.TabChanged += tab => _tabs.CurrentTab = (int)tab;
+        _tabs.TabChanged += tab => _header.Tabs.CurrentTab = (int)tab;
 
         _usedBy.Columns = 3;
         _usedBy.HideRoot = true;
@@ -455,11 +462,19 @@ public partial class RecordBrowser : Control
 
     private void ShowNothing(string text)
     {
-        _header.Text = text;
+        _header.Show("", "", []);
         _fields.Show(null, _ => [], _ => false);
         _usedBy.Clear();
-        _tabs.SetTabTitle(2, UsedBy);
-        SetPreview(new Label { Text = "", AutowrapMode = TextServer.AutowrapMode.WordSmart });
+        SetTabTitle(2, UsedBy);
+        SetTabTitle(3, Atlas);
+        SetPreview(Message(text));
+    }
+
+    /// <summary>A tab's title, kept on the header's tab and the page's.</summary>
+    private void SetTabTitle(int tab, string title)
+    {
+        _tabs.SetTabTitle(tab, title);
+        _header.Tabs.SetTabTitle(tab, title);
     }
 
     private static string Welcome(PluginCatalog catalog)
@@ -483,14 +498,17 @@ public partial class RecordBrowser : Control
         var json = voxel ? MapObjects.Json(plugins, id) : plugins.GetJson(id);
         var references = catalog.ReferencesTo(id);
 
-        _header.Text = voxel ? ObjectHeader(catalog, id, json) : Header(catalog, id, entry, json, references.Count);
+        if (voxel)
+            ShowObjectHeader(catalog, id, json);
+        else
+            ShowHeader(catalog, id, entry, json, references.Count);
         _fields.Show(json, field => voxel ? plugins.Setters(MapRecord.MapOf(id), $"objects[{MapRecord.IndexOf(id)}].{field}") : plugins.Setters(id, field),
             other => catalog.Find(other) is not null || other.Type == RecordTypes.Voxel);
         ShowUsedBy(catalog, references);
         if (_quests is { } quests)
         {
             _atlas.Show(catalog, quests, id, Explore);
-            _tabs.SetTabTitle(3, _atlas.Count == 0 ? Atlas : $"{Atlas} ({_atlas.Count:N0})");
+            SetTabTitle(3, _atlas.Count == 0 ? Atlas : $"{Atlas} ({_atlas.Count:N0})");
         }
         SetPreview(new Label { Text = "Loading…" });
 
@@ -514,31 +532,61 @@ public partial class RecordBrowser : Control
         }
     }
 
-    private static string Header(PluginCatalog catalog, RecordId id, CatalogEntry? entry, JsonObject? json, int usedBy)
+    /// <summary>
+    /// The header: the record's summary, its ID and Borg, and the plugins it comes from, the definer's first, then each that patches
+    /// it, with the fields it sets, and each that gives a file of its own in place of an earlier plugin's.
+    /// </summary>
+    private void ShowHeader(PluginCatalog catalog, RecordId id, CatalogEntry? entry, JsonObject? json, int usedBy)
     {
-        var lines = new List<string> { id + (entry?.Borg is { } borg ? $" · Borg {borg}" : "") };
-        if (json is not null)
+        var plugins = catalog.Plugins;
+        var sources = new List<RecordHeader.Source>();
+        if (json is not null && plugins.DefinedBy(id) is { } definer)
         {
-            var definer = catalog.Plugins.DefinedBy(id);
-            var patchers = catalog.Plugins.Patchers(id);
-            lines.Add($"Defined by {definer}" + (patchers.Count > 0 ? $", patched by {string.Join(", ", patchers)}" : ""));
+            sources.Add(new(definer, "defines the record"));
+            foreach (var patcher in plugins.Patchers(id))
+            {
+                var fields = json.Select(f => f.Key).Where(f => plugins.Setters(id, f).Contains(patcher)).ToList();
+                sources.Add(new(patcher, $"patches {(fields.Count == 0 ? "its fields" : string.Join(", ", fields))}"));
+            }
         }
         foreach (var asset in entry?.Assets ?? [])
-            lines.Add($"{asset.Extension} asset from {asset.Plugin}, {new FileInfo(asset.Path).Length:N0} bytes");
-        if (entry is null)
-            lines.Add(usedBy > 0 ? "No plugin has this record yet, but records name it." : "No plugin has this record.");
-        else if (entry.Summary.Length > 0)
-            lines.Add(entry.Summary);
-        return string.Join("\n", lines);
+        {
+            var size = $"{new FileInfo(asset.Path).Length:N0} bytes";
+            var original = plugins.FindOriginalAsset(id, asset.Extension) is { } path ? PluginOf(plugins, path) : asset.Plugin;
+            if (sources.All(s => s.Plugin != original))
+                sources.Add(new(original, original == asset.Plugin ? $"gives its .{asset.Extension}, {size}" : $"gives its original .{asset.Extension}"));
+            if (original != asset.Plugin)
+                sources.Add(new(asset.Plugin, $"replaces its .{asset.Extension}, {size}"));
+        }
+        var title = entry is null
+            ? usedBy > 0 ? "No plugin has this record yet, but records name it" : "No plugin has this record"
+            : entry.Summary.Length > 0 ? entry.Summary : id.ToString();
+        _header.Show(title, id + (entry?.Borg is { } borg ? $" · Borg {borg}" : ""), sources);
     }
 
-    private static string ObjectHeader(PluginCatalog catalog, RecordId id, JsonObject? json)
+    /// <summary>A map object's header: what it is, its index in its map, and the plugins that place or change it.</summary>
+    private void ShowObjectHeader(PluginCatalog catalog, RecordId id, JsonObject? json)
     {
         var map = MapRecord.MapOf(id);
+        var index = MapRecord.IndexOf(id);
         if (json is null)
-            return $"{id}\nNo plugin has this map object.";
-        return $"{id}\n{catalog.Describe(id)}\nObject {MapRecord.IndexOf(id)} of {map}, defined by {catalog.Plugins.DefinedBy(map)}";
+        {
+            _header.Show("No plugin has this map object", id.ToString(), []);
+            return;
+        }
+        var definer = catalog.Plugins.DefinedBy(map);
+        var sources = new List<RecordHeader.Source>();
+        if (definer is not null)
+            sources.Add(new(definer, $"defines {map}"));
+        foreach (var setter in catalog.Plugins.Setters(map, $"objects[{index}]").Where(p => p != definer))
+            sources.Add(new(setter, "changes or places this object"));
+        _header.Show(catalog.Describe(id), $"{id} · object {index} of {map}", sources);
     }
+
+    /// <summary>The ID of the plugin whose folder holds <paramref name="path"/>.</summary>
+    private static string PluginOf(PluginSet plugins, string path) =>
+        plugins.Plugins.FirstOrDefault(p => path.StartsWith(Path.TrimEndingDirectorySeparator(p.Directory) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith(Path.TrimEndingDirectorySeparator(p.Directory) + '/', StringComparison.OrdinalIgnoreCase))?.Manifest.Id ?? "?";
 
     private void ShowUsedBy(PluginCatalog catalog, IReadOnlyList<RecordReference> references)
     {
@@ -555,7 +603,7 @@ public partial class RecordBrowser : Control
             row.SetTooltipText(1, string.Join("\n", paths.Take(40)) + (paths.Count > 40 ? "\n…" : ""));
             row.SetText(2, catalog.Find(group.Key)?.Summary ?? "");
         }
-        _tabs.SetTabTitle(2, byRecord.Count == 0 ? UsedBy : $"{UsedBy} ({byRecord.Count:N0})");
+        SetTabTitle(2, byRecord.Count == 0 ? UsedBy : $"{UsedBy} ({byRecord.Count:N0})");
     }
 
     /// <summary>
@@ -697,8 +745,6 @@ public partial class RecordBrowser : Control
         }
         if (content != _model)
             _model.Clear();
-        // The map view's panel says what's picked, so the header over it is only in the way.
-        _header.Visible = content != _map;
         _preview.AddChild(content);
     }
 }

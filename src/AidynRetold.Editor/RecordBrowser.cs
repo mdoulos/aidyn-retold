@@ -27,7 +27,6 @@ public partial class RecordBrowser : Control
 
     private readonly Button _back = new() { Text = "◀", TooltipText = "Back (Alt+Left)", Disabled = true };
     private readonly Button _forward = new() { Text = "▶", TooltipText = "Forward (Alt+Right)", Disabled = true };
-    private readonly Button _folder = new() { Text = "Plugins folder…" };
     private readonly OptionButton _types = new() { TooltipText = "Type" };
     private readonly LineEdit _search = new()
     {
@@ -115,13 +114,8 @@ public partial class RecordBrowser : Control
         UpdateHistoryButtons();
         Populate();
         ShowNothing("");
-        // A folder picked later with no current import isn't loaded: the import is asked for only at startup (ADR 0043).
-        if (!File.Exists(Path.Combine(pluginsDirectory, RomPlugin.Folder, PluginManifest.FileName)))
-        {
-            _status.Text = $"No {RomPlugin.Folder} in {pluginsDirectory}: pick the plugins folder that holds one.";
-            return;
-        }
-        // Out of date: the game refuses it, so the editor shows the same words.
+        // The editor imports before it loads (ADR 0043), so this is only a ROM plugin gone or replaced while it ran: the game would
+        // refuse it, so the editor shows the same words.
         if (RomPlugin.Diagnose(pluginsDirectory) is { } problem)
         {
             _status.Text = problem;
@@ -259,8 +253,6 @@ public partial class RecordBrowser : Control
         bar.AddChild(_back);
         bar.AddChild(_forward);
         bar.AddChild(new VSeparator());
-        bar.AddChild(_folder);
-        bar.AddChild(new VSeparator());
         bar.AddChild(_types);
         bar.AddChild(_search);
         bar.AddChild(_status);
@@ -324,27 +316,6 @@ public partial class RecordBrowser : Control
         _types.ItemSelected += _ => Populate();
         _search.TextChanged += _ => Populate();
         _search.TextSubmitted += Submit;
-
-        var folderDialog = new FileDialog
-        {
-            FileMode = FileDialog.FileModeEnum.OpenDir,
-            Access = FileDialog.AccessEnum.Filesystem,
-            UseNativeDialog = true,
-            Title = "The plugins folder, which holds aidyn.rom",
-        };
-        folderDialog.DirSelected += dir =>
-        {
-            // Picking aidyn.rom itself means the folder it's in.
-            if (string.Equals(Path.GetFileName(dir.TrimEnd('/', '\\')), RomPlugin.Folder, StringComparison.OrdinalIgnoreCase))
-                dir = Path.GetDirectoryName(dir.TrimEnd('/', '\\'))!;
-            _ = Report(LoadAsync(dir));
-        };
-        AddChild(folderDialog);
-        _folder.Pressed += () =>
-        {
-            folderDialog.CurrentDir = _pluginsDirectory;
-            folderDialog.PopupCentered(new Vector2I(800, 500));
-        };
     }
 
     private Task Report(Task task) => BackgroundTask.Report(task, e => _status.Text = e.Message);

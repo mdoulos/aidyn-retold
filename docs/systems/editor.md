@@ -13,7 +13,7 @@ The ROM is asked for in one place, at startup, when the ROM plugin is missing or
 - **Cancel,** or closing the dialog, quits the editor, so neither it nor the game goes on without an import.
 - **After.** Started by the game, it says the import is done and shows **Play**, which starts the game (`AppLauncher.LaunchGame`) and closes the editor, or says to start it if it can't. Otherwise the dialog closes and the editor goes on into the record browser with the new plugins.
 
-There's no import later: the browser has no **Import ROM…**, and a plugins folder picked with **Plugins folder…** that has no current import says so and isn't loaded.
+There's no import later: the browser has no **Import ROM…**, and no **Plugins folder…** to pick another folder by, the user's choice (Nov 3, 2026); `--data` loads another for a scripted run.
 
 ## The editor's game
 
@@ -26,7 +26,7 @@ The editor holds one game, the core's `GameState` ([saves](saves.md)), which fla
 
 ## Plugins
 
-It loads the plugins folder as the runtime does (`PluginSet.LoadInstalled`: `aidyn.rom`, then the base plugins wherever `DataPaths.BasePlugins` says ([runtime](runtime.md#the-base-plugins)), then the rest, each ordered by their dependencies and load-after hints, by ID where those leave it open), from the data folder ([runtime](runtime.md#the-data-folder)) or wherever `--data` or **Plugins folder…** points. At startup a missing or out-of-date import opens the import dialog; a folder picked later that has none shows `RomPlugin.Diagnose`'s words instead of loading.
+It loads the plugins folder as the runtime does (`PluginSet.LoadInstalled`: `aidyn.rom`, then the base plugins wherever `DataPaths.BasePlugins` says ([runtime](runtime.md#the-base-plugins)), then the rest, each ordered by their dependencies and load-after hints, by ID where those leave it open), from the data folder ([runtime](runtime.md#the-data-folder)) or wherever `--data` points. At startup a missing or out-of-date import opens the import dialog. A ROM plugin gone or replaced while it runs, found when the map view's save loads the plugins again, shows `RomPlugin.Diagnose`'s words instead of loading.
 
 - **The list** is every record and every asset, by type (`PluginCatalog` in `AidynRetold.Plugins`). Scenes, textures and UI images are assets with no record, so they're listed by their asset's ID. The Borg column is the archive index a base-game ID's hex key stands for. The search filters by ID, Borg index or summary (`I08` finds the chunk's map), and from three letters finds scripts by what they say, showing the first line that matches.
 - **Links.** Any field whose value parses as a record ID is a link, so new record types need no editor code. A link to a record no plugin has, such as a flag, opens a page showing what names it.

@@ -64,17 +64,28 @@ public partial class PartyTabView : Control
 
     /// <summary>
     /// The hit points bar beside the aspect's and school's icons and as tall as they are, the user's art and the user's choice (Nov 2,
-    /// 2026): its frame, a cartouche 850 × 200 (ui-bar-frame.png), over this rectangle, its ends keeping their shape and its middle
+    /// 2026): its frame, 850 × 200, rounded at its left end and with a finial on its right (ui-bar-frame-asymmetrical.png), over this
+    /// rectangle, its drawn left edge under the large portrait's and its right end at x 121, its ends keeping their shape and its middle
     /// stretched between them (<see cref="ThreeSlice"/>); the brown track and the red fill (ui-bar-brown.png, ui-bar-red.png) under
     /// it, sliced alike, the red cut to the share of hit points left across the frame's opening. The hit points are on it.
     /// </summary>
-    private static readonly Rect2 BarFrame = new(18, 66.5f, 103, 11);
+    private static readonly Rect2 BarFrame = BarFrom(PortraitPiece.Position.X + ShownPortrait.X, 121, 66.5f, 11);
 
-    /// <summary>The bar's art: its size, how wide each end kept whole is, and its opening's sides, top and bottom, in its pixels.</summary>
-    private const float BarArtWidth = 850, BarArtHeight = 200, BarEnd = 140, BarOpeningLeft = 93, BarOpeningRight = 753, BarOpeningTop = 63,
-        BarOpeningBottom = 139;
+    /// <summary>The bar frame's rectangle with its drawn left edge, <see cref="BarArtLeft"/> into its art, at a point across.</summary>
+    private static Rect2 BarFrom(float left, float right, float top, float height)
+    {
+        var x = left - BarArtLeft * height / BarArtHeight;
+        return new Rect2(x, top, right - x, height);
+    }
 
-    private const string BarFrameArt = "ui-bar-frame.png", BarFillArt = "ui-bar-red.png", BarTrackArt = "ui-bar-brown.png";
+    /// <summary>
+    /// The bar's art: its size, how far in its frame's drawn left edge is, how wide each end kept whole is, and its opening's sides, top
+    /// and bottom, in its pixels.
+    /// </summary>
+    private const float BarArtWidth = 850, BarArtHeight = 200, BarArtLeft = 65, BarEnd = 140, BarOpeningLeft = 93, BarOpeningRight = 753,
+        BarOpeningTop = 63, BarOpeningBottom = 139;
+
+    private const string BarFrameArt = "ui-bar-frame-asymmetrical.png", BarFillArt = "ui-bar-red.png", BarTrackArt = "ui-bar-brown.png";
 
     /// <summary>How finely the bar's share of hit points is taken, as a width it's measured across.</summary>
     private const int BarPrecision = 1000;
@@ -424,6 +435,17 @@ public partial class PartyTabView : Control
             AcceptEvent();
             return;
         }
+        // A click on a small portrait shows that member, the user's choice (Nov 2, 2026): it aims C-left at them and presses it, so the
+        // portraits move and sound as C-left's do, and wait as it waits. The stick's and the C-buttons' changes are as they were.
+        if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } portraitClick && Window.ChangesMember
+            && MemberAt(portraitClick.Position) is { } member)
+        {
+            Menu.AimAtMember(member);
+            UiScreen.Of(this)?.Click(MenuAction.MemberLeft);
+            Menu.AimAtMember(null);
+            AcceptEvent();
+            return;
+        }
         // A click on a slot of the silhouette with something worn in it selects it, and a double click uses it as A does, taking it off:
         // with what's worn not in the inventory, the silhouette is where the mouse reaches it.
         if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } slotClick && _hoveredSlot is { } slot)
@@ -579,6 +601,22 @@ public partial class PartyTabView : Control
             var rect = TabRect(i);
             if (at.X >= rect.Position.X + 0.5f && at.X < rect.End.X - 0.5f && at.Y >= rect.Position.Y + 1 && at.Y < PageRect.Position.Y)
                 return i;
+        }
+        return null;
+    }
+
+    /// <summary>The party slot of the member whose small portrait is under a point on the view, or null; the large one's is shown.</summary>
+    private int? MemberAt(Vector2 point)
+    {
+        if (Menu.Shown is null)
+            return null;
+        var at = point - (Vector2)_origin - (Vector2)PortraitPiece.Position;
+        var order = Menu.PortraitOrder;
+        for (var i = 1; i < order.Count; i++)
+        {
+            var (place, size) = PortraitPlace(i);
+            if (new Rect2(place, new Vector2(size, size)).HasPoint(at))
+                return order[i];
         }
         return null;
     }

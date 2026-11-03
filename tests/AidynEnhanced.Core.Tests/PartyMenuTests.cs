@@ -312,6 +312,29 @@ public class PartyMenuMotionTests
         Assert.Equal(2, menu.Member);
     }
 
+    /// <summary>
+    /// A click on a small portrait aims the member change at its member, so C-left shows that one however far round, the portraits
+    /// moving as they do; the aim goes with the press, so the next is C-left's own, and a press held off by a change takes it too.
+    /// </summary>
+    [Fact]
+    public void AMemberChangeAimedAtAPortraitShowsThatMember()
+    {
+        var menu = Menu();
+
+        menu.AimAtMember(2);
+        menu.ChangeMember(1);
+        Assert.Equal(2, menu.Member);
+        Assert.Equal([0, 1, 2], menu.PreviousOrder);
+        Assert.Equal([2, 0, 1], menu.PortraitOrder);
+
+        menu.AimAtMember(1);
+        menu.ChangeMember(1);
+        Assert.Equal(2, menu.Member);
+        Frames(menu, PartyMenu.MemberFrames + 1);
+        menu.ChangeMember(1);
+        Assert.Equal(0, menu.Member);
+    }
+
     /// <summary>The next list slides the lists right and the one before slides them left, and no other change starts while they slide.</summary>
     [Fact]
     public void TheNextListSlidesRightAndHoldsOffChanges()

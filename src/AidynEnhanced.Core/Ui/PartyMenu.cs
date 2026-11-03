@@ -233,10 +233,13 @@ public sealed partial class PartyMenu : IPartyWindow
     /// <summary>
     /// Shows the next member, or with a negative step the one before: C-left shows the next and C-right the one before
     /// (<c>PartyMenu.OnCLeft</c> at <c>0x8003e1c8</c>, <c>OnCRight</c> <c>0x8003e1f4</c>). Not while the header or the
-    /// lists are still changing, nor while the numbers or the silhouette are after something done to the member shown.
+    /// lists are still changing, nor while the numbers or the silhouette are after something done to the member shown. A click on a
+    /// small portrait aims the press at its member (<see cref="AimAtMember"/>), so it shows that one.
     /// </summary>
     public void ChangeMember(int by)
     {
+        var aim = _memberAim;
+        _memberAim = null;
         if (HasPopup || Changing)
             return;
         var order = Enumerable.Range(0, Party.MaxSize).Where(i => Party.Slots.ElementAtOrDefault(i) is not null).ToList();
@@ -245,9 +248,19 @@ public sealed partial class PartyMenu : IPartyWindow
         var at = order.IndexOf(Member);
         SelectedSlot = null;
         StartMemberChange();
-        Member = order[((at + by) % order.Count + order.Count) % order.Count];
+        Member = aim is { } slot && order.Contains(slot) ? slot : order[((at + by) % order.Count + order.Count) % order.Count];
         Refresh();
     }
+
+    /// <summary>The party slot a click aimed the next member change at, or null for the next or the one before.</summary>
+    private int? _memberAim;
+
+    /// <summary>
+    /// Aims the next member change at a party slot, as a click on a small portrait does before it presses C-left, the user's choice
+    /// (Nov 2, 2026), so the press shows that member, however far round, the portraits moving and sounding as C-left's do; or null to
+    /// aim it at the next or the one before again.
+    /// </summary>
+    public void AimAtMember(int? slot) => _memberAim = slot;
 
     /// <summary>
     /// Shows the next list, or with a negative step the one before: the stick's left shows the next, sliding the lists

@@ -57,10 +57,27 @@ public sealed partial class PartyMenu
 
     /// <summary>
     /// C-down pressed: shows the details of the cursor's row, or of the crafting popup's recipe, unless a popup is
-    /// fading or the details already show. A message closes first (<see cref="CloseMessage"/>).
+    /// fading or the details already show. A message closes first (<see cref="CloseMessage"/>). In the port's look the button turns
+    /// them on and off, the user's choice (Nov 3, 2026), where they showed only while it was held: on, they're held open as the
+    /// actiontip's are (<see cref="DetailsPane.Pin"/>), and the button again, A, B or a click lets them go.
     /// </summary>
-    public void PressDetails() =>
-        Overlay.PressDetails(Message is null && (Crafting is null || OpenCraftingPopup is not null) && Details() is not null);
+    public void PressDetails()
+    {
+        var open = Message is null && (Crafting is null || OpenCraftingPopup is not null) && Details() is not null;
+        if (!Spatial)
+            Overlay.PressDetails(open);
+        else if (DetailsPane.Pinned)
+            ReleaseDetails();
+        else if (!DetailsPane.Showing)
+            DetailsPane.Pin(open);
+    }
+
+    /// <summary>C-down's button let go: in the port's look, where it turns the details on and off, nothing.</summary>
+    void IPartyWindow.LetGoDetails()
+    {
+        if (!Spatial)
+            ReleaseDetails();
+    }
 
     /// <summary>C-down let go: the details fade out once they're open.</summary>
     public void ReleaseDetails() => Overlay.ReleaseDetails();

@@ -99,6 +99,35 @@ public sealed partial class Party
     }
 
     /// <summary>
+    /// Whether a member could put an item on at all, by <see cref="Equip"/>'s checks but those of room and of what it replaces: its
+    /// aspect, a weapon's Strength and skill, a shield's skill, gear's Strength and Intelligence, a scroll's spell. Changes nothing.
+    /// <see cref="EquipRefusal.CantUse"/> for what isn't put on.
+    /// </summary>
+    public static EquipRefusal CanEquip(Character member, Item thing)
+    {
+        if (thing.Bonuses.Aspect != Aspect.None && thing.Bonuses.Aspect != member.Aspect)
+            return EquipRefusal.WrongAspect;
+        var equipment = member.Equipment;
+        switch (thing.Kind)
+        {
+            case ItemKind.Armor:
+                return EquipRefusal.None;
+            case ItemKind.Shield:
+                return equipment.CanCarryShield ? EquipRefusal.None : EquipRefusal.CantUse;
+            case ItemKind.Weapon:
+                return equipment.CanWield(thing);
+            case ItemKind.Scroll when thing.Bonuses.Spell is null:
+                return EquipRefusal.CantUse;
+            case var _ when thing.IsGear:
+                if (member.Stats.Base(Stat.Strength) < thing.RequiredStrength)
+                    return EquipRefusal.NeedsStrength;
+                return member.Stats.Base(Stat.Intelligence) < thing.RequiredIntelligence ? EquipRefusal.NeedsIntelligence : EquipRefusal.None;
+            default:
+                return EquipRefusal.CantUse;
+        }
+    }
+
+    /// <summary>
     /// Takes an item off a member and puts it in the inventory, with its battery and charges
     /// (<c>Party::RemoveArmorFrom</c> and the rest). False if the inventory can't take it, or it's the
     /// Archmage Staff, which stays.

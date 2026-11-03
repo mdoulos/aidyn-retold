@@ -827,9 +827,11 @@ public partial class PartyTabView : Control
         Begin(_overlay, _origin);
         if (Veil > 0)
             _ui.Tab(_canvas, PauseTab.Party, PlainPatches, new Rgba(255, 255, 255, (byte)(Veil * 255)), plain: true);
-        // The original shows no names on slips.
+        // The original shows no names on slips. The prompts are over the details' paper, and go with the veil as the tab slides away.
         if (!OriginalLook)
             Tooltip();
+        if (OwnTab && Veil == 0)
+            PromptStrip();
         if (OwnTab && Menu.Tip is { } tip)
             ActionTipBox(tip);
         _overlay.DrawSetTransform(Vector2.Zero);
@@ -858,7 +860,6 @@ public partial class PartyTabView : Control
         Silhouette(SilhouetteAt);
         CardStats();
         Tabs();
-        PromptStrip();
     }
 
     /// <summary>
@@ -1610,6 +1611,27 @@ public partial class PartyTabView : Control
     /// <summary>How much of a grid's cell its item's icon takes across, inside its box's inner line: 12 of the original's 18.</summary>
     private const float GridIcon = 12f / 18;
 
+    /// <summary>How an unusable item's icon is drawn, faded; and a mark's size and its lines' thickness.</summary>
+    private static readonly Rgba DimIcon = new(255, 255, 255, 110);
+
+    private const float MarkSize = 3.2f, MarkLine = 0.55f;
+
+    /// <summary>A cell's mark from its top left: a red cross for what can't be used, a green arrow up for what would be better.</summary>
+    private void MarkArt(ItemMark mark, float x, float y)
+    {
+        const float s = MarkSize;
+        if (mark == ItemMark.Unusable)
+        {
+            var red = _ui.Tint(UiPainter.RedInk);
+            _canvas.DrawLine(new Vector2(x, y), new Vector2(x + s, y + s), red, MarkLine, true);
+            _canvas.DrawLine(new Vector2(x + s, y), new Vector2(x, y + s), red, MarkLine, true);
+            return;
+        }
+        var green = _ui.Tint(MenuDetailsBuilder.Gain);
+        _canvas.DrawColoredPolygon([new Vector2(x + s / 2, y), new Vector2(x + s, y + s * 0.55f), new Vector2(x, y + s * 0.55f)], green);
+        _canvas.DrawLine(new Vector2(x + s / 2, y + s * 0.5f), new Vector2(x + s / 2, y + s), green, MarkLine * 1.6f, true);
+    }
+
     /// <summary>
     /// The inventory's grid (<see cref="PartyMenu.InventoryGrid"/>), the user's design (Nov 2, 2026): a cell for each of its rows in
     /// view, a stack or a worn item, the user's box with the item's icon in it, its count in the bottom right corner where there's more
@@ -1635,7 +1657,13 @@ public partial class PartyTabView : Control
             var row = list.Rows[i];
             Art(SlotBox, new Rect2(x + 0.5f, y + 0.5f, grid.Cell - 1, grid.Cell - 1), row.Wearer is null ? White : WornBox);
             var icon = grid.Cell * GridIcon;
-            _ui.Image(_canvas, Menu.ItemIcon(row.Item), new Rect2(x + (grid.Cell - icon) / 2, y + (grid.Cell - icon) / 2, icon, icon));
+            // What the member shown can't use is dimmed with a red cross, and what would be better than what they wear has a green arrow,
+            // in the top right corner.
+            var mark = OriginalLook ? ItemMark.None : Menu.Mark(row);
+            _ui.Image(_canvas, Menu.ItemIcon(row.Item), new Rect2(x + (grid.Cell - icon) / 2, y + (grid.Cell - icon) / 2, icon, icon),
+                mark == ItemMark.Unusable ? DimIcon : null);
+            if (mark != ItemMark.None)
+                MarkArt(mark, x + grid.Cell - CellInset - MarkSize, y + CellInset);
             if (row.Wearer is { } wearer && Menu.Party.Slots[wearer] is { } who && Menu.Portrait(who.Entity) is { } portrait)
             {
                 // In the bottom left, the count being in the bottom right.
@@ -1714,16 +1742,53 @@ public partial class PartyTabView : Control
         if ((pointing ? _hoveredSlot : _hoveredSlot ?? Menu.SelectedSlot) is { } slot && (Menu.Worn(slot) is not null || !OriginalLook))
         {
             var rect = SlotRect(slot);
-            NameSlip(Menu.Worn(slot)?.Item.Name ?? PartyMenu.SlotName(slot), rect.Position.X + rect.Size.X / 2, rect.Position.Y - 1);
+            if (Menu.Worn(slot) is { } worn)
+                CardSlip(Menu.Card(new InventoryRow(worn, 1, Menu.Member)), rect.Position.X + rect.Size.X / 2, rect.Position.Y - 1);
+            else
+                NameSlip(PartyMenu.SlotName(slot), rect.Position.X + rect.Size.X / 2, rect.Position.Y - 1);
         }
         else if (grid && (pointing ? _hoveredCell : Menu.Focus == PartyFocus.List ? Menu.Inventory.Cursor : null) is { } cell
             && Menu.Inventory.Rows.ElementAtOrDefault(cell) is { } row
             && cell >= Menu.Inventory.First && cell < Menu.Inventory.First + _gridLayout.Visible)
         {
             var (x, y) = _gridLayout.CellAt(cell - Menu.Inventory.First);
-            NameSlip(row.Item.Name, x + _gridLayout.Cell / 2f, y - 1, y + _gridLayout.Cell + 1);
+            CardSlip(Menu.Card(row), x + _gridLayout.Cell / 2f, y - 1, y + _gridLayout.Cell + 1);
         }
     }
+
+    /// <summary>
+    /// An item's card on a slip over it, the user's choice (Nov 3, 2026), where the slip had only its name (<see cref="PartyMenu.Card"/>):
+    /// the name, then in smaller text what it is, why the member can't use it in red ink, or what it would be better than in green, as
+    /// it has them; over the item, or under it where over would reach the tabs.
+    /// </summary>
+    private void CardSlip(ItemCard card, float middle, float foot, float? below = null)
+    {
+        var name = _ui.Slim.Sized(NameText);
+        var small = _ui.Slim.Sized(CardText);
+        var lines = new List<(string Text, Rgba Color)>();
+        if (card.About is { } about)
+            lines.Add((about, PartyMenu.TextColor));
+        if (card.Warning is { } warning)
+            lines.Add((warning, UiPainter.RedInk));
+        if (card.Better is { } better)
+            lines.Add((better, MenuDetailsBuilder.Gain));
+        var width = lines.Select(l => small.ExactWidth(l.Text)).Append(name.ExactWidth(card.Name)).Max();
+        var first = SlipEnds + name.Capitals / 2;
+        var height = first + (lines.Count > 0 ? CardGap + (lines.Count - 1) * CardLinePitch + small.Capitals / 2 : name.Capitals / 2) + SlipEnds;
+        var left = Math.Clamp(middle - width / 2 - SlipSide, 4, FrameWidth - 4 - width - 2 * SlipSide);
+        var top = below is { } under && foot - height < PageRect.Position.Y ? under : foot - height;
+        _ui.Slip(_canvas, new Rect2(left, top, width + 2 * SlipSide, height), sheet: UiPainter.TooltipSheet);
+        Small(card.Name, left + SlipSide, top + first - name.Middle, UiPainter.Ink, font: name);
+        var y = top + first + CardGap;
+        foreach (var (text, color) in lines)
+        {
+            Small(text, left + SlipSide, y - small.Middle, color, font: small);
+            y += CardLinePitch;
+        }
+    }
+
+    /// <summary>A card's lines under the name: their capitals' height, the first's middle this far under the name's, and the rest this far apart.</summary>
+    private const float CardText = 3, CardGap = 4.6f, CardLinePitch = 4;
 
     /// <summary>
     /// How tall a name's capitals are on its slip, half the menus' text, the user's choice (Nov 2, 2026), and how far the slip reaches

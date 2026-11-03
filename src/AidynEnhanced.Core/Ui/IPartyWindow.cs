@@ -44,6 +44,9 @@ public interface IPartyWindow
     /// <summary>C-down let go: the details fade out once they're open.</summary>
     void ReleaseDetails();
 
+    /// <summary>C-down's button let go, which lets the details go where the window shows them only while it's held.</summary>
+    void LetGoDetails() => ReleaseDetails();
+
     /// <summary>Steps the window's pulses, changes and fades by a tick.</summary>
     void Step();
 
@@ -85,7 +88,7 @@ public interface IPartyWindow
                     PressDetails();
                 return true;
             case MenuAction.DetailsRelease:
-                ReleaseDetails();
+                LetGoDetails();
                 return true;
             case MenuAction.Appraise:
                 Appraise();

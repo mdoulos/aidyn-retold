@@ -6,8 +6,8 @@ using Godot;
 namespace AidynRetold.Editor;
 
 /// <summary>
-/// An actor's states and branches, with the controls to drive its state machine by a request.
-/// <see cref="ModelView"/> does the playing; this only shows and asks.
+/// An actor's states and branches, with the controls to drive its state machine by a request, which sit in the model view's toolbar
+/// (<see cref="Bar"/>). <see cref="ModelView"/> does the playing; this only shows and asks.
 /// </summary>
 public partial class ActorPanel : VBoxContainer
 {
@@ -28,20 +28,16 @@ public partial class ActorPanel : VBoxContainer
         TooltipText = "Draw the root transform with its position zeroed, as the game does. Driving always does, and moves the actor instead.",
     };
     private readonly Button _home = new() { Text = "⟲", TooltipText = "Put the actor back at the origin." };
-    private readonly Label _clock = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, HorizontalAlignment = HorizontalAlignment.Right };
     private readonly Tree _states = new() { SizeFlagsVertical = SizeFlags.ExpandFill };
     private readonly List<TreeItem> _rows = [];
     private bool _selecting;
 
     public ActorPanel()
     {
-        var bar = new HBoxContainer();
-        bar.AddChild(_drive);
-        bar.AddChild(_request);
-        bar.AddChild(_home);
-        bar.AddChild(_inPlace);
-        bar.AddChild(_clock);
-        AddChild(bar);
+        Bar.AddChild(_drive);
+        Bar.AddChild(_request);
+        Bar.AddChild(_home);
+        Bar.AddChild(_inPlace);
 
         _states.Columns = 4;
         _states.HideRoot = true;
@@ -68,6 +64,9 @@ public partial class ActorPanel : VBoxContainer
         _inPlace.Toggled += on => InPlaceChanged?.Invoke(on);
         _home.Pressed += () => HomePressed?.Invoke();
     }
+
+    /// <summary>Drive, the request, home and Root in place, for the model view's toolbar.</summary>
+    public HBoxContainer Bar { get; } = EditorStyle.Row(6);
 
     public event Action<int>? StateClicked;
     public event Action<bool>? DriveChanged;
@@ -114,13 +113,11 @@ public partial class ActorPanel : VBoxContainer
                      .Append(0).Distinct().Order())
             _request.AddItem(RequestName(r), r);
         _request.Select(0);
-        _clock.Text = "";
     }
 
-    /// <summary>Highlights a state, and shows the clock.</summary>
-    public void Mark(int state, string clock)
+    /// <summary>Highlights a state.</summary>
+    public void Mark(int state)
     {
-        _clock.Text = clock;
         if (state < 0 || state >= _rows.Count || _states.GetSelected() == _rows[state])
             return;
         _selecting = true;

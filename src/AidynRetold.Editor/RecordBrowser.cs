@@ -526,8 +526,9 @@ public partial class RecordBrowser : Control
                 break;
             case (byte[] glb, string animation, string note):
                 SetPreview(_model);
-                _model.Show(glb, animation.Length > 0 ? animation : null, note.Length > 0 ? note : null,
-                    id.Type == RecordTypes.Actor ? plugins.TryGet<ActorRecord>(id) : null);
+                var actor = id.Type == RecordTypes.Actor ? plugins.TryGet<ActorRecord>(id) : null;
+                _model.Show(glb, animation.Length > 0 ? animation : null, note.Length > 0 ? note : null, actor);
+                ShowInspector(catalog, id, actor);
                 break;
         }
     }
@@ -660,6 +661,19 @@ public partial class RecordBrowser : Control
         if (json is not null && await ImagesNamedAsync(catalog, json) is { Count: > 0 } images)
             return ImageGallery.Create(images);
         return Message(json is null ? "" : "No preview for this type. See the fields.");
+    }
+
+    /// <summary>The model view's inspector, for an actor's or a scene's model; none for a map's collision or anything else.</summary>
+    private void ShowInspector(PluginCatalog catalog, RecordId id, ActorRecord? actor)
+    {
+        foreach (var child in _model.Inspector.GetChildren())
+        {
+            _model.Inspector.RemoveChild(child);
+            child.QueueFree();
+        }
+        _model.InspectorVisible = id.Type is RecordTypes.Actor or RecordTypes.Scene;
+        if (_model.InspectorVisible)
+            _model.Inspector.AddChild(new ModelInspector(catalog, _model, actor?.Scene ?? id, actor is null ? null : id, FollowLink));
     }
 
     private static Label Message(string text) => new() { Text = text, AutowrapMode = TextServer.AutowrapMode.WordSmart };

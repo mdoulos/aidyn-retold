@@ -14,11 +14,26 @@ namespace AidynRetold.Editor;
 /// </summary>
 public partial class ModelView : VBoxContainer
 {
-    private readonly Label _note = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, AutowrapMode = TextServer.AutowrapMode.WordSmart };
+    /// <summary>What the preview shows, when that isn't just the asset itself: laid over the view's top corner.</summary>
+    private readonly Label _note = new()
+    {
+        AutowrapMode = TextServer.AutowrapMode.WordSmart, MouseFilter = MouseFilterEnum.Ignore,
+        Position = new Vector2(12, 8), CustomMinimumSize = new Vector2(420, 0),
+    };
     private readonly OptionButton _animations = new() { TooltipText = "Animation" };
     private readonly Button _play = new() { Text = "Pause", CustomMinimumSize = new Vector2(64, 0), TooltipText = "Play or pause (space)" };
-    private readonly HSlider _time = new() { CustomMinimumSize = new Vector2(200, 0), Step = 1, TooltipText = "Scrub by the tick (comma and full stop step)" };
-    private readonly Label _tick = new() { CustomMinimumSize = new Vector2(110, 0) };
+    private readonly HSlider _time = new()
+    {
+        CustomMinimumSize = new Vector2(160, 0), SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ShrinkCenter, Step = 1,
+        TooltipText = "Scrub by the tick (comma and full stop step)",
+    };
+    private readonly Label _tick = new() { CustomMinimumSize = new Vector2(150, 0) };
+    private readonly VSeparator _actorSeparator = new() { Visible = false };
+    private readonly HSplitContainer _body = new() { SizeFlagsVertical = SizeFlags.ExpandFill };
+    private readonly ScrollContainer _inspectorScroll = new()
+    {
+        CustomMinimumSize = new Vector2(360, 0), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, Visible = false,
+    };
     private readonly CheckBox _wireframe = new() { Text = "Wireframe" };
     private readonly CheckBox _sceneCamera = new() { Text = "Scene camera", TooltipText = "Look through the scene's own camera, at 4:3" };
     private readonly CheckBox _emitters = new() { Text = "Emitters", ButtonPressed = true, TooltipText = "Mark particle emitters on the scene's locators, in their particles' brightest colour" };
@@ -55,25 +70,43 @@ public partial class ModelView : VBoxContainer
         // Wireframes are drawn only for meshes made after this.
         RenderingServer.SetDebugGenerateWireframes(true);
 
-        var bar = new HBoxContainer();
-        bar.AddChild(_note);
-        bar.AddChild(_animations);
+        // One toolbar: playing the animation, driving an actor, and what the view shows.
+        AddThemeConstantOverride("separation", 4);
+        var bar = EditorStyle.Row(6);
         bar.AddChild(_play);
+        bar.AddChild(_animations);
         bar.AddChild(_time);
         bar.AddChild(_tick);
+        bar.AddChild(_actorSeparator);
+        _actorPanel.Bar.Visible = false;
+        bar.AddChild(_actorPanel.Bar);
+        bar.AddChild(new VSeparator());
         bar.AddChild(_emitters);
         bar.AddChild(_sceneCamera);
         bar.AddChild(_wireframe);
         AddChild(bar);
 
-        var split = new VSplitContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+        // The view, with the actor's states under it, and the inspector beside them.
+        var split = new VSplitContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _container.GuiInput += OnViewInput;
         _container.AddChild(_viewport);
         _frame.AddChild(_container);
+        _note.AddThemeColorOverride("font_color", EditorStyle.Dim);
+        _note.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.8f));
+        _frame.AddChild(_note);
         _frame.Resized += Layout;
         split.AddChild(_frame);
         split.AddChild(_actorPanel);
-        AddChild(split);
+        _body.AddChild(split);
+        Inspector.AddThemeConstantOverride("separation", 6);
+        Inspector.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        var inset = new MarginContainer();
+        inset.AddThemeConstantOverride("margin_left", 8);
+        inset.AddThemeConstantOverride("margin_right", 8);
+        inset.AddChild(Inspector);
+        _inspectorScroll.AddChild(inset);
+        _body.AddChild(_inspectorScroll);
+        AddChild(_body);
 
         _viewport.AddChild(new WorldEnvironment
         {
@@ -132,6 +165,32 @@ public partial class ModelView : VBoxContainer
         }
     }
 
+    /// <summary>The model shown, which the inspector's sections draw on and pick parts of; null when nothing loaded.</summary>
+    public Node3D? Content => _content;
+
+    /// <summary>The model's glTF as parsed, with its extras, animations and clips.</summary>
+    public GlbScene? File => _glb;
+
+    /// <summary>The actor shown, if the model is an actor's.</summary>
+    public ActorRecord? Actor => _actor;
+
+    /// <summary>The model's size, drawn at <paramref name="scale"/>, as a body's scale draws it in the game.</summary>
+    public void ScaleModel(float scale)
+    {
+        if (_content is not null)
+            _content.Scale = Vector3.One * scale;
+    }
+
+    /// <summary>The inspector beside the view, which the record browser fills with sections for what's shown.</summary>
+    public VBoxContainer Inspector { get; } = new();
+
+    /// <summary>Shows or hides the inspector beside the view.</summary>
+    public bool InspectorVisible
+    {
+        get => _inspectorScroll.Visible;
+        set => _inspectorScroll.Visible = value;
+    }
+
     public void SetWireframe(bool on) => _wireframe.ButtonPressed = on;
 
     public void SetSceneCamera(bool on) => _sceneCamera.ButtonPressed = on;
@@ -156,7 +215,7 @@ public partial class ModelView : VBoxContainer
         // Driving an actor locks the scrub (SetDrive), and the next actor's panel turns Drive off without saying so.
         _time.Editable = true;
         _emitters.Visible = _sceneCamera.Visible = false;
-        _actorPanel.Visible = false;
+        _actorPanel.Visible = _actorPanel.Bar.Visible = _actorSeparator.Visible = false;
         _note.Text = "";
     }
 
@@ -233,7 +292,7 @@ public partial class ModelView : VBoxContainer
             _motion = Vector3.Zero;
             var clips = file.Clips(actor.RootTransform);
             _actorPanel.Show(actor, n => clips.Clip(actor.States[n].Animation)?.Length ?? 0);
-            _actorPanel.Visible = true;
+            _actorPanel.Visible = _actorPanel.Bar.Visible = _actorSeparator.Visible = true;
             _ground = Ground(radius);
             _viewport.AddChild(_ground);
             ShowFrame();
@@ -310,14 +369,14 @@ public partial class ModelView : VBoxContainer
         }
         if (_animator is { Machine: var machine })
         {
-            _tick.Text = $"time {machine.Clock} / {machine.Length(machine.State)}";
-            _actorPanel.Mark(machine.State, $"state {machine.State}, time {machine.Clock} / {machine.Length(machine.State)}");
+            _tick.Text = $"state {machine.State} · {machine.Clock} / {machine.Length(machine.State)}";
+            _actorPanel.Mark(machine.State);
         }
         else if (_player is not null)
         {
-            _tick.Text = $"time {tick + 1} / {(int)_time.MaxValue}";
+            _tick.Text = $"tick {tick + 1} / {(int)_time.MaxValue}";
             if (_actor is not null)
-                _actorPanel.Mark(_actor.States.ToList().FindIndex(s => ActorAnimator.AnimationName(s) == Selected()), "");
+                _actorPanel.Mark(_actor.States.ToList().FindIndex(s => ActorAnimator.AnimationName(s) == Selected()));
         }
     }
 

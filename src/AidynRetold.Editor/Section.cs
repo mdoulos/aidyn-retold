@@ -31,11 +31,15 @@ public partial class Section : VBoxContainer
         {
             margin.Visible = open;
             UpdateTitle();
+            Toggled?.Invoke(open);
         };
         UpdateTitle();
     }
 
     public Control Content { get; }
+
+    /// <summary>The section was folded or unfolded.</summary>
+    public event Action<bool>? Toggled;
 
     /// <summary>What follows the title, dim: a count, where it comes from.</summary>
     public string Note

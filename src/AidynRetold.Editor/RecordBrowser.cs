@@ -61,6 +61,12 @@ public partial class RecordBrowser : Control
     private int _generation;
     private Task _showing = Task.CompletedTask;
 
+    // A model's page can show the original a plugin replaces, from the ROM plugin alone, loaded when first asked; and the index of
+    // which models use which textures, built when first asked. Both go with the plugins.
+    private bool _original;
+    private PluginSet? _originalPlugins;
+    private Task<AidynRetold.Plugins.Assets.TextureUsage>? _usage;
+
     public override void _Ready() => BuildUi();
 
     /// <summary>
@@ -104,6 +110,7 @@ public partial class RecordBrowser : Control
     {
         _pluginsDirectory = pluginsDirectory;
         _catalog = null;
+        (_original, _originalPlugins, _usage) = (false, null, null);
         _map.Clear();
         _models?.Dispose();
         _models = null;
@@ -444,6 +451,8 @@ public partial class RecordBrowser : Control
 
     private void Go(RecordId id)
     {
+        // Another page shows the plugins' own, whatever the last one showed.
+        _original = false;
         UpdateHistoryButtons();
         if (_rows.TryGetValue(id, out var row))
             SelectRow(row);
@@ -526,7 +535,8 @@ public partial class RecordBrowser : Control
                 break;
             case (byte[] glb, string animation, string note):
                 SetPreview(_model);
-                var actor = id.Type == RecordTypes.Actor ? plugins.TryGet<ActorRecord>(id) : null;
+                var actor = id.Type != RecordTypes.Actor ? null
+                    : _original && _originalPlugins?.TryGet<ActorRecord>(id) is { } originalActor ? originalActor : plugins.TryGet<ActorRecord>(id);
                 var model = actor?.Scene ?? (id.Type == RecordTypes.Scene ? id : (RecordId?)null);
                 _model.Show(glb, animation.Length > 0 ? animation : null, note.Length > 0 ? note : null, actor, model);
                 ShowInspector(catalog, id, actor);
@@ -636,8 +646,11 @@ public partial class RecordBrowser : Control
         }
         if (id.Type == RecordTypes.Actor && json is not null)
         {
-            // An actor is its scene, playing its initial state's animation.
-            if ((string?)json["scene"] is not { } sceneText || !RecordId.TryParse(sceneText, out var scene) || plugins.FindAsset(scene, "glb") is not { } path)
+            // An actor is its scene, playing its initial state's animation: the original's, as the ROM plugin has them, when asked.
+            if (_original && await OriginalPluginsAsync(plugins) is { } originals && originals.GetJson(id) is { } originalJson)
+                json = originalJson;
+            if ((string?)json["scene"] is not { } sceneText || !RecordId.TryParse(sceneText, out var scene)
+                || (_original ? plugins.FindOriginalAsset(scene, "glb") : plugins.FindAsset(scene, "glb")) is not { } path)
                 return Message("The actor's scene has no asset.");
             var initial = (int?)json["initialState"] ?? 0;
             var animation = (string?)json["states"]?[initial]?["animation"] is { } a && RecordId.TryParse(a, out var animationId)
@@ -651,7 +664,8 @@ public partial class RecordBrowser : Control
         if (entry?.Asset("glb") is { } glb)
         {
             var note = id.Type == RecordTypes.Map ? "Collision, in the chunk's own coordinates." : "";
-            return (await File.ReadAllBytesAsync(glb.Path), "", note);
+            var path = _original && id.Type == RecordTypes.Scene && plugins.FindOriginalAsset(id, "glb") is { } originalPath ? originalPath : glb.Path;
+            return (await File.ReadAllBytesAsync(path), "", note);
         }
         if (entry?.Asset("png") is { } png)
         {
@@ -673,8 +687,35 @@ public partial class RecordBrowser : Control
             child.QueueFree();
         }
         _model.InspectorVisible = id.Type is RecordTypes.Actor or RecordTypes.Scene;
-        if (_model.InspectorVisible)
-            _model.Inspector.AddChild(new ModelInspector(catalog, _model, actor?.Scene ?? id, actor is null ? null : id, FollowLink));
+        if (!_model.InspectorVisible)
+            return;
+        _model.Inspector.AddChild(new ModelInspector(new ModelContext
+        {
+            Catalog = catalog, View = _model, Scene = actor?.Scene ?? id, ActorId = actor is null ? null : id, Open = FollowLink, Models = _models,
+            Original = _original,
+            ShowOriginal = original =>
+            {
+                _original = original;
+                _showing = Report(ShowAsync(id));
+            },
+            Reload = async () =>
+            {
+                await LoadAsync(_pluginsDirectory);
+                await OpenAsync(id);
+            },
+            Usage = () => _usage ??= Task.Run(() => AidynRetold.Plugins.Assets.TextureUsage.Build(catalog.Plugins)),
+        }));
+    }
+
+    /// <summary>The ROM plugin alone, for the original of a record a later plugin patches, loaded once when first asked.</summary>
+    private async Task<PluginSet?> OriginalPluginsAsync(PluginSet plugins)
+    {
+        if (_originalPlugins is null && plugins.Plugins.Count > 0)
+        {
+            var directory = plugins.Plugins[0].Directory;
+            _originalPlugins = await Task.Run(() => PluginSet.Load([directory]));
+        }
+        return _originalPlugins;
     }
 
     private static Label Message(string text) => new() { Text = text, AutowrapMode = TextServer.AutowrapMode.WordSmart };

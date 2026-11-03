@@ -12,22 +12,21 @@ namespace AidynRetold.Editor;
 /// </summary>
 public partial class ModelInspector : VBoxContainer
 {
-    private readonly ModelView _view;
-    private readonly PluginCatalog _catalog;
-    private readonly Action<RecordId> _open;
+    private readonly ModelContext _ctx;
     private readonly List<Wearer> _wearers;
     private readonly OptionButton _shownAs = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, TooltipText = "The character whose body, held items and strike the sections show" };
     private readonly VBoxContainer _sections = new();
+    private static readonly Dictionary<string, bool> Folded = [];
 
     /// <summary>A character whose body is the actor: an entity, or a dialogue entity, which has only a body.</summary>
     public sealed record Wearer(RecordId Id, string Name, EntityBody Body, EntityRecord? Entity);
 
-    public ModelInspector(PluginCatalog catalog, ModelView view, RecordId scene, RecordId? actor, Action<RecordId> open)
+    public ModelInspector(ModelContext ctx)
     {
-        (_catalog, _view, _open, Scene, ActorId) = (catalog, view, open, scene, actor);
+        _ctx = ctx;
         AddThemeConstantOverride("separation", 6);
         _sections.AddThemeConstantOverride("separation", 6);
-        _wearers = actor is { } a ? WearersOf(catalog.Plugins, a) : [];
+        _wearers = ctx.ActorId is { } a ? WearersOf(ctx.Plugins, a) : [];
         if (_wearers.Count > 0)
         {
             var row = EditorStyle.Row(6);
@@ -36,7 +35,7 @@ public partial class ModelInspector : VBoxContainer
                 _shownAs.AddItem($"{w.Name} ({w.Id.Type} {w.Id.Key})");
             row.AddChild(_shownAs);
             var go = new Button { Text = "Open", TooltipText = "Open the character's page" };
-            go.Pressed += () => _open(Shown!.Id);
+            go.Pressed += () => ctx.Open(Shown!.Id);
             row.AddChild(go);
             AddChild(row);
             _shownAs.ItemSelected += _ => Build();
@@ -44,9 +43,6 @@ public partial class ModelInspector : VBoxContainer
         AddChild(_sections);
         Build();
     }
-
-    public RecordId Scene { get; }
-    public RecordId? ActorId { get; }
 
     /// <summary>The character the model is shown as, or null for a model no character wears.</summary>
     public Wearer? Shown => _wearers.Count == 0 ? null : _wearers[Math.Max(_shownAs.Selected, 0)];
@@ -60,7 +56,7 @@ public partial class ModelInspector : VBoxContainer
             .Select(d => new Wearer(d.Id, d.Name, d.Body!, null)),
     ];
 
-    /// <summary>The sections for the model and the character it's shown as, afresh.</summary>
+    /// <summary>The sections for the model and the character it's shown as, afresh, each folded as it was last left.</summary>
     private void Build()
     {
         foreach (var child in _sections.GetChildren())
@@ -68,11 +64,21 @@ public partial class ModelInspector : VBoxContainer
             _sections.RemoveChild(child);
             child.QueueFree();
         }
+        var model = new ModelSection(_ctx);
+        Add("Model", model, model.Summary);
+        var textures = new TexturesSection(_ctx);
+        Add("Textures", textures, textures.Summary);
         if (Shown is { } wearer)
         {
-            var alaron = wearer.Id == GameState.Alaron ? null : _catalog.Plugins.TryGet<EntityRecord>(GameState.Alaron)?.Body;
-            var body = new Section("Body", new BodySection(_view, wearer.Body, alaron)) { Note = wearer.Name };
-            _sections.AddChild(body);
+            var alaron = wearer.Id == GameState.Alaron ? null : _ctx.Plugins.TryGet<EntityRecord>(GameState.Alaron)?.Body;
+            Add("Body", new BodySection(_ctx.View, wearer.Body, alaron), wearer.Name);
         }
+    }
+
+    private void Add(string name, Control content, string note)
+    {
+        var section = new Section(name, content) { Note = note, Open = Folded.GetValueOrDefault(name, true) };
+        section.Toggled += open => Folded[name] = open;
+        _sections.AddChild(section);
     }
 }

@@ -45,6 +45,20 @@ It loads the plugins folder as the runtime does (`PluginSet.LoadInstalled`: `aid
 - **Used by:** every record that names this one, with the fields that do. Terrains show nothing here, since chunks name them by number rather than record ID.
 - **Atlas** (`AtlasView`, over `QuestIndex` in `AidynRetold.Plugins`): for a flag, what sets, clears and reads it, from scripts, derived flags, journal entries, the engine, map objects and chunks' world map regions; for a script, what it reads and sets and what starts it. Below, the graph around it, upstream, downstream or both, up to 160 records (`AtlasView.NodeLimit`), hiding the flags the engine writes its state into unless asked. Key items and members count as their flags: giving a key item sets its held and region flags, and AddMember sets a member's joined flag. The CLI's `acre flag` reads the same index. Boss flags, which winning a battle sets (`CombatRecord.Bosses`), and trigger records aren't in the index yet.
 
+## A record's page
+
+The header is one row (`RecordHeader`): the record's summary, large, its ID and Borg dim, a chip for each plugin it comes from in load order (the definer, each patcher, with the fields it sets in its tooltip, and a plugin whose file replaces an earlier one's, in orange), and the page's tabs at its end, which the `TabContainer` under it doesn't draw.
+
+## A model's page
+
+An actor's or a scene's preview is the model view (`ModelView`): one toolbar (play, the clip, scrubbing by the tick, the actor's Drive controls, `ActorPanel.Bar`, and the view's switches), the view with its note over its corner, the actor's states under it, and an inspector beside them (`ModelInspector`), sections that fold and stay as they were left (`Section`). An actor's inspector starts with **Shown as**: the entities and dialogue entities whose body the actor is, whose body, held items and strike the sections show.
+
+- **Model** (`ModelSection`): the model's ID and the plugins its file comes from, what the file holds, and **Export model…**, **Replace model…** and **Put back the original**. Replacing runs the remodel check of the picked file against the original first (`RemodelCheck`, in Plugins) and shows it before anything's written. A replaced model shows a **Replacement / Original** switch, which shows the original's file and the actor as the ROM plugin has it (the ROM plugin loaded alone, once, `RecordBrowser.OriginalPluginsAsync`), and the check of the replacement: the root part, every animation with its length, the locators and their attachments, the lights and camera, the model's extras, new names the game reads as parts, and whether its textures keep their numbers.
+- **Textures** (`TexturesSection`): a tile for each image the model has, drawn as the game draws it, a plugin's PNG in place of the model's copy where there's one ([ADR 0044](../adr/0044-textures-on-models-come-from-a-plugins-pngs.md)), in orange; a remodel's own images have no number. The one picked says where it comes from and which other models use it, as links (`TextureUsage`, built off the main thread when first asked, once per load), with **Export PNG…**, **Export all…**, **Replace on this model…** (a model texture), **Replace everywhere…** (the texture's own PNG) and **Put back**.
+- **Body** (`BodySection`): the character's radius, height, scale and strike, drawn on the model: the collision sphere with its footprint, a ring at its height, Alaron's figure beside it for size, and the model at the game's scale.
+
+What the sections write goes into a plugin the person names, a mod or a base plugin in its own folder, remembered for the next write (`PluginFiles.Write`, through `ModFolder.OpenOrCreate`). Then the browser loads the plugins again and opens the page again, so it shows what was written.
+
 ## Traps
 
 - **Many objects at once.** Every mesh the N64 material draws has instance uniforms, so the project raises Godot's global shader variable buffer (`rendering/limits/global_shader_variables/buffer_size`) for a whole map set's worth.

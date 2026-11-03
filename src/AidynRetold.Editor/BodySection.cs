@@ -46,8 +46,9 @@ public partial class BodySection : VBoxContainer
         var toggles = new HFlowContainer();
         toggles.AddChild(_sphere);
         toggles.AddChild(_height);
-        if (alaron is not null)
-            toggles.AddChild(_beside);
+        // In the tree whether shown or not, so it's freed with the section.
+        _beside.Visible = alaron is not null;
+        toggles.AddChild(_beside);
         _scale.Disabled = Math.Abs(body.Scale - 1) < 1e-4f;
         _scale.TooltipText = _scale.Disabled ? "Drawn at its model's own size" : $"Draw the model ×{Number(body.Scale)}, as the game does";
         _scale.ButtonPressed = !_scale.Disabled;

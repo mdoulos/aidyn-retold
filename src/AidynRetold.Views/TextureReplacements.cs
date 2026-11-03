@@ -19,6 +19,13 @@ public static class TextureReplacements
     public static Func<int, Texture2D?> For(PluginSet plugins, RecordId model) =>
         borg1 => TextureOverrides.Find(plugins, model, borg1) is { } found ? Load(found.Path) : null;
 
+    /// <summary>Forgets the textures read, which <see cref="Models.Dispose"/> does, so none is held at exit and a reload reads them afresh.</summary>
+    public static void Clear()
+    {
+        lock (Gate)
+            Loaded.Clear();
+    }
+
     /// <summary>A PNG as a texture with mipmaps, as the model's own are made; null, with a warning, for a file that isn't one.</summary>
     public static Texture2D? Load(string path)
     {

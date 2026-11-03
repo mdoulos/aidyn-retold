@@ -207,6 +207,8 @@ public sealed class Models(PluginSet plugins) : IDisposable
                 file.Value?.Dispose();
             _files.Clear();
         }
+        // The plugins' textures go with the models that drew them: a reload reads them afresh, and none is left at exit.
+        TextureReplacements.Clear();
     }
 
     private Node3D? Load(RecordId scene)

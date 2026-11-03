@@ -121,7 +121,8 @@ public partial class MapSetView : VBoxContainer
     // Editing the picked object.
     private readonly VBoxContainer _edit = new();
     private readonly SpinBox[] _position = Spins(0.01), _rotation = Spins(1), _scale = Spins(0.01);
-    private readonly HBoxContainer _rotationRow = new(), _scaleRow = new();
+    // Made in the constructor, as their rows: made here too, the first two were left out of the tree and leaked at exit.
+    private readonly HBoxContainer _rotationRow, _scaleRow;
     private readonly Button _drop = new() { Text = "Drop to ground", TooltipText = "Put it on the collision under it" };
     private readonly Button _duplicate = new() { Text = "Duplicate", TooltipText = "A copy beside it, at the next free index (Ctrl+D)" };
     private readonly Button _delete = new() { Text = "Delete", TooltipText = "Take it out of the map (Delete)" };

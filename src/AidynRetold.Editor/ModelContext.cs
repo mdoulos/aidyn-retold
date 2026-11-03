@@ -91,38 +91,64 @@ public static class PluginFiles
     /// <paramref name="after"/>, the plugins' reload. What goes wrong is said in a dialog. A base plugin's ID saves into that base
     /// plugin's own folder, as the owner's own changes are kept (<see cref="ModFolder.OpenOrCreate"/>).
     /// </summary>
-    public static void Write(Node parent, PluginSet plugins, string what, Action<ModFolder> write, Func<Task> after) =>
+    public static void Write(Node parent, PluginSet plugins, string what, Action<ModFolder> write, Func<Task> after)
+    {
+        if (CurrentMod.Id is { } current)
+        {
+            Save(parent, plugins, current, what, "was saved to", write, after);
+            return;
+        }
+        // No mod yet, as when the person was just looking around: this first save asks, and the mod named is the one from then on.
         EditorDialog.Ask(parent, "Save to a mod",
-            $"Which mod to save {what} to. A mod's ID is lower-case letters, digits and underscores, such as my_village; a mod that isn't there yet is made.",
-            _lastPlugin, "my_mod", "Save", id =>
+            $"Which mod to save {what} to. A mod's ID is lower-case letters, digits and underscores, such as my_village; a mod that isn't there yet is made. " +
+            "Saves after this one go to it too.", _lastPlugin, "my_mod", "Save", id =>
+            {
+                _lastPlugin = id;
+                if (Save(parent, plugins, id, what, "was saved to", write, after))
+                    CurrentMod.Use(PluginsDirectory(plugins), id);
+            });
+    }
+
+    /// <summary>
+    /// Writes into <paramref name="mod"/>, noting what it overwrote, loads the plugins again, and shows a toast of what was done with
+    /// Undo, which puts the files back as they were and loads the plugins again. False, with a dialog saying why, if it couldn't.
+    /// </summary>
+    private static bool Save(Node parent, PluginSet plugins, string mod, string what, string done, Action<ModFolder> write, Func<Task> after)
+    {
+        var root = parent.GetTree().Root;
+        try
+        {
+            var folder = ModFolder.OpenOrCreate(PluginsDirectory(plugins), mod, basePluginsDirectory: DataPaths.BasePlugins);
+            folder.Journal = [];
+            write(folder);
+            var journal = folder.Journal;
+            _ = BackgroundTask.Report(after());
+            Toast.Show(root, $"{char.ToUpperInvariant(what[0])}{what[1..]} {done} the {mod} mod.", () =>
             {
                 try
                 {
-                    _lastPlugin = id;
-                    write(ModFolder.OpenOrCreate(PluginsDirectory(plugins), id, basePluginsDirectory: DataPaths.BasePlugins));
+                    ModFolder.Restore(journal);
                     _ = BackgroundTask.Report(after());
+                    Toast.Show(root, "Undone.", seconds: 1.5);
                 }
-                catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException)
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
                 {
-                    Tell(parent, "Couldn't save it", e.Message);
+                    Tell(root, "Couldn't undo it", e.Message);
                 }
             });
+            return true;
+        }
+        catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            Tell(root, "Couldn't save it", e.Message);
+            return false;
+        }
+    }
 
     /// <summary>Takes <paramref name="id"/>'s asset out of the mod <paramref name="mod"/>, after asking, so the one below it shows again.</summary>
     public static void Remove(Node parent, PluginSet plugins, string mod, RecordId id, string extension, string what, Func<Task> after) =>
         EditorDialog.Confirm(parent, "Take it out of the mod", $"Take {what} out of {mod}?\n\nWhat it replaced shows again: another mod's, or the original's.",
-            "Take it out", () =>
-            {
-                try
-                {
-                    ModFolder.OpenOrCreate(PluginsDirectory(plugins), mod, basePluginsDirectory: DataPaths.BasePlugins).RemoveAsset(id, extension);
-                    _ = BackgroundTask.Report(after());
-                }
-                catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException)
-                {
-                    Tell(parent, "Couldn't take it out", e.Message);
-                }
-            }, danger: true);
+            "Take it out", () => Save(parent, plugins, mod, what, "was taken out of", folder => folder.RemoveAsset(id, extension), after), danger: true);
 
     /// <summary>A message in a dialog, with OK.</summary>
     public static void Tell(Node parent, string title, string text) => EditorDialog.Tell(parent, title, text);

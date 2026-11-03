@@ -49,7 +49,7 @@ public partial class RecordHeader : HBoxContainer
             if (i > 0)
                 _sources.AddChild(EditorStyle.DimLabel("›"));
             var (plugin, gives) = sources[i];
-            _sources.AddChild(EditorStyle.Chip(plugin, $"{plugin}: {gives}", changed: i > 0));
+            _sources.AddChild(EditorStyle.Chip(EditorStyle.PluginName(plugin), $"{EditorStyle.PluginName(plugin)} ({plugin}): {gives}", changed: i > 0));
         }
     }
 }

@@ -49,7 +49,13 @@ It loads the plugins folder as the runtime does (`PluginSet.LoadInstalled`: `aid
 
 The editor has a theme of its own, dark by default or light (`EditorTheme`): the toolbar's **Light mode** switches between them, and the choice is kept in `user://editor.cfg` (`--light 1` or `0` picks one for a run without keeping it). Both are one look in two palettes: thin borders and small radii, outlined buttons with a filled primary, its own drawn check boxes, switches and arrows, and the tab picked underlined. Pages name what they show by the theme's type variations (`DimLabel`, `Chip`, `ChangedLabel`, `PrimaryButton` and the rest), so a change of mode reaches them, and the browser shows the page again for what's drawn by code (a tree's colours, the timeline, the 3D views' backgrounds, `EditorTheme.Viewport`).
 
-Every dialog is the editor's own (`EditorDialog`), in the owner's style: a box of a fixed width over a dimmed backdrop, its title in a band with a line under it, its message in paragraphs, and its buttons at its foot's right, Cancel first and the way forward last, filled, red where it takes something away; focus starts on Cancel, and Escape and the backdrop cancel, but for the import dialog, which the editor can't go on without. What's saved, the editor calls saving to a mod, which the person names (`PluginFiles.Write`).
+Every dialog is the editor's own (`EditorDialog`), in the owner's style: a box of a fixed width over a dimmed backdrop, its title in a band with a line under it, its message in paragraphs, and its buttons at its foot's right, Cancel first and the way forward last, filled, red where it takes something away; focus starts on Cancel, and Escape and the backdrop cancel, but for the import dialog, which the editor can't go on without. What's saved, the editor calls saving to a mod. Chips name the ROM plugin Aidyn ROM (`EditorStyle.PluginName`), and every other plugin by its ID.
+
+## The mod saved to
+
+The editor saves to one mod at a time (`CurrentMod`), remembered for each plugins folder in `user://editor.cfg`. When it opens with none remembered, or the one remembered is gone, it asks before anything loads, after the import if there's one to do, in the import dialog's place and size, and as it does, with nothing else to use (`ModSetup`): **Load Existing Mod** picks a mod's `plugin.json`, which must be in the plugins folder (or be a base plugin's), so it loads with the rest; **Create New Mod** asks its name, makes its ID from it (`My Village` is `my_village`) and its folder; and **Just looking around** goes on with none, so the first save asks which mod, which is then the one. The toolbar's **Saving to:** shows the mod and changes it.
+
+A save goes to the mod without asking and shows a toast for three seconds (`Toast`): what was saved to which mod, with **Undo**. The save notes each file it overwrites or removes as it was first (`ModFolder.Journal`), and Undo puts them back (`ModFolder.Restore`) and loads the plugins again. Taking something out of a mod asks first, being a deletion, then toasts the same.
 
 ## A record's page
 
@@ -69,7 +75,7 @@ The states show as a table or as a graph (`ActorPanel.Graph.cs`, a `GraphEdit`):
 
 The timeline's marks are the clip's as the game times them for the character shown (`TimelineMarks`), from the requests whose branches lead into the states that play it: a footstep key of the body's footstep set on its first surface, and a key of its own, at its share of the state's length (`AudioKeys.Reached`); an emitter of the scene's that starts on one of those requests, on the state's first tick and its delay after (`ActorParticles.Entered`); and for an attack, request 12 to 18, the tick the blow lands, at the character's strike share, or 0.4 for a bow shot or a throw (`Battle.AtStrike`). While the actor is driven, it shows the state playing, and its clock.
 
-What the sections write is saved to a mod the person names, remembered for the next save, or into a base plugin's own folder for a base plugin's ID (`PluginFiles.Write`, through `ModFolder.OpenOrCreate`). Then the browser loads the plugins again and opens the page again, so it shows what was written.
+What the sections write is saved to the mod saved to ([below](#the-mod-saved-to)), or into a base plugin's own folder for a base plugin's ID (`PluginFiles.Write`, through `ModFolder.OpenOrCreate`). Then the browser loads the plugins again and opens the page again, so it shows what was written.
 
 ## Traps
 
@@ -88,6 +94,7 @@ The map view edits map objects ([editing the world](../editing-the-world.md#in-t
 - **The import dialog**, with no current import: `--from-game 1` (which the game passes) ends it with Play; `--rom <path>` and `--import 1` fill it in and press Import, and a screenshot waits for the import, giving up after 15 minutes rather than one. Without `--import`, `--screenshot` saves the dialog as it opens.
 - **The game:** `--checkpoint <state>` or `--save <save>` loads that game; `--play <moves>` plays a script that many moves, taking first choices, with its conversation box.
 - **The UI screen** (the conversation box and the windows): `--zoom <1-3>`, `--ui-filter pixels|videoout|smooth`, `--aspect 4:3|16:9`, `--ui-lines <n>`.
+- **The mod and the look:** `--mod <id>` saves to that mod for the run, without asking; a screenshot run doesn't ask which mod, unless `--mod-dialog 1`, which saves the dialog; `--toast <text>` shows a toast; `--light 1` or `0` picks the mode for the run.
 - **A model's inspector:** `--open model,parts` opens those sections and folds the rest; `--part "transform 12"` picks a part; `--states graph` shows an actor's states as the graph.
 - **Scenes and maps:** `--drive <request>` drives an actor; `--wireframe 1` and `--scene-camera 1` set those switches; `--collision surface|role` colours a map's collision; `--look 1` looks through a camera object's camera.
 - **The Party tab and windows:** `--member <slot>`, `--list inventory|spells|skills|stats`, `--row <n>`, `--details 1`; `--roll 1` rolls a loot table or opens a container's loot window; `--press a,b,up,down` presses a window's buttons in turn, with `left` and `right` in the loot window, `cup` in a shop's and `cleft` and `cright` in a training window.

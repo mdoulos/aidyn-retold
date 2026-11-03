@@ -21,6 +21,12 @@ public static class EditorStyle
     /// <summary>What a plugin other than the ROM plugin changed: a patched field, a replaced file.</summary>
     public static Color Changed => EditorTheme.Current.Changed;
 
+    /// <summary>
+    /// A plugin as the editor names it in its chips and notes: the ROM plugin, whose ID is <c>aidyn</c>, as Aidyn ROM, so it reads as the
+    /// imported original rather than a mod; any other by its ID.
+    /// </summary>
+    public static string PluginName(string id) => id == Plugins.RecordId.RomNamespace ? "Aidyn ROM" : id;
+
     /// <summary>A label in the theme's dim text, at <paramref name="size"/> if given.</summary>
     public static Label DimLabel(string text = "", int? size = null)
     {

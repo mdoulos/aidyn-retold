@@ -246,6 +246,12 @@ public static class EditorTheme
         dialog.ShadowSize = 24;
         dialog.ShadowOffset = new Vector2(0, 8);
         t.SetStylebox("panel", "DialogBox", dialog);
+        t.SetTypeVariation("Toast", "PanelContainer");
+        var toast = Box(p.Raised, p.Border, 6, 1, 16, 8);
+        toast.ShadowColor = new Color(0, 0, 0, 0.25f);
+        toast.ShadowSize = 14;
+        toast.ShadowOffset = new Vector2(0, 4);
+        t.SetStylebox("panel", "Toast", toast);
         t.SetTypeVariation("DialogTitle", "PanelContainer");
         t.SetStylebox("panel", "DialogTitle", Box(p.Band, p.Border, 0, 0, 14, 10, bottom: 1, topRadius: 4));
         t.SetTypeVariation("SectionTitle", "Button");

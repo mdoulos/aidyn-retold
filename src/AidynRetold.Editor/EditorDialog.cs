@@ -6,6 +6,8 @@ namespace AidynRetold.Editor;
 public enum DialogButtonKind
 {
     Cancel,
+    /// <summary>Another way forward, outlined as the way out is, which Escape and the backdrop don't take.</summary>
+    Secondary,
     Primary,
     Danger,
 }
@@ -28,7 +30,9 @@ public partial class EditorDialog : Control
     private Control? _focus;
 
     /// <param name="dismissable">Whether Escape and the backdrop cancel: not for a dialog the editor can't go on without.</param>
-    public EditorDialog(string title, IEnumerable<Control> body, IReadOnlyList<DialogButton> buttons, float width = 460, bool dismissable = true)
+    /// <param name="under">What stands under the buttons, at the foot's right: a quieter way on, such as Just looking around.</param>
+    public EditorDialog(string title, IEnumerable<Control> body, IReadOnlyList<DialogButton> buttons, float width = 460, bool dismissable = true,
+        Control? under = null)
     {
         _dismissable = dismissable;
         SetAnchorsPreset(LayoutPreset.FullRect);
@@ -100,7 +104,19 @@ public partial class EditorDialog : Control
             actions.AddChild(button);
             _buttons.Add(button);
         }
-        foot.AddChild(actions);
+        if (under is null)
+        {
+            foot.AddChild(actions);
+        }
+        else
+        {
+            var stack = new VBoxContainer();
+            stack.AddThemeConstantOverride("separation", 8);
+            stack.AddChild(actions);
+            under.SizeFlagsHorizontal = SizeFlags.ShrinkEnd;
+            stack.AddChild(under);
+            foot.AddChild(stack);
+        }
         column.AddChild(foot);
     }
 

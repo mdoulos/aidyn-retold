@@ -1126,25 +1126,54 @@ public partial class MapSetView : VBoxContainer
     {
         if (_catalog is not { } catalog)
             return;
+        var what = $"{Edits.Count} {(Edits.Count == 1 ? "edit" : "edits")}";
+        if (CurrentMod.Id is { } current)
+        {
+            SaveEdits(catalog, current, what, Edits.Count == 1);
+            return;
+        }
+        // No mod yet: this first save asks, and the mod named is the one from then on.
         EditorDialog.Ask(this, "Save edits to a mod",
-            $"Which mod to save the {Edits.Count} {(Edits.Count == 1 ? "edit" : "edits")} to. A mod's ID is lower-case letters, digits and underscores, " +
-            "such as my_village; a mod that isn't there yet is made.", _modId, "my_village", "Save", id =>
+            $"Which mod to save the {what} to. A mod's ID is lower-case letters, digits and underscores, such as my_village; a mod that isn't there yet " +
+            "is made. Saves after this one go to it too.", _modId, "my_village", "Save", id =>
             {
-                try
-                {
-                    _modId = id;
-                    var mod = ModFolder.OpenOrCreate(PluginFiles.PluginsDirectory(catalog.Plugins), _modId, basePluginsDirectory: DataPaths.BasePlugins);
-                    var report = Edits.Save(catalog.Plugins, mod);
-                    SetStatus(summary: $"Saved to {mod.Directory}: {string.Join("; ", report)}");
-                    UpdateSaveButton();
-                    Saved?.Invoke();
-                }
-                catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException
-                    or System.Text.Json.JsonException)
-                {
-                    PluginFiles.Tell(this, "Couldn't save the edits", e.Message);
-                }
+                _modId = id;
+                if (SaveEdits(catalog, id, what, Edits.Count == 1))
+                    CurrentMod.Use(PluginFiles.PluginsDirectory(catalog.Plugins), id);
             });
+    }
+
+    /// <summary>
+    /// Writes the edits into <paramref name="modId"/>, noting what they overwrote, has the plugins loaded again, and shows a toast with
+    /// Undo, which puts the mod's files back and loads them again. False, with a dialog saying why, if it couldn't.
+    /// </summary>
+    private bool SaveEdits(PluginCatalog catalog, string modId, string what, bool one)
+    {
+        var root = GetTree().Root;
+        try
+        {
+            var mod = ModFolder.OpenOrCreate(PluginFiles.PluginsDirectory(catalog.Plugins), modId, basePluginsDirectory: DataPaths.BasePlugins);
+            mod.Journal = [];
+            var report = Edits.Save(catalog.Plugins, mod);
+            var journal = mod.Journal;
+            SetStatus(summary: $"Saved to {mod.Directory}: {string.Join("; ", report)}");
+            UpdateSaveButton();
+            var saved = Saved;
+            saved?.Invoke();
+            Toast.Show(root, $"{char.ToUpperInvariant(what[0])}{what[1..]} {(one ? "was" : "were")} saved to the {modId} mod.", () =>
+            {
+                ModFolder.Restore(journal);
+                saved?.Invoke();
+                Toast.Show(root, "Undone.", seconds: 1.5);
+            });
+            return true;
+        }
+        catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException
+            or System.Text.Json.JsonException)
+        {
+            PluginFiles.Tell(this, "Couldn't save the edits", e.Message);
+            return false;
+        }
     }
 
     /// <summary>

@@ -71,6 +71,38 @@ public sealed class ModFolder
         return others.Count == plugins.Plugins.Count ? plugins : PluginSet.Load(others);
     }
 
+    /// <summary>
+    /// What this folder's writes and removals overwrote, each file once, as it was before the first: its bytes, or null where there
+    /// was none. Null, the default, keeps no record; the editor sets it to undo a save (<see cref="Restore"/>).
+    /// </summary>
+    public List<(string Path, byte[]? Before)>? Journal { get; set; }
+
+    /// <summary>Puts every file a journal names back as it was before the writes it records, deleting those that weren't there.</summary>
+    public static void Restore(IReadOnlyList<(string Path, byte[]? Before)> journal)
+    {
+        foreach (var (path, before) in journal.Reverse())
+        {
+            if (before is null)
+            {
+                if (File.Exists(path))
+                    File.Delete(path);
+            }
+            else
+            {
+                System.IO.Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                File.WriteAllBytes(path, before);
+            }
+        }
+    }
+
+    /// <summary>Notes <paramref name="path"/> as it is, before it's first written or removed, when there's a journal.</summary>
+    private void Note(string path)
+    {
+        if (Journal is null || Journal.Any(j => string.Equals(j.Path, path, StringComparison.OrdinalIgnoreCase)))
+            return;
+        Journal.Add((path, File.Exists(path) ? File.ReadAllBytes(path) : null));
+    }
+
     /// <summary>A record ID in the mod's namespace.</summary>
     public RecordId Own(string type, string key) => RecordId.Parse($"{Id}:{type}/{key}");
 
@@ -83,6 +115,7 @@ public sealed class ModFolder
     {
         var path = Path.Combine(Directory, "records", file);
         var target = (record["patch"] ?? record["id"])?.GetValue<string>() ?? throw new ArgumentException("A record names what it patches or its ID.");
+        Note(path);
         var array = File.Exists(path) ? ReadRecords(path) : [];
         var at = -1;
         for (var i = 0; i < array.Count && at < 0; i++)
@@ -105,6 +138,7 @@ public sealed class ModFolder
         var path = Path.Combine(Directory, "records", file);
         if (!File.Exists(path))
             return;
+        Note(path);
         var array = ReadRecords(path);
         var text = id.ToString();
         for (var i = array.Count - 1; i >= 0; i--)
@@ -138,6 +172,7 @@ public sealed class ModFolder
     public void WriteAsset(RecordId id, string extension, byte[] bytes)
     {
         var path = AssetPath(id, extension);
+        Note(path);
         System.IO.Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         PluginJson.WriteFile(path, bytes);
     }
@@ -147,6 +182,9 @@ public sealed class ModFolder
     {
         var path = AssetPath(id, extension);
         if (File.Exists(path))
+        {
+            Note(path);
             File.Delete(path);
+        }
     }
 }

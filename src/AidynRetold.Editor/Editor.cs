@@ -63,6 +63,8 @@ public partial class Editor : Control
         var plugins = args.GetValueOrDefault("data") ?? DataPaths.Plugins;
         if (RomPlugin.Diagnose(plugins) is not null && !await ImportFirstAsync(plugins, args, png))
             return;
+        if (!await PickModFirstAsync(plugins, args, png))
+            return;
         await _records.LoadAsync(plugins);
         // A bad checkpoint or save shouldn't stop the record opening, or a script waits for the watchdog.
         if (args.TryGetValue("checkpoint", out var checkpoint))
@@ -105,6 +107,8 @@ public partial class Editor : Control
             _records.PressPartyTab(presses.Split(','));
         if (args.TryGetValue("drive", out var request))
             _records.Model.Drive(int.Parse(request, CultureInfo.InvariantCulture));
+        if (args.TryGetValue("toast", out var toast))
+            Toast.Show(this, toast, () => { }, seconds: 30);
         if (args.GetValueOrDefault("states") == "graph")
             _records.Model.ShowStatesAsGraph(true);
         if (args.TryGetValue("open", out var sections))
@@ -150,6 +154,38 @@ public partial class Editor : Control
         }
         await imported.Task;
         dialog.QueueFree();
+        _records.Visible = true;
+        return true;
+    }
+
+    /// <summary>
+    /// The mod to save to, before anything loads (<see cref="ModSetup"/>): <c>--mod</c>'s for a run, else the one remembered for these
+    /// plugins, else asked, blocking the editor as the import does. A screenshot run doesn't ask, unless <c>--mod-dialog 1</c>, which
+    /// saves the dialog and quits: false then, and the editor goes no further.
+    /// </summary>
+    private async Task<bool> PickModFirstAsync(string plugins, Dictionary<string, string> args, string? png)
+    {
+        if (args.TryGetValue("mod", out var mod))
+        {
+            CurrentMod.Use(plugins, mod, keep: false);
+            return true;
+        }
+        if (CurrentMod.Remembered(plugins) is { } known)
+        {
+            CurrentMod.Use(plugins, known, keep: false);
+            return true;
+        }
+        var ask = args.GetValueOrDefault("mod-dialog") == "1";
+        if (png is not null && !ask)
+            return true;
+        _records.Visible = false;
+        var picked = ModSetup.AskAsync(this, plugins, blocking: true);
+        if (png is not null)
+        {
+            await Screenshot(png);
+            return false;
+        }
+        await picked;
         _records.Visible = true;
         return true;
     }

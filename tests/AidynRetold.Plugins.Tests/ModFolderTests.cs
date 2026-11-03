@@ -19,6 +19,38 @@ public sealed class ModFolderTests
         Assert.Equal("My village", again.Manifest.Name);
     }
 
+    /// <summary>
+    /// The editor's undo: a journal notes each file a save writes or removes as it was before the first time, and restoring it puts
+    /// them back, deleting what the save made.
+    /// </summary>
+    [Fact]
+    public void A_journal_puts_back_what_a_save_changed()
+    {
+        using var temp = new TempPlugins();
+        var mod = ModFolder.OpenOrCreate(temp.Root, "my_village");
+        var kept = Plugins.RecordId.Parse("aidyn:texture/0x0001");
+        var made = Plugins.RecordId.Parse("aidyn:texture/0x0002");
+        var gone = Plugins.RecordId.Parse("aidyn:texture/0x0003");
+        mod.WriteAsset(kept, "png", [1]);
+        mod.WriteAsset(gone, "png", [3]);
+        mod.WriteRecord("maps/Overworld.json", new JsonObject { ["patch"] = "aidyn:map/0x0001", ["noJump"] = true });
+        var before = File.ReadAllText(Path.Combine(mod.Directory, "records", "maps", "Overworld.json"));
+
+        mod.Journal = [];
+        mod.WriteAsset(kept, "png", [9]);
+        mod.WriteAsset(kept, "png", [10]);
+        mod.WriteAsset(made, "png", [2]);
+        mod.RemoveAsset(gone, "png");
+        mod.WriteRecord("maps/Overworld.json", new JsonObject { ["patch"] = "aidyn:map/0x0001", ["noJump"] = false });
+        Assert.Equal(4, mod.Journal.Count);
+
+        ModFolder.Restore(mod.Journal);
+        Assert.Equal([1], File.ReadAllBytes(mod.AssetPath(kept, "png")));
+        Assert.False(File.Exists(mod.AssetPath(made, "png")));
+        Assert.Equal([3], File.ReadAllBytes(mod.AssetPath(gone, "png")));
+        Assert.Equal(before, File.ReadAllText(Path.Combine(mod.Directory, "records", "maps", "Overworld.json")));
+    }
+
     /// <summary>A tool writing to a base plugin's ID writes into the base plugin, not a mod of the same ID beside it (ADR 0039).</summary>
     [Fact]
     public void Opens_a_base_plugin_of_the_id_where_it_is()

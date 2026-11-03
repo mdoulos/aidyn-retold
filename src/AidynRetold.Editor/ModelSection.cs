@@ -25,11 +25,11 @@ public partial class ModelSection : VBoxContainer
         var from = EditorStyle.Row(4);
         from.AddChild(EditorStyle.DimLabel(ctx.Scene.ToString(), 13));
         if (original is not null)
-            from.AddChild(EditorStyle.Chip(original, "gives the original model"));
+            from.AddChild(EditorStyle.Chip(EditorStyle.PluginName(original), "gives the original model"));
         if (ctx.Replaced && provider is not null && provider != original)
         {
             from.AddChild(EditorStyle.DimLabel("›"));
-            from.AddChild(EditorStyle.Chip(plugins.PluginWith(ctx.File!)!, "replaces the model", changed: true));
+            from.AddChild(EditorStyle.Chip(EditorStyle.PluginName(plugins.PluginWith(ctx.File!)!), "replaces the model", changed: true));
         }
         AddChild(from);
         if (file is not null)
@@ -78,7 +78,7 @@ public partial class ModelSection : VBoxContainer
         }
         else
         {
-            Summary = provider ?? "";
+            Summary = provider is null ? "" : EditorStyle.PluginName(provider);
         }
     }
 
@@ -185,7 +185,7 @@ public partial class ModelSection : VBoxContainer
                         PluginFiles.Tell(this, "Couldn't read it", e.Message);
                         return;
                     }
-                    PluginFiles.Write(this, _ctx.Plugins, $"the model in {_ctx.Scene}'s place", folder => folder.WriteAsset(_ctx.Scene, "glb", bytes), _ctx.Reload);
+                    PluginFiles.Write(this, _ctx.Plugins, $"the new model for {_ctx.Scene.Key}", folder => folder.WriteAsset(_ctx.Scene, "glb", bytes), _ctx.Reload);
                 }, extra: Results(results), width: 580);
         });
 }

@@ -264,6 +264,15 @@ public partial class RecordBrowser : Control
         bar.AddChild(_search);
         bar.AddChild(_status);
         bar.AddChild(new VSeparator());
+        // The mod saves go to, which clicking changes (ModSetup).
+        var mod = new Button { ThemeTypeVariation = "FlatButton", FocusMode = FocusModeEnum.None, TooltipText = "The mod your changes are saved to. Click to change it." };
+        void ShowMod() => mod.Text = CurrentMod.Id is { } id ? $"Saving to: {id}" : "Not saving to a mod";
+        ShowMod();
+        CurrentMod.Changed += ShowMod;
+        TreeExiting += () => CurrentMod.Changed -= ShowMod;
+        mod.Pressed += () => _ = ModSetup.AskAsync(this, _pluginsDirectory, blocking: false);
+        bar.AddChild(mod);
+        bar.AddChild(new VSeparator());
         var light = new CheckButton
         {
             Text = "Light mode", ButtonPressed = EditorTheme.IsLight, FocusMode = FocusModeEnum.None, TooltipText = "Light or dark, kept for next time",

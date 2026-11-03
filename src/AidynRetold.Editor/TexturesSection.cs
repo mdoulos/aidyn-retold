@@ -188,7 +188,7 @@ public partial class TexturesSection : VBoxContainer
             here.Pressed += () => Replace(RecordId.ModelTexture(_ctx.Scene, texture), $"texture {entry.Label} on this model");
             buttons.AddChild(here);
             var everywhere = new Button { Text = "Replace everywhere…", TooltipText = "A PNG of yours on every model that uses this texture" };
-            everywhere.Pressed += () => Replace(RecordId.Hex(RecordTypes.Texture, texture), $"texture {entry.Label}, everywhere");
+            everywhere.Pressed += () => Replace(RecordId.Hex(RecordTypes.Texture, texture), $"texture {entry.Label} for every model");
             buttons.AddChild(everywhere);
             if (entry.Override is { } put && put.Plugin != RecordId.RomNamespace)
             {

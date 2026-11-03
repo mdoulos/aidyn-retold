@@ -66,12 +66,21 @@ public sealed class UiImages(PluginSet plugins)
     /// <summary>A larger picture drawn at a smaller size: mipmapped and filtered, the texture saying it's that size.</summary>
     private static Texture2D Sharper(Image data, Vector2I size)
     {
-        data.Convert(Image.Format.Rgba8);
-        data.FixAlphaEdges();
-        data.GenerateMipmaps();
-        var texture = ImageTexture.CreateFromImage(data);
+        var texture = ImageTexture.CreateFromImage(Mipmapped(data));
         texture.SetSizeOverride(size);
         return new CanvasTexture { DiffuseTexture = texture, TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps };
+    }
+
+    /// <summary>
+    /// An image with mipmaps made by coverage (<see cref="CoverageMipmaps"/>), so the colour its clear pixels hold never reaches its
+    /// edges at the smaller sizes, where Godot's own left dark smudges on the icons' edges (Nov 2, 2026).
+    /// </summary>
+    private static Image Mipmapped(Image data)
+    {
+        data.Convert(Image.Format.Rgba8);
+        data.ClearMipmaps();
+        var (width, height) = (data.GetWidth(), data.GetHeight());
+        return Image.CreateFromData(width, height, true, Image.Format.Rgba8, CoverageMipmaps.Chain(data.GetData(), width, height));
     }
 
     private readonly Dictionary<RecordId, Texture2D?> _plain = [];
@@ -205,11 +214,9 @@ public sealed class UiImages(PluginSet plugins)
             return texture;
         if (ArtImage(name).Image?.Duplicate() is Image image)
         {
-            // The clear pixels take their colour from the art beside them, so the smaller mipmaps don't pale its edges toward the
-            // clear pixels' white or darken them toward their black.
-            image.FixAlphaEdges();
-            image.GenerateMipmaps();
-            texture = new CanvasTexture { DiffuseTexture = ImageTexture.CreateFromImage(image), TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps };
+            // Mipmapped by coverage, so the smaller sizes don't pale its edges toward the clear pixels' white or darken them toward
+            // their black or grey.
+            texture = new CanvasTexture { DiffuseTexture = ImageTexture.CreateFromImage(Mipmapped(image)), TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps };
         }
         return CarriedArt[name] = texture;
     }
@@ -282,8 +289,7 @@ public sealed class UiImages(PluginSet plugins)
                     bytes[o] = (byte)MathF.Round(bytes[o] * AlphaAt(outline, mw, mh, mx, my) / 255f);
                 }
             }
-            var result = Image.CreateFromData(w, h, false, Image.Format.Rgba8, bytes);
-            result.GenerateMipmaps();
+            var result = Image.CreateFromData(w, h, true, Image.Format.Rgba8, CoverageMipmaps.Chain(bytes, w, h));
             cut = new CanvasTexture { DiffuseTexture = ImageTexture.CreateFromImage(result), TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps };
         }
         return _cut[(image, art)] = cut;

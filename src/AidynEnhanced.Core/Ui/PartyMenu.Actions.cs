@@ -137,6 +137,13 @@ public sealed partial class PartyMenu
         return Overlay.CloseMessage();
     }
 
+    /// <summary>
+    /// A refusal's abbreviated stat spelled out, the user's choice (Nov 2, 2026): the original's "the minimum PS required" is "the
+    /// minimum Strength required", and its "IN" "Intelligence". The original's look keeps its own.
+    /// </summary>
+    private string SpelledOut(string text, string abbreviation, string name) =>
+        OriginalLook ? text : System.Text.RegularExpressions.Regex.Replace(text, $@"\b{abbreviation}\b", name);
+
     // A plugin older than the messages in code has none, and says nothing.
     private void Say(string? text, bool fromCrafting = false)
     {
@@ -292,10 +299,10 @@ public sealed partial class PartyMenu
                 Say(_text[MenuText.WrongAspect]);
                 break;
             case EquipRefusal.NeedsStrength:
-                Say(_text[MenuText.NeedsStrength]);
+                Say(SpelledOut(_text[MenuText.NeedsStrength], "PS", "Strength"));
                 break;
             case EquipRefusal.NeedsIntelligence:
-                Say(_text[MenuText.NeedsIntelligence]);
+                Say(SpelledOut(_text[MenuText.NeedsIntelligence], "IN", "Intelligence"));
                 break;
             case EquipRefusal.Fixed when member.Equipment.Weapon is { } staff:
                 // The port's refusal: the original lets the staff be replaced, and it vanishes.

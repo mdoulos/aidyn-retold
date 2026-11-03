@@ -329,6 +329,28 @@ public class PartyMenuActionTests
         Assert.Equal((Sword.Id, (int?)null, 1), (menu.Inventory.Current!.Item.Id, menu.Inventory.Current.Wearer, menu.Inventory.Current.Quantity));
     }
 
+    /// <summary>The Strength refusal's "PS" is spelled out, the user's choice, and the original's look keeps it.</summary>
+    [Fact]
+    public void TheStrengthRefusalSpellsItsStatOut()
+    {
+        const string original = "You do not have the minimum PS required to equip that item!";
+        string[] lines = [.. Enumerable.Range(0, 600).Select(i => $"{i}|%s|%s|%d")];
+        lines[MenuText.NeedsStrength] = original;
+        var (party, _) = Setup();
+        party.Inventory.Add(Heavy.Id);
+        var menu = new PartyMenu(party, new MenuText(lines), _ => null, _ => null) { Random = new ScriptedRandom() };
+
+        PointAt(menu, r => r.Item.Id == Heavy.Id);
+        menu.Accept();
+        Assert.Equal("You do not have the minimum Strength required to equip that item!", menu.Message!.Text);
+
+        menu.Accept();
+        menu.OriginalLook = true;
+        PointAt(menu, r => r.Item.Id == Heavy.Id);
+        menu.Accept();
+        Assert.Equal(original, menu.Message!.Text);
+    }
+
     [Fact]
     public void AnItemTheMemberCantEquipSaysWhyAndStaysCarried()
     {

@@ -1371,7 +1371,7 @@ public partial class PartyTabView : Control
 
     /// <summary>
     /// The equipment card's corners, the user's design (Nov 2, 2026): the member's six stats in the top right in a tooltip's text, each
-    /// by its first three letters with its total, green where gear or a spell raises it and red where one lowers it, and their
+    /// by its name, in a column, with its total right-aligned, green where gear or a spell raises it and red where one lowers it, and their
     /// experience left to spend in the bottom right, "XP Left".
     /// </summary>
     private void CardStats()
@@ -1379,13 +1379,17 @@ public partial class PartyTabView : Control
         var font = _ui.Slim.Sized(NameText);
         var right = EquipmentSheet.End.X - CardInset;
         var top = EquipmentSheet.Position.Y + CardInset;
-        var labelX = right - CardStatsWidth;
-        foreach (var row in Menu.Stats.Rows)
+        // The names spelled out in a column, the user's choice (Nov 2, 2026), where they were their first three letters, and the totals
+        // right-aligned at the card's edge.
+        var stats = Menu.Stats.Rows;
+        var labelX = right - stats.Select(r => font.ExactWidth(Num(r.Value + r.Change))).DefaultIfEmpty(0).Max() - CardLabelGap
+            - stats.Select(r => font.ExactWidth(r.Name)).DefaultIfEmpty(0).Max();
+        foreach (var row in stats)
         {
             var color = row.Change > 0 ? MenuDetailsBuilder.Gain : row.Change < 0 ? MenuDetailsBuilder.Loss : PartyMenu.TextColor;
             var value = Num(row.Value + row.Change);
             var middle = top + CardPitch / 2;
-            Small(row.Name[..Math.Min(3, row.Name.Length)], labelX, middle - font.Middle, PartyMenu.TextColor, font: font);
+            Small(row.Name, labelX, middle - font.Middle, PartyMenu.TextColor, font: font);
             Small(value, right - font.ExactWidth(value), middle - font.Middle, color, font: font);
             top += CardPitch;
         }
@@ -1403,8 +1407,8 @@ public partial class PartyTabView : Control
         }
     }
 
-    /// <summary>How far in from the equipment card's paper its corners' text is, how far apart the stats are, and how wide their column.</summary>
-    private const float CardInset = 5, CardPitch = 4.5f, CardStatsWidth = 17;
+    /// <summary>How far in from the equipment card's paper its corners' text is, and how far apart the stats are.</summary>
+    private const float CardInset = 5, CardPitch = 4.5f;
 
     /// <summary>
     /// The experience lines' labels on the card, and the first on the Stats page in the port's look, the user's choice (Nov 2, 2026): the

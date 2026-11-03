@@ -6,24 +6,22 @@ namespace AidynRetold.Editor;
 
 /// <summary>
 /// The import dialog (docs/systems/editor.md#the-import-dialog, ADR 0043), the one place the ROM is asked for: the editor shows it
-/// at startup when there's no current import (<see cref="RomPlugin.Diagnose"/>), over an empty window, before anything loads. The
-/// ROM, Browse..., and Import, which runs the importer off the main thread with its steps shown. Cancel, or closing it, quits, so
-/// neither the editor nor the game goes on without an import. Started by the game (<see cref="AppLauncher.FromGame"/>), it says the
-/// game needs the ROM and ends with Play; otherwise with <see cref="Imported"/>, and the editor goes on.
+/// at startup when there's no current import (<see cref="RomPlugin.Diagnose"/>), over an empty window, before anything loads, as the
+/// editor's dialog (<see cref="EditorDialog"/>), which Escape and the backdrop don't close. The ROM, Browse..., and Import, which runs
+/// the importer off the main thread with its steps shown. Cancel quits, so neither the editor nor the game goes on without an import.
+/// Started by the game (<see cref="AppLauncher.FromGame"/>), it says the game needs the ROM and ends with Play; otherwise with
+/// <see cref="Imported"/>, and the editor goes on.
 /// </summary>
-public partial class ImportDialog : Window
+public partial class ImportDialog : Node
 {
-    private static readonly Color Problem = new(1f, 0.5f, 0.45f);
+    private const float Width = 520;
 
     private readonly string _pluginsDirectory;
     private readonly bool _fromGame;
     private readonly LineEdit _rom = new() { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, PlaceholderText = "The ROM file: .z64, .n64 or .v64" };
     private readonly Button _browse = new() { Text = "Browse..." };
-    private readonly Button _import = new() { Text = "Import", CustomMinimumSize = new Vector2(110, 0) };
-    private readonly Button _play = new() { Text = "Play", CustomMinimumSize = new Vector2(110, 0), Visible = false };
-    private readonly Button _cancel = new() { Text = "Cancel", CustomMinimumSize = new Vector2(110, 0) };
-    private readonly Label _status = Wrapped("");
-    private readonly FileDialog _dialog = new()
+    private readonly Label _status = new() { AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(Width - 28, 0), Visible = false };
+    private readonly FileDialog _files = new()
     {
         FileMode = FileDialog.FileModeEnum.OpenFile,
         Access = FileDialog.AccessEnum.Filesystem,
@@ -31,6 +29,8 @@ public partial class ImportDialog : Window
         UseNativeDialog = true,
         Title = "A North American 1.0 ROM of Aidyn Chronicles: The First Mage",
     };
+    private readonly EditorDialog _dialog;
+    private readonly Button _cancel, _import, _play;
 
     /// <summary>The import finished, when the game didn't start the editor: the editor goes on with the new plugins.</summary>
     public event Action? Imported;
@@ -43,60 +43,53 @@ public partial class ImportDialog : Window
     public ImportDialog(string pluginsDirectory, bool fromGame)
     {
         (_pluginsDirectory, _fromGame) = (pluginsDirectory, fromGame);
-        Title = "Import a ROM";
-        Exclusive = true;
-        Transient = true;
-        Unresizable = true;
-        WrapControls = true;
-
-        var page = new VBoxContainer { CustomMinimumSize = new Vector2(Width, 0) };
-        page.AddThemeConstantOverride("separation", 12);
+        var body = new List<Control>();
         // Out of date rather than missing: the import has to be done again.
         if (RomPlugin.IsImported(pluginsDirectory) && RomPlugin.Diagnose(pluginsDirectory) is not null)
-            page.AddChild(Wrapped("Your import is from an older version of Aidyn Chronicles Retold and has to be done again."));
-        page.AddChild(Wrapped($"{(fromGame ? "Aidyn Chronicles Retold" : "The Aidyn Chronicles Retold Editor")} requires a North American 1.0 ROM."));
-
-        var row = new HBoxContainer();
-        row.AddChild(new Label { Text = "ROM:" });
+            body.AddRange(EditorDialog.Paragraphs("Your import is from an older version of Aidyn Chronicles Retold and has to be done again.", Width - 28));
+        body.AddRange(EditorDialog.Paragraphs($"{(fromGame ? "Aidyn Chronicles Retold" : "The Aidyn Chronicles Retold Editor")} requires a North American 1.0 ROM.", Width - 28));
+        var row = EditorStyle.Row(6);
+        row.AddChild(new Label { Text = "ROM" });
         row.AddChild(_rom);
         row.AddChild(_browse);
-        page.AddChild(row);
+        body.Add(row);
+        body.Add(_status);
 
-        var buttons = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
-        buttons.AddChild(_import);
-        buttons.AddChild(_play);
-        buttons.AddChild(_cancel);
-        page.AddChild(buttons);
-        // Shown once there's something to say: the import's steps, or what's wrong.
-        _status.Visible = false;
-        page.AddChild(_status);
-
-        var margin = new MarginContainer();
-        foreach (var side in new[] { "left", "top", "right", "bottom" })
-            margin.AddThemeConstantOverride("margin_" + side, 16);
-        margin.AddChild(page);
-        AddChild(margin);
-        AddChild(_dialog);
+        _dialog = new EditorDialog("Import a ROM", body,
+            [
+                new DialogButton("Cancel", DialogButtonKind.Cancel, Quit, Closes: false),
+                new DialogButton("Import", DialogButtonKind.Primary, () => _ = BackgroundTask.Report(ImportAsync()), Closes: false),
+                new DialogButton("Play", DialogButtonKind.Primary, Play, Closes: false),
+            ], Width, dismissable: false);
+        (_cancel, _import, _play) = (_dialog.Buttons[0], _dialog.Buttons[1], _dialog.Buttons[2]);
+        _play.Visible = false;
 
         // What the last import was made from, to do again.
         if (File.Exists(DataPaths.LastRomFor(pluginsDirectory)))
             _rom.Text = File.ReadAllText(DataPaths.LastRomFor(pluginsDirectory)).Trim();
+        _dialog.FocusOnOpen = _rom.Text.Length > 0 ? _import : _browse;
 
         _browse.Pressed += () =>
         {
             if (Path.GetDirectoryName(RomPath) is { Length: > 0 } folder && Directory.Exists(folder))
-                _dialog.CurrentDir = folder;
-            _dialog.PopupCentered(new Vector2I(800, 500));
+                _files.CurrentDir = folder;
+            _files.PopupCentered(new Vector2I(800, 500));
         };
-        _dialog.FileSelected += path => RomPath = path;
+        _files.FileSelected += path => RomPath = path;
         _rom.TextSubmitted += text => _ = BackgroundTask.Report(ImportAsync());
-        _import.Pressed += () => _ = BackgroundTask.Report(ImportAsync());
-        _play.Pressed += Play;
-        _cancel.Pressed += Quit;
-        CloseRequested += Quit;
     }
 
-    public override void _Ready() => (_rom.Text.Length > 0 ? _import : _browse).GrabFocus();
+    public override void _Ready()
+    {
+        AddChild(_files);
+        _dialog.Open(this);
+    }
+
+    public override void _ExitTree()
+    {
+        if (IsInstanceValid(_dialog))
+            _dialog.Close();
+    }
 
     /// <summary>The ROM's path, as typed or picked (<c>--rom</c>).</summary>
     public string RomPath
@@ -168,7 +161,7 @@ public partial class ImportDialog : Window
             Say("The game couldn't be started. Start Aidyn Chronicles Retold yourself: the import is done.", problem: true);
     }
 
-    /// <summary>Cancel, or the window's close: the app quits, as there's nothing to go on to. Not while the importer runs.</summary>
+    /// <summary>Cancel: the app quits, as there's nothing to go on to. Not while the importer runs.</summary>
     private void Quit()
     {
         if (!Busy)
@@ -186,19 +179,6 @@ public partial class ImportDialog : Window
     {
         _status.Text = text;
         _status.Visible = text.Length > 0;
-        if (problem)
-            _status.AddThemeColorOverride("font_color", Problem);
-        else
-            _status.RemoveThemeColorOverride("font_color");
+        _status.ThemeTypeVariation = problem ? "ProblemLabel" : "DimLabel";
     }
-
-    /// <summary>
-    /// A label that wraps at the dialog's width, which it has from the start: a wrapping label works out its height at the width it
-    /// has, and at none, before the first layout, it's a word to a line, which the window, sized to its contents, would grow to.
-    /// </summary>
-    private static Label Wrapped(string text) =>
-        new() { Text = text, AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(Width, 0) };
-
-    /// <summary>The dialog's content width.</summary>
-    private const float Width = 560;
 }

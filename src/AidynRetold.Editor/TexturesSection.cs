@@ -14,7 +14,8 @@ namespace AidynRetold.Editor;
 public partial class TexturesSection : VBoxContainer
 {
     private const int Tile = 64;
-    private static readonly StyleBoxFlat Plain = Frame(new Color(0.3f, 0.32f, 0.37f)), Picked = Frame(new Color(0.95f, 0.75f, 0.35f));
+    // The mode's, made as the section is, which a change of mode makes again.
+    private readonly StyleBoxFlat Plain = Frame(EditorTheme.Current.Border), Picked = Frame(EditorTheme.Current.Accent);
 
     private readonly ModelContext _ctx;
     private readonly List<Entry> _entries = [];
@@ -93,7 +94,7 @@ public partial class TexturesSection : VBoxContainer
         var label = new Label { Text = entry.Label, HorizontalAlignment = HorizontalAlignment.Center, MouseFilter = MouseFilterEnum.Ignore };
         label.AddThemeFontSizeOverride("font_size", 12);
         if (entry.Override is not null)
-            label.AddThemeColorOverride("font_color", EditorStyle.Changed);
+            label.ThemeTypeVariation = "ChangedLabel";
         box.AddChild(label);
         frame.AddChild(box);
         frame.GuiInput += e =>
@@ -159,7 +160,7 @@ public partial class TexturesSection : VBoxContainer
         head.AddChild(title);
         head.AddChild(EditorStyle.DimLabel(size));
         if (entry.Override is { } over)
-            head.AddChild(EditorStyle.Chip($"{(over.Reach == TextureReach.Model ? "this model" : "everywhere")} · {over.Plugin}", over.Path, EditorStyle.Changed));
+            head.AddChild(EditorStyle.Chip($"{(over.Reach == TextureReach.Model ? "this model" : "everywhere")} · {over.Plugin}", over.Path, changed: true));
         _details.AddChild(head);
 
         _details.AddChild(Wrapped(entry.Override is { } r
@@ -287,7 +288,7 @@ public partial class TexturesSection : VBoxContainer
 
     private static StyleBoxFlat Frame(Color edge) => new()
     {
-        BgColor = new Color(0.12f, 0.13f, 0.15f), BorderColor = edge, BorderWidthBottom = 2, BorderWidthTop = 2, BorderWidthLeft = 2, BorderWidthRight = 2,
+        BgColor = EditorTheme.Current.Field, BorderColor = edge, BorderWidthBottom = 2, BorderWidthTop = 2, BorderWidthLeft = 2, BorderWidthRight = 2,
         CornerRadiusBottomLeft = 3, CornerRadiusBottomRight = 3, CornerRadiusTopLeft = 3, CornerRadiusTopRight = 3,
         ContentMarginLeft = 4, ContentMarginRight = 4, ContentMarginTop = 4, ContentMarginBottom = 2,
     };

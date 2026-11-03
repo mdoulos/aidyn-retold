@@ -14,7 +14,9 @@ namespace AidynRetold.Editor;
 public partial class ActorPanel
 {
     private const float ColumnWidth = 300, RowGap = 24;
-    private static readonly Color Plain = new(0.7f, 0.72f, 0.78f), Faded = new(0.4f, 0.42f, 0.46f, 0.6f);
+    private static Color Plain => EditorTheme.Current.Dim;
+
+    private static Color Faded => EditorTheme.Current.Dim with { A = 0.35f };
 
     private readonly GraphEdit _graph = new()
     {

@@ -18,7 +18,8 @@ public partial class ActorPanel : VBoxContainer
         [ActorStateMachine.AnyRequest] = "any",
     };
 
-    private static readonly Color Interrupting = new(1f, 0.75f, 0.4f);
+    /// <summary>A branch that interrupts: the mode's changed colour, read as the panel is filled.</summary>
+    private static Color Interrupting => EditorTheme.Current.Changed;
 
     private readonly CheckBox _drive = new() { Text = "Drive", TooltipText = "Run the actor's state machine, asking for this request." };
     private readonly OptionButton _request = new() { TooltipText = "The request" };

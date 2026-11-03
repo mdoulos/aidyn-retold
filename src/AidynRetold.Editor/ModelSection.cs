@@ -29,7 +29,7 @@ public partial class ModelSection : VBoxContainer
         if (ctx.Replaced && provider is not null && provider != original)
         {
             from.AddChild(EditorStyle.DimLabel("›"));
-            from.AddChild(EditorStyle.Chip(plugins.PluginWith(ctx.File!)!, "replaces the model", EditorStyle.Changed));
+            from.AddChild(EditorStyle.Chip(plugins.PluginWith(ctx.File!)!, "replaces the model", changed: true));
         }
         AddChild(from);
         if (file is not null)
@@ -115,7 +115,7 @@ public partial class ModelSection : VBoxContainer
                 Text = r.Level switch { CheckLevel.Pass => "✓", CheckLevel.Warn => "!", _ => "✗" }, CustomMinimumSize = new Vector2(14, 0),
                 HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Top,
             };
-            mark.AddThemeColorOverride("font_color", r.Level switch { CheckLevel.Pass => EditorStyle.Good, CheckLevel.Warn => EditorStyle.Changed, _ => EditorStyle.Problem });
+            mark.ThemeTypeVariation = r.Level switch { CheckLevel.Pass => "GoodLabel", CheckLevel.Warn => "ChangedLabel", _ => "ProblemLabel" };
             row.AddChild(mark);
             var text = new Label
             {
@@ -171,34 +171,21 @@ public partial class ModelSection : VBoxContainer
         {
             var results = _ctx.OriginalFile is { } original ? Check(original, path) : [];
             var fails = results.Count(r => r.Level == CheckLevel.Fail);
-            var dialog = new ConfirmationDialog
-            {
-                Title = "Replace the model", OkButtonText = fails > 0 ? "Replace anyway" : "Replace", MinSize = new Vector2I(560, 0),
-            };
-            var box = new VBoxContainer { CustomMinimumSize = new Vector2(540, 0) };
-            box.AddChild(new Label
-            {
-                Text = $"{Path.GetFileName(path)} against the original. " + (fails > 0 ? "The game can't play it as the original where it failed." : "It keeps what the game needs."),
-                AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(540, 0),
-            });
-            box.AddChild(Results(results));
-            dialog.AddChild(box);
-            dialog.Confirmed += () =>
-            {
-                byte[] bytes;
-                try
+            EditorDialog.Confirm(this, "Replace the model",
+                $"{Path.GetFileName(path)}, checked against the original. " + (fails > 0 ? "Where it failed, the game can't play it as the original." : "It keeps what the game needs."),
+                fails > 0 ? "Replace anyway" : "Replace", () =>
                 {
-                    bytes = File.ReadAllBytes(path);
-                }
-                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-                {
-                    PluginFiles.Tell(this, "Couldn't read it", e.Message);
-                    return;
-                }
-                PluginFiles.Write(this, _ctx.Plugins, $"the model in {_ctx.Scene}'s place", folder => folder.WriteAsset(_ctx.Scene, "glb", bytes), _ctx.Reload);
-            };
-            dialog.Canceled += dialog.QueueFree;
-            AddChild(dialog);
-            dialog.PopupCentered();
+                    byte[] bytes;
+                    try
+                    {
+                        bytes = File.ReadAllBytes(path);
+                    }
+                    catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                    {
+                        PluginFiles.Tell(this, "Couldn't read it", e.Message);
+                        return;
+                    }
+                    PluginFiles.Write(this, _ctx.Plugins, $"the model in {_ctx.Scene}'s place", folder => folder.WriteAsset(_ctx.Scene, "glb", bytes), _ctx.Reload);
+                }, extra: Results(results), width: 580);
         });
 }

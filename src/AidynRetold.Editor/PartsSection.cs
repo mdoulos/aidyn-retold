@@ -32,7 +32,7 @@ public partial class PartsSection : VBoxContainer
         _tree.AddThemeConstantOverride("item_margin", 10);
         _tree.ItemSelected += Picked;
         AddChild(_tree);
-        _about.AddThemeColorOverride("font_color", EditorStyle.Dim);
+        _about.ThemeTypeVariation = "DimLabel";
         AddChild(_about);
         if (ctx.View.Content is { } content)
         {

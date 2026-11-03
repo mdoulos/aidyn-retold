@@ -45,6 +45,12 @@ It loads the plugins folder as the runtime does (`PluginSet.LoadInstalled`: `aid
 - **Used by:** every record that names this one, with the fields that do. Terrains show nothing here, since chunks name them by number rather than record ID.
 - **Atlas** (`AtlasView`, over `QuestIndex` in `AidynRetold.Plugins`): for a flag, what sets, clears and reads it, from scripts, derived flags, journal entries, the engine, map objects and chunks' world map regions; for a script, what it reads and sets and what starts it. Below, the graph around it, upstream, downstream or both, up to 160 records (`AtlasView.NodeLimit`), hiding the flags the engine writes its state into unless asked. Key items and members count as their flags: giving a key item sets its held and region flags, and AddMember sets a member's joined flag. The CLI's `acre flag` reads the same index. Boss flags, which winning a battle sets (`CombatRecord.Bosses`), and trigger records aren't in the index yet.
 
+## The look
+
+The editor has a theme of its own, dark by default or light (`EditorTheme`): the toolbar's **Light mode** switches between them, and the choice is kept in `user://editor.cfg` (`--light 1` or `0` picks one for a run without keeping it). Both are one look in two palettes: thin borders and small radii, outlined buttons with a filled primary, its own drawn check boxes, switches and arrows, and the tab picked underlined. Pages name what they show by the theme's type variations (`DimLabel`, `Chip`, `ChangedLabel`, `PrimaryButton` and the rest), so a change of mode reaches them, and the browser shows the page again for what's drawn by code (a tree's colours, the timeline, the 3D views' backgrounds, `EditorTheme.Viewport`).
+
+Every dialog is the editor's own (`EditorDialog`), in the owner's style: a box of a fixed width over a dimmed backdrop, its title in a band with a line under it, its message in paragraphs, and its buttons at its foot's right, Cancel first and the way forward last, filled, red where it takes something away; focus starts on Cancel, and Escape and the backdrop cancel, but for the import dialog, which the editor can't go on without. What's saved, the editor calls saving to a mod, which the person names (`PluginFiles.Write`).
+
 ## A record's page
 
 The header is one row (`RecordHeader`): the record's summary, large, its ID and Borg dim, a chip for each plugin it comes from in load order (the definer, each patcher, with the fields it sets in its tooltip, and a plugin whose file replaces an earlier one's, in orange), and the page's tabs at its end, which the `TabContainer` under it doesn't draw.
@@ -63,7 +69,7 @@ The states show as a table or as a graph (`ActorPanel.Graph.cs`, a `GraphEdit`):
 
 The timeline's marks are the clip's as the game times them for the character shown (`TimelineMarks`), from the requests whose branches lead into the states that play it: a footstep key of the body's footstep set on its first surface, and a key of its own, at its share of the state's length (`AudioKeys.Reached`); an emitter of the scene's that starts on one of those requests, on the state's first tick and its delay after (`ActorParticles.Entered`); and for an attack, request 12 to 18, the tick the blow lands, at the character's strike share, or 0.4 for a bow shot or a throw (`Battle.AtStrike`). While the actor is driven, it shows the state playing, and its clock.
 
-What the sections write goes into a plugin the person names, a mod or a base plugin in its own folder, remembered for the next write (`PluginFiles.Write`, through `ModFolder.OpenOrCreate`). Then the browser loads the plugins again and opens the page again, so it shows what was written.
+What the sections write is saved to a mod the person names, remembered for the next save, or into a base plugin's own folder for a base plugin's ID (`PluginFiles.Write`, through `ModFolder.OpenOrCreate`). Then the browser loads the plugins again and opens the page again, so it shows what was written.
 
 ## Traps
 

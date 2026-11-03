@@ -89,8 +89,8 @@ public partial class ModelView : VBoxContainer
         _container.GuiInput += OnViewInput;
         _container.AddChild(_viewport);
         _frame.AddChild(_container);
-        _note.AddThemeColorOverride("font_color", EditorStyle.Dim);
-        _note.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.8f));
+        _note.ThemeTypeVariation = "DimLabel";
+
         _frame.AddChild(_note);
         _frame.Resized += Layout;
         split.AddChild(_frame);
@@ -122,13 +122,12 @@ public partial class ModelView : VBoxContainer
 
         _viewport.AddChild(new WorldEnvironment
         {
-            Environment = new Godot.Environment
+            Environment = EditorTheme.Viewport(new Godot.Environment
             {
                 BackgroundMode = Godot.Environment.BGMode.Color,
-                BackgroundColor = new Color(0.16f, 0.17f, 0.2f),
                 AmbientLightSource = Godot.Environment.AmbientSource.Color,
                 AmbientLightColor = new Color(0.45f, 0.45f, 0.45f),
-            },
+            }),
         });
         _headlight.RotationDegrees = new Vector3(-50, 35, 0);
         _viewport.AddChild(_headlight);

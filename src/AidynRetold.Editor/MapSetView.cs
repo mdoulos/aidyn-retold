@@ -244,13 +244,12 @@ public partial class MapSetView : VBoxContainer
 
         _viewport.AddChild(new WorldEnvironment
         {
-            Environment = new Godot.Environment
+            Environment = EditorTheme.Viewport(new Godot.Environment
             {
                 BackgroundMode = Godot.Environment.BGMode.Color,
-                BackgroundColor = new Color(0.125f, 0.133f, 0.165f),
                 AmbientLightSource = Godot.Environment.AmbientSource.Color,
                 AmbientLightColor = new Color(0.45f, 0.45f, 0.45f),
-            },
+            }),
         });
         _viewport.AddChild(new DirectionalLight3D { LightEnergy = 0.8f, RotationDegrees = new Vector3(-50, 35, 0) });
         _viewport.AddChild(_camera);
@@ -1127,35 +1126,25 @@ public partial class MapSetView : VBoxContainer
     {
         if (_catalog is not { } catalog)
             return;
-        var dialog = new ConfirmationDialog { Title = "Save edits to a mod", OkButtonText = "Save" };
-        var box = new VBoxContainer();
-        box.AddChild(new Label { Text = "The mod's ID, which names its folder in the plugins folder: lower-case letters, digits and underscores. A mod that isn't there is made." });
-        var id = new LineEdit { Text = _modId, PlaceholderText = "my_village" };
-        box.AddChild(id);
-        var error = new Label { Modulate = new Color(1, 0.6f, 0.6f) };
-        box.AddChild(error);
-        dialog.AddChild(box);
-        dialog.Confirmed += () =>
-        {
-            try
+        EditorDialog.Ask(this, "Save edits to a mod",
+            $"Which mod to save the {Edits.Count} {(Edits.Count == 1 ? "edit" : "edits")} to. A mod's ID is lower-case letters, digits and underscores, " +
+            "such as my_village; a mod that isn't there yet is made.", _modId, "my_village", "Save", id =>
             {
-                _modId = id.Text.Trim();
-                var pluginsDirectory = Path.GetDirectoryName(catalog.Plugins.Plugins[0].Directory.TrimEnd('/', '\\'))!;
-                var mod = ModFolder.OpenOrCreate(pluginsDirectory, _modId, basePluginsDirectory: DataPaths.BasePlugins);
-                var report = Edits.Save(catalog.Plugins, mod);
-                SetStatus(summary: $"Saved to {mod.Directory}: {string.Join("; ", report)}");
-                UpdateSaveButton();
-                Saved?.Invoke();
-            }
-            catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException
-                or System.Text.Json.JsonException)
-            {
-                SetStatus(summary: e.Message);
-            }
-        };
-        AddChild(dialog);
-        dialog.PopupCentered(new Vector2I(520, 180));
-        id.GrabFocus();
+                try
+                {
+                    _modId = id;
+                    var mod = ModFolder.OpenOrCreate(PluginFiles.PluginsDirectory(catalog.Plugins), _modId, basePluginsDirectory: DataPaths.BasePlugins);
+                    var report = Edits.Save(catalog.Plugins, mod);
+                    SetStatus(summary: $"Saved to {mod.Directory}: {string.Join("; ", report)}");
+                    UpdateSaveButton();
+                    Saved?.Invoke();
+                }
+                catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException
+                    or System.Text.Json.JsonException)
+                {
+                    PluginFiles.Tell(this, "Couldn't save the edits", e.Message);
+                }
+            });
     }
 
     /// <summary>

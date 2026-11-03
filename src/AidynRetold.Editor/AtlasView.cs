@@ -260,7 +260,7 @@ public partial class AtlasView : VBoxContainer
             Selected = focused,
             TooltipText = key.ToString(),
         };
-        var style = new StyleBoxFlat { BgColor = focused ? color : color.Darkened(0.55f), ContentMarginLeft = 8, ContentMarginTop = 4, ContentMarginBottom = 4 };
+        var style = new StyleBoxFlat { BgColor = EditorTheme.IsLight ? (focused ? color.Lightened(0.3f) : color.Lightened(0.6f)) : focused ? color : color.Darkened(0.55f), ContentMarginLeft = 8, ContentMarginTop = 4, ContentMarginBottom = 4 };
         node.AddThemeStyleboxOverride("titlebar", style);
         node.AddThemeStyleboxOverride("titlebar_selected", style);
         var open = new Button

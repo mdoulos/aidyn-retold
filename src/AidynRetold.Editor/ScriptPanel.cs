@@ -22,7 +22,7 @@ namespace AidynRetold.Editor;
 public partial class ScriptPanel : VBoxContainer
 {
     private const float NodeWidth = 300, ColumnGap = 70, RowGap = 28;
-    private static readonly Color Dim = new(0.65f, 0.65f, 0.65f);
+    private static Color Dim => EditorTheme.Current.Dim;
     private static readonly StyleBoxFlat Plain = new() { BgColor = Colors.Transparent, ContentMarginLeft = 4, ContentMarginRight = 4, ContentMarginTop = 2, ContentMarginBottom = 2 };
     private static readonly StyleBoxFlat Current = new()
     {
@@ -163,8 +163,8 @@ public partial class ScriptPanel : VBoxContainer
                 Title = card.Count == 1 ? $"{head.Index} · {head.Kind}" : $"{head.Index}–{tail.Index} · {card.Count} lines",
             };
             var color = KindColor(head.Kind);
-            graphNode.AddThemeStyleboxOverride("titlebar", new StyleBoxFlat { BgColor = color.Darkened(0.55f), ContentMarginLeft = 8, ContentMarginTop = 4, ContentMarginBottom = 4 });
-            graphNode.AddThemeStyleboxOverride("titlebar_selected", new StyleBoxFlat { BgColor = color.Darkened(0.1f), ContentMarginLeft = 8, ContentMarginTop = 4, ContentMarginBottom = 4 });
+            graphNode.AddThemeStyleboxOverride("titlebar", new StyleBoxFlat { BgColor = EditorTheme.IsLight ? color.Lightened(0.6f) : color.Darkened(0.55f), ContentMarginLeft = 8, ContentMarginTop = 4, ContentMarginBottom = 4 });
+            graphNode.AddThemeStyleboxOverride("titlebar_selected", new StyleBoxFlat { BgColor = EditorTheme.IsLight ? color.Lightened(0.3f) : color.Darkened(0.1f), ContentMarginLeft = 8, ContentMarginTop = 4, ContentMarginBottom = 4 });
             foreach (var index in card)
             {
                 var section = Section(_script.Nodes[index], numbered: card.Count > 1, withLinks: index == tail.Index);

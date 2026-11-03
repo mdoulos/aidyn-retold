@@ -7,7 +7,7 @@ namespace AidynRetold.Editor;
 /// </summary>
 public partial class Section : VBoxContainer
 {
-    private readonly Button _title = new() { Flat = true, Alignment = HorizontalAlignment.Left, ToggleMode = true, ButtonPressed = true };
+    private readonly Button _title = new() { ThemeTypeVariation = "SectionTitle", Alignment = HorizontalAlignment.Left, ToggleMode = true, ButtonPressed = true };
     private readonly Label _note = EditorStyle.DimLabel(size: 13);
     private readonly string _name;
 
@@ -17,7 +17,6 @@ public partial class Section : VBoxContainer
         Content = content;
         AddThemeConstantOverride("separation", 4);
         var head = EditorStyle.Row(6);
-        _title.AddThemeFontSizeOverride("font_size", 15);
         _title.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         head.AddChild(_title);
         head.AddChild(_note);

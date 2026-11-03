@@ -19,7 +19,7 @@ public partial class RecordHeader : HBoxContainer
     public RecordHeader()
     {
         AddThemeConstantOverride("separation", 10);
-        _title.AddThemeFontSizeOverride("font_size", 20);
+        _title.ThemeTypeVariation = "TitleLabel";
         AddChild(_title);
         AddChild(_id);
         AddChild(_sources);
@@ -49,7 +49,7 @@ public partial class RecordHeader : HBoxContainer
             if (i > 0)
                 _sources.AddChild(EditorStyle.DimLabel("›"));
             var (plugin, gives) = sources[i];
-            _sources.AddChild(EditorStyle.Chip(plugin, $"{plugin}: {gives}", i > 0 ? EditorStyle.Changed : null));
+            _sources.AddChild(EditorStyle.Chip(plugin, $"{plugin}: {gives}", changed: i > 0));
         }
     }
 }

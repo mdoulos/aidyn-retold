@@ -13,7 +13,7 @@ namespace AidynRetold.Editor;
 /// </summary>
 public partial class FlagPanel : VBoxContainer
 {
-    private static readonly Color Dim = new(0.65f, 0.65f, 0.65f);
+    private static Color Dim => EditorTheme.Current.Dim;
 
     private readonly PluginCatalog _catalog;
     private readonly EditorGame _state;

@@ -256,14 +256,29 @@ public partial class RecordBrowser : Control
         root.AddThemeConstantOverride("separation", 6);
         AddChild(root);
 
-        var bar = new HBoxContainer();
+        var bar = EditorStyle.Row(6);
         bar.AddChild(_back);
         bar.AddChild(_forward);
         bar.AddChild(new VSeparator());
         bar.AddChild(_types);
         bar.AddChild(_search);
         bar.AddChild(_status);
-        root.AddChild(bar);
+        bar.AddChild(new VSeparator());
+        var light = new CheckButton
+        {
+            Text = "Light mode", ButtonPressed = EditorTheme.IsLight, FocusMode = FocusModeEnum.None, TooltipText = "Light or dark, kept for next time",
+        };
+        light.Toggled += on =>
+        {
+            EditorTheme.Use(GetWindow(), on);
+            // What a page draws by code, such as a tree's colours and the timeline, is drawn again in the mode's.
+            if (_current is { } id)
+                _showing = Report(ShowAsync(id));
+        };
+        bar.AddChild(light);
+        var toolbar = new PanelContainer { ThemeTypeVariation = "Toolbar" };
+        toolbar.AddChild(bar);
+        root.AddChild(toolbar);
 
         var split = new HSplitContainer { SizeFlagsVertical = SizeFlags.ExpandFill, SplitOffsets = [520] };
         root.AddChild(split);

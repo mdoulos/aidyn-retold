@@ -48,8 +48,9 @@ public sealed class ModelContext
 }
 
 /// <summary>
-/// The editor's ways to pick a file or folder, and to write into a plugin: the person names the plugin, a mod in the plugins
-/// folder or a base plugin in its own (<see cref="ModFolder.OpenOrCreate"/>), which is remembered for the next write.
+/// The editor's ways to pick a file or folder, and to save into a mod: the person names the mod, which is made in the plugins folder
+/// if it isn't there and remembered for the next save (<see cref="ModFolder.OpenOrCreate"/>, which saves a base plugin's ID into its
+/// own folder).
 /// </summary>
 public static class PluginFiles
 {
@@ -86,69 +87,43 @@ public static class PluginFiles
     }
 
     /// <summary>
-    /// Asks which plugin to write <paramref name="what"/> into, writes it with <paramref name="write"/>, and then runs
-    /// <paramref name="after"/>, the plugins' reload. What goes wrong is said in a dialog.
+    /// Asks which mod to save <paramref name="what"/> to, saves it with <paramref name="write"/>, and then runs
+    /// <paramref name="after"/>, the plugins' reload. What goes wrong is said in a dialog. A base plugin's ID saves into that base
+    /// plugin's own folder, as the owner's own changes are kept (<see cref="ModFolder.OpenOrCreate"/>).
     /// </summary>
-    public static void Write(Node parent, PluginSet plugins, string what, Action<ModFolder> write, Func<Task> after)
-    {
-        var dialog = new ConfirmationDialog { Title = "Write into a plugin", OkButtonText = "Write" };
-        var box = new VBoxContainer { CustomMinimumSize = new Vector2(480, 0) };
-        box.AddChild(new Label
-        {
-            Text = $"Which plugin to write {what} into: its ID, lower-case letters, digits and underscores. A mod that isn't there is made " +
-                "in the plugins folder; a base plugin's ID writes into its own folder.",
-            AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(480, 0),
-        });
-        var id = new LineEdit { Text = _lastPlugin, PlaceholderText = "my_mod" };
-        box.AddChild(id);
-        dialog.AddChild(box);
-        dialog.Confirmed += () =>
-        {
-            try
+    public static void Write(Node parent, PluginSet plugins, string what, Action<ModFolder> write, Func<Task> after) =>
+        EditorDialog.Ask(parent, "Save to a mod",
+            $"Which mod to save {what} to. A mod's ID is lower-case letters, digits and underscores, such as my_village; a mod that isn't there yet is made.",
+            _lastPlugin, "my_mod", "Save", id =>
             {
-                _lastPlugin = id.Text.Trim();
-                write(ModFolder.OpenOrCreate(PluginsDirectory(plugins), _lastPlugin, basePluginsDirectory: DataPaths.BasePlugins));
-                _ = BackgroundTask.Report(after());
-            }
-            catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException)
-            {
-                Tell(parent, "Couldn't write it", e.Message);
-            }
-        };
-        dialog.Canceled += dialog.QueueFree;
-        parent.AddChild(dialog);
-        dialog.PopupCentered();
-        id.GrabFocus();
-    }
+                try
+                {
+                    _lastPlugin = id;
+                    write(ModFolder.OpenOrCreate(PluginsDirectory(plugins), id, basePluginsDirectory: DataPaths.BasePlugins));
+                    _ = BackgroundTask.Report(after());
+                }
+                catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException)
+                {
+                    Tell(parent, "Couldn't save it", e.Message);
+                }
+            });
 
-    /// <summary>Takes <paramref name="id"/>'s asset out of the plugin <paramref name="plugin"/>, after asking, so the one below it shows again.</summary>
-    public static void Remove(Node parent, PluginSet plugins, string plugin, RecordId id, string extension, string what, Func<Task> after)
-    {
-        var dialog = new ConfirmationDialog { Title = "Take it out", OkButtonText = "Take it out", DialogText = $"Take {what} out of {plugin}? The one below it shows again." };
-        dialog.Confirmed += () =>
-        {
-            try
+    /// <summary>Takes <paramref name="id"/>'s asset out of the mod <paramref name="mod"/>, after asking, so the one below it shows again.</summary>
+    public static void Remove(Node parent, PluginSet plugins, string mod, RecordId id, string extension, string what, Func<Task> after) =>
+        EditorDialog.Confirm(parent, "Take it out of the mod", $"Take {what} out of {mod}?\n\nWhat it replaced shows again: another mod's, or the original's.",
+            "Take it out", () =>
             {
-                ModFolder.OpenOrCreate(PluginsDirectory(plugins), plugin, basePluginsDirectory: DataPaths.BasePlugins).RemoveAsset(id, extension);
-                _ = BackgroundTask.Report(after());
-            }
-            catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException)
-            {
-                Tell(parent, "Couldn't take it out", e.Message);
-            }
-        };
-        dialog.Canceled += dialog.QueueFree;
-        parent.AddChild(dialog);
-        dialog.PopupCentered();
-    }
+                try
+                {
+                    ModFolder.OpenOrCreate(PluginsDirectory(plugins), mod, basePluginsDirectory: DataPaths.BasePlugins).RemoveAsset(id, extension);
+                    _ = BackgroundTask.Report(after());
+                }
+                catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException)
+                {
+                    Tell(parent, "Couldn't take it out", e.Message);
+                }
+            }, danger: true);
 
     /// <summary>A message in a dialog, with OK.</summary>
-    public static void Tell(Node parent, string title, string text)
-    {
-        var dialog = new AcceptDialog { Title = title, DialogText = text, DialogAutowrap = true, MinSize = new Vector2I(420, 0) };
-        dialog.Confirmed += dialog.QueueFree;
-        dialog.Canceled += dialog.QueueFree;
-        parent.AddChild(dialog);
-        dialog.PopupCentered();
-    }
+    public static void Tell(Node parent, string title, string text) => EditorDialog.Tell(parent, title, text);
 }

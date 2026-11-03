@@ -37,6 +37,11 @@ public partial class Editor : Control
     public override void _Ready()
     {
         CultureInfo.DefaultThreadCurrentCulture = CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+        // The editor's theme, dark or light as it was last left, before anything's built (--light 1 or 0 picks one for a run).
+        if (CommandLine.Parse(OS.GetCmdlineUserArgs()).GetValueOrDefault("light") is { } light)
+            EditorTheme.Use(GetWindow(), light == "1", keep: false);
+        else
+            EditorTheme.Use(GetWindow(), EditorTheme.SavedLight(), keep: false);
         // Lit meshes are lit as the RSP lights them, by the game's sky, as in the runtime (ADR 0010), not by Godot's lights.
         // The editor keeps linear light, so its own overlays draw as they are: no on-screen framebuffer.
         N64Material.RspLighting = true;
@@ -132,7 +137,6 @@ public partial class Editor : Control
         var dialog = new ImportDialog(plugins, fromGame);
         _records.Visible = false;
         AddChild(dialog);
-        dialog.PopupCentered();
         var imported = new TaskCompletionSource();
         dialog.Imported += () => imported.TrySetResult();
         if (args.TryGetValue("rom", out var rom))

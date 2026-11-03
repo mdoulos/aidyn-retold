@@ -26,13 +26,12 @@ public partial class ModelThumb : SubViewportContainer
         AddChild(_viewport);
         _viewport.AddChild(new WorldEnvironment
         {
-            Environment = new Godot.Environment
+            Environment = EditorTheme.Viewport(new Godot.Environment
             {
                 BackgroundMode = Godot.Environment.BGMode.Color,
-                BackgroundColor = new Color(0.16f, 0.17f, 0.2f),
                 AmbientLightSource = Godot.Environment.AmbientSource.Color,
                 AmbientLightColor = new Color(0.45f, 0.45f, 0.45f),
-            },
+            }),
         });
         _viewport.AddChild(new DirectionalLight3D { LightEnergy = 0.8f, RotationDegrees = new Vector3(-50, 35, 0) });
         _viewport.AddChild(_camera);

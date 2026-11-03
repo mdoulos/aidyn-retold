@@ -26,7 +26,12 @@ public enum TimelineMarkKind
 /// </summary>
 public partial class Timeline : Control
 {
-    private static readonly Color Track = new(0.2f, 0.21f, 0.25f), Ticks = new(0.45f, 0.47f, 0.53f), Head = new(1f, 0.9f, 0.4f);
+    // The mode's, read as it draws, so a change of mode redraws it in the new one.
+    private static Color Track => EditorTheme.Current.Raised.Lerp(EditorTheme.Current.Border, 0.5f);
+
+    private static Color Ticks => EditorTheme.Current.Dim;
+
+    private static Color Head => EditorTheme.Current.Accent;
 
     private IReadOnlyList<TimelineMark> _marks = [];
     private int _length = 1, _tick;

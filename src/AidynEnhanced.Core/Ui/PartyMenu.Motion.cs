@@ -23,6 +23,12 @@ public sealed partial class PartyMenu
     /// </summary>
     public const int MemberFrames = 15;
 
+    /// <summary>The frames the port's look takes to change the header over, two thirds of the original's, the user's choice (Nov 3, 2026).</summary>
+    public const int PortMemberFrames = 10;
+
+    /// <summary>The frames the header takes to change over: the original's in its look, else the port's.</summary>
+    private int HeaderFrames => OriginalLook ? MemberFrames : PortMemberFrames;
+
     /// <summary>
     /// The frames a list takes to slide in as the stick changes it (<c>PartyMenu.ListsSlide</c>, <c>0x80031620</c>), and how far it
     /// slides: the list's width, where the original's slide its 140.
@@ -100,9 +106,9 @@ public sealed partial class PartyMenu
     /// <summary>Starts the whole header and the silhouette changing over from the member shown.</summary>
     private void StartMemberChange()
     {
-        _memberChange = Shown is { } shown ? new MenuSlide<(Character, IReadOnlyList<int>)>((shown, PortraitOrder), 0, MemberFrames, MenuTween.Ease) : null;
+        _memberChange = Shown is { } shown ? new MenuSlide<(Character, IReadOnlyList<int>)>((shown, PortraitOrder), 0, HeaderFrames, MenuTween.Ease) : null;
         ChangeNumbers(Numbers);
-        _slotsChange = new MenuSlide<IReadOnlyList<RecordId?>>(WornIcons, 0, MemberFrames, MenuTween.Ease);
+        _slotsChange = new MenuSlide<IReadOnlyList<RecordId?>>(WornIcons, 0, HeaderFrames, MenuTween.Ease);
         _slotsFromMember = true;
     }
 
@@ -112,7 +118,7 @@ public sealed partial class PartyMenu
     /// same, and finishes a change still under way first, so the new one starts from what's shown.
     /// </summary>
     public void ChangeNumbers(HeaderNumbers before) =>
-        _numbersChange = new MenuSlide<HeaderNumbers>(before, 0, MemberFrames, MenuTween.Ease);
+        _numbersChange = new MenuSlide<HeaderNumbers>(before, 0, HeaderFrames, MenuTween.Ease);
 
     /// <summary>
     /// The header's numbers and the silhouette crossfading from how they stood, after A did something to the inventory
@@ -121,7 +127,7 @@ public sealed partial class PartyMenu
     private void ChangeHeader(HeaderNumbers numbers, IReadOnlyList<RecordId?> slots)
     {
         ChangeNumbers(numbers);
-        _slotsChange = new MenuSlide<IReadOnlyList<RecordId?>>(slots, 0, MemberFrames, MenuTween.Ease);
+        _slotsChange = new MenuSlide<IReadOnlyList<RecordId?>>(slots, 0, HeaderFrames, MenuTween.Ease);
         _slotsFromMember = false;
     }
 

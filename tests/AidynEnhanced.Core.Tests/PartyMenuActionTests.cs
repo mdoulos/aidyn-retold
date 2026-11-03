@@ -436,8 +436,8 @@ public class PartyMenuActionTests
     /// <summary>
     /// A healing potion drunk from the Party tab changes the header as a member change does (PartyMenu.InventoryA ends with
     /// PartyMenu.HealthGoldChange): the hit points, their maximum and the level crossfade from what they were, and the bar
-    /// tweens to the new share, over 15 frames on the menu's curve, finishing a frame later. The portraits stay, and no
-    /// member change starts until it has finished.
+    /// tweens to the new share, over 15 frames on the menu's curve, finishing a frame later. The portraits stay, and in the original's
+    /// look no member change starts until it has finished.
     /// </summary>
     [Fact]
     public void ADrunkHealingPotionCrossfadesTheHitPointsAndTweensTheBar()
@@ -446,6 +446,7 @@ public class PartyMenuActionTests
         party.Inventory.Add(PotionId(BasePotion.Healing));
         member.TakeDamage(1000);
         var menu = Menu(party);
+        menu.OriginalLook = true;
         menu.Random = new ScriptedRandom(RandomFor.Range(15, 25, 20));
         var before = new HeaderNumbers(0, member.MaxHp, member.Level);
         Assert.Equal(before, menu.Numbers);

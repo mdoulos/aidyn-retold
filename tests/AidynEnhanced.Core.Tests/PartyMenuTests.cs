@@ -288,11 +288,15 @@ public class PartyMenuMotionTests
         Assert.Equal(228, MenuTween.Value(160, 300, MenuTween.Ease(10, 20) - 0.01f));
     }
 
-    /// <summary>A member change moves the header over 15 frames, and holds off another until the tween has finished, a frame later.</summary>
+    /// <summary>
+    /// In the original's look a member change moves the header over 15 frames, and holds off another until the tween has finished, a
+    /// frame later.
+    /// </summary>
     [Fact]
     public void AMemberChangeTakesFifteenFramesAndHoldsOffAnother()
     {
         var menu = Menu();
+        menu.OriginalLook = true;
         var first = menu.Shown;
 
         menu.ChangeMember(1);
@@ -313,13 +317,33 @@ public class PartyMenuMotionTests
     }
 
     /// <summary>
+    /// In the port's look a member change takes 10 frames, and one pressed while the header still changes finishes that change at once
+    /// and is taken, the user's choice (Nov 3, 2026), where the original's holds it off.
+    /// </summary>
+    [Fact]
+    public void APressDuringAMemberChangeIsTakenInThePortsLook()
+    {
+        var menu = Menu();
+
+        menu.ChangeMember(1);
+        Frames(menu, 3);
+        menu.ChangeMember(1);
+        Assert.Equal(2, menu.Member);
+        Assert.Equal(0, menu.MemberChange);
+        Frames(menu, PartyMenu.PortMemberFrames + 1);
+        Assert.False(menu.Changing);
+    }
+
+    /// <summary>
     /// A click on a small portrait aims the member change at its member, so C-left shows that one however far round, the portraits
-    /// moving as they do; the aim goes with the press, so the next is C-left's own, and a press held off by a change takes it too.
+    /// moving as they do; the aim goes with the press, so the next is C-left's own, and in the original's look a press held off by a
+    /// change takes it too.
     /// </summary>
     [Fact]
     public void AMemberChangeAimedAtAPortraitShowsThatMember()
     {
         var menu = Menu();
+        menu.OriginalLook = true;
 
         menu.AimAtMember(2);
         menu.ChangeMember(1);
@@ -335,11 +359,15 @@ public class PartyMenuMotionTests
         Assert.Equal(0, menu.Member);
     }
 
-    /// <summary>The next list slides the lists right and the one before slides them left, and no other change starts while they slide.</summary>
+    /// <summary>
+    /// The next list slides the lists right and the one before slides them left, and in the original's look no other change starts while
+    /// they slide.
+    /// </summary>
     [Fact]
     public void TheNextListSlidesRightAndHoldsOffChanges()
     {
         var menu = Menu();
+        menu.OriginalLook = true;
 
         menu.ChangeList(1);
         Assert.Equal(PartyList.Spells, menu.List);
@@ -379,12 +407,13 @@ public class PartyMenuMotionTests
         menu.ChangeList(1);
         // The port's look slides a list in half the original's frames, the user's choice.
         Assert.Equal(PartyMenu.ListFrames / 2, menu.SlideFrames);
-        for (var frame = 0; frame <= Math.Max(PartyMenu.MemberFrames, menu.SlideFrames) + 2; frame++)
+        // And changes the header over in two thirds of the original's.
+        for (var frame = 0; frame <= Math.Max(PartyMenu.PortMemberFrames, menu.SlideFrames) + 2; frame++)
         {
-            var member = frame <= PartyMenu.MemberFrames;
+            var member = frame <= PartyMenu.PortMemberFrames;
             var list = frame <= menu.SlideFrames;
             Assert.Equal((member, list), (menu.Previous is not null, menu.Slide is not null));
-            Assert.Equal(member ? MenuTween.Ease(frame, PartyMenu.MemberFrames) : 1, menu.MemberChange);
+            Assert.Equal(member ? MenuTween.Ease(frame, PartyMenu.PortMemberFrames) : 1, menu.MemberChange);
             Assert.Equal(list ? MenuTween.Ease(frame, menu.SlideFrames) : 1, menu.ListChange);
             Assert.Equal(member || list, menu.Changing);
             Frames(menu, 1);

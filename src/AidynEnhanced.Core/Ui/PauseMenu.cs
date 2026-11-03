@@ -103,7 +103,16 @@ public sealed class PauseMenu
         party.ShowWorn = ShowsWorn;
         party.ToggleWorn = OriginalLook || _host.Controller ? null : ToggleWorn;
         party.Pointing = _host.Pointing && !OriginalLook;
+        party.KeyName ??= KeyName;
     }
+
+    /// <summary>
+    /// A control's first button on the device in use, as the Controls page names it: the controller's while one is in use, else the
+    /// keyboard's, which a player with the mouse has to hand too.
+    /// </summary>
+    private string? KeyName(string control) =>
+        _settings.Controls.Get(control, _host.Controller ? Controls.ControlDevice.Controller : Controls.ControlDevice.Keyboard)
+            .FirstOrDefault() is { } binding ? Controls.Binding.Name(binding) : null;
 
     /// <summary>The grid's quick toggle: turns the setting for what's worn showing over, which the runtime keeps, and lays the tab again.</summary>
     private void ToggleWorn()

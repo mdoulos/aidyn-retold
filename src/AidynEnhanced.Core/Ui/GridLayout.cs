@@ -44,9 +44,10 @@ public readonly record struct GridLayout(ScreenRect Bounds, int Cell, int Column
     /// <summary>
     /// Where a step of the cursor goes in a grid of <paramref name="count"/> rows, or null where it leaves the grid: across the line
     /// (<paramref name="across"/> ±1), off the line's either end; or up and down a line (<paramref name="down"/> ±1), wrapping from
-    /// the last line to the first and back in the same column, and onto the last row where the line below is short of the column.
+    /// the last line to the first and back in the same column, or without <paramref name="wrap"/> leaving the grid there, and onto the
+    /// last row where the line below is short of the column.
     /// </summary>
-    public static int? Step(int cursor, int count, int columns, int across, int down)
+    public static int? Step(int cursor, int count, int columns, int across, int down, bool wrap = true)
     {
         if (count == 0)
             return null;
@@ -57,6 +58,8 @@ public readonly record struct GridLayout(ScreenRect Bounds, int Cell, int Column
         }
         var lines = (count + columns - 1) / columns;
         var line = cursor / columns + down;
+        if ((line < 0 || line >= lines) && !wrap)
+            return null;
         if (line < 0)
             line = lines - 1;
         else if (line >= lines)

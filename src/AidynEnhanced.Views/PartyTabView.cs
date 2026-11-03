@@ -185,11 +185,10 @@ public partial class PartyTabView : Control
     private const int BoxedSize = 12, SlotInset = 2;
 
     /// <summary>
-    /// The silhouette's slots' corner, centring them in the column under the bar. Their places are the original's, from its
-    /// silhouette's corner (DollEquipmentMenu::SetSlotCoords); the shield's is level with the first scroll's, as its frame painted
-    /// into <c>0x00D9</c> is and the user's captures show; at 45 it stood 2 above it.
+    /// The silhouette's slots' corner, centring them in the column under the bar (<see cref="PartyMenu.SilhouetteCorner"/>). Their places
+    /// are the original's, from its silhouette's corner, but the port's boots (<see cref="PartyMenu.SlotPlace"/>).
     /// </summary>
-    private static readonly Vector2I SilhouetteAt = new(22, 86);
+    private static readonly Vector2I SilhouetteAt = new(PartyMenu.SilhouetteCorner.X, PartyMenu.SilhouetteCorner.Y);
 
     /// <summary>
     /// The figure behind the slots, the user's art (<see cref="Figures"/>): its top and how tall it's drawn, centred under the helmet's
@@ -197,22 +196,14 @@ public partial class PartyTabView : Control
     /// </summary>
     private const float FigureTop = 82.7f, FigureHeight = 138;
 
-    /// <summary>
-    /// The boots' slot in the port's layout, higher than the original's 120 down, so the slots and the figure fit between the lines the
-    /// user drew across the silhouette's sheet (Nov 2, 2026), at about y 85 and 218.
-    /// </summary>
-    private static readonly Vector2I PortBoots = new(40, 114);
-
     /// <summary>Where a slot is from the silhouette's corner: the original's, but the port's boots.</summary>
-    private Vector2I SlotOffset(EquipmentSlot slot) => !OriginalLook && slot == EquipmentSlot.Boots ? PortBoots : Slots[(int)slot];
+    private Vector2I SlotOffset(EquipmentSlot slot)
+    {
+        var (x, y) = PartyMenu.SlotPlace(slot, OriginalLook);
+        return new Vector2I(x, y);
+    }
 
-    private static readonly Vector2I[] Slots =
-    [
-        new(10, 47), new(10, 66), new(10, 85), new(40, 2), new(40, 24), new(30, 43), new(50, 43), new(40, 62),
-        new(40, 120), new(70, 47), new(70, 66), new(70, 85), new(90, 47), new(90, 66), new(90, 85),
-    ];
-
-    private const int SlotSize = 16;
+    private const int SlotSize = PartyMenu.SlotSize;
 
     /// <summary>
     /// What the list and its arrows are cut to as they slide: across the list's frame's inside, from under the tabs to the list's foot,
@@ -490,11 +481,13 @@ public partial class PartyTabView : Control
         else if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.WheelUp or MouseButton.WheelDown } wheel)
         {
             var by = wheel.ButtonIndex == MouseButton.WheelUp ? -1 : 1;
-            // The wheel scrolls the grid, the name's slip going to the cell now under the mouse; elsewhere it moves the cursor.
-            if (OwnTab && Menu.List == PartyList.Inventory && Menu.Grid)
+            // On the tab the wheel scrolls the grid, the name's slip going to the cell now under the mouse, or moves a list's cursor
+            // (PartyMenu.Wheel); elsewhere it moves the cursor.
+            if (OwnTab)
             {
-                Menu.ScrollGrid(by);
-                Hover(wheel.Position, select: false);
+                Menu.Wheel(by);
+                if (Menu.List == PartyList.Inventory && Menu.Grid)
+                    Hover(wheel.Position, select: false);
             }
             else
             {
@@ -636,7 +629,10 @@ public partial class PartyTabView : Control
     /// <summary>Where a tab's paper is in the frame.</summary>
     private static Rect2 TabRect(int tab) => new(TabsAt.X + tab * TabStep, TabsAt.Y, TabWidth, TabHeight);
 
-    /// <summary>The silhouette's slot under a point on the view that the member shown wears something in, on the tab itself, or null.</summary>
+    /// <summary>
+    /// The silhouette's slot under a point on the view, on the tab itself, or null: in the original's look only one the member shown wears
+    /// something in; in the port's any, as an empty one is selected too.
+    /// </summary>
     private EquipmentSlot? SlotAt(Vector2 point)
     {
         if (!OwnTab || Menu.Shown is null)
@@ -644,7 +640,7 @@ public partial class PartyTabView : Control
         var at = point - (Vector2)_origin;
         foreach (var slot in Enum.GetValues<EquipmentSlot>())
         {
-            if (SlotRect(slot).HasPoint(at) && Menu.Worn(slot) is not null)
+            if (SlotRect(slot).HasPoint(at) && (Menu.Worn(slot) is not null || !OriginalLook))
                 return slot;
         }
         return null;
@@ -862,7 +858,32 @@ public partial class PartyTabView : Control
         Silhouette(SilhouetteAt);
         CardStats();
         Tabs();
+        PromptStrip();
     }
+
+    /// <summary>
+    /// The buttons' prompts along the tab's foot, under the sheets, the user's choice (Nov 3, 2026): each button's name in red ink and what
+    /// it does after it, centred across the sheets, a gap between each (<see cref="PartyMenu.Prompts"/>).
+    /// </summary>
+    private void PromptStrip()
+    {
+        var prompts = Menu.Prompts;
+        if (prompts.Count == 0)
+            return;
+        var font = _ui.Slim.Sized(PromptText);
+        var widths = prompts.Select(p => font.ExactWidth(p.Keys) + PromptKeyGap + font.ExactWidth(p.Label)).ToList();
+        var x = (HeaderSheet.Position.X + PageRect.End.X) / 2 - (widths.Sum() + PromptGap * (prompts.Count - 1)) / 2;
+        for (var i = 0; i < prompts.Count; i++)
+        {
+            var (keys, label) = (prompts[i].Keys, prompts[i].Label);
+            Small(keys, x, PromptMiddle - font.Middle, UiPainter.RedInk, font: font);
+            Small(label, x + font.ExactWidth(keys) + PromptKeyGap, PromptMiddle - font.Middle, PartyMenu.TextColor, font: font);
+            x += widths[i] + PromptGap;
+        }
+    }
+
+    /// <summary>The prompts' capitals' height, their middle down the frame, and the gaps after a button's name and between prompts.</summary>
+    private const float PromptText = 3.2f, PromptMiddle = 229, PromptKeyGap = 1.5f, PromptGap = 6;
 
     /// <summary>
     /// The right column's page and its tabs, the user's design (Nov 2, 2026): a loose leaf of parchment the list is on, and a paper tab
@@ -902,6 +923,12 @@ public partial class PartyTabView : Control
             _ui.Slip(_canvas, rect, White with { A = (byte)(255 * open[i]) }, UiPainter.TabSheet, PageRect.Position.Y + PageEdge);
             JoinTab(rect, open[i]);
             TabFace(i, Mathf.Lerp(ClosedIcon, 1, open[i]));
+        }
+        // The stick on the tabs: the red square round the tab showing.
+        if (OwnTab && Menu.Focus == PartyFocus.Tabs)
+        {
+            var rect = TabRect(shown);
+            Art(Selected, new Rect2(rect.Position - Vector2.One, rect.Size + 2 * Vector2.One));
         }
 
         // The gold, after a purse, on a sheet of its own after the tabs.
@@ -1311,7 +1338,7 @@ public partial class PartyTabView : Control
             OriginalSilhouetteSlots(at);
             return;
         }
-        var middle = at.X + Slots[(int)EquipmentSlot.Helmet].X + SlotSize / 2f;
+        var middle = at.X + SlotOffset(EquipmentSlot.Helmet).X + SlotSize / 2f;
         var figure = FigureOf(Menu.Shown!);
         if (Menu.Previous is { } previous && FigureOf(previous) is var was && was != figure)
         {
@@ -1350,7 +1377,7 @@ public partial class PartyTabView : Control
         var size = new Vector2I(SlotSize, SlotSize);
         foreach (var slot in Enum.GetValues<EquipmentSlot>())
         {
-            var (x, y) = (at.X + Slots[(int)slot].X, at.Y + Slots[(int)slot].Y);
+            var (x, y) = (at.X + SlotOffset(slot).X, at.Y + SlotOffset(slot).Y);
             if (Menu.PreviousSlots is { } before && Menu.SlotCrossfades(slot))
             {
                 _ui.Image(_canvas, before[(int)slot] ?? MenuImages.EmptySlots[(int)slot], x, y, size, FadingOut(White, change));
@@ -1567,7 +1594,7 @@ public partial class PartyTabView : Control
                 Small(text, x + grid.Cell - CellInset - count.ExactWidth(text), foot - count.Capitals / 2 - count.Middle, BarText,
                     BarShadow, count);
             }
-            if (i == list.Cursor && Menu.SelectedSlot is null && Menu.CursorShows)
+            if (i == list.Cursor && Menu.Focus == PartyFocus.List && Menu.CursorShows)
                 Art(Selected, new Rect2(x - 1, y - 1, grid.Cell + 2, grid.Cell + 2));
         }
         ScrollBar(grid, list);
@@ -1627,12 +1654,14 @@ public partial class PartyTabView : Control
             return;
         var grid = Menu.List == PartyList.Inventory && Menu.Grid;
         var pointing = Menu.Pointing;
-        if ((pointing ? _hoveredSlot : _hoveredSlot ?? Menu.SelectedSlot) is { } slot && Menu.Worn(slot) is { } worn)
+        // A slot shows what's worn in it, or, empty, what it takes.
+        if ((pointing ? _hoveredSlot : _hoveredSlot ?? Menu.SelectedSlot) is { } slot && (Menu.Worn(slot) is not null || !OriginalLook))
         {
             var rect = SlotRect(slot);
-            NameSlip(worn.Item.Name, rect.Position.X + rect.Size.X / 2, rect.Position.Y - 1);
+            NameSlip(Menu.Worn(slot)?.Item.Name ?? PartyMenu.SlotName(slot), rect.Position.X + rect.Size.X / 2, rect.Position.Y - 1);
         }
-        else if (grid && (pointing ? _hoveredCell : Menu.Inventory.Cursor) is { } cell && Menu.Inventory.Rows.ElementAtOrDefault(cell) is { } row
+        else if (grid && (pointing ? _hoveredCell : Menu.Focus == PartyFocus.List ? Menu.Inventory.Cursor : null) is { } cell
+            && Menu.Inventory.Rows.ElementAtOrDefault(cell) is { } row
             && cell >= Menu.Inventory.First && cell < Menu.Inventory.First + _gridLayout.Visible)
         {
             var (x, y) = _gridLayout.CellAt(cell - Menu.Inventory.First);

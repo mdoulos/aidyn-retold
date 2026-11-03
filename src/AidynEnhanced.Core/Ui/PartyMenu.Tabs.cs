@@ -87,15 +87,19 @@ public sealed partial class PartyMenu
 
     /// <summary>
     /// The silhouette's slot selected in place of the cursor's row, as a click on it selects it, the user's choice (Nov 2, 2026): A and
-    /// C-down are then the worn item's there, as they'd be its row's, and moving the cursor, the tab or the member lets it go. Null while
-    /// the cursor's row is the selection.
+    /// C-down are then the worn item's there, as they'd be its row's, and moving the cursor, the tab or the member lets it go. In the
+    /// port's look it's where the stick is on the silhouette (<see cref="Focus"/>), and may be empty, and only the stick leaving the
+    /// silhouette or the tab changing lets it go. Null while the cursor's row is the selection.
     /// </summary>
     public EquipmentSlot? SelectedSlot { get; private set; }
 
-    /// <summary>Selects a slot of the silhouette with something worn in it, as a click on it does; one with nothing in it, nothing.</summary>
+    /// <summary>
+    /// Selects a slot of the silhouette with something worn in it, as a click on it does; one with nothing in it, nothing, but in the
+    /// port's look, where an empty slot is selected too.
+    /// </summary>
     public void SelectSlot(EquipmentSlot slot)
     {
-        if (Message is null && !DetailsPane.Showing && Crafting is null && Worn(slot) is not null)
-            SelectedSlot = slot;
+        if (Message is null && !DetailsPane.Showing && Crafting is null && (Spatial || Worn(slot) is not null))
+            FocusSlot(slot);
     }
 }

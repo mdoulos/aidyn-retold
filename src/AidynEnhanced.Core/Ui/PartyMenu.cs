@@ -120,18 +120,13 @@ public sealed partial class PartyMenu : IPartyWindow
     bool IPartyWindow.ChangesMember => true;
 
     /// <summary>
-    /// The stick's left shows the next list and its right the one before (<see cref="ChangeList"/>); on the inventory's grid it moves
-    /// the cursor along its line, and off the line's end onto the tab beside, so every cell and every tab is in the stick's reach.
+    /// The stick's left shows the next list and its right the one before (<see cref="ChangeList"/>); in the port's look it goes to what's
+    /// that way on the tab (<see cref="Focus"/>), and on a list changes it as ever.
     /// </summary>
     void IPartyWindow.Sideways(int direction)
     {
-        if (_aim is null && List == PartyList.Inventory && Grid && !HasPopup && Slide is null
-            && GridLayout.Step(Inventory.Cursor, Inventory.Rows.Count, InventoryGrid.Columns, direction, 0) is { } cell)
-        {
-            SelectedSlot = null;
-            Inventory.Point(cell);
+        if (_aim is null && StepSpatially(direction, 0))
             return;
-        }
         ChangeList(-direction);
     }
 
@@ -236,21 +231,24 @@ public sealed partial class PartyMenu : IPartyWindow
 
     /// <summary>
     /// Shows the next member, or with a negative step the one before: C-left shows the next and C-right the one before
-    /// (<c>PartyMenu.OnCLeft</c> at <c>0x8003e1c8</c>, <c>OnCRight</c> <c>0x8003e1f4</c>). Not while the header or the
-    /// lists are still changing, nor while the numbers or the silhouette are after something done to the member shown. A click on a
+    /// (<c>PartyMenu.OnCLeft</c> at <c>0x8003e1c8</c>, <c>OnCRight</c> <c>0x8003e1f4</c>). In the original's look, not while the
+    /// header or the lists are still changing, nor while the numbers or the silhouette are after something done to the member shown;
+    /// in the port's, those finish at once and the press is taken (<see cref="Settle"/>), and a slot selected stays so. A click on a
     /// small portrait aims the press at its member (<see cref="AimAtMember"/>), so it shows that one.
     /// </summary>
     public void ChangeMember(int by)
     {
         var aim = _memberAim;
         _memberAim = null;
-        if (HasPopup || Changing)
+        if (HasPopup || Changing && OriginalLook)
             return;
         var order = Enumerable.Range(0, Party.MaxSize).Where(i => Party.Slots.ElementAtOrDefault(i) is not null).ToList();
         if (order.Count < 2)
             return;
+        Settle();
         var at = order.IndexOf(Member);
-        SelectedSlot = null;
+        if (!Spatial)
+            SelectedSlot = null;
         _clicked = false;
         StartMemberChange();
         Member = aim is { } slot && order.Contains(slot) ? slot : order[((at + by) % order.Count + order.Count) % order.Count];
@@ -271,16 +269,19 @@ public sealed partial class PartyMenu : IPartyWindow
     /// Shows the next list, or with a negative step the one before: the stick's left shows the next, sliding the lists
     /// right, and its right the one before, sliding them left (<c>PartyMenu.ListsOnLeft</c> at <c>0x800319f0</c>,
     /// <c>ListsOnRight</c> <c>0x80031a10</c>). A click on a tab aims the press at it (<see cref="AimAt"/>), so it shows that one,
-    /// sliding the press's way. Not while they're still sliding.
+    /// sliding the press's way. In the original's look not while they're still sliding; in the port's the slide finishes at once.
     /// </summary>
     /// <param name="among">The lists the window has, in their order, where it hasn't all four: the post-battle window's three.</param>
     public void ChangeList(int by, IReadOnlyList<PartyList>? among = null)
     {
         var aim = _aim;
         _aim = null;
-        if (HasPopup || Slide is not null)
+        if (HasPopup || Slide is not null && OriginalLook)
             return;
+        Slide = null;
         SelectedSlot = null;
+        if (_focus == PartyFocus.Foot)
+            _focus = PartyFocus.List;
         var lists = (among ?? Enum.GetValues<PartyList>()).ToList();
         var count = lists.Count;
         var at = Math.Max(0, lists.IndexOf(List));
@@ -304,13 +305,15 @@ public sealed partial class PartyMenu : IPartyWindow
             tip.Choices.Move(by);
             return;
         }
-        SelectedSlot = null;
         if (Crafting is { } crafting)
         {
             if (crafting.Fade.IsOpen)
                 crafting.Rows.Move(by);
             return;
         }
+        if (StepSpatially(0, Math.Sign(by)))
+            return;
+        SelectedSlot = null;
         switch (List)
         {
             case PartyList.Inventory when Grid:
@@ -346,7 +349,7 @@ public sealed partial class PartyMenu : IPartyWindow
     /// </summary>
     public bool ShowCursor(MenuAction action)
     {
-        if (CursorShows || List != PartyList.Inventory || !Grid || HasPopup || SelectedSlot is not null || Slide is not null
+        if (CursorShows || List != PartyList.Inventory || !Grid || HasPopup || Focus != PartyFocus.List || Slide is not null
             || action is not (MenuAction.Up or MenuAction.Down or MenuAction.Left or MenuAction.Right or MenuAction.Accept
                 or MenuAction.Details or MenuAction.Appraise))
             return false;
@@ -379,6 +382,7 @@ public sealed partial class PartyMenu : IPartyWindow
                 crafting.Rows.Point(row);
             return;
         }
+        _focus = PartyFocus.List;
         switch (List)
         {
             case PartyList.Inventory:
@@ -432,7 +436,8 @@ public sealed partial class PartyMenu : IPartyWindow
             Spells.Replace(PartyMenuRows.Spells(shown), resetPastEnd: true);
             Experience = PartyMenuRows.Experience(shown, _text);
         }
-        if (SelectedSlot is { } slot && Worn(slot) is null)
+        // In the port's look an empty slot can be selected, as the stick goes onto it.
+        if (SelectedSlot is { } slot && Worn(slot) is null && !Spatial)
             SelectedSlot = null;
     }
 

@@ -79,11 +79,12 @@ public class PartyMenuGridTests
         Assert.Equal(to, GridLayout.Step(cursor, 20, 8, across, down));
 
     /// <summary>
-    /// On the grid the stick's left and right move along the line, and off its end onto the tab beside; up and down move a line. The
-    /// tab's grid fills the list's frame, 8 lines of 7, the user's choice (Nov 2, 2026).
+    /// On the grid the stick's left and right move along the line and up and down a line, and at an edge go to what's that way on the
+    /// tab, the user's choice (Nov 3, 2026): right and down stop, left goes onto the silhouette and up onto the tabs. The tab's grid fills
+    /// the list's frame, 8 lines of 7, the user's choice (Nov 2, 2026).
     /// </summary>
     [Fact]
-    public void TheStickMovesAlongTheGridAndOffItsEndOntoTheTabs()
+    public void TheStickMovesAlongTheGridAndOffItsEdgesOntoWhatsBeside()
     {
         var (menu, _) = Menu(showWorn: false);
         IPartyWindow window = menu;
@@ -92,13 +93,20 @@ public class PartyMenuGridTests
         window.Sideways(1);
         window.MoveCursor(1);
         Assert.Equal(8, menu.Inventory.Cursor);
-        for (var i = 0; i < 5; i++)
+        for (var i = 0; i < 6; i++)
             window.Sideways(1);
-        Assert.Equal((PartyList.Inventory, 13), (menu.List, menu.Inventory.Cursor));
+        Assert.Equal((PartyList.Inventory, 13, PartyFocus.List), (menu.List, menu.Inventory.Cursor, menu.Focus));
+        window.MoveCursor(1);
+        window.MoveCursor(1);
+        Assert.Equal((19, PartyFocus.List), (menu.Inventory.Cursor, menu.Focus));
 
-        window.Sideways(1);
-        Assert.Equal(PartyList.Stats, menu.List);
-        Assert.Equal(13, menu.Inventory.Cursor);
+        menu.Point(7);
+        window.Sideways(-1);
+        Assert.Equal(PartyFocus.Slots, menu.Focus);
+        Assert.NotNull(menu.SelectedSlot);
+        menu.Point(3);
+        window.MoveCursor(-1);
+        Assert.Equal((PartyFocus.Tabs, PartyList.Inventory), (menu.Focus, menu.List));
     }
 
     /// <summary>
@@ -119,14 +127,15 @@ public class PartyMenuGridTests
 
     /// <summary>
     /// A click on a slot of the silhouette selects what's worn there, and only A, or a double click, takes it off, as A on its row would;
-    /// a slot with nothing in it isn't selected, and moving the cursor lets the slot go, A then being the cursor's row's again.
+    /// in the port's look a slot with nothing in it is selected too, the stick going onto it, and stays selected as what's in it comes off;
+    /// the stick off the silhouette lets the slot go, A then being the cursor's row's again.
     /// </summary>
     [Fact]
     public void ASelectedSlotsItemIsWhatATakesOff()
     {
         var (menu, member) = Menu(showWorn: false);
         menu.SelectSlot(EquipmentSlot.Helmet);
-        Assert.Null(menu.SelectedSlot);
+        Assert.Equal(EquipmentSlot.Helmet, menu.SelectedSlot);
 
         menu.SelectSlot(EquipmentSlot.Weapon);
         Assert.Equal(EquipmentSlot.Weapon, menu.SelectedSlot);
@@ -134,14 +143,15 @@ public class PartyMenuGridTests
         Assert.Equal(Sword.Name, menu.Details()?.Title);
         menu.Accept();
         Assert.Null(member.Equipment.Weapon);
-        Assert.Null(menu.SelectedSlot);
+        Assert.Equal(EquipmentSlot.Weapon, menu.SelectedSlot);
         Assert.Contains(menu.Inventory.Rows, r => r.Item.Id == Sword.Id && r.Wearer is null);
 
         Assert.Equal(EquipRefusal.None, menu.Party.Equip(member, Sword.Id));
         menu.Refresh();
-        menu.SelectSlot(EquipmentSlot.Weapon);
-        menu.MoveCursor(1);
+        menu.SelectSlot(EquipmentSlot.Scroll2);
+        ((IPartyWindow)menu).Sideways(1);
         Assert.Null(menu.SelectedSlot);
+        Assert.Equal(PartyFocus.List, menu.Focus);
     }
 
     /// <summary>Taking an item off with no room in the inventory leaves it on and says so, where the original says nothing.</summary>
@@ -283,5 +293,87 @@ public class PartyMenuGridTests
         menu.Point(2 * line + 1);
         menu.ScrollGrid(1);
         Assert.Equal((3 * line, 2 * line + 1), (menu.Inventory.First, menu.Inventory.Cursor));
+    }
+
+    /// <summary>
+    /// On the tabs the stick steps to the tab beside, the list changing with it and stopping at the ends, down or A goes into the list,
+    /// and up from a list's first row comes back onto them; B takes the stick back onto the list.
+    /// </summary>
+    [Fact]
+    public void TheStickStepsAlongTheTabsAndBackDown()
+    {
+        var (menu, _) = Menu(showWorn: false);
+        IPartyWindow window = menu;
+        window.MoveCursor(-1);
+        Assert.Equal(PartyFocus.Tabs, menu.Focus);
+
+        window.Sideways(-1);
+        Assert.Equal(PartyList.Inventory, menu.List);
+        window.Sideways(1);
+        Assert.Equal((PartyList.Stats, PartyFocus.Tabs), (menu.List, menu.Focus));
+        window.MoveCursor(1);
+        Assert.Equal(PartyFocus.List, menu.Focus);
+        window.MoveCursor(-1);
+        Assert.Equal(PartyFocus.Tabs, menu.Focus);
+        menu.Accept();
+        Assert.Equal(PartyFocus.List, menu.Focus);
+
+        window.MoveCursor(-1);
+        Assert.True(menu.Back());
+        Assert.Equal(PartyFocus.List, menu.Focus);
+        Assert.False(menu.Back());
+    }
+
+    /// <summary>
+    /// On the silhouette the stick steps to the nearest slot its way, empty or not, and right off the silhouette's right column back onto
+    /// the grid; B takes it back onto the grid too.
+    /// </summary>
+    [Fact]
+    public void TheStickStepsBetweenTheSlotsByWhereTheyAre()
+    {
+        var (menu, _) = Menu(showWorn: false);
+        IPartyWindow window = menu;
+        menu.SelectSlot(EquipmentSlot.Helmet);
+
+        window.MoveCursor(1);
+        Assert.Equal(EquipmentSlot.Amulet, menu.SelectedSlot);
+        window.MoveCursor(-1);
+        window.MoveCursor(-1);
+        Assert.Equal(EquipmentSlot.Helmet, menu.SelectedSlot);
+        menu.SelectSlot(EquipmentSlot.Weapon);
+        window.Sideways(1);
+        Assert.Equal(EquipmentSlot.Cloak, menu.SelectedSlot);
+        menu.SelectSlot(EquipmentSlot.Scroll1);
+        window.Sideways(1);
+        Assert.Equal(PartyFocus.List, menu.Focus);
+        menu.SelectSlot(EquipmentSlot.Boots);
+        Assert.True(menu.Back());
+        Assert.Equal(PartyFocus.List, menu.Focus);
+    }
+
+    /// <summary>
+    /// The prompts along the foot name each button on the device in use and what it does with what's selected: A's action for the item,
+    /// the details, the actiontip, the member and Back, but none for what an item hasn't, as a thing of no use with no description; none
+    /// in the original's look.
+    /// </summary>
+    [Fact]
+    public void ThePromptsSayWhatEachButtonDoes()
+    {
+        var (menu, _) = Menu(showWorn: false);
+        menu.KeyName = control => control switch
+        {
+            "menu_accept" => "A",
+            "menu_back" => "B",
+            "menu_details" => "Y",
+            "menu_appraise" => "X",
+            _ => null,
+        };
+
+        Assert.Equal([new MenuPrompt("B", "Close")], menu.Prompts);
+        menu.SelectSlot(EquipmentSlot.Weapon);
+        Assert.Equal([new MenuPrompt("A", "Unequip"), new MenuPrompt("Y", "Details"), new MenuPrompt("X", "Actions"), new MenuPrompt("B", "Back")],
+            menu.Prompts);
+        menu.OriginalLook = true;
+        Assert.Empty(menu.Prompts);
     }
 }

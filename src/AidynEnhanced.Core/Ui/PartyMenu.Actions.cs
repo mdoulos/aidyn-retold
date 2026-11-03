@@ -97,6 +97,8 @@ public sealed partial class PartyMenu
             if (OpenCraftingPopup is { } crafting)
                 Choose(crafting);
         }
+        else if (Focus == PartyFocus.Tabs)
+            _focus = PartyFocus.List;
         else if (SelectedSlot is { } slot)
         {
             if (Worn(slot) is { } worn)
@@ -112,7 +114,8 @@ public sealed partial class PartyMenu
 
     /// <summary>
     /// B: closes the message, the details the actiontip held open or the actiontip, or fades the popup out (<c>MenuPopup.OnB</c>,
-    /// <c>0x80055e10</c>). False if there's none and the details don't show, so B closes the menu.
+    /// <c>0x80055e10</c>); in the port's look, with the stick off the list, takes it back onto the list. False if there's none and the
+    /// details don't show, so B closes the menu.
     /// </summary>
     public bool Back()
     {
@@ -124,6 +127,8 @@ public sealed partial class PartyMenu
             CloseTip();
         else if (OpenCraftingPopup is { } crafting)
             crafting.Fade.Close();
+        else if (Spatial && Crafting is null && !DetailsPane.Showing && Focus != PartyFocus.List)
+            (SelectedSlot, _focus) = (null, PartyFocus.List);
         else if (Crafting is null && !DetailsPane.Showing)
             return false;
         return true;

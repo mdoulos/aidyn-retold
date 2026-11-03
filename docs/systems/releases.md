@@ -27,7 +27,7 @@ On macOS the disk image holds `Aidyn Chronicles Retold.app` (executable `Content
 
 ## Base plugins
 
-The owner's base plugins ([ADR 0039](../adr/0039-base-plugins-ship-beside-the-apps.md)) live in the owner's private repository, `Aidyn Retold Private`, not this one: only art and music go there, and none of it is committed here ([ADR 0041](../adr/0041-the-art-and-music-are-the-private-repositorys.md)). A package carries them when the build is given their folder, the private repository's `plugins`:
+The owner's base plugins ([ADR 0039](../adr/0039-base-plugins-ship-beside-the-apps.md)) live in the owner's private repository, `Aidyn Retold Private`, not this one: only art and music go there, with `acre_fixes`, the patches that fix the original's content, beside them as the base plugins are one folder, and none of it is committed here ([ADR 0041](../adr/0041-the-art-and-music-are-the-private-repositorys.md), [ADR 0043](../adr/0043-the-rom-is-asked-for-once-and-fixes-are-base-plugins.md)). A package carries them when the build is given their folder, the private repository's `plugins`:
 
 ```
 Aidyn Retold Private/
@@ -35,6 +35,7 @@ Aidyn Retold Private/
     NOTICE.md               whose the art and music are, on what terms, and any credit their licences ask for
     acre/                   the game's own art, acre:image/<key>; one plugin per folder, named for its ID, with its plugin.json
     acre_alaron_remodel/
+    acre_fixes/             patches that fix the original's content, no art or music (ADR 0043)
     acre_music/
     …
   branding/                 -Branding, found beside -BasePlugins (below)

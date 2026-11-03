@@ -74,23 +74,17 @@ public sealed class DataPathsTests : IDisposable
         Assert.Equal(Path.Combine(_temp.Root, "data", "rom.txt"), DataPaths.LastRomFor(plugins + Path.DirectorySeparatorChar));
     }
 
+    /// <summary>Importers 60 and 61 recorded the mushroom choice, which reading leaves out, so their manifests still read and are out of date.</summary>
     [Fact]
-    public void TheManifestRecordsTheImportsOptions()
+    public void AnOldImportsOptionsAreReadPast()
     {
         _temp.AddRaw(RomPlugin.Folder, """
             { "id": "aidyn", "name": "Base", "version": "1.0.0",
               "import": { "importer": 61, "rom": "x", "romVersion": "NA 1.0", "options": { "fixMushroom": false } } }
             """);
         Assert.True(RomPlugin.IsImported(_temp.Root));
-        Assert.Equal(new ImportOptions(FixMushroom: false), RomPlugin.ImportOf(_temp.Root)?.Options);
-    }
-
-    [Fact]
-    public void AnImportWithoutOptionsHadTheDefaults()
-    {
-        _temp.AddRaw(RomPlugin.Folder, """{ "id": "aidyn", "name": "Base", "version": "1.0.0", "import": { "importer": 60, "rom": "x", "romVersion": "NA 1.0" } }""");
-        Assert.Null(RomPlugin.ImportOf(_temp.Root)?.Options);
-        Assert.True((RomPlugin.ImportOf(_temp.Root)?.Options ?? ImportOptions.Default).FixMushroom);
+        Assert.Equal(new ImportInfo(61, "x", "NA 1.0"), RomPlugin.ImportOf(_temp.Root));
+        Assert.StartsWith("The import is out of date (imported by importer 61", RomPlugin.Diagnose(_temp.Root), StringComparison.Ordinal);
     }
 
     [Fact]

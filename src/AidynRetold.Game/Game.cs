@@ -145,7 +145,7 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
     }
 
     /// <summary>
-    /// With no import, or one the current importer didn't write, starts the editor's import page and quits (runtime.md#with-no-import).
+    /// With no import, or one the current importer didn't write, starts the editor's import dialog and quits (runtime.md#with-no-import).
     /// A screenshot run, or an editor that can't be started, goes on to <see cref="Start"/>, which shows the problem.
     /// </summary>
     private bool HandOffToEditor()

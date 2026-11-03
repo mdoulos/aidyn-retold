@@ -22,21 +22,11 @@ public sealed record PluginManifest(
 /// <see cref="RomPlugin.ImporterVersion"/> or the ROM changes.
 /// </summary>
 /// <param name="Rom">The ROM's SHA-1.</param>
-/// <param name="Options">The player's choices for the import. An import without them, before they were recorded, had the defaults.</param>
-public sealed record ImportInfo(int Importer, string Rom, string RomVersion, ImportOptions? Options = null);
-
-/// <summary>
-/// The player's choices for an import, which the ROM plugin's manifest records (<see cref="ImportInfo.Options"/>), so the editor
-/// and a re-import can tell.
-/// </summary>
-/// <param name="FixMushroom">
-/// Move the Roog Cave's mushroom out of the passage's neck, the correction the importer makes by default
-/// (docs/hardcoded-content.md#corrections-to-the-roms-maps). Without it, the mushroom stands where the ROM has it.
-/// </param>
-public sealed record ImportOptions(bool FixMushroom = true)
-{
-    public static ImportOptions Default { get; } = new();
-}
+/// <remarks>
+/// Importers 60 and 61 also wrote the player's choice about the Roog Cave's mushroom (<c>options</c>), which reading ignores: the import
+/// takes no choices now, and the fix is the <c>acre_fixes</c> base plugin's (ADR 0043).
+/// </remarks>
+public sealed record ImportInfo(int Importer, string Rom, string RomVersion);
 
 /// <summary>The original game's plugin, which the importer writes from the user's ROM.</summary>
 public static class RomPlugin
@@ -146,10 +136,11 @@ public static class RomPlugin
     /// 59 marks a lit list's vertices that the RSP loads second of a pair (<c>TEXCOORD_1</c>'s S of 1), which a body's lights don't reach.
     /// 60 moves the Roog Cave's mushroom (<c>aidyn:voxel/0x1205/12</c>) and its collision out of the passage's neck (<c>MapCorrections</c>).
     /// 61 gives each title fly-through its animation's length (<c>length</c>), and names its coordinates' origin (<c>originRow</c>, <c>originColumn</c>).
-    /// Its manifest later records the import's options (<c>import.options</c>, <see cref="ImportOptions"/>), whose defaults leave the
-    /// records as 61 wrote them, and a 61 import without them had the defaults, so the version stayed.
+    /// Its manifest later recorded the import's options (<c>import.options</c>), whose defaults left the records as 61 wrote them.
+    /// 62 leaves the Roog Cave's mushroom where the ROM has it, and takes no options: the ROM plugin is the ROM's content as it is, and
+    /// the mushroom's fix is the <c>acre_fixes</c> base plugin's (ADR 0043).
     /// </summary>
-    public const int ImporterVersion = 61;
+    public const int ImporterVersion = 62;
 
     /// <summary>
     /// What's wrong with the imported ROM plugin under <paramref name="pluginsDirectory"/>, worded for the player, or null if
@@ -253,7 +244,7 @@ public static class DataPaths
     }
 
     /// <summary>
-    /// The ROM the editor's import page last imported from, a path on one line, which it offers again: beside the plugins folder
+    /// The ROM the editor's import dialog last imported from, a path on one line, which it offers again: beside the plugins folder
     /// it imported into, so in the data folder for the data folder's own.
     /// </summary>
     public static string LastRomFor(string pluginsDirectory) =>

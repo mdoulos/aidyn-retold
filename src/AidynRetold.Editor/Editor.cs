@@ -23,9 +23,8 @@ namespace AidynRetold.Editor;
 /// <c>--details 1</c>, and <c>--press &lt;a,b,up,down&gt;</c> presses those buttons in turn after. <c>--roll 1</c> rolls a
 /// loot table's page, or opens the container a map object's page picks, in the loot window, whose buttons
 /// <c>--press</c> also takes, with <c>left</c> and <c>right</c>. <c>--look 1</c>, after the wait, looks through a camera object's page's camera. <c>--ui-screenshot &lt;png&gt;</c> saves the UI screen too, in its own pixels,
-/// before it's scaled up. With no current import it shows the import page (<see cref="ImportPage"/>) instead: <c>--from-game 1</c>,
-/// which the game passes, ends it with Play, and <c>--rom &lt;path&gt;</c>, <c>--keep-mushroom 1</c> and <c>--import 1</c> fill it in
-/// and press Import.
+/// before it's scaled up. With no current import it shows the import dialog (<see cref="ImportDialog"/>) first: <c>--from-game 1</c>,
+/// which the game passes, ends it with Play, and <c>--rom &lt;path&gt;</c> and <c>--import 1</c> fill it in and press Import.
 /// </remarks>
 public partial class Editor : Control
 {
@@ -114,33 +113,33 @@ public partial class Editor : Control
     }
 
     /// <summary>
-    /// With no current import, the import page in the browser's place (editor.md#the-import-page): true once it's imported and the
-    /// editor is to go on, false if it stays on the page, as it does when the game started it (Play ends it) or a screenshot was taken.
-    /// <c>--rom</c>, <c>--keep-mushroom 1</c> and <c>--import 1</c> fill it in and press Import, for scripts.
+    /// With no current import, the import dialog over the empty window, before anything loads (editor.md#the-import-dialog): true once
+    /// it's imported and the editor is to go on, false if it stays up, as it does when the game started it (Play ends it) or a
+    /// screenshot was taken. Cancelling it quits. <c>--rom</c> and <c>--import 1</c> fill it in and press Import, for scripts.
     /// </summary>
     private async Task<bool> ImportFirstAsync(string plugins, Dictionary<string, string> args, string? png)
     {
-        var page = new ImportPage(plugins, AppLauncher.StartedFromGame(OS.GetCmdlineUserArgs()));
-        var center = new CenterContainer();
-        center.SetAnchorsPreset(LayoutPreset.FullRect);
-        center.AddChild(page);
+        var fromGame = AppLauncher.StartedFromGame(OS.GetCmdlineUserArgs());
+        // Started for the game, the window is the game's until the game starts.
+        if (fromGame)
+            GetWindow().Title = "Aidyn Chronicles Retold";
+        var dialog = new ImportDialog(plugins, fromGame);
         _records.Visible = false;
-        AddChild(center);
+        AddChild(dialog);
+        dialog.PopupCentered();
         var imported = new TaskCompletionSource();
-        page.Imported += () => imported.TrySetResult();
+        dialog.Imported += () => imported.TrySetResult();
         if (args.TryGetValue("rom", out var rom))
-            page.RomPath = rom;
-        if (args.GetValueOrDefault("keep-mushroom") == "1")
-            page.FixMushroom = false;
+            dialog.RomPath = rom;
         if (args.GetValueOrDefault("import") == "1")
-            await page.ImportAsync();
+            await dialog.ImportAsync();
         if (png is not null && !imported.Task.IsCompleted)
         {
             await Screenshot(png);
             return false;
         }
         await imported.Task;
-        center.QueueFree();
+        dialog.QueueFree();
         _records.Visible = true;
         return true;
     }

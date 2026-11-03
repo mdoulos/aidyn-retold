@@ -18,20 +18,18 @@ namespace AidynRetold.Rom.Import;
 public static class RomImporter
 {
     /// <summary>
-    /// Imports <paramref name="rom"/> into <paramref name="directory"/>, replacing what's there, with the player's choices
-    /// (<see cref="ImportOptions.Default"/> if none), which the manifest records. It writes to a sibling folder first, so a failed
-    /// import leaves the old one in place, and deletes it on a failure; one killed partway is left for the next import to
+    /// Imports <paramref name="rom"/> into <paramref name="directory"/>, replacing what's there. It writes to a sibling folder first, so a
+    /// failed import leaves the old one in place, and deletes it on a failure; one killed partway is left for the next import to
     /// clear, and loading skips it (<see cref="RomPlugin.IsImportWork"/>). An import into <see cref="RomPlugin.Folder"/> replaces one
-    /// left in <see cref="RomPlugin.OldFolder"/> beside it too. A data edit of 1.0 is refused (ADR 0038): the ROM plugin is the original's
-    /// content as 1.0 has it, and changes to it are base plugins.
+    /// left in <see cref="RomPlugin.OldFolder"/> beside it too. A data edit of 1.0 is refused (ADR 0038), and nothing is corrected
+    /// (ADR 0043): the ROM plugin is the original's content as 1.0 has it, and changes to it, fixes among them, are base plugins.
     /// </summary>
-    public static void Import(RomImage rom, string directory, IProgress<string>? progress = null, ImportOptions? options = null)
+    public static void Import(RomImage rom, string directory, IProgress<string>? progress = null)
     {
         if (rom.Version.ResearchOnly)
             throw new UnsupportedRomException(rom.Sha1, rom.Header);
         if (rom.Version.DataEdit)
             throw new InvalidDataException($"{ImportableRom.EditedRom} (Its SHA-1 is {rom.Sha1}; NA 1.0's is {RomVersions.Na10.Sha1}.)");
-        options ??= ImportOptions.Default;
 
         directory = Path.GetFullPath(directory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         var staging = directory + RomPlugin.StagingSuffix;
@@ -42,10 +40,10 @@ public static class RomImporter
 
         try
         {
-            var context = new ImportContext(rom, staging, progress, options);
+            var context = new ImportContext(rom, staging, progress);
             context.WriteJson(PluginManifest.FileName, new PluginManifest(
                 RecordId.RomNamespace, "Aidyn Chronicles: The First Mage", "1.0.0",
-                Import: new ImportInfo(RomPlugin.ImporterVersion, rom.Sha1, rom.Version.Name, options)));
+                Import: new ImportInfo(RomPlugin.ImporterVersion, rom.Sha1, rom.Version.Name)));
 
             WorldImporter.Import(context);
             CombatImporter.Import(context);

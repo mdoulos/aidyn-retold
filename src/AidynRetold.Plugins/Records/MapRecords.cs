@@ -108,6 +108,14 @@ public sealed record MapRecord(RecordId Id, [property: KeyedList(nameof(MapObjec
     /// </summary>
     public bool NoJump { get; init; }
 
+    /// <summary>
+    /// Runs of the original's collision triangles that a plugin moves, as a patch, so nothing of the ROM's is copied: the
+    /// <c>acre_fixes</c> base plugin moves the Roog Cave's mushroom's box with the mushroom this way
+    /// (docs/hardcoded-content.md#corrections-to-the-roms-maps). They move the ROM plugin's asset alone, numbered as it has them
+    /// (<see cref="Assets.CollisionMesh.For"/>); a plugin that replaces the collision asset gives it as it's to be. Null for none.
+    /// </summary>
+    public IReadOnlyList<CollisionMove>? CollisionMoves { get; init; }
+
     /// <summary>The ID of the object at <paramref name="index"/> in the map <paramref name="map"/>, such as <c>aidyn:voxel/0x1A20/12</c>.</summary>
     public static RecordId VoxelId(RecordId map, int index) =>
         RecordId.Parse(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{map.Namespace}:{RecordTypes.Voxel}/{map.Key}/{index}"));
@@ -127,6 +135,12 @@ public sealed record MapRecord(RecordId Id, [property: KeyedList(nameof(MapObjec
         return plugins.TryGet<MapRecord>(MapOf(voxel))?.Objects.FirstOrDefault(o => o.Index == index);
     }
 }
+
+/// <summary>A run of a map's collision triangles moved together (<see cref="MapRecord.CollisionMoves"/>), their flags as they were.</summary>
+/// <param name="First">The first triangle's number in the original's collision, the ROM plugin's asset, which keeps the Borg9's order.</param>
+/// <param name="Count">How many, one after another.</param>
+/// <param name="By">How far they move, in the chunk's coordinates.</param>
+public sealed record CollisionMove(int First, int Count, Vector3 By);
 
 /// <summary>
 /// The eight chunks around one, a bit each, in the order the original's zone engine walks them (its table at

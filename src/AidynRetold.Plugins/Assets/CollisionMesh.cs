@@ -136,9 +136,36 @@ public static class CollisionMesh
         };
     }
 
-    /// <summary>A map's collision, from the plugin that provides its asset, or none if no plugin has one.</summary>
-    public static IReadOnlyList<CollisionTriangle> For(PluginSet plugins, RecordId map) =>
-        plugins.FindAsset(map, "glb") is { } path ? Read(File.ReadAllBytes(path)) : [];
+    /// <summary>
+    /// A map's collision, from the plugin that provides its asset, or none if no plugin has one: the original's with the map record's
+    /// <see cref="Records.MapRecord.CollisionMoves"/> made, which number its triangles, or a later plugin's as it is.
+    /// </summary>
+    public static IReadOnlyList<CollisionTriangle> For(PluginSet plugins, RecordId map)
+    {
+        if (plugins.FindAsset(map, "glb") is not { } path)
+            return [];
+        var triangles = Read(File.ReadAllBytes(path));
+        return plugins.TryGet<Records.MapRecord>(map)?.CollisionMoves is { Count: > 0 } moves && path == plugins.FindOriginalAsset(map, "glb")
+            ? Move(triangles, moves, map)
+            : triangles;
+    }
+
+    /// <summary>
+    /// <paramref name="triangles"/> with each of <paramref name="moves"/>' runs moved by its offset, their surfaces, roles, flags and
+    /// targets kept: a slide keeps a triangle's normal, and which of two triangles claims a shared edge.
+    /// </summary>
+    public static IReadOnlyList<CollisionTriangle> Move(IReadOnlyList<CollisionTriangle> triangles, IReadOnlyList<Records.CollisionMove> moves, RecordId map)
+    {
+        var moved = triangles.ToArray();
+        foreach (var move in moves)
+        {
+            if (move.First < 0 || move.Count < 1 || move.First + move.Count > moved.Length)
+                throw new InvalidDataException($"{map}'s collisionMoves move triangles {move.First} to {move.First + move.Count - 1}, but its collision has {moved.Length}.");
+            for (var t = move.First; t < move.First + move.Count; t++)
+                moved[t] = moved[t] with { A = moved[t].A + move.By, B = moved[t].B + move.By, C = moved[t].C + move.By };
+        }
+        return moved;
+    }
 
     public static IReadOnlyList<CollisionTriangle> Read(byte[] glb)
     {

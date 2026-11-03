@@ -2,7 +2,7 @@ namespace AidynRetold.Rom.Import;
 
 /// <summary>
 /// The ROM a player picks to import, checked before the import starts, with what's wrong worded for them: the editor's import
-/// page asks for the unmodified North American 1.0 ROM, the primary target (docs/formats/rom.md), in any byte order
+/// dialog asks for the unmodified North American 1.0 ROM, the primary target (docs/formats/rom.md), in any byte order
 /// <see cref="RomImage"/> reads (<c>.z64</c>, <c>.v64</c>, <c>.n64</c>). A ROM hack of it is refused, even one that edits only its
 /// data tables, so the ROM plugin is the same for every player (ADR 0038). The CLI's <c>acre import</c> also takes 1.1.
 /// </summary>
@@ -38,7 +38,7 @@ public static class ImportableRom
         return rom;
     }
 
-    /// <summary>What the import page and the importer say of a data edit of NA 1.0 (ADR 0038).</summary>
+    /// <summary>What the import dialog and the importer say of a data edit of NA 1.0 (ADR 0038).</summary>
     internal const string EditedRom =
         "This is a ROM hack of the North American 1.0 ROM: its game data has been edited. Aidyn Chronicles Retold needs the unmodified North American 1.0 ROM.";
 }

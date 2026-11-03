@@ -24,8 +24,8 @@ trademark.
 
 1. Download the latest release
 2. Run `acre` or `acre.exe`
-3. On first run, select your ROM, and decide whether or not you want to fix the
-   mushroom (you know the one)
+3. On first run, select your ROM (the North American 1.0 one) and import it.
+   The mushroom (you know the one) is fixed
 4. Play
 
 To build from source, install the .NET 10 SDK that `global.json` pins and run

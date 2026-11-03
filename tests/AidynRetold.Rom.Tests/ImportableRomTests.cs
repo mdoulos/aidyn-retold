@@ -1,51 +1,16 @@
 using AidynRetold.Plugins;
 using AidynRetold.Rom.Import;
-using AidynRetold.Rom.Maps;
 
 namespace AidynRetold.Rom.Tests;
 
-/// <summary>
-/// The player's choices at import (<see cref="ImportOptions"/>) and the ROM the editor's import page takes (<see cref="ImportableRom"/>).
-/// The mushroom's move itself is <c>GameSessionTests.Mushroom.cs</c>'s, over the shared default import.
-/// </summary>
-public sealed class ImportOptionsTests : IDisposable
+/// <summary>The ROM the editor's import dialog takes (<see cref="ImportableRom"/>), and the one the importer refuses.</summary>
+public sealed class ImportableRomTests : IDisposable
 {
     private readonly TempPlugins _temp = new();
 
-    public ImportOptionsTests() => Directory.CreateDirectory(_temp.Root);
+    public ImportableRomTests() => Directory.CreateDirectory(_temp.Root);
 
     public void Dispose() => _temp.Dispose();
-
-    private static (IReadOnlyList<MapChunk> Chunks, Dictionary<int, Borg9Map> Maps, int Borg9) RoogD01()
-    {
-        var rom = TestRoms.Get(RomVersionId.Na10);
-        var chunks = MapChunks.Read(rom);
-        var borg9 = chunks.Single(c => c.Set == MapSet.RoogCave && c.Name == "D01").Collision;
-        return (chunks, new Dictionary<int, Borg9Map> { [borg9] = Borg9Map.Parse(Borg.BorgArchive.Open(rom).Read(borg9)) }, borg9);
-    }
-
-    [Fact]
-    public void KeepingTheMushroomLeavesTheRomsMapAsItIs()
-    {
-        var (chunks, maps, borg9) = RoogD01();
-        var rom = maps[borg9];
-        MapCorrections.Apply(chunks, maps, new ImportOptions(FixMushroom: false));
-        // The same map, so its object's position and its collision's vertices are the ROM's.
-        Assert.Same(rom, maps[borg9]);
-        Assert.Empty(MapCorrections.Moved(new ImportOptions(FixMushroom: false)));
-    }
-
-    [Fact]
-    public void FixingTheMushroomIsTheDefault()
-    {
-        Assert.True(ImportOptions.Default.FixMushroom);
-        var (chunks, maps, borg9) = RoogD01();
-        var rom = maps[borg9];
-        MapCorrections.Apply(chunks, maps, ImportOptions.Default);
-        var moved = MapCorrections.RoogCaveMushroom;
-        Assert.Equal(rom.Objects[moved.Object].Position + moved.By, maps[borg9].Objects[moved.Object].Position);
-        Assert.Equal(rom.Vertices[rom.Triangles[moved.FirstTriangle].A] + moved.By, maps[borg9].Vertices[rom.Triangles[moved.FirstTriangle].A]);
-    }
 
     private string Write(string name, ReadOnlySpan<byte> bytes)
     {
@@ -55,7 +20,7 @@ public sealed class ImportOptionsTests : IDisposable
     }
 
     [Fact]
-    public void TheImportPageTakesNa10InAnyByteOrder()
+    public void TheImportDialogTakesNa10InAnyByteOrder()
     {
         var rom = TestRoms.Get(RomVersionId.Na10);
         var swapped = rom.Data.ToArray();
@@ -77,7 +42,7 @@ public sealed class ImportOptionsTests : IDisposable
     /// imported: the ROM plugin is 1.0's for every player (ADR 0038).
     /// </summary>
     [Fact]
-    public void TheImportPageRefusesADataEditOfNa10()
+    public void TheImportDialogRefusesADataEditOfNa10()
     {
         var e = Assert.Throws<InvalidDataException>(() => ImportableRom.Open(Write("edit.z64", DataEditOfNa10())));
         Assert.Equal(
@@ -99,7 +64,7 @@ public sealed class ImportOptionsTests : IDisposable
     }
 
     [Fact]
-    public void TheImportPageRefusesOtherVersionsWithTheirNames()
+    public void TheImportDialogRefusesOtherVersionsWithTheirNames()
     {
         var rom = TestRoms.Get(RomVersionId.Na11);
         var e = Assert.Throws<InvalidDataException>(() => ImportableRom.Open(Write("rom.z64", rom.Data)));
@@ -107,7 +72,7 @@ public sealed class ImportOptionsTests : IDisposable
     }
 
     [Fact]
-    public void TheImportPageSaysWhatsWrongWithAFileThatIsntTheGame()
+    public void TheImportDialogSaysWhatsWrongWithAFileThatIsntTheGame()
     {
         Assert.StartsWith("This file isn't an N64 ROM.", Assert.Throws<InvalidDataException>(() => ImportableRom.Open(Write("notes.z64", "hello"u8))).Message,
             StringComparison.Ordinal);

@@ -345,8 +345,7 @@ public partial class MapSetView : VBoxContainer
             .OrderBy(c => centre is null ? 0 : Math.Max(Math.Abs(c.Row - centre.Row), Math.Abs(c.Column - centre.Column)))
             .ToList();
         var plugins = catalog.Plugins;
-        var reading = Task.Run(() => missing.ToDictionary(c => c, c => plugins.FindAsset(c.Map, "glb") is { } path
-            ? CollisionMesh.Read(File.ReadAllBytes(path)) : (IReadOnlyList<CollisionTriangle>)[]));
+        var reading = Task.Run(() => missing.ToDictionary(c => c, c => CollisionMesh.For(plugins, c.Map)));
 
         var collision = await reading;
         if (generation != _generation)

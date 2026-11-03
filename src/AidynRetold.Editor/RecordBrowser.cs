@@ -18,8 +18,8 @@ namespace AidynRetold.Editor;
 /// (the buttons, Alt+Left and Alt+Right, or the mouse's side buttons).
 /// </summary>
 /// <remarks>
-/// It reads plugins only. Its one use of the ROM is running the importer, through the import page
-/// (<see cref="ImportPage"/>), which is also the game's first run (ADR 0001, ADR 0012).
+/// It reads plugins only. The ROM is the import dialog's (<see cref="ImportDialog"/>), which the editor shows before the browser
+/// loads anything when there's no current import, and which is also the game's first run (ADR 0001, ADR 0012, ADR 0043).
 /// </remarks>
 public partial class RecordBrowser : Control
 {
@@ -28,7 +28,6 @@ public partial class RecordBrowser : Control
     private readonly Button _back = new() { Text = "◀", TooltipText = "Back (Alt+Left)", Disabled = true };
     private readonly Button _forward = new() { Text = "▶", TooltipText = "Forward (Alt+Right)", Disabled = true };
     private readonly Button _folder = new() { Text = "Plugins folder…" };
-    private readonly Button _import = new() { Text = "Import ROM…" };
     private readonly OptionButton _types = new() { TooltipText = "Type" };
     private readonly LineEdit _search = new()
     {
@@ -116,15 +115,16 @@ public partial class RecordBrowser : Control
         UpdateHistoryButtons();
         Populate();
         ShowNothing("");
+        // A folder picked later with no current import isn't loaded: the import is asked for only at startup (ADR 0043).
         if (!File.Exists(Path.Combine(pluginsDirectory, RomPlugin.Folder, PluginManifest.FileName)))
         {
-            _status.Text = $"No {RomPlugin.Folder} in {pluginsDirectory}. Import a ROM to make one.";
+            _status.Text = $"No {RomPlugin.Folder} in {pluginsDirectory}: pick the plugins folder that holds one.";
             return;
         }
-        // Out of date: the game refuses it, so the editor shows the same words and waits for an import.
+        // Out of date: the game refuses it, so the editor shows the same words.
         if (RomPlugin.Diagnose(pluginsDirectory) is { } problem)
         {
-            _status.Text = $"{problem}\nOr press Import ROM… here.";
+            _status.Text = problem;
             return;
         }
 
@@ -260,7 +260,6 @@ public partial class RecordBrowser : Control
         bar.AddChild(_forward);
         bar.AddChild(new VSeparator());
         bar.AddChild(_folder);
-        bar.AddChild(_import);
         bar.AddChild(new VSeparator());
         bar.AddChild(_types);
         bar.AddChild(_search);
@@ -346,33 +345,6 @@ public partial class RecordBrowser : Control
             folderDialog.CurrentDir = _pluginsDirectory;
             folderDialog.PopupCentered(new Vector2I(800, 500));
         };
-
-        _import.Pressed += ShowImport;
-    }
-
-    /// <summary>The import page in a window, into the plugins folder shown, which is loaded again once it's imported.</summary>
-    private void ShowImport()
-    {
-        var page = new ImportPage(_pluginsDirectory, fromGame: false);
-        var margin = new MarginContainer();
-        foreach (var side in new[] { "left", "top", "right", "bottom" })
-            margin.AddThemeConstantOverride("margin_" + side, 16);
-        margin.AddChild(page);
-        var window = new Window { Title = "Import a ROM", Exclusive = true, Transient = true, WrapControls = true };
-        window.AddChild(margin);
-        // Not while the importer runs.
-        window.CloseRequested += () =>
-        {
-            if (!page.Busy)
-                window.QueueFree();
-        };
-        page.Imported += () =>
-        {
-            window.QueueFree();
-            _ = Report(LoadAsync(_pluginsDirectory));
-        };
-        AddChild(window);
-        window.PopupCentered();
     }
 
     private Task Report(Task task) => BackgroundTask.Report(task, e => _status.Text = e.Message);
@@ -522,8 +494,7 @@ public partial class RecordBrowser : Control
     private static string Welcome(PluginCatalog catalog)
     {
         var plugins = string.Join(", ", catalog.Plugins.Plugins.Select(p =>
-            p.Manifest.Import is { } import ? $"{p.Manifest.Id} ({p.Manifest.Name}, imported from {import.RomVersion} by importer {import.Importer}, " +
-                $"{((import.Options ?? ImportOptions.Default).FixMushroom ? "the mushroom fixed" : "the mushroom not fixed")})" : p.Manifest.Id));
+            p.Manifest.Import is { } import ? $"{p.Manifest.Id} ({p.Manifest.Name}, imported from {import.RomVersion} by importer {import.Importer})" : p.Manifest.Id));
         var conflicts = catalog.Plugins.Conflicts.Count();
         var conflicted = conflicts == 0 ? "" : $" {conflicts:N0} {(conflicts == 1 ? "field is" : "fields are")} patched by more than one plugin (acre conflicts lists them).";
         return $"Loaded {plugins}.{conflicted} Pick a record, or type an ID such as aidyn:mapset/0 and press Enter.";

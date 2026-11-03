@@ -33,7 +33,7 @@ The editor writes the same patches the chunk import does, so a chunk edited here
 
 The export names a map set and a chunk. The sets are the seventeen worlds the game loads one at a time: `Overworld`, `GwerniaInteriors`, `GwerniaCastle`, `PortSaiid`, `Terminor`, `Erromon`, `Ugarit`, `Ugarit2`, `JundarInteriors`, `MiscInteriors`, `Lighthouse`, `RoogCave`, `GoblinCamp`, `Barrows`, `EhudUnder`, `ChaosIsle` and `Battlefields`. A chunk is named by row letter and column, so `M07` is row M, column 7; Gwernia is the Overworld's M07.
 
-A map's record can also forbid the player's jump in its chunk, where a jump would get round a puzzle or a ledge: `{"patch": "aidyn:map/0x…", "noJump": true}` ([movement](systems/movement.md)).
+A map's record can also forbid the player's jump in its chunk, where a jump would get round a puzzle or a ledge: `{"patch": "aidyn:map/0x…", "noJump": true}` ([movement](systems/movement.md)). And it can slide a run of the original's collision triangles without copying the collision, as the `acre_fixes` base plugin moves the Roog Cave's mushroom's box: `"collisionMoves": [{"first": 926, "count": 8, "by": [-0.124, 0, 0.696]}]`, the triangles numbered as the ROM plugin has them ([hardcoded content](hardcoded-content.md#corrections-to-the-roms-maps)). The moves are made on the ROM plugin's collision alone: a mod that writes its own collision, as the chunk import does, writes it as it's to be, from an export the moves were already made in.
 
 To find one, stand there in the game and press F3: the debug overlay names the chunk you're in ([runtime](systems/runtime.md)). The editor's map view draws a set whole with its chunk grid, and `--chunk M07` starts the game in a chunk. A wrong name lists the set's chunks.
 

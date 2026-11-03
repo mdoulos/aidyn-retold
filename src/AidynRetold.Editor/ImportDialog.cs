@@ -5,24 +5,23 @@ using Godot;
 namespace AidynRetold.Editor;
 
 /// <summary>
-/// The import page (docs/systems/editor.md#the-import-page): the ROM to import, the player's choice about the Roog Cave's mushroom
-/// (<see cref="ImportOptions"/>), and the importer run off the main thread with its steps shown. The editor shows it in place of the
-/// record browser when there's no current import, and in a window from the browser's Import ROM…. Started by the game
-/// (<see cref="AppLauncher.FromGame"/>), it ends with Play; otherwise with <see cref="Imported"/>.
+/// The import dialog (docs/systems/editor.md#the-import-dialog, ADR 0043), the one place the ROM is asked for: the editor shows it
+/// at startup when there's no current import (<see cref="RomPlugin.Diagnose"/>), over an empty window, before anything loads. The
+/// ROM, Browse..., and Import, which runs the importer off the main thread with its steps shown. Cancel, or closing it, quits, so
+/// neither the editor nor the game goes on without an import. Started by the game (<see cref="AppLauncher.FromGame"/>), it says the
+/// game needs the ROM and ends with Play; otherwise with <see cref="Imported"/>, and the editor goes on.
 /// </summary>
-public partial class ImportPage : VBoxContainer
+public partial class ImportDialog : Window
 {
-    private static readonly Color Dim = new(0.65f, 0.65f, 0.65f);
     private static readonly Color Problem = new(1f, 0.5f, 0.45f);
 
     private readonly string _pluginsDirectory;
     private readonly bool _fromGame;
-    private readonly LineEdit _rom = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, PlaceholderText = "The ROM file: .z64, .n64 or .v64" };
+    private readonly LineEdit _rom = new() { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, PlaceholderText = "The ROM file: .z64, .n64 or .v64" };
     private readonly Button _browse = new() { Text = "Browse..." };
-    private readonly CheckBox _fix = new() { Text = "Fix the mushroom (recommended)" };
-    private readonly CheckBox _keep = new() { Text = "Don't fix the mushroom" };
-    private readonly Button _import = new() { Text = "Import", CustomMinimumSize = new Vector2(120, 0) };
-    private readonly Button _play = new() { Text = "Play", CustomMinimumSize = new Vector2(120, 0), Visible = false };
+    private readonly Button _import = new() { Text = "Import", CustomMinimumSize = new Vector2(110, 0) };
+    private readonly Button _play = new() { Text = "Play", CustomMinimumSize = new Vector2(110, 0), Visible = false };
+    private readonly Button _cancel = new() { Text = "Cancel", CustomMinimumSize = new Vector2(110, 0) };
     private readonly Label _status = Wrapped("");
     private readonly FileDialog _dialog = new()
     {
@@ -36,50 +35,52 @@ public partial class ImportPage : VBoxContainer
     /// <summary>The import finished, when the game didn't start the editor: the editor goes on with the new plugins.</summary>
     public event Action? Imported;
 
-    /// <summary>Whether the importer is running, when the page can't be closed.</summary>
+    /// <summary>Whether the importer is running, when the dialog can't be closed.</summary>
     public bool Busy { get; private set; }
 
     /// <param name="pluginsDirectory">The plugins folder the ROM plugin goes in.</param>
     /// <param name="fromGame">The game started the editor for this: it ends with Play, which starts the game and closes the editor.</param>
-    public ImportPage(string pluginsDirectory, bool fromGame)
+    public ImportDialog(string pluginsDirectory, bool fromGame)
     {
         (_pluginsDirectory, _fromGame) = (pluginsDirectory, fromGame);
-        CustomMinimumSize = new Vector2(600, 0);
-        AddThemeConstantOverride("separation", 10);
+        Title = "Import a ROM";
+        Exclusive = true;
+        Transient = true;
+        Unresizable = true;
+        WrapControls = true;
 
+        var page = new VBoxContainer { CustomMinimumSize = new Vector2(Width, 0) };
+        page.AddThemeConstantOverride("separation", 12);
         // Out of date rather than missing: the import has to be done again.
         if (RomPlugin.IsImported(pluginsDirectory) && RomPlugin.Diagnose(pluginsDirectory) is not null)
-            AddChild(Wrapped("Your import is from an older version of Aidyn Chronicles Retold and has to be done again."));
-        AddChild(Wrapped("A North American 1.0 ROM is required, or a ROM hack of it that edits only the game's data, such as its stats, items and shops."));
+            page.AddChild(Wrapped("Your import is from an older version of Aidyn Chronicles Retold and has to be done again."));
+        page.AddChild(Wrapped($"{(fromGame ? "Aidyn Chronicles Retold" : "The Aidyn Chronicles Retold Editor")} requires a North American 1.0 ROM."));
 
         var row = new HBoxContainer();
         row.AddChild(new Label { Text = "ROM:" });
         row.AddChild(_rom);
         row.AddChild(_browse);
-        AddChild(row);
+        page.AddChild(row);
 
-        var group = new ButtonGroup();
-        _fix.ButtonGroup = _keep.ButtonGroup = group;
-        var choices = new VBoxContainer();
-        choices.AddChild(_fix);
-        choices.AddChild(_keep);
-        AddChild(choices);
-        var about = Wrapped("Moves the mushroom slightly so you can walk past it. If you don't know what this is, select fix the mushroom. " +
-            "If you select don't fix, it's still possible to get by, but it's more difficult than in the original.");
-        about.AddThemeColorOverride("font_color", Dim);
-        AddChild(about);
-
-        var buttons = new HBoxContainer();
+        var buttons = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
         buttons.AddChild(_import);
         buttons.AddChild(_play);
-        AddChild(buttons);
-        AddChild(_status);
+        buttons.AddChild(_cancel);
+        page.AddChild(buttons);
+        // Shown once there's something to say: the import's steps, or what's wrong.
+        _status.Visible = false;
+        page.AddChild(_status);
+
+        var margin = new MarginContainer();
+        foreach (var side in new[] { "left", "top", "right", "bottom" })
+            margin.AddThemeConstantOverride("margin_" + side, 16);
+        margin.AddChild(page);
+        AddChild(margin);
         AddChild(_dialog);
 
-        // What the last import was made from and with, to do again.
+        // What the last import was made from, to do again.
         if (File.Exists(DataPaths.LastRomFor(pluginsDirectory)))
             _rom.Text = File.ReadAllText(DataPaths.LastRomFor(pluginsDirectory)).Trim();
-        FixMushroom = (RomPlugin.ImportOf(pluginsDirectory)?.Options ?? ImportOptions.Default).FixMushroom;
 
         _browse.Pressed += () =>
         {
@@ -91,7 +92,11 @@ public partial class ImportPage : VBoxContainer
         _rom.TextSubmitted += text => _ = BackgroundTask.Report(ImportAsync());
         _import.Pressed += () => _ = BackgroundTask.Report(ImportAsync());
         _play.Pressed += Play;
+        _cancel.Pressed += Quit;
+        CloseRequested += Quit;
     }
+
+    public override void _Ready() => (_rom.Text.Length > 0 ? _import : _browse).GrabFocus();
 
     /// <summary>The ROM's path, as typed or picked (<c>--rom</c>).</summary>
     public string RomPath
@@ -104,30 +109,23 @@ public partial class ImportPage : VBoxContainer
         }
     }
 
-    /// <summary>The mushroom choice (<c>--keep-mushroom</c>).</summary>
-    public bool FixMushroom
-    {
-        get => _fix.ButtonPressed;
-        set => (value ? _fix : _keep).ButtonPressed = true;
-    }
-
     /// <summary>
-    /// What Import does (and <c>--import 1</c>): checks the ROM is NA 1.0 or a data edit of it (ADR 0031) and runs the importer into the plugins folder off the main
-    /// thread, showing its steps, then remembers the ROM for next time. What's wrong is shown on the page, and the controls come back.
+    /// What Import does (and <c>--import 1</c>): checks the ROM is the unmodified NA 1.0 (<see cref="ImportableRom"/>, ADR 0038) and runs
+    /// the importer into the plugins folder off the main thread, showing its steps, then remembers the ROM for next time. What's wrong
+    /// is shown in the dialog, and the controls come back.
     /// </summary>
     public async Task ImportAsync()
     {
         if (Busy)
             return;
         var path = RomPath;
-        var options = new ImportOptions(FixMushroom);
         SetBusy(true);
         Say("Reading the ROM…");
         try
         {
             var progress = new Progress<string>(step => Say($"Importing: {step}…"));
             var directory = Path.Combine(_pluginsDirectory, RomPlugin.Folder);
-            await Task.Run(() => RomImporter.Import(ImportableRom.Open(path), directory, progress, options));
+            await Task.Run(() => RomImporter.Import(ImportableRom.Open(path), directory, progress));
         }
         catch (Exception e)
         {
@@ -149,6 +147,7 @@ public partial class ImportPage : VBoxContainer
         if (_fromGame)
         {
             Busy = false;
+            _cancel.Disabled = false;
             Say("The import is done.");
             _import.Visible = false;
             _play.Visible = true;
@@ -169,21 +168,37 @@ public partial class ImportPage : VBoxContainer
             Say("The game couldn't be started. Start Aidyn Chronicles Retold yourself: the import is done.", problem: true);
     }
 
+    /// <summary>Cancel, or the window's close: the app quits, as there's nothing to go on to. Not while the importer runs.</summary>
+    private void Quit()
+    {
+        if (!Busy)
+            GetTree().Quit();
+    }
+
     private void SetBusy(bool busy)
     {
         Busy = busy;
         _rom.Editable = !busy;
-        _browse.Disabled = _fix.Disabled = _keep.Disabled = _import.Disabled = busy;
+        _browse.Disabled = _import.Disabled = _cancel.Disabled = busy;
     }
 
     private void Say(string text, bool problem = false)
     {
         _status.Text = text;
+        _status.Visible = text.Length > 0;
         if (problem)
             _status.AddThemeColorOverride("font_color", Problem);
         else
             _status.RemoveThemeColorOverride("font_color");
     }
 
-    private static Label Wrapped(string text) => new() { Text = text, AutowrapMode = TextServer.AutowrapMode.WordSmart };
+    /// <summary>
+    /// A label that wraps at the dialog's width, which it has from the start: a wrapping label works out its height at the width it
+    /// has, and at none, before the first layout, it's a word to a line, which the window, sized to its contents, would grow to.
+    /// </summary>
+    private static Label Wrapped(string text) =>
+        new() { Text = text, AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(Width, 0) };
+
+    /// <summary>The dialog's content width.</summary>
+    private const float Width = 560;
 }

@@ -46,7 +46,8 @@ public sealed partial class PartyMenu
     /// What A does with a row, named: a worn item comes off, a potion is drunk, a scroll read, and the rest put on; a flask is taken in
     /// hand and a scroll worn in a battle's pause. Nothing for what can't be worn.
     /// </summary>
-    private ActionTipChoice? ActionFor(InventoryRow row) => row.Wearer is not null ? ActionTipChoice.Unequip : row.Item.Kind switch
+    private ActionTipChoice? ActionFor(InventoryRow row) => row.Wearer is not null ? ActionTipChoice.Unequip
+        : Picking is not null ? ActionTipChoice.Equip : row.Item.Kind switch
     {
         ItemKind.Potion => Combat is not null && Potions.IsFlask(row.Item) ? ActionTipChoice.Equip : ActionTipChoice.Drink,
         ItemKind.Scroll => Combat is not null ? ActionTipChoice.Equip : ActionTipChoice.Read,
@@ -54,12 +55,17 @@ public sealed partial class PartyMenu
         _ => ActionTipChoice.Equip,
     };
 
-    /// <summary>A on the actiontip: closes it and does the choice, as A on the item would, or holds its details open.</summary>
+    /// <summary>
+    /// A on the actiontip: closes it and does the choice, as A on the item would, or holds its details open. Unequip takes off what's in
+    /// the slot selected, where A on the slot chooses what goes in it in the port's look.
+    /// </summary>
     private void ChooseTip(ActionTip tip)
     {
         Tip = null;
         if (tip.Choices.Current == ActionTipChoice.Details)
             DetailsPane.Pin(Details() is not null);
+        else if (tip.Choices.Current == ActionTipChoice.Unequip && SelectedSlot is { } slot && Worn(slot) is { } worn)
+            Use(new InventoryRow(worn, 1, Member));
         else
             Accept();
     }

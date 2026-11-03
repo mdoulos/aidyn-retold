@@ -411,7 +411,7 @@ public partial class PartyTabView : Control
         }
         // The grid's quick toggle for what's worn showing.
         if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } toggle && OwnTab && Menu.ToggleWorn is { } turn
-            && Menu.List == PartyList.Inventory && Menu.Grid && Menu.Slide is null && !Menu.HasPopup
+            && Menu.List == PartyList.Inventory && Menu.Grid && Menu.Slide is null && !Menu.HasPopup && Menu.Fitting is null
             && WornToggleRect().HasPoint(toggle.Position - (Vector2)_origin))
         {
             turn();
@@ -1419,9 +1419,14 @@ public partial class PartyTabView : Control
         var right = EquipmentSheet.End.X - CardInset;
         var top = EquipmentSheet.Position.Y + CardInset;
         // The names spelled out in a column, the user's choice (Nov 2, 2026), where they were their first three letters, and the totals
-        // right-aligned at the card's edge.
+        // right-aligned at the card's edge. What the item under the stick or the mouse would change shows as the total now, an arrow and
+        // what it would be, green where it rises and red where it falls, the user's choice (Nov 3, 2026).
         var stats = Menu.Stats.Rows;
-        var labelX = right - stats.Select(r => font.ExactWidth(Num(r.Value + r.Change))).DefaultIfEmpty(0).Max() - CardLabelGap
+        var changes = PreviewChanges();
+        float ValueWidth(StatRow r) => changes.TryGetValue(r.Stat, out var by)
+            ? font.ExactWidth(Num(r.Value + r.Change)) + 2 * ArrowGap + ArrowWidth + font.ExactWidth(Num(r.Value + r.Change + by))
+            : font.ExactWidth(Num(r.Value + r.Change));
+        var labelX = right - stats.Select(ValueWidth).DefaultIfEmpty(0).Max() - CardLabelGap
             - stats.Select(r => font.ExactWidth(r.Name)).DefaultIfEmpty(0).Max();
         foreach (var row in stats)
         {
@@ -1429,7 +1434,21 @@ public partial class PartyTabView : Control
             var value = Num(row.Value + row.Change);
             var middle = top + CardPitch / 2;
             Small(row.Name, labelX, middle - font.Middle, PartyMenu.TextColor, font: font);
-            Small(value, right - font.ExactWidth(value), middle - font.Middle, color, font: font);
+            if (changes.TryGetValue(row.Stat, out var by))
+            {
+                var after = Num(row.Value + row.Change + by);
+                var x = right - font.ExactWidth(after);
+                Small(after, x, middle - font.Middle, by > 0 ? MenuDetailsBuilder.Gain : MenuDetailsBuilder.Loss, font: font);
+                x -= ArrowGap + ArrowWidth;
+                var ink = _ui.Tint(PartyMenu.TextColor);
+                _canvas.DrawPolyline([new(x, middle - ArrowWidth), new(x + ArrowWidth, middle), new(x, middle + ArrowWidth)], ink, ArrowLine, true);
+                x -= ArrowGap + font.ExactWidth(value);
+                Small(value, x, middle - font.Middle, color, font: font);
+            }
+            else
+            {
+                Small(value, right - font.ExactWidth(value), middle - font.Middle, color, font: font);
+            }
             top += CardPitch;
         }
         if (Menu.Experience is not { } exp)
@@ -1448,6 +1467,27 @@ public partial class PartyTabView : Control
 
     /// <summary>How far in from the equipment card's paper its corners' text is, and how far apart the stats are.</summary>
     private const float CardInset = 5, CardPitch = 4.5f;
+
+    /// <summary>The arrow between a stat's total and what an item would make it: its width, its gaps either side and its line.</summary>
+    private const float ArrowWidth = 1.1f, ArrowGap = 1, ArrowLine = 0.4f;
+
+    /// <summary>
+    /// What putting on the item under the mouse, or with a key or a controller the stick, would change of the member's stats, into the
+    /// slot being chosen for (<see cref="PartyMenu.StatChanges"/>); none for what's worn or isn't put on.
+    /// </summary>
+    private IReadOnlyDictionary<Core.Characters.Stat, int> PreviewChanges()
+    {
+        if (!OwnTab || OriginalLook || Menu.HasPopup)
+            return NoChanges;
+        if (!Menu.Pointing)
+            return Menu.CursorStatChanges;
+        return Menu.List == PartyList.Inventory && Menu.Grid && _hoveredCell is { } cell
+            && Menu.Inventory.Rows.ElementAtOrDefault(cell) is { Wearer: null } row
+            ? Menu.StatChanges(row.Item, Menu.Picking)
+            : NoChanges;
+    }
+
+    private static readonly Dictionary<Core.Characters.Stat, int> NoChanges = [];
 
     /// <summary>
     /// The experience lines' labels on the card, and the first on the Stats page in the port's look, the user's choice (Nov 2, 2026): the
@@ -1469,6 +1509,13 @@ public partial class PartyTabView : Control
         var middle = b.Top + grid.Lines * grid.Cell + FootMiddle;
         var total = $"{TotalInventory} {Num(Menu.CarriedCount)}";
         Small(total, b.Left, middle - font.Middle, PartyMenu.TextColor, font: font);
+        // The grid showing what fits a slot says which, where the toggle is.
+        if (Menu.Fitting is { } slot)
+        {
+            var fits = $"{FitsLabel} {PartyMenu.SlotName(slot)}";
+            Small(fits, b.Left + grid.Columns * grid.Cell - font.ExactWidth(fits), middle - font.Middle, UiPainter.RedInk, font: font);
+            return;
+        }
         if (Menu.ToggleWorn is null)
             return;
         var eye = new Rect2(b.Left + grid.Columns * grid.Cell - EyeWidth, middle - EyeHeight / 2, EyeWidth, EyeHeight);
@@ -1520,7 +1567,8 @@ public partial class PartyTabView : Control
     /// </summary>
     private const float FootText = 3.4f, FootMiddle = 8.5f, FootRow = 7, EyeWidth = 6, EyeHeight = 3.4f, EyeGap = 1.5f, EyeLine = 0.45f;
 
-    private const string TotalInventory = "Total Inventory", EquippedItems = "Equipped Items";
+    private const string TotalInventory = "Total Inventory", EquippedItems = "Equipped Items", FitsLabel = "Fits the",
+        NothingFits = "Nothing to put here";
 
     /// <summary>A member's figure, by their entity's record.</summary>
     private Figure FigureOf(Core.Characters.Character member)
@@ -1572,6 +1620,14 @@ public partial class PartyTabView : Control
     {
         var list = Menu.Inventory;
         var count = _ui.Slim.Sized(CountText);
+        // The grid of what fits a slot, with nothing in it, says so.
+        if (list.Rows.Count == 0 && Menu.Fitting is not null)
+        {
+            var font = _ui.Slim.Sized(FootText);
+            var b = grid.Bounds;
+            Small(NothingFits, b.Left + (grid.Columns * grid.Cell - font.ExactWidth(NothingFits)) / 2, b.Top + grid.Cell - font.Middle,
+                PartyMenu.TextColor, font: font);
+        }
         var last = Math.Min(list.Rows.Count, list.First + grid.Visible);
         for (var i = list.First; i < last; i++)
         {

@@ -55,6 +55,7 @@ public sealed partial class PartyMenu
                 InventoryGrid.Apply(Inventory);
             else
                 (Inventory.Columns, Inventory.Visible) = (1, LayoutOf(PartyList.Inventory).Visible);
+            SyncFitting();
         }
     }
 
@@ -91,7 +92,15 @@ public sealed partial class PartyMenu
     /// port's look it's where the stick is on the silhouette (<see cref="Focus"/>), and may be empty, and only the stick leaving the
     /// silhouette or the tab changing lets it go. Null while the cursor's row is the selection.
     /// </summary>
-    public EquipmentSlot? SelectedSlot { get; private set; }
+    public EquipmentSlot? SelectedSlot
+    {
+        get;
+        private set
+        {
+            field = value;
+            SyncFitting();
+        }
+    }
 
     /// <summary>
     /// Selects a slot of the silhouette with something worn in it, as a click on it does; one with nothing in it, nothing, but in the

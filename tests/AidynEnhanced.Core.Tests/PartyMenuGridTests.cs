@@ -126,12 +126,30 @@ public class PartyMenuGridTests
     }
 
     /// <summary>
-    /// A click on a slot of the silhouette selects what's worn there, and only A, or a double click, takes it off, as A on its row would;
-    /// in the port's look a slot with nothing in it is selected too, the stick going onto it, and stays selected as what's in it comes off;
-    /// the stick off the silhouette lets the slot go, A then being the cursor's row's again.
+    /// In the original's look a click on a slot of the silhouette selects what's worn there, and A, or a double click, takes it off, as A
+    /// on its row would; a slot with nothing in it isn't selected.
     /// </summary>
     [Fact]
-    public void ASelectedSlotsItemIsWhatATakesOff()
+    public void InTheOriginalsLookASelectedSlotsItemIsWhatATakesOff()
+    {
+        var (menu, member) = Menu(showWorn: false);
+        menu.OriginalLook = true;
+        menu.SelectSlot(EquipmentSlot.Helmet);
+        Assert.Null(menu.SelectedSlot);
+
+        menu.SelectSlot(EquipmentSlot.Weapon);
+        Assert.Equal(Sword.Name, menu.Details()?.Title);
+        menu.Accept();
+        Assert.Null(member.Equipment.Weapon);
+        Assert.Null(menu.SelectedSlot);
+    }
+
+    /// <summary>
+    /// In the port's look a slot of the silhouette is selected empty or not, the stick going onto it, and its actiontip's Unequip takes
+    /// off what's in it, the slot staying selected; the stick off the silhouette lets the slot go, A then being the cursor's row's again.
+    /// </summary>
+    [Fact]
+    public void ASelectedSlotsActiontipTakesItsItemOff()
     {
         var (menu, member) = Menu(showWorn: false);
         menu.SelectSlot(EquipmentSlot.Helmet);
@@ -141,9 +159,12 @@ public class PartyMenuGridTests
         Assert.Equal(EquipmentSlot.Weapon, menu.SelectedSlot);
         Assert.Equal(Sword.Id, member.Equipment.Weapon?.Id);
         Assert.Equal(Sword.Name, menu.Details()?.Title);
+        Assert.True(menu.OpenTip());
+        Assert.Equal(ActionTipChoice.Unequip, menu.Tip!.Choices.Current);
         menu.Accept();
         Assert.Null(member.Equipment.Weapon);
         Assert.Equal(EquipmentSlot.Weapon, menu.SelectedSlot);
+        menu.Back();
         Assert.Contains(menu.Inventory.Rows, r => r.Item.Id == Sword.Id && r.Wearer is null);
 
         Assert.Equal(EquipRefusal.None, menu.Party.Equip(member, Sword.Id));
@@ -167,6 +188,7 @@ public class PartyMenuGridTests
         var menu = new PartyMenu(party, new MenuText([]), _ => null, _ => null) { Grid = true };
 
         menu.SelectSlot(EquipmentSlot.Weapon);
+        menu.OpenTip();
         menu.Accept();
 
         Assert.Equal(Sword.Id, member.Equipment.Weapon?.Id);
@@ -371,7 +393,7 @@ public class PartyMenuGridTests
 
         Assert.Equal([new MenuPrompt("B", "Close")], menu.Prompts);
         menu.SelectSlot(EquipmentSlot.Weapon);
-        Assert.Equal([new MenuPrompt("A", "Unequip"), new MenuPrompt("Y", "Details"), new MenuPrompt("X", "Actions"), new MenuPrompt("B", "Back")],
+        Assert.Equal([new MenuPrompt("A", "Change"), new MenuPrompt("Y", "Details"), new MenuPrompt("X", "Actions"), new MenuPrompt("B", "Back")],
             menu.Prompts);
         menu.OriginalLook = true;
         Assert.Empty(menu.Prompts);

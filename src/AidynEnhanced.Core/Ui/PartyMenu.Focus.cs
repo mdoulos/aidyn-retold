@@ -80,6 +80,7 @@ public sealed partial class PartyMenu
     private void FocusSlot(EquipmentSlot slot)
     {
         SelectedSlot = slot;
+        Picking = null;
         _focus = PartyFocus.List;
     }
 
@@ -258,7 +259,15 @@ public sealed partial class PartyMenu
                     case PartyFocus.Foot:
                         FootPrompts(Add);
                         break;
-                    case PartyFocus.Slots or PartyFocus.List when TipRow() is { } row && (Focus == PartyFocus.Slots || CursorShows):
+                    case PartyFocus.Slots:
+                        // A on a slot chooses what goes in it (Picking).
+                        Add(Worn(SelectedSlot!.Value) is null ? "Choose" : "Change", GameControls.MenuAccept);
+                        if (Details() is not null)
+                            Add("Details", GameControls.MenuDetails);
+                        if (TipRow() is not null)
+                            Add("Actions", GameControls.MenuAppraise);
+                        break;
+                    case PartyFocus.List when TipRow() is { } row && CursorShows:
                         var action = ActionFor(row);
                         var details = Details() is not null;
                         if (action is { } named)
@@ -279,7 +288,7 @@ public sealed partial class PartyMenu
                 }
                 if (Party.Slots.Count(s => s is not null) > 1)
                     Add("Member", GameControls.MenuMemberLeft, GameControls.MenuMemberRight);
-                Add(Focus == PartyFocus.List ? "Close" : "Back", GameControls.MenuBack);
+                Add(Focus == PartyFocus.List && Picking is null ? "Close" : "Back", GameControls.MenuBack);
             }
             return prompts;
 

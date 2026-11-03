@@ -99,13 +99,24 @@ public sealed partial class PartyMenu
         }
         else if (Focus == PartyFocus.Tabs)
             _focus = PartyFocus.List;
-        else if (SelectedSlot is { } slot)
+        // In the port's look A on a slot goes onto the grid of what fits it to choose one (Picking).
+        else if (SelectedSlot is { } slot && Spatial)
         {
-            if (Worn(slot) is { } worn)
-                Use(new InventoryRow(worn, 1, Member));
+            Picking = slot;
+            SelectedSlot = null;
         }
-        else if (List == PartyList.Inventory && Inventory.Current is { } item)
-            Use(item);
+        else if (SelectedSlot is { } worn)
+        {
+            if (Worn(worn) is { } item)
+                Use(new InventoryRow(item, 1, Member));
+        }
+        else if (List == PartyList.Inventory && Inventory.Current is { } row)
+        {
+            if (Picking is { } picking)
+                PutInto(picking, row);
+            else
+                Use(row);
+        }
         // The Alchemist's, Mechanic's and Healer's popups are trek's alone (WidgetSkillInfo::AFunc): in a battle's pause, healing or
         // brewing would spend no turn.
         else if (Combat is null && List == PartyList.Skills && Skills.Current is { } skill)
@@ -127,6 +138,11 @@ public sealed partial class PartyMenu
             CloseTip();
         else if (OpenCraftingPopup is { } crafting)
             crafting.Fade.Close();
+        else if (Picking is { } picking && Crafting is null && !DetailsPane.Showing)
+        {
+            SelectedSlot = picking;
+            Picking = null;
+        }
         else if (Spatial && Crafting is null && !DetailsPane.Showing && Focus != PartyFocus.List)
             (SelectedSlot, _focus) = (null, PartyFocus.List);
         else if (Crafting is null && !DetailsPane.Showing)

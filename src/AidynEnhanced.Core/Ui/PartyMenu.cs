@@ -59,6 +59,7 @@ public sealed partial class PartyMenu : IPartyWindow
             Stats.Visible = LayoutOf(PartyList.Stats).Visible;
             Skills.Visible = LayoutOf(PartyList.Skills).Visible;
             Spells.Visible = LayoutOf(PartyList.Spells).Visible;
+            SyncFitting();
         }
     }
 
@@ -280,6 +281,7 @@ public sealed partial class PartyMenu : IPartyWindow
             return;
         Slide = null;
         SelectedSlot = null;
+        Picking = null;
         if (_focus == PartyFocus.Foot)
             _focus = PartyFocus.List;
         var lists = (among ?? Enum.GetValues<PartyList>()).ToList();
@@ -290,10 +292,15 @@ public sealed partial class PartyMenu : IPartyWindow
             return;
         StartListSlide(by);
         List = next;
+        SyncFitting();
     }
 
     /// <summary>Shows a list.</summary>
-    public void ShowList(PartyList list) => List = list;
+    public void ShowList(PartyList list)
+    {
+        List = list;
+        SyncFitting();
+    }
 
     /// <summary>Moves the cursor of the popup or the actiontip, or of the list showing.</summary>
     public void MoveCursor(int by)
@@ -375,6 +382,9 @@ public sealed partial class PartyMenu : IPartyWindow
     {
         if (Message is not null || DetailsPane.Showing || Tip is not null)
             return;
+        // A click on the grid of what fits the slot selected chooses for it.
+        if (Spatial && List == PartyList.Inventory && SelectedSlot is { } fitting)
+            Picking = fitting;
         SelectedSlot = null;
         if (Crafting is { } crafting)
         {
@@ -428,7 +438,9 @@ public sealed partial class PartyMenu : IPartyWindow
     public void Refresh()
     {
         var rows = PartyMenuRows.Inventory(Party, Member);
-        Inventory.Replace(ShowWorn ? rows : [.. rows.Where(r => r.Wearer is null)], resetPastEnd: false);
+        _rowsFitting = Fitting;
+        Inventory.Replace(_rowsFitting is { } fits ? [.. rows.Where(r => r.Wearer is null && Fits(r.Item, fits))]
+            : ShowWorn ? rows : [.. rows.Where(r => r.Wearer is null)], resetPastEnd: false);
         if (Shown is { } shown)
         {
             Stats.Replace(PartyMenuRows.Stats(shown), resetPastEnd: false);

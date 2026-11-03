@@ -1,9 +1,9 @@
 # Build the release packages for the machine it runs on (docs/systems/releases.md).
-# Usage: tools/package.ps1 [-Version <n>] [-OutDir <folder>] [-BasePlugins <folder>]
+# Usage: tools/package.ps1 [-Version <n>] [-OutDir <folder>] [-BasePlugins <folder>] [-Branding <folder>]
 #
-#   Windows: AidynEnhanced-alpha-<n>-windows.msi and AidynEnhanced-alpha-<n>-windows-portable.zip
-#   Linux:   AidynEnhanced-alpha-<n>-linux-x86_64.tar.gz
-#   macOS:   AidynEnhanced-alpha-<n>-macos.dmg
+#   Windows: AidynRetold-alpha-<n>-windows.msi and AidynRetold-alpha-<n>-windows-portable.zip
+#   Linux:   AidynRetold-alpha-<n>-linux-x86_64.tar.gz
+#   macOS:   AidynRetold-alpha-<n>-macos.dmg
 #
 # It fetches the pinned Godot and its export templates into .tools/ (tools/godot-pin.ps1),
 # exports both Godot projects with release templates, lays them out side by side and
@@ -17,6 +17,12 @@
 # gets the plugins beside the apps (in each bundle's Contents/Resources on macOS) and the
 # notice beside LICENSE. Without it, a package has no base plugins.
 #
+# -Branding is the private repository's branding folder (ADR 0041): acre-icon-256.png,
+# acre-splash.png, acre-icon.ico and acre-icon.icns, which become each project's icon,
+# boot splash and executable icons. It's the branding folder beside -BasePlugins when that
+# has one. Without either, the projects' own copies are used, as the private repository's
+# branding/make.py left them, and a project without them stops the build.
+#
 # PowerShell 7 on Windows, Linux or macOS. The workflow, .github/workflows/release.yml,
 # runs this same script on each runner.
 [CmdletBinding()]
@@ -24,7 +30,8 @@ param(
     [ValidateRange(0, 255)] # an MSI's major version is at most 255
     [int]$Version = 0,
     [string]$OutDir,
-    [string]$BasePlugins
+    [string]$BasePlugins,
+    [string]$Branding
 )
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
@@ -34,7 +41,7 @@ $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 if (-not $OutDir) { $OutDir = Join-Path $repo 'out/packages' }
 $OutDir = [IO.Path]::GetFullPath($OutDir)
 $platform = Get-HostPlatform
-$name = "AidynEnhanced-alpha-$Version"
+$name = "AidynRetold-alpha-$Version"
 $work = Join-Path $OutDir "work-$platform"
 
 # The base plugins, checked before anything is exported: each a folder with a plugin.json,
@@ -53,6 +60,19 @@ if ($BasePlugins) {
     Write-Host "Base plugins: $(($basePluginFolders | ForEach-Object Name) -join ', ')"
 }
 
+# The branding, art kept in the private repository beside the base plugins (ADR 0041).
+$brandingFiles = @(@('acre-icon-256.png', 'icon.png'), @('acre-splash.png', 'splash.png'), @('acre-icon.ico', 'icon.ico'), @('acre-icon.icns', 'icon.icns'))
+if (-not $Branding -and $BasePlugins -and (Test-Path -LiteralPath (Join-Path $BasePlugins '../branding'))) {
+    $Branding = Join-Path $BasePlugins '../branding'
+}
+if ($Branding) {
+    $Branding = (Resolve-Path -LiteralPath $Branding).Path
+    foreach ($file in $brandingFiles) {
+        if (-not (Test-Path -LiteralPath (Join-Path $Branding $file[0]))) { throw "$Branding has no $($file[0]): run its make.py first." }
+    }
+    Write-Host "Branding: $Branding"
+}
+
 # Puts the base plugins in <folder>/plugins, where the apps beside or above it look (AppLauncher.UseAppFolder).
 function Copy-BasePlugins([string]$folder) {
     if ($basePluginFolders.Count -eq 0) { return }
@@ -69,8 +89,8 @@ function Copy-Papers([string]$folder) {
 
 # The two apps: the Godot project, the executable (and PCK) name, the macOS bundle name.
 $apps = @(
-    @{ Project = 'AidynEnhanced.Game';   Exe = 'aidyn-enhanced';        Bundle = 'Aidyn Chronicles Enhanced' }
-    @{ Project = 'AidynEnhanced.Editor'; Exe = 'aidyn-enhanced-editor'; Bundle = 'Aidyn Chronicles Enhanced Editor' }
+    @{ Project = 'AidynRetold.Game';   Exe = 'acre';        Bundle = 'Aidyn Chronicles Retold' }
+    @{ Project = 'AidynRetold.Editor'; Exe = 'acre-editor'; Bundle = 'Aidyn Chronicles Retold Editor' }
 )
 
 function Invoke-Native([string]$exe, [string[]]$arguments) {
@@ -143,21 +163,20 @@ function Export-App($app, [string]$preset, [string]$target) {
     $original = [IO.File]::ReadAllBytes($projectFile)
     $created = @()
     try {
-        # The icons the presets name. The PNGs are committed (the project's icon, its boot
-        # splash and the game's title logo); the .ico and .icns are only needed here, and
-        # are gitignored.
-        $branding = Join-Path $repo 'assets/branding'
-        foreach ($image in @(@('ace-icon-256.png', 'icon.png'), @('ace-splash.png', 'splash.png'), @('ace-logo-full.png', 'logo.png'))) {
+        # The project's icon and boot splash and the icons the presets name, all gitignored as
+        # they're the private repository's art (ADR 0041): from -Branding, taken away after if
+        # they weren't there, else as its make.py left them.
+        foreach ($image in $brandingFiles) {
             $to = Join-Path $dir $image[1]
-            if (Test-Path -LiteralPath $to) { Copy-IfChanged (Join-Path $branding $image[0]) $to }
-        }
-        foreach ($icon in @(@('ace-icon.ico', 'icon.ico'), @('ace-icon.icns', 'icon.icns'))) {
-            $to = Join-Path $dir $icon[1]
-            if (-not (Test-Path -LiteralPath $to)) { $created += $to }
-            Copy-Item -LiteralPath (Join-Path $branding $icon[0]) -Destination $to -Force
+            if ($Branding) {
+                if (-not (Test-Path -LiteralPath $to)) { $created += $to }
+                Copy-IfChanged (Join-Path $Branding $image[0]) $to
+            } elseif (-not (Test-Path -LiteralPath $to)) {
+                throw "$dir has no $($image[1]). Pass -Branding <the private repository's branding folder>, or run its make.py (ADR 0041)."
+            }
         }
         # Godot's .NET export insists on <assembly>.sln beside the project, though it
-        # publishes the .csproj; the repository's solution is AidynEnhanced.slnx at the root.
+        # publishes the .csproj; the repository's solution is AidynRetold.slnx at the root.
         $sln = Join-Path $dir "$($app.Project).sln"
         if (-not (Test-Path -LiteralPath $sln)) {
             $created += $sln
@@ -210,7 +229,7 @@ function ConvertTo-Rtf([string]$text) {
 }
 
 function New-WindowsPackages {
-    $stage = Join-Path $work 'AidynEnhanced'
+    $stage = Join-Path $work 'AidynRetold'
     Reset-Folder $stage
     foreach ($app in $apps) {
         Export-App $app 'Windows Desktop' (Join-Path $stage "$($app.Exe).exe")
@@ -230,7 +249,7 @@ function New-WindowsPackages {
     $archive = [IO.Compression.ZipFile]::Open($zip, [IO.Compression.ZipArchiveMode]::Update)
     try {
         $writer = New-Object IO.StreamWriter($archive.CreateEntry('portable.txt').Open())
-        $writer.Write("This file makes Aidyn Chronicles Enhanced portable: while it is here, Aidyn Chronicles Enhanced keeps its data (the imported game, saves and settings) in the data folder beside it instead of %LOCALAPPDATA%\AidynEnhanced.`r`n")
+        $writer.Write("This file makes Aidyn Chronicles Retold portable: while it is here, Aidyn Chronicles Retold keeps its data (the imported game, saves and settings) in the data folder beside it instead of %LOCALAPPDATA%\AidynRetold.`r`n")
         $writer.Dispose()
     } finally {
         $archive.Dispose()
@@ -253,14 +272,14 @@ function New-WindowsPackages {
     try {
         $wixVersion = (& dotnet wix --version).Split('+')[0]
         Invoke-Native dotnet @('wix', 'extension', 'add', "WixToolset.UI.wixext/$wixVersion")
-        Invoke-Native dotnet @('wix', 'build', (Join-Path $repo 'packaging/windows/AidynEnhanced.wxs'),
+        Invoke-Native dotnet @('wix', 'build', (Join-Path $repo 'packaging/windows/AidynRetold.wxs'),
             '-arch', 'x64', '-ext', 'WixToolset.UI.wixext',
             '-d', "Version=$Version.0.0",
             '-d', "AppDir=$stage",
             '-d', "LicenseRtf=$rtf",
-            '-d', "Icon=$(Join-Path $repo 'assets/branding/ace-icon.ico')",
+            '-d', "Icon=$(if ($Branding) { Join-Path $Branding 'acre-icon.ico' } else { Join-Path $repo 'src/AidynRetold.Game/icon.ico' })",
             '-intermediatefolder', (Join-Path $work 'wixobj'),
-            '-pdb', (Join-Path $work 'AidynEnhanced.wixpdb'),
+            '-pdb', (Join-Path $work 'AidynRetold.wixpdb'),
             '-o', $msi)
     } finally { Pop-Location }
     Write-Host "Wrote $msi"
@@ -298,8 +317,8 @@ function New-MacPackage {
         $bundle = Join-Path $stage "$($app.Bundle).app"
         Move-Item -LiteralPath $exported[0].FullName -Destination $bundle
 
-        # Godot names the executable and the PCK after the project ("Aidyn Chronicles Enhanced Editor");
-        # the packages name them aidyn-enhanced and aidyn-enhanced-editor, as on Windows and Linux. The
+        # Godot names the executable and the PCK after the project ("Aidyn Chronicles Retold Editor");
+        # the packages name them acre and acre-editor, as on Windows and Linux. The
         # engine finds the PCK by the executable's name, in Contents/Resources.
         $contents = Join-Path $bundle 'Contents'
         $binary = @(Get-ChildItem -LiteralPath (Join-Path $contents 'MacOS') -File)
@@ -329,7 +348,7 @@ function New-MacPackage {
     if (Test-Path -LiteralPath $dmg) { Remove-Item -LiteralPath $dmg }
     # hdiutil now and then fails with "Resource busy" on a busy machine; a retry clears it.
     foreach ($attempt in 1..3) {
-        & hdiutil create -volname "Aidyn Chronicles Enhanced alpha $Version" -srcfolder $stage -ov -format UDZO $dmg
+        & hdiutil create -volname "Aidyn Chronicles Retold alpha $Version" -srcfolder $stage -ov -format UDZO $dmg
         if ($LASTEXITCODE -eq 0) { break }
         if ($attempt -eq 3) { throw "hdiutil create exited with $LASTEXITCODE" }
         Start-Sleep -Seconds 5

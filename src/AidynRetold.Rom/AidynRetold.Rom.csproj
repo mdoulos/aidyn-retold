@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="AidynRetold.Rom.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AidynRetold.Plugins\AidynRetold.Plugins.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -15,15 +15,19 @@ tools/ghidra_*/
 __pycache__/
 
 # Packaging (docs/systems/releases.md): the packages and their working folders are in out/;
-# tools/package.ps1 puts these beside each Godot project for the export and removes them.
+# tools/package.ps1 puts the .sln beside each Godot project for the export and removes it.
+src/*/*.sln
+# The branding is art, which is kept in the private repository (ADR 0041): its make.py, or
+# tools/package.ps1 -Branding, puts the projects' icon and boot splash here.
+src/*/icon.png
 src/*/icon.ico
 src/*/icon.icns
-src/*/*.sln
+src/*/splash.png
 # Godot writes a .uid beside each C# script when its editor scans a project. Nothing here
 # refers to a script by UID: the scenes name them by path.
 *.cs.uid
 
 # Local launchers and scratch, such as dev/party-animation-ring.cmd (docs/systems/runtime.md).
 dev/
-# The shortcut Launch ACE.cmd makes beside itself, with the ACE icon: absolute paths, so each clone makes its own.
-Launch ACE.lnk
+# The shortcut Launch ACRE.cmd makes beside itself, with the ACRE icon: absolute paths, so each clone makes its own.
+Launch ACRE.lnk

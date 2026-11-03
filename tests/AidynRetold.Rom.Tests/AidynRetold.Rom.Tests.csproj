@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="AidynRetold.TestSupport" />
+    <Using Include="AidynRetold.TestSupport.Ids" Static="true" />
+    <Using Include="AidynRetold.TestSupport.Checks" Static="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="JsonSchema.Net" Version="9.4.1" />
+    <PackageReference Include="xunit.v3.mtp-v2" Version="4.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AidynRetold.TestSupport\AidynRetold.TestSupport.csproj" />
+    <ProjectReference Include="..\..\src\AidynRetold.Core\AidynRetold.Core.csproj" />
+    <ProjectReference Include="..\..\src\AidynRetold.Rom\AidynRetold.Rom.csproj" />
+  </ItemGroup>
+
+</Project>

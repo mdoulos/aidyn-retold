@@ -1,15 +1,18 @@
-<p align="center"><img src="assets/branding/ace-logo-full.png" alt="Aidyn Chronicles: The First Mage, Enhanced" width="420"></p>
-
-# Aidyn Chronicles Enhanced
+# Aidyn Chronicles Retold
 
 A PC port of the engine that runs Aidyn Chronicles: The First Mage for the
 Nintendo 64, written in C# and Godot. It is a fork of
 [HBHT](https://github.com/Aquatakat/hbht), continued under its own name; see
 [Provenance](#provenance).
 
-The goal is a largely console-accurate version of the game, with a set of
-optional enhancements, and a comprehensive mod editor, similar to something
-like OpenMW-CS.
+Aidyn Chronicles Retold retells the game. The story is the original's, with
+selective changes that keep the main story the same but add, and here and
+there take away, and expand lore the original condensed. The mechanics and
+the art are being reworked as well. Under it is a port of the original's
+engine, running the original's content as your ROM has it; what Retold
+changes is laid over that, and players will be able to make mods of their own
+with its editor, a comprehensive mod editor similar to something like
+OpenMW-CS.
 
 No game content is included. You must bring your own copy of the US 1.0 ROM,
 unmodified: a ROM hack isn't imported, so the game is the same for everyone
@@ -20,14 +23,14 @@ trademark.
 ## Getting started
 
 1. Download the latest release
-2. Run `aidyn-enhanced` or `aidyn-enhanced.exe`
+2. Run `acre` or `acre.exe`
 3. On first run, select your ROM, and decide whether or not you want to fix the
    mushroom (you know the one)
 4. Play
 
 To build from source, install the .NET 10 SDK that `global.json` pins and run
-`dotnet test` from the repository root. `aidyn-enhanced import <rom>` imports the
-ROM, and `tools/godot.ps1 --path src/AidynEnhanced.Game` runs the game on it.
+`dotnet test` from the repository root. `acre import <rom>` imports the
+ROM, and `tools/godot.ps1 --path src/AidynRetold.Game` runs the game on it.
 [CLAUDE.md](CLAUDE.md) maps the code, the formats, the systems and the docs.
 
 ## Accuracy
@@ -92,7 +95,7 @@ there is an inspector and a map/dialogue viewer.
 
 ## Provenance
 
-Aidyn Chronicles Enhanced was forked on October 27, 2026 from
+Aidyn Chronicles Retold was forked on October 27, 2026 from
 [HBHT](https://github.com/Aquatakat/hbht) (Hoo Boy, Here's Trouble) by
 Aquatakat, at its commit 6ec85b3, under the MIT license. HBHT's code was
 written mostly by Claude models under its author's direction and playtesting,
@@ -102,7 +105,9 @@ notice in [LICENSE](LICENSE) as the record of where the work came from. Its
 name, packages, docs and the names its code cites are its own
 ([ADR 0030](docs/adr/0030-the-project-is-aidyn-renewed.md)). It was called
 Aidyn Renewed until October 28, 2026
-([ADR 0033](docs/adr/0033-the-project-is-aidyn-chronicles-enhanced.md)).
+([ADR 0033](docs/adr/0033-the-project-is-aidyn-chronicles-enhanced.md)), and
+Aidyn Chronicles Enhanced until November 3, 2026
+([ADR 0040](docs/adr/0040-the-project-is-aidyn-chronicles-retold.md)).
 
 ### Credits
 
@@ -116,7 +121,7 @@ Aidyn Renewed until October 28, 2026
   this project's own code and checked against the ROM, and its painted art
   and restored sound are this project's to carry in base plugins and releases
   ([ADR 0032](docs/adr/0032-rechronicled-is-read-for-its-findings.md),
-  [ADR 0034](docs/adr/0034-enhanced-and-rechronicled-collaborate.md)).
+  [ADR 0034](docs/adr/0034-retold-and-rechronicled-collaborate.md)).
 - [Marcellus SC](https://fonts.google.com/specimen/Marcellus+SC) by Astigmatic (Brian J. Bonislawsky), under the SIL Open Font
   License 1.1 ([assets/fonts/OFL.txt](assets/fonts/OFL.txt)): the typeface the text is drawn in, as ReChronicled's HD text
   pack draws it.
@@ -131,5 +136,8 @@ Aidyn Renewed until October 28, 2026
 
 This software is [MIT licensed](LICENSE). This license covers this repository's
 code and docs. The typeface in `assets/fonts` is under its own license, the SIL Open Font
-License 1.1. Any imported game content remains the property of its rights
-holders.
+License 1.1. The art and music a release carries aren't in this repository
+and aren't under the MIT license: the `NOTICE.md` beside a release's `LICENSE`
+says whose they are and on what terms
+([ADR 0041](docs/adr/0041-the-art-and-music-are-the-private-repositorys.md)).
+Any imported game content remains the property of its rights holders.

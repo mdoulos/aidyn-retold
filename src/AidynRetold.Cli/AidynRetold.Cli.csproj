@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>acre</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AidynRetold.Core\AidynRetold.Core.csproj" />
+    <ProjectReference Include="..\AidynRetold.Rom\AidynRetold.Rom.csproj" />
+  </ItemGroup>
+
+</Project>

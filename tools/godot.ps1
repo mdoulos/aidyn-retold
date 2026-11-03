@@ -3,8 +3,8 @@
 #        tools/godot.ps1 -ExePath    # print the executable's path and exit
 #
 # Examples:
-#   tools/godot.ps1 --path src/AidynEnhanced.Editor --editor
-#   tools/godot.ps1 --path src/AidynEnhanced.Editor
+#   tools/godot.ps1 --path src/AidynRetold.Editor --editor
+#   tools/godot.ps1 --path src/AidynRetold.Editor
 #
 # The version and its hashes are in tools/godot-pin.ps1, which fetches the
 # editor from the official GitHub release, checks it against the release's

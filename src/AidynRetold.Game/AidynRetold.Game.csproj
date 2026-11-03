@@ -1,0 +1,22 @@
+<Project Sdk="Godot.NET.Sdk/4.7.2">
+
+  <PropertyGroup>
+    <!-- Explicit, or the Godot editor writes its own default (net8.0) into this file. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>AidynRetold.Game</RootNamespace>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The plugin format and the rules core: the runtime never reads the ROM (ADR 0001), and the build enforces it. -->
+    <ProjectReference Include="..\AidynRetold.Core\AidynRetold.Core.csproj" />
+    <ProjectReference Include="..\AidynRetold.Plugins\AidynRetold.Plugins.csproj" />
+    <!-- What the runtime draws with and shares with the editor (ADR 0022). -->
+    <ProjectReference Include="..\AidynRetold.Views\AidynRetold.Views.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="AidynRetold.Views" />
+  </ItemGroup>
+
+</Project>

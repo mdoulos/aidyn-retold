@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="AidynRetold.Core.Tests" />
+    <InternalsVisibleTo Include="AidynRetold.Rom.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The rules core sees plugins and nothing else (ADR 0003). -->
+    <ProjectReference Include="..\AidynRetold.Plugins\AidynRetold.Plugins.csproj" />
+  </ItemGroup>
+
+</Project>

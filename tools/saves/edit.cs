@@ -1,13 +1,13 @@
-#:project ../../src/AidynEnhanced.Core/AidynEnhanced.Core.csproj
+#:project ../../src/AidynRetold.Core/AidynRetold.Core.csproj
 #:property PublishAot=false
 using System.Globalization;
 using System.Numerics;
-using AidynEnhanced.Core;
-using AidynEnhanced.Core.Chunks;
-using AidynEnhanced.Core.Physics;
-using AidynEnhanced.Plugins;
-using AidynEnhanced.Plugins.Records;
-using AidynEnhanced.Plugins.Saves;
+using AidynRetold.Core;
+using AidynRetold.Core.Chunks;
+using AidynRetold.Core.Physics;
+using AidynRetold.Plugins;
+using AidynRetold.Plugins.Records;
+using AidynRetold.Plugins.Saves;
 
 // Edits a save for a user check:
 //   dotnet run tools/saves/edit.cs -- <in.json> <out.json> [--label <text>] [--at <mapset> <chunk> <x> <z> [<y>]] [--face <x> <z>]

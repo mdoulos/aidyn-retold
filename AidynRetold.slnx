@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AidynRetold.Cli/AidynRetold.Cli.csproj" />
+    <Project Path="src/AidynRetold.Core/AidynRetold.Core.csproj" />
+    <Project Path="src/AidynRetold.Game/AidynRetold.Game.csproj">
+      <BuildType Project="Debug" />
+    </Project>
+    <Project Path="src/AidynRetold.Editor/AidynRetold.Editor.csproj" />
+    <Project Path="src/AidynRetold.Plugins/AidynRetold.Plugins.csproj" />
+    <Project Path="src/AidynRetold.Rom/AidynRetold.Rom.csproj" />
+    <Project Path="src/AidynRetold.Views/AidynRetold.Views.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AidynRetold.Core.Tests/AidynRetold.Core.Tests.csproj" />
+    <Project Path="tests/AidynRetold.Plugins.Tests/AidynRetold.Plugins.Tests.csproj" />
+    <Project Path="tests/AidynRetold.Rom.Tests/AidynRetold.Rom.Tests.csproj" />
+    <Project Path="tests/AidynRetold.TestSupport/AidynRetold.TestSupport.csproj" />
+  </Folder>
+</Solution>

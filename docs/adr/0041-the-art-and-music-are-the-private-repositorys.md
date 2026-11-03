@@ -1,6 +1,6 @@
 # 0041. The art and music are the private repository's: the game's own art is the `acre` base plugin, and the branding is kept beside it
 
-Status: Accepted · Nov 3, 2026 · Adds to [0039](0039-base-plugins-ship-beside-the-apps.md); replaces where [0033](0033-the-project-is-aidyn-chronicles-enhanced.md) kept the logo and the icon
+Status: Accepted · Nov 3, 2026 · Adds to [0039](0039-base-plugins-ship-beside-the-apps.md); replaces where [0033](0033-the-project-is-aidyn-chronicles-enhanced.md) kept the logo and the icon · Added to by [0042](0042-development-only-files-live-beside-the-repositories.md): `dev/rechronicled-art.cmd` is in `Development` beside the repositories
 
 ## Context
 

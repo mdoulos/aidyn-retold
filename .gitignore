@@ -27,7 +27,8 @@ src/*/splash.png
 # refers to a script by UID: the scenes name them by path.
 *.cs.uid
 
-# Local launchers and scratch, such as dev/party-animation-ring.cmd (docs/systems/runtime.md).
+# Local launchers and scratch. The owner's are in Development, beside the repository (ADR 0042);
+# dev/ stays ignored for anyone else's.
 dev/
 # The shortcut Launch ACRE.cmd makes beside itself, with the ACRE icon: absolute paths, so each clone makes its own.
 Launch ACRE.lnk

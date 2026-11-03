@@ -182,7 +182,11 @@ public sealed partial class PartyMenu : IPartyWindow
     /// gives the Fire Flask's icon, <c>0x1000</c>, for any held; the port gives the held one's own, the same in the base game).
     /// </summary>
     private RecordId? ShownIcon(EquipmentSlot slot) =>
-        slot == EquipmentSlot.Weapon && Shown is { } member && Combat?.Held?.Invoke(member) is { } held ? held.Icon : Worn(slot)?.Item.Icon;
+        slot == EquipmentSlot.Weapon && Shown is { } member && Combat?.Held?.Invoke(member) is { } held ? ItemIcon(held)
+        : Worn(slot) is { } worn ? ItemIcon(worn.Item) : null;
+
+    /// <summary>An item's icon as the menu draws it, a potion's or scroll's own picture in place of the shared one (<see cref="MenuImages.ItemIcon"/>).</summary>
+    public RecordId ItemIcon(Item item) => MenuImages.ItemIcon(item, _spells);
 
     /// <summary>What a slot of the silhouette shows for a member.</summary>
     public static RecordId SlotImage(EquipmentSlot slot, Character? member) => Worn(slot, member)?.Item.Icon ?? MenuImages.EmptySlots[(int)slot];

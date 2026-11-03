@@ -253,7 +253,7 @@ public sealed partial class Battle
             if (!Potions.Use(item).HasFlag(PotionUse.DrinkInBattle) || !inventory.Has(item.Id))
                 continue;
             if (Potions.CanDrink(c.Sheet, item, inBattle: true) == DrinkResult.Drunk)
-                rows.Add(new(CombatMenuChoice.Potion, item.Name, MenuImages.ItemIcon(item), CombatMenu.PotionColor, Potion: item));
+                rows.Add(new(CombatMenuChoice.Potion, item.Name, MenuImages.ItemIcon(item, Game.Rules.Magic.Spell), CombatMenu.PotionColor, Potion: item));
         }
         var equipment = c.Sheet.Equipment;
         AddItemSpell(equipment.Weapon, new SpellChoice(SpellSourceKind.Weapon));
@@ -268,7 +268,7 @@ public sealed partial class Battle
         {
             if (item?.Item.Bonuses.Spell is not { } spell || item.Charges is not > 0 || Game.Rules.Magic.Spell(spell.Spell) is not { } record)
                 return;
-            rows.Add(new(CombatMenuChoice.ItemSpell, record.Name, item.Item.Icon, CombatMenu.ItemSpellColor, choice));
+            rows.Add(new(CombatMenuChoice.ItemSpell, record.Name, MenuImages.ItemIcon(item.Item, Game.Rules.Magic.Spell), CombatMenu.ItemSpellColor, choice));
         }
     }
 

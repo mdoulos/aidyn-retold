@@ -20,9 +20,9 @@ public sealed class UiImages(PluginSet plugins)
 
     /// <summary>
     /// The game's own art in place of the original's images, the user's (Nov 2, 2026), carried in this assembly: the aspects' and the
-    /// schools' icons, wherever they're drawn, laid out at the original's size as a larger replacement is; and each potion's and
-    /// flask's picture (<see cref="MenuImages.PotionPictures"/>), <c>potion-sleep-gas.png</c> for <c>aidyn_enhanced:image/potion_sleep_gas</c>,
-    /// laid out at the flask's size it stands in for.
+    /// schools' icons, wherever they're drawn, laid out at the original's size as a larger replacement is; and the potions' and
+    /// scrolls' pictures (<see cref="MenuImages.OwnPictures"/>), <c>potion-sleep-gas.png</c> for <c>aidyn_enhanced:image/potion_sleep_gas</c>,
+    /// laid out at the size of the image each stands in for.
     /// </summary>
     private static readonly Dictionary<RecordId, string> OwnArt = new Dictionary<RecordId, string>
     {
@@ -33,7 +33,7 @@ public sealed class UiImages(PluginSet plugins)
         [MenuImages.SchoolIcon(MagicSchool.Naming)!.Value] = "icon-naming.png",
         [MenuImages.SchoolIcon(MagicSchool.Necromancy)!.Value] = "icon-necromancy.png",
         [MenuImages.SchoolIcon(MagicSchool.Star)!.Value] = "icon-star.png",
-    }.Concat(MenuImages.PotionPictures.Values.Select(p => KeyValuePair.Create(p, p.Key.Replace('_', '-') + ".png"))).ToDictionary();
+    }.Concat(MenuImages.OwnPictures.Select(p => KeyValuePair.Create(p, p.Key.Replace('_', '-') + ".png"))).ToDictionary();
 
     /// <summary>
     /// A UI image, or null if no plugin has it: the game's own art where it has its own (<see cref="OwnArt"/>), else the plugins'. A

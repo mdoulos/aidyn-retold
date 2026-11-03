@@ -70,7 +70,7 @@ public static class MenuDetailsBuilder
             var footer = new List<DetailLine>();
             if (item.Kind == ItemKind.Scroll && item.Bonuses.Spell is { } scroll && spells(scroll.Spell) is { } spell)
                 footer.Add(Line(Format(text[MenuText.MinWizard], spell.Wizard)));
-            return new MenuDetails(MenuImages.ItemIcon(item), item.Name, [Wrapped(description)], footer, FooterTop: footer.Count > 0 ? WizardTop : null);
+            return new MenuDetails(MenuImages.ItemIcon(item, spells), item.Name, [Wrapped(description)], footer, FooterTop: footer.Count > 0 ? WizardTop : null);
         }
         return Gear(instance, text, spells);
     }

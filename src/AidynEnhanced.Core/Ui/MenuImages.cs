@@ -102,6 +102,9 @@ public static class MenuImages
     /// <summary>The flask the original draws for every potion and flask, 16 square (<c>ItemTables.PotionIcon</c>).</summary>
     public static readonly RecordId Potion = Image(0x35E5);
 
+    /// <summary>The scroll the original draws for every scroll, 16 square: every scroll's in the items' icon table (<c>ItemTables.ItemIcons</c>).</summary>
+    public static readonly RecordId Scroll = Image(0x35E9);
+
     /// <summary>
     /// The namespace of the port's own pictures, which no plugin has: the views carry them, and draw the image each stands in for
     /// (<see cref="Shared"/>) in the original look.
@@ -122,13 +125,41 @@ public static class MenuImages
         .ToDictionary(p => RecordId.Hex(RecordTypes.Item, 0x1000 + p.n), p => RecordId.Parse($"{OwnNamespace}:image/potion_{p.name}"));
 
     /// <summary>
-    /// An item's icon as the menus draw it: a potion's own picture (<see cref="PotionPictures"/>) while its record keeps the shared
-    /// flask, else its record's, so a mod's icon for a potion is drawn. The editor shows the record's.
+    /// A scroll's picture by its spell's school, the user's art (Nov 2, 2026), where the original draws every scroll with
+    /// <see cref="Scroll"/>: its ribbon green for Elemental, purple for Naming, red for Necromancy, gold for Star and white for the
+    /// unschooled, which a scroll with no spell has too. No spell is Chaos's, so it has none.
     /// </summary>
-    public static RecordId ItemIcon(Item item) => item.Icon == Potion && PotionPictures.TryGetValue(item.Id, out var own) ? own : item.Icon;
+    public static readonly IReadOnlyDictionary<MagicSchool, RecordId> ScrollPictures = new[]
+        {
+            (MagicSchool.Elemental, "elemental"), (MagicSchool.Naming, "naming"), (MagicSchool.Necromancy, "necromancy"),
+            (MagicSchool.Star, "star"), (MagicSchool.None, "neutral"),
+        }
+        .ToDictionary(p => p.Item1, p => RecordId.Parse($"{OwnNamespace}:image/scroll_{p.Item2}"));
+
+    /// <summary>
+    /// An item's icon as the menus draw it: a potion's own picture (<see cref="PotionPictures"/>) and a scroll's by its spell's school
+    /// (<see cref="ScrollPictures"/>) while its record keeps the shared image, else its record's, so a mod's icon is drawn. The
+    /// editor shows the record's.
+    /// </summary>
+    public static RecordId ItemIcon(Item item, Func<RecordId, SpellRecord?> spells)
+    {
+        if (item.Icon == Potion && PotionPictures.TryGetValue(item.Id, out var potion))
+            return potion;
+        if (item.Icon != Scroll || item.Kind != ItemKind.Scroll)
+            return item.Icon;
+        var school = item.Bonuses.Spell is { } spell && spells(spell.Spell) is { } record ? record.School : MagicSchool.None;
+        return ScrollPictures.TryGetValue(school, out var scroll) ? scroll : item.Icon;
+    }
 
     /// <summary>The original's image one of the port's own pictures stands in for, or null for any other image.</summary>
-    public static RecordId? Shared(RecordId image) => image.Namespace == OwnNamespace && PotionPictures.Values.Contains(image) ? Potion : null;
+    public static RecordId? Shared(RecordId image) =>
+        image.Namespace != OwnNamespace ? null
+        : PotionPictures.Values.Contains(image) ? Potion
+        : ScrollPictures.Values.Contains(image) ? Scroll
+        : null;
+
+    /// <summary>The port's own pictures: the potions' and the scrolls'.</summary>
+    public static IEnumerable<RecordId> OwnPictures => PotionPictures.Values.Concat(ScrollPictures.Values);
 
     private static RecordId Image(int borg8) => RecordId.Hex(RecordTypes.Image, borg8);
 }

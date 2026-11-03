@@ -82,7 +82,7 @@ public partial class BodySection : VBoxContainer
             _marks.AddChild(new Label3D
             {
                 Text = Number(_body.Height), Position = new Vector3(0.32f, _body.Height, 0), Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
-                FontSize = 40, PixelSize = 0.004f, Modulate = Ring, NoDepthTest = true, HorizontalAlignment = HorizontalAlignment.Left,
+                FontSize = 28, PixelSize = 0.004f, Modulate = Ring, NoDepthTest = true, HorizontalAlignment = HorizontalAlignment.Left,
             });
         }
         if (_beside.ButtonPressed && _alaron is { } a)

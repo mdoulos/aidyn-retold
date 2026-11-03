@@ -23,7 +23,8 @@ public static class GlbFile
     /// Loads the binary as Godot's glTF import does, then replaces its materials with
     /// <see cref="N64Material"/>'s. Null, with the reason in <paramref name="error"/>, if Godot can't.
     /// </summary>
-    public static Node3D? Load(GlbScene glb, out Error error)
+    /// <param name="textures">A plugin's texture to draw in place of the model's own copy of a Borg1, or null (<see cref="TextureReplacements.For"/>).</param>
+    public static Node3D? Load(GlbScene glb, out Error error, Func<int, Texture2D?>? textures = null)
     {
         var document = new GltfDocument();
         var state = new GltfState();
@@ -35,7 +36,7 @@ public static class GlbFile
             error = Error.Failed;
             return null;
         }
-        N64Material.Apply(glb.Reader.Root, state, scene);
+        N64Material.Apply(glb.Reader.Root, state, scene, textures);
         return scene;
     }
 

@@ -222,14 +222,21 @@ public static class N64Material
         RenderingServer.GlobalShaderParameterSet(SunDirectionParameter, sky.SunDirection.ToGodot());
     }
 
-    /// <summary>Replaces the imported materials of <paramref name="scene"/>, loaded from the glTF whose JSON is <paramref name="root"/>.</summary>
-    public static void Apply(JsonElement root, GltfState state, Node scene)
+    /// <summary>
+    /// Replaces the imported materials of <paramref name="scene"/>, loaded from the glTF whose JSON is <paramref name="root"/>. A
+    /// texture's image (named for its Borg1, <see cref="SceneNames.Image"/>) is drawn from <paramref name="textureFor"/>'s texture
+    /// where it gives one, a plugin's PNG in place of the model's own copy (<see cref="TextureReplacements"/>, ADR 0044).
+    /// </summary>
+    public static void Apply(JsonElement root, GltfState state, Node scene, Func<int, Texture2D?>? textureFor = null)
     {
         DeclareGlobals();
         if (!root.TryGetProperty("materials", out var materials))
             return;
 
         var images = state.GetImages();
+        List<string?> imageNames = root.TryGetProperty("images", out var list)
+            ? [.. list.EnumerateArray().Select(e => e.TryGetProperty("name", out var n) ? n.GetString() : null)]
+            : [];
         var textures = new Dictionary<int, Texture2D>();
         var imported = state.GetMaterials();
         var replacements = new Dictionary<Material, Material>();
@@ -261,6 +268,9 @@ public static class N64Material
         {
             if (textures.TryGetValue(image, out var texture))
                 return texture;
+            if (textureFor is not null && image < imageNames.Count && imageNames[image] is { } name && SceneNames.TryImage(name, out var borg1)
+                && textureFor(borg1) is { } replaced)
+                return textures[image] = replaced;
             texture = images[image];
             if (texture.GetImage() is { } data && !data.HasMipmaps())
             {

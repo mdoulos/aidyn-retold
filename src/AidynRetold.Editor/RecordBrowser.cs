@@ -527,7 +527,8 @@ public partial class RecordBrowser : Control
             case (byte[] glb, string animation, string note):
                 SetPreview(_model);
                 var actor = id.Type == RecordTypes.Actor ? plugins.TryGet<ActorRecord>(id) : null;
-                _model.Show(glb, animation.Length > 0 ? animation : null, note.Length > 0 ? note : null, actor);
+                var model = actor?.Scene ?? (id.Type == RecordTypes.Scene ? id : (RecordId?)null);
+                _model.Show(glb, animation.Length > 0 ? animation : null, note.Length > 0 ? note : null, actor, model);
                 ShowInspector(catalog, id, actor);
                 break;
         }

@@ -21,9 +21,7 @@ This keeps your work safe and separate:
 | Fonts | The text in menus, conversations, books and the battle screen | Yes: a typeface file, or the original's letter sheets at their size |
 | Engine sprites | Particles such as fire and smoke, body shadows, the damage numbers in battle | Yes |
 | Models | Props, buildings, characters, creatures and the scenery of each area | Yes, with care |
-| Textures on models | The walls, ground, faces and clothes painted onto models | Not directly yet |
-
-The last row is the one most people expect to work, and the [section on it](#textures-on-models) explains why it doesn't yet and how to work around it.
+| Textures on models | The walls, ground, faces and clothes painted onto models | Yes, at any size, on one model or on every model that uses the texture |
 
 ## Making a mod, step by step
 
@@ -183,11 +181,14 @@ The game draws the material's base colour texture with its N64 lighting. A norma
 
 ## Textures on models
 
-The textures in the `texture` folder are only used for sprites the game draws itself: particles, shadows and the damage numbers. The textures painted on models aren't read from there. Each model file carries its own copy of every texture it uses, so putting a new `texture\0x0EAB.png` in a mod changes nothing on the models that use that texture.
+Each model file carries its own copy of every texture it uses, and each of its materials records its texture's number. A mod replaces a texture with a PNG of its own, without touching the model, in one of two ways:
 
-Many textures belong to a single model, and those you can retexture today by replacing that one model, with the new texture inside it. Others are shared by many models: the most common is used by 85. Retexturing a shared texture today means replacing every model that uses it.
+- **On one model:** `assets\aidyn\modeltexture\<model>\<texture>.png`. Brenna's model is scene `0x29C8`, so `assets\aidyn\modeltexture\0x29C8\0x29A9.png` repaints texture `0x29A9` on her alone.
+- **On every model that uses it:** `assets\aidyn\texture\<texture>.png`, the texture's own file, as the ROM plugin has it. A texture pack is a folder of these.
 
-To find the models that use a texture, run this Python script with the texture's number. Each material in a model records the number of its texture, which is what it looks for:
+A texture on one model wins over the same texture everywhere, and either wins over the model's own copy. The PNG can be any size: a model's texture coordinates are shares of the image, so a texture four times the size lines up exactly where the original did. It keeps the original's filtering and wrapping, and a scrolling texture scrolls as before. The ROM plugin's own `texture` PNGs are the original's, which the models already carry, so only a mod's count.
+
+Many textures belong to a single model; others are shared, the most common by 85 models. The editor's model page lists a model's textures, with how many other models use each, and replaces them for you (Textures, in its inspector). Without the editor, this Python script lists the models that use a texture, by its number:
 
 ```python
 # Lists the models that use a texture, by its number: python models_using_texture.py 0x0EAB
@@ -206,10 +207,8 @@ for path in sorted(glob.glob(os.path.join(folder, "*.glb"))):
 
 On Linux or macOS, change `folder` to your plugins folder.
 
+A model a mod replaces whole takes the textures inside its own file. Its images are replaced by these PNGs only where it keeps the importer's names for them, `borg1` and the texture's number in decimal, as Blender keeps them when the model is only reshaped.
+
 ## What's planned
 
-Replacing assets is part of the mod tools in the [roadmap](roadmap.md)'s Phase 5, and one change to the game would finish it for graphics:
-
-1. **Textures on models from a mod's PNG.** When the game builds a model's materials, it would look for a mod's `texture` file with that texture's number and use it instead of the copy inside the model. Every material already records its texture's number, so this is a small change. A texture pack would then be a folder of PNGs at any resolution, with no models to touch.
-
-The editor will eventually make and preview mods for you. For now, mods are made by hand as this guide describes, except the world: a chunk's scenery, collision and objects go out to Blender and back in with two commands ([editing the world](editing-the-world.md)).
+Replacing assets is part of the mod tools in the [roadmap](roadmap.md)'s Phase 5. The editor makes and previews more of a mod each release: a model's textures and the model itself from its model pages, and the world's objects from its map view. The rest is made by hand as this guide describes, and the world's ground goes out to Blender and back in with two commands ([editing the world](editing-the-world.md)).

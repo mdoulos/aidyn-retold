@@ -220,7 +220,8 @@ public sealed class Models(PluginSet plugins) : IDisposable
         // particle-only actor's locators place its emitters.
         if (!glb.HasBinaryChunk)
             return GlbFile.LoadNodes(glb, scene.ToString().Replace(':', '_').Replace('/', '_'));
-        if (GlbFile.Load(glb, out _) is not { } node)
+        // A plugin's PNG of a texture is drawn in place of the model's own copy (ADR 0044).
+        if (GlbFile.Load(glb, out _, TextureReplacements.For(plugins, scene)) is not { } node)
         {
             GD.PushWarning($"Godot couldn't load {scene}'s glTF.");
             return null;

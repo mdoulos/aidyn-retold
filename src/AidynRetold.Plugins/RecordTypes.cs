@@ -13,6 +13,11 @@ public enum KeyKind
     Decimal,
     /// <summary>The parent's Borg key, then the decimal index within it: <c>aidyn:voxel/0x1A20/12</c>. In a mod, a name then the index.</summary>
     Nested,
+    /// <summary>
+    /// A model's key, then a texture's Borg (<c>0x</c> and four uppercase hex digits, in any namespace): <c>aidyn:modeltexture/0x29C8/0x29A9</c>
+    /// is texture 0x29A9 as model 0x29C8 has it. In a mod, the model's key is a name.
+    /// </summary>
+    ModelAndTexture,
 }
 
 /// <summary>What the registry knows of a record type.</summary>
@@ -151,6 +156,12 @@ public static class RecordTypes
     /// <summary>How a trapped container's explosion is drawn. There's one, <c>aidyn:explosion/0</c>.</summary>
     public const string Explosion = "explosion";
 
+    /// <summary>
+    /// A texture as one model has it, in place of the copy inside the model's file: an asset alone, a PNG, keyed by the model and the
+    /// texture (<see cref="KeyKind.ModelAndTexture"/>, ADR 0044). <c>aidyn:modeltexture/0x29C8/0x29A9</c> is Brenna's model's texture 0x29A9.
+    /// </summary>
+    public const string ModelTexture = "modeltexture";
+
     private static readonly Type[] DbViews = [typeof(DbRecord)];
 
     /// <summary>Every type, in the registry's order: the DB records, the flags, the Borgs, then the rest as they were added.</summary>
@@ -202,6 +213,7 @@ public static class RecordTypes
         new(Magic, typeof(MagicRecord), KeyKind.Decimal, Singleton: true),
         new(Trigger, typeof(TriggerRecord), KeyKind.Decimal),
         new(Explosion, typeof(ExplosionRecord), KeyKind.Decimal, Singleton: true),
+        new(ModelTexture, null, KeyKind.ModelAndTexture),
     ];
 
     private static readonly Dictionary<string, RecordTypeInfo> ByName = Registry.ToDictionary(t => t.Name, StringComparer.Ordinal);

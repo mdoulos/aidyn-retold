@@ -174,6 +174,9 @@ public partial class ModelView : VBoxContainer
     /// <summary>The actor shown, if the model is an actor's.</summary>
     public ActorRecord? Actor => _actor;
 
+    /// <summary>The model's ID, when the view was told it, whose plugin textures it draws.</summary>
+    public AidynRetold.Plugins.RecordId? Scene { get; private set; }
+
     /// <summary>The model's size, drawn at <paramref name="scale"/>, as a body's scale draws it in the game.</summary>
     public void ScaleModel(float scale)
     {
@@ -222,7 +225,8 @@ public partial class ModelView : VBoxContainer
     /// <summary>Shows a glTF binary, playing <paramref name="animation"/> if it has one by that name.</summary>
     /// <param name="note">What the preview shows, when that isn't just the asset itself.</param>
     /// <param name="actor">The actor whose scene this is, to show its states and drive it.</param>
-    public void Show(byte[] glb, string? animation, string? note, ActorRecord? actor = null)
+    /// <param name="model">The model's ID, whose textures the plugins may give in place of its own copies, as the game draws them (ADR 0044).</param>
+    public void Show(byte[] glb, string? animation, string? note, ActorRecord? actor = null, AidynRetold.Plugins.RecordId? model = null)
     {
         Clear();
         _note.Text = note ?? "";
@@ -237,7 +241,9 @@ public partial class ModelView : VBoxContainer
             _note.Text = $"Not a glTF binary ({e.Message}).";
             return;
         }
-        if (GlbFile.Load(file, out var error) is not { } scene)
+        Scene = model;
+        var textures = _plugins is { } plugins && model is { } id ? TextureReplacements.For(plugins, id) : null;
+        if (GlbFile.Load(file, out var error, textures) is not { } scene)
         {
             file.Dispose();
             _note.Text = $"Godot couldn't load the glTF ({error}).";

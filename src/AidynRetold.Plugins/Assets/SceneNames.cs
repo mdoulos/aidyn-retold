@@ -17,7 +17,7 @@ public static class SceneNames
     public const string FacingSuffix = " facing";
 
     private const string TransformPrefix = "transform ", LightPrefix = "light ", EmitterPrefix = "emitter ",
-        LocatorPrefix = "locator ", AnimationPrefix = "borg6 ", ImagePrefix = "borg1 ";
+        LocatorPrefix = "locator ", AnimationPrefix = "borg6 ", ImagePrefix = "borg1 ", AttachmentSuffix = " attachment";
 
     /// <summary>A transform's node (Borg5 transform <paramref name="transform"/>).</summary>
     public static string Transform(int transform) => Name(TransformPrefix, transform);
@@ -44,7 +44,7 @@ public static class SceneNames
     /// The node under a locator's that what a body holds there hangs from (<c>SceneGetLocatorMtx</c>, <c>0x8009EB10</c>): the locator
     /// turned by its model's rotation, which the locator's own node leaves out, as its emitters and heads don't take it.
     /// </summary>
-    public static string Attachment(int locator) => Locator(locator) + " attachment";
+    public static string Attachment(int locator) => Locator(locator) + AttachmentSuffix;
 
     /// <summary>An animation (Borg6 <paramref name="borg6"/>, its archive index).</summary>
     public static string Animation(int borg6) => Name(AnimationPrefix, borg6);
@@ -73,6 +73,19 @@ public static class SceneNames
 
     /// <summary>The archive index of an animation's name.</summary>
     public static bool TryAnimation(string name, out int borg6) => TryNumber(name, AnimationPrefix, out borg6);
+
+    /// <summary>Whether an image's name is a texture's (<see cref="Image"/>), and its Borg1.</summary>
+    public static bool TryImage(string name, out int borg1) => TryNumber(name, ImagePrefix, out borg1);
+
+    /// <summary>Whether a node's name is a transform's own (<see cref="Transform"/>), not its billboard's, facing's or card's, and its index.</summary>
+    public static bool TryTransform(string name, out int transform) => TryNumber(name, TransformPrefix, out transform);
+
+    /// <summary>Whether a node's name is a locator's attachment (<see cref="Attachment"/>), and the locator's index.</summary>
+    public static bool TryAttachment(string name, out int locator)
+    {
+        locator = 0;
+        return name.EndsWith(AttachmentSuffix, StringComparison.Ordinal) && TryLocator(name[..^AttachmentSuffix.Length], out locator);
+    }
 
     private static string Name(string prefix, int number) => prefix + number.ToString(CultureInfo.InvariantCulture);
 

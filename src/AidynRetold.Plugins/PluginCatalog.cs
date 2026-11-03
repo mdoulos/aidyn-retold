@@ -11,10 +11,16 @@ namespace AidynRetold.Plugins;
 /// <param name="Summary">A line about it for the editor's list, such as a map set's name and size.</param>
 public sealed record CatalogEntry(RecordId Id, bool HasRecord, IReadOnlyList<AssetFile> Assets, string Summary)
 {
-    /// <summary>The Borg a base-game record or asset was imported from, for those keyed by archive index.</summary>
-    public int? Borg => Id.Namespace == RecordId.RomNamespace && RecordTypes.Info(Id.Type).Key == KeyKind.Borg
-        ? int.Parse(Id.Key.AsSpan(2, 4), NumberStyles.HexNumber, CultureInfo.InvariantCulture)
-        : null;
+    /// <summary>
+    /// The Borg a base-game record or asset was imported from, for those keyed by archive index, and a model texture's texture's
+    /// (which a model's key leads, in any namespace).
+    /// </summary>
+    public int? Borg => RecordTypes.Info(Id.Type).Key switch
+    {
+        KeyKind.Borg when Id.Namespace == RecordId.RomNamespace => int.Parse(Id.Key.AsSpan(2, 4), NumberStyles.HexNumber, CultureInfo.InvariantCulture),
+        KeyKind.ModelAndTexture => int.Parse(Id.Key.AsSpan(Id.Key.LastIndexOf('/') + 3, 4), NumberStyles.HexNumber, CultureInfo.InvariantCulture),
+        _ => null,
+    };
 
     public AssetFile? Asset(string extension) => Assets.FirstOrDefault(a => a.Extension == extension);
 }

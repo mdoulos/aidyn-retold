@@ -546,6 +546,14 @@ public sealed class PluginSet
         return null;
     }
 
+    /// <summary>The ID of the plugin whose folder holds <paramref name="path"/>, such as a file <see cref="FindAsset"/> found, or null.</summary>
+    public string? PluginWith(string path)
+    {
+        var full = Path.GetFullPath(path);
+        return Plugins.FirstOrDefault(p => full.StartsWith(Path.TrimEndingDirectorySeparator(Path.GetFullPath(p.Directory)) + Path.DirectorySeparatorChar,
+            StringComparison.OrdinalIgnoreCase))?.Manifest.Id;
+    }
+
     private readonly ConcurrentDictionary<RecordId, (int Width, int Height)> _imageSizes = new();
 
     /// <summary>

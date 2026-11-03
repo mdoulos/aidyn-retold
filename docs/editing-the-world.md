@@ -72,7 +72,7 @@ Check it in the game. `tools\godot.ps1 --path src\AidynRetold.Game ++ --chunk M0
 ## What isn't possible yet
 
 - **New chunks and new map sets.** The import takes a chunk the set already has. A new area is built on an existing chunk for now; adding chunks to a set is the next step on this path.
-- **Textures on the scenery from a PNG.** The scenery's textures live inside the model, so a repaint goes in with the scenery. A texture pack as a folder of PNGs is planned ([replacing graphics](replacing-graphics.md#whats-planned)).
+- **A chunk's own textures from the Blender file.** The scenery's textures live inside the model, so a repaint in Blender goes in with the scenery. A texture can instead be replaced by a PNG, on the chunk's scenery alone or everywhere, with no scenery to write ([replacing graphics](replacing-graphics.md#textures-on-models)).
 - **A placed model's own shape.** The model under a `scene` object is there to look at. To reshape a tree, replace the tree's model as [replacing graphics](replacing-graphics.md#models) says, and every tree changes.
 - **The round trip through Blender hasn't been tested on scenery.** The project's own reader and writer round-trip every chunk unchanged, and moving a chest comes back as the one patch it should be. Blender re-encodes a scenery mesh it exports, and how well it keeps the vertex colours, the texture wrap settings and the two sets of texture coordinates the game's lighting uses is for a first edit to show. Look at the result in the editor's model viewer and in the game, and report what's off.
 

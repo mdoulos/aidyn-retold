@@ -68,8 +68,20 @@ public readonly record struct RecordId
         KeyKind.Db => "its u16 ItemID, 0xHHHH",
         KeyKind.Borg => "its archive index, 0xHHHH",
         KeyKind.Decimal => "a decimal index",
+        KeyKind.ModelAndTexture => "its model's key then its texture's 0xHHHH",
         _ => "its parent's 0xHHHH then its decimal index",
     };
+
+    /// <summary>
+    /// A texture as one model has it (<see cref="RecordTypes.ModelTexture"/>): <c>aidyn:modeltexture/0x29C8/0x29A9</c> for model
+    /// <c>aidyn:scene/0x29C8</c> and texture <c>0x29A9</c>, in the model's namespace.
+    /// </summary>
+    public static RecordId ModelTexture(RecordId model, int texture)
+    {
+        if (texture is < 0 or > 0xFFFF)
+            throw new ArgumentOutOfRangeException(nameof(texture), texture, "A texture's Borg is a u16.");
+        return new RecordId(model.Namespace, RecordTypes.ModelTexture, $"{model.Key}/0x{texture.ToString("X4", CultureInfo.InvariantCulture)}");
+    }
 
     public static RecordId Parse(string text) =>
         TryParse(text, out var id, out var error) ? id : throw new FormatException($"\"{text}\" isn't a record ID: {error}.");
@@ -116,6 +128,15 @@ public readonly record struct RecordId
     private static string? CheckKey(string ns, RecordTypeInfo info, string key)
     {
         var segments = key.Split('/');
+        if (info.Key == KeyKind.ModelAndTexture)
+        {
+            if (segments.Length != 2)
+                return $"a {info.Name} key is its model's key then its texture's 0xHHHH";
+            if (!IsHex(segments[1]))
+                return "a texture is 0x and four uppercase hex digits";
+            return ns == RomNamespace ? IsHex(segments[0]) ? null : "an aidyn model's key is 0x and four uppercase hex digits"
+                : IsName(segments[0]) ? null : "a mod's model key is [a-z0-9_]+";
+        }
         var nested = info.Key == KeyKind.Nested;
         if (segments.Length != (nested ? 2 : 1))
             return nested ? $"a {info.Name} key is its parent's key then its index" : $"a {info.Name} key is one segment";

@@ -263,7 +263,7 @@ Where the ROM's own data is in the way of play, the `acre_fixes` base plugin cor
 
 ## Still in code
 
-Content the port's core and runtime still hold as literals, with the layer each belongs in. The rest of the core's literals are engine vocabulary (the animation request numbers, 5 hit, 7 dodge, 8 death and so on, which every actor's state machine shares), text-line indices, and the menus' 320 × 240 layouts and colours, which are the UI's own (layer 3) and stay in code.
+Content the port's core and runtime still hold as literals, with the layer each belongs in. The rest of the core's literals are engine vocabulary (the animation request numbers, 5 cast, 7 hit, 8 dodge, 9 death and so on, which every actor's state machine shares), text-line indices, and the menus' 320 × 240 layouts and colours, which are the UI's own (layer 3) and stay in code.
 
 - **The backdrop pictures' styles** (`BackdropStyle.For`): a script's picture number 1–4 and 9–12 picks a Borg8 (`0x3602`–`0x3608`) and the page's text, pulse and shadow colours. Layer 1, a record per picture.
 - **The protagonist's entity as a code constant** (`GameState.Alaron`, `aidyn:entity/0x023F`), read in about ten places: the leader fallback, the rename and save-name menus, the shadow's player test in the combatant and cut-scene views, the conversation's speaker and trek's sounds. The new game record already carries the leader (`NewGameRecord.Leader`); each use should ask the party's leader or that record. Layer 1.

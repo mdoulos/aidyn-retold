@@ -27,17 +27,16 @@ On macOS the disk image holds `Aidyn Chronicles Retold.app` (executable `Content
 
 ## Base plugins
 
-The owner's base plugins ([ADR 0039](../adr/0039-base-plugins-ship-beside-the-apps.md)) live in the owner's private repository, `Aidyn Retold Private`, not this one: only art and music go there, with `acre_fixes`, the patches that fix the original's content, beside them as the base plugins are one folder, and none of it is committed here ([ADR 0041](../adr/0041-the-art-and-music-are-the-private-repositorys.md), [ADR 0043](../adr/0043-the-rom-is-asked-for-once-and-fixes-are-base-plugins.md)). A package carries them when the build is given their folder, the private repository's `plugins`:
+The owner's base plugins ([ADR 0039](../adr/0039-base-plugins-ship-beside-the-apps.md)) live in the owner's private repository, `Aidyn Retold Private`, not this one: only art and music go there, with the patches that fix the original's content beside them in the one base plugin, `acre`, the remade game ([ADR 0045](../adr/0045-the-remade-game-is-one-base-plugin.md)), and none of it is committed here ([ADR 0041](../adr/0041-the-art-and-music-are-the-private-repositorys.md), [ADR 0043](../adr/0043-the-rom-is-asked-for-once-and-fixes-are-base-plugins.md)). A package carries them when the build is given their folder, the private repository's `plugins`:
 
 ```
 Aidyn Retold Private/
   plugins/                  -BasePlugins, and ACRE_BASE_PLUGINS in development
     NOTICE.md               whose the art and music are, on what terms, and any credit their licences ask for
-    acre/                   the game's own art, acre:image/<key>; one plugin per folder, named for its ID, with its plugin.json
-    acre_alaron_remodel/
-    acre_fixes/             patches that fix the original's content, no art or music (ADR 0043)
-    acre_music/
-    …
+    acre/                   the remade game, the one base plugin, with its plugin.json (ADR 0045)
+      assets/acre/          the game's own art, acre:image/<key>
+      assets/aidyn/         what it puts in the original's place: the remodels, ReChronicled's art, the music
+      records/              its patches: Alaron's remodel, and fixes/, which fix the original's content (ADR 0043)
   branding/                 -Branding, found beside -BasePlugins (below)
   blender/                  the remodels' sources, which no package carries
 ```

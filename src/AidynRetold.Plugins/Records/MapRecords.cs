@@ -110,7 +110,7 @@ public sealed record MapRecord(RecordId Id, [property: KeyedList(nameof(MapObjec
 
     /// <summary>
     /// Runs of the original's collision triangles that a plugin moves, as a patch, so nothing of the ROM's is copied: the
-    /// <c>acre_fixes</c> base plugin moves the Roog Cave's mushroom's box with the mushroom this way
+    /// <c>acre</c> base plugin moves the Roog Cave's mushroom's box with the mushroom this way
     /// (docs/hardcoded-content.md#corrections-to-the-roms-maps). They move the ROM plugin's asset alone, numbered as it has them
     /// (<see cref="Assets.CollisionMesh.For"/>); a plugin that replaces the collision asset gives it as it's to be. Null for none.
     /// </summary>

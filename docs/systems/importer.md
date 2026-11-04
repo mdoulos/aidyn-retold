@@ -4,7 +4,7 @@
 
 ## No choices, no corrections
 
-The import takes no choices and corrects nothing ([ADR 0043](../adr/0043-the-rom-is-asked-for-once-and-fixes-are-base-plugins.md)): the ROM plugin is the ROM's content as it is, and what the game needs fixed is the `acre_fixes` base plugin's, over it ([hardcoded content](../hardcoded-content.md#corrections-to-the-roms-maps)). Importers 60 and 61 moved the Roog Cave's mushroom by default (`MapCorrections`, `ImportOptions.FixMushroom`) and recorded the choice in the manifest's `import.options`, which reading now passes over; 62 leaves it where the ROM has it, so their imports are out of date.
+The import takes no choices and corrects nothing ([ADR 0043](../adr/0043-the-rom-is-asked-for-once-and-fixes-are-base-plugins.md)): the ROM plugin is the ROM's content as it is, and what the game needs fixed is the `acre` base plugin's, over it ([hardcoded content](../hardcoded-content.md#corrections-to-the-roms-maps)). Importers 60 and 61 moved the Roog Cave's mushroom by default (`MapCorrections`, `ImportOptions.FixMushroom`) and recorded the choice in the manifest's `import.options`, which reading now passes over; 62 leaves it where the ROM has it, so their imports are out of date.
 
 ## The flow
 

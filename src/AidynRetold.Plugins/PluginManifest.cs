@@ -24,7 +24,7 @@ public sealed record PluginManifest(
 /// <param name="Rom">The ROM's SHA-1.</param>
 /// <remarks>
 /// Importers 60 and 61 also wrote the player's choice about the Roog Cave's mushroom (<c>options</c>), which reading ignores: the import
-/// takes no choices now, and the fix is the <c>acre_fixes</c> base plugin's (ADR 0043).
+/// takes no choices now, and the fix is the <c>acre</c> base plugin's (ADRs 0043, 0045).
 /// </remarks>
 public sealed record ImportInfo(int Importer, string Rom, string RomVersion);
 
@@ -138,7 +138,7 @@ public static class RomPlugin
     /// 61 gives each title fly-through its animation's length (<c>length</c>), and names its coordinates' origin (<c>originRow</c>, <c>originColumn</c>).
     /// Its manifest later recorded the import's options (<c>import.options</c>), whose defaults left the records as 61 wrote them.
     /// 62 leaves the Roog Cave's mushroom where the ROM has it, and takes no options: the ROM plugin is the ROM's content as it is, and
-    /// the mushroom's fix is the <c>acre_fixes</c> base plugin's (ADR 0043).
+    /// the mushroom's fix is the <c>acre</c> base plugin's (ADRs 0043, 0045).
     /// </summary>
     public const int ImporterVersion = 62;
 

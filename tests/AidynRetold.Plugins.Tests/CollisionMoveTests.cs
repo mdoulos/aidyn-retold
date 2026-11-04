@@ -7,7 +7,7 @@ namespace AidynRetold.Plugins.Tests;
 
 /// <summary>
 /// A map's <see cref="MapRecord.CollisionMoves"/>, which a base plugin's patch slides a run of the original's collision triangles by
-/// (ADR 0043), as <c>acre_fixes</c> moves the Roog Cave's mushroom's box: they move the ROM plugin's asset, and a later plugin's own
+/// (ADR 0043), as the <c>acre</c> base plugin moves the Roog Cave's mushroom's box: they move the ROM plugin's asset, and a later plugin's own
 /// asset is taken as it is.
 /// </summary>
 public sealed class CollisionMoveTests : IDisposable
@@ -43,7 +43,7 @@ public sealed class CollisionMoveTests : IDisposable
     public void AMoveSlidesItsRunOfTheOriginalsTrianglesAndKeepsWhatTheyAre()
     {
         var set = PluginSet.Load([Plugin("aidyn", Original, ("maps.json", MapRecordJson)),
-            Plugin("acre_fixes", null, Moves("""[{ "first": 1, "count": 2, "by": [0.5, 0, -0.25] }]"""))]);
+            Plugin("acre", null, Moves("""[{ "first": 1, "count": 2, "by": [0.5, 0, -0.25] }]"""))]);
         var by = new Vector3(0.5f, 0, -0.25f);
         Assert.Equal(new[] { new CollisionMove(1, 2, by) }, set.Get<MapRecord>(Map).CollisionMoves);
         Assert.Equal(
@@ -65,7 +65,7 @@ public sealed class CollisionMoveTests : IDisposable
     {
         CollisionTriangle[] own = [Triangle(100), Triangle(200)];
         var set = PluginSet.Load([Plugin("aidyn", Original, ("maps.json", MapRecordJson)),
-            Plugin("acre_fixes", null, Moves("""[{ "first": 0, "count": 1, "by": [1, 0, 0] }]""")),
+            Plugin("acre", null, Moves("""[{ "first": 0, "count": 1, "by": [1, 0, 0] }]""")),
             Plugin("my_village", own)]);
         Assert.Equal(own, CollisionMesh.For(set, Map));
     }
@@ -74,7 +74,7 @@ public sealed class CollisionMoveTests : IDisposable
     public void AMovePastTheCollisionsEndIsRefusedWithTheMap()
     {
         var set = PluginSet.Load([Plugin("aidyn", Original, ("maps.json", MapRecordJson)),
-            Plugin("acre_fixes", null, Moves("""[{ "first": 2, "count": 2, "by": [1, 0, 0] }]"""))]);
+            Plugin("acre", null, Moves("""[{ "first": 2, "count": 2, "by": [1, 0, 0] }]"""))]);
         var e = Assert.Throws<InvalidDataException>(() => CollisionMesh.For(set, Map));
         Assert.Equal("aidyn:map/0x0001's collisionMoves move triangles 2 to 3, but its collision has 3.", e.Message);
     }

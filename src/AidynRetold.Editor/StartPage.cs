@@ -5,7 +5,8 @@ namespace AidynRetold.Editor;
 
 /// <summary>
 /// What the editor shows before a record is picked (editor.md#plugins): what's loaded, the places to start, every type of
-/// record under its heading with its count, the plugins in load order with what each is, and the keys that find things.
+/// record by its ID's spelling, under a heading, with its count, the plugins in load order with what each is, and the keys that find
+/// things.
 /// </summary>
 public partial class StartPage : ScrollContainer
 {
@@ -163,13 +164,13 @@ public partial class StartPage : ScrollContainer
         return card;
     }
 
-    /// <summary>A type's plain name, which lists its records, and its count, dim.</summary>
+    /// <summary>A type as its IDs spell it, as the engine knows it, which lists its records, and its count, dim.</summary>
     private Control TypeLink(TypeName type, int count)
     {
         var row = EditorStyle.Row(4);
         var link = new Button
         {
-            Text = type.Name, ThemeTypeVariation = "FlatButton", FocusMode = FocusModeEnum.None, TooltipText = $"List the {type.Type} records.",
+            Text = type.Type, ThemeTypeVariation = "FlatButton", FocusMode = FocusModeEnum.None, TooltipText = $"{type.Name}: list them.",
         };
         link.Pressed += () => _showType(type.Type);
         row.AddChild(link);
@@ -177,7 +178,7 @@ public partial class StartPage : ScrollContainer
         return row;
     }
 
-    /// <summary>What each plugin is: the original game, a base plugin, or a mod, and the one changes are saved to.</summary>
+    /// <summary>What each plugin is: the original game, the remade game (a base plugin), or a mod, and the one changes are saved to.</summary>
     private void ShowRoles()
     {
         var basePlugins = DataPaths.BasePlugins is { } folder ? Path.TrimEndingDirectorySeparator(Path.GetFullPath(folder)) + Path.DirectorySeparatorChar : null;
@@ -187,7 +188,7 @@ public partial class StartPage : ScrollContainer
                 continue;
             var directory = _catalog.Plugins.Plugins.First(p => p.Manifest.Id == id).Directory;
             var role = id == RecordId.RomNamespace ? "The original game"
-                : basePlugins is not null && Path.GetFullPath(directory).StartsWith(basePlugins, StringComparison.OrdinalIgnoreCase) ? "Base plugin" : "Mod";
+                : basePlugins is not null && Path.GetFullPath(directory).StartsWith(basePlugins, StringComparison.OrdinalIgnoreCase) ? "The remade game" : "Mod";
             var saving = CurrentMod.Id == id;
             label.Text = saving ? $"{role}, saving here" : role;
             label.ThemeTypeVariation = saving ? "ChangedLabel" : "DimLabel";

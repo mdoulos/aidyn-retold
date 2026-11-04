@@ -14,7 +14,7 @@ namespace AidynRetold.Rom.Tests;
 /// <summary>
 /// The Roog Cave's mushroom (docs/hardcoded-content.md#corrections-to-the-roms-maps): where the ROM puts it, and where the import
 /// leaves it, in the neck of D01's passage, Alaron wedges against it walking either way and often running north to south; the
-/// <c>acre_fixes</c> base plugin moves it with its collision box, the user's choice (ADR 0043), and he passes it every way he moves.
+/// <c>acre</c> base plugin moves it with its collision box, the user's choice (ADR 0043), and he passes it every way he moves.
 /// </summary>
 public sealed partial class GameSessionTests
 {
@@ -22,7 +22,7 @@ public sealed partial class GameSessionTests
     private const int Mushroom = 12, MushroomScene = 0x0BCB;
 
     /// <summary>
-    /// What <c>acre_fixes</c> moves, with the mushroom: its collision box, 8 of the chunk's triangles (926 to 933), slid 0.1 toward the
+    /// What the <c>acre</c> base plugin moves, with the mushroom: its collision box, 8 of the chunk's triangles (926 to 933), slid 0.1 toward the
     /// rock east of it and 0.7 north along the rock's face.
     /// </summary>
     private static readonly CollisionMove MushroomBox = new(926, 8, new Vector3(-0.124f, 0, 0.696f));
@@ -96,16 +96,16 @@ public sealed partial class GameSessionTests
     }
 
     /// <summary>
-    /// The owner's <c>acre_fixes</c>, from <c>ACRE_BASE_PLUGINS</c>, over the import: it moves the mushroom and its box by the same
+    /// The owner's <c>acre</c> base plugin, from <c>ACRE_BASE_PLUGINS</c>, over the import: it moves the mushroom and its box by the same
     /// offset, and nothing else of the chunk. Skipped without it, as a clone of this repository alone has none.
     /// </summary>
     [Fact]
-    public void TheAcreFixesBasePluginMovesTheMushroomWithItsBox()
+    public void TheAcreBasePluginMovesTheMushroomWithItsBox()
     {
-        var fixes = DataPaths.BasePlugins is { } basePlugins ? Path.Combine(basePlugins, "acre_fixes") : null;
+        var fixes = DataPaths.BasePlugins is { } basePlugins ? Path.Combine(basePlugins, "acre") : null;
         if (fixes is null || !File.Exists(Path.Combine(fixes, PluginManifest.FileName)))
         {
-            Assert.Skip($"No acre_fixes in the base plugins ({DataPaths.BasePluginsVariable}).");
+            Assert.Skip($"No acre in the base plugins ({DataPaths.BasePluginsVariable}).");
             return;
         }
         var (chunk, rom) = RoogD01();

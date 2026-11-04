@@ -153,21 +153,13 @@ public partial class RecordBrowser : Control
         _rules = rules;
         _items = items;
 
-        // The types in plain words under their headings (TypeGroups), each item's ID its place in _typeNames, plus one.
         _typeNames.Clear();
+        _typeNames.AddRange(catalog.Types);
         _types.Clear();
-        _types.AddItem($"All types ({catalog.Entries.Count:N0})", 0);
+        _types.AddItem("All types", 0);
         var counts = catalog.Entries.GroupBy(e => e.Id.Type).ToDictionary(g => g.Key, g => g.Count());
-        foreach (var group in TypeGroups.For(counts.Keys))
-        {
-            _types.AddSeparator(group.Name);
-            foreach (var type in group.Types)
-            {
-                _typeNames.Add(type.Type);
-                _types.AddItem($"{type.Name} ({counts[type.Type]:N0})", _typeNames.Count);
-                _types.SetItemTooltip(_types.ItemCount - 1, $"{type.Type} records");
-            }
-        }
+        for (var i = 0; i < _typeNames.Count; i++)
+            _types.AddItem($"{_typeNames[i]} ({counts[_typeNames[i]]:N0})", i + 1);
         Populate();
         ShowStart(catalog, report.IsClean ? null : report.Describe(limit: 12));
     }

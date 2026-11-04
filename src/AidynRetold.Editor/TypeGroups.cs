@@ -9,8 +9,9 @@ public sealed record TypeName(string Type, string Name);
 public sealed record TypeGroup(string Name, IReadOnlyList<TypeName> Types);
 
 /// <summary>
-/// The record types in plain words, under headings, as the type dropdown and the start page list them (editor.md#plugins): a
-/// type the editor doesn't know, a newer one or a mod's, goes under Other by its ID's spelling.
+/// The record types under headings, as the start page lists them (editor.md#plugins), with a plain name for each, which a
+/// one-of-a-kind record's page is titled by: a type the editor doesn't know, a newer one or a mod's, goes under Other by its ID's
+/// spelling.
 /// </summary>
 public static class TypeGroups
 {

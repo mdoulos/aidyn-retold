@@ -150,11 +150,11 @@ public partial class StartPage : ScrollContainer
     /// <summary>A place to start: a button with the record's name, and what it holds under it, dim.</summary>
     private Button Card(RecordId id, string name, string about)
     {
-        var card = new Button { CustomMinimumSize = new Vector2(230, 58), TooltipText = $"Open {id}." };
+        var card = new Button { CustomMinimumSize = new Vector2(240, 64), TooltipText = $"Open {id}." };
         var text = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
         text.AddThemeConstantOverride("separation", 0);
         text.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect, LayoutPresetMode.KeepSize, 12);
-        text.AddChild(new Label { Text = name, ThemeTypeVariation = "DialogTitleLabel", MouseFilter = MouseFilterEnum.Ignore });
+        text.AddChild(new Label { Text = name, ThemeTypeVariation = "CardTitleLabel", MouseFilter = MouseFilterEnum.Ignore });
         var dim = EditorStyle.DimLabel(about, 12);
         dim.MouseFilter = MouseFilterEnum.Ignore;
         dim.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;

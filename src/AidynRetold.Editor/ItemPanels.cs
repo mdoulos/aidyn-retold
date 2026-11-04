@@ -98,17 +98,18 @@ public partial class ItemPanel : PagePanel
     private readonly ItemCatalog _items;
     private readonly Item _item;
 
-    public ItemPanel(PluginCatalog catalog, EditorGame? game, CharacterRules? rules, ItemCatalog items, Item item, Action<RecordId> open)
+    /// <param name="header">Whether it starts with the item's icon, name and kind: not where a card of another page stands for them.</param>
+    public ItemPanel(PluginCatalog catalog, EditorGame? game, CharacterRules? rules, ItemCatalog items, Item item, Action<RecordId> open, bool header = true)
         : base(catalog, open)
     {
         (_game, _rules, _items, _item) = (game, rules, items, item);
-        Build();
+        Build(header);
     }
 
-    private void Build()
+    private void Build(bool withHeader)
     {
         var item = _item;
-        var header = new HBoxContainer();
+        var header = new HBoxContainer { Visible = withHeader };
         header.AddThemeConstantOverride("separation", 12);
         if (Picture(item.Icon, 3) is { } icon)
             header.AddChild(icon);

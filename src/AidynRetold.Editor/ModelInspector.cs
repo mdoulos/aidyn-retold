@@ -7,8 +7,9 @@ namespace AidynRetold.Editor;
 
 /// <summary>
 /// The inspector beside a model's view (<see cref="ModelView.Inspector"/>): who the model is shown as, when it's an actor's that
-/// characters wear, and its sections, each folding: the model's file, its textures, its parts, its outfits and what it holds, and the
-/// body of the character it's shown as.
+/// characters wear, and its sections, cards that fold, 16 apart: the model's file, its textures, its parts, its outfits and what it
+/// holds, the body of the character it's shown as, and the record's own, its fields and what names it (<see cref="AddSection"/>),
+/// which the page shows here rather than in tabs.
 /// </summary>
 public partial class ModelInspector : VBoxContainer
 {
@@ -16,6 +17,7 @@ public partial class ModelInspector : VBoxContainer
     private readonly List<Wearer> _wearers;
     private readonly OptionButton _shownAs = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, TooltipText = "The character whose body, held items and strike the sections show" };
     private readonly VBoxContainer _sections = new();
+    private readonly VBoxContainer _extras = new();
     private static readonly Dictionary<string, bool> Folded = [];
 
     /// <summary>A character whose body is the actor: an entity, or a dialogue entity, which has only a body.</summary>
@@ -24,8 +26,9 @@ public partial class ModelInspector : VBoxContainer
     public ModelInspector(ModelContext ctx)
     {
         _ctx = ctx;
-        AddThemeConstantOverride("separation", 6);
-        _sections.AddThemeConstantOverride("separation", 6);
+        AddThemeConstantOverride("separation", 16);
+        _sections.AddThemeConstantOverride("separation", 16);
+        _extras.AddThemeConstantOverride("separation", 16);
         _wearers = ctx.ActorId is { } a ? WearersOf(ctx.Plugins, a) : [];
         if (_wearers.Count > 0)
         {
@@ -41,7 +44,19 @@ public partial class ModelInspector : VBoxContainer
             _shownAs.ItemSelected += _ => Build();
         }
         AddChild(_sections);
+        AddChild(_extras);
         Build();
+    }
+
+    /// <summary>
+    /// A section after the model's, which stays when the character it's shown as changes: the record's fields, what names it. Folded
+    /// as it was last left.
+    /// </summary>
+    public void AddSection(string name, Control content, string note)
+    {
+        var section = new Section(name, content) { Note = note, Open = Folded.GetValueOrDefault(name, true) };
+        section.Toggled += open => Folded[name] = open;
+        _extras.AddChild(section);
     }
 
     /// <summary>The Parts section, for <c>--part</c>.</summary>
@@ -50,7 +65,7 @@ public partial class ModelInspector : VBoxContainer
     /// <summary>Opens the sections named, by their titles in any case, and folds the rest (<c>--open</c>).</summary>
     public void OpenOnly(IReadOnlyCollection<string> names)
     {
-        foreach (var section in _sections.GetChildren().OfType<Section>())
+        foreach (var section in _sections.GetChildren().Concat(_extras.GetChildren()).OfType<Section>())
             section.Open = names.Contains(section.Title, StringComparer.OrdinalIgnoreCase);
     }
 

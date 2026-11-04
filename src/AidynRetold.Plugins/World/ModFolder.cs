@@ -134,6 +134,35 @@ public sealed class ModFolder
         PluginJson.WriteFile(path, JsonSerializer.SerializeToUtf8Bytes(array, PluginJson.Options));
     }
 
+    /// <summary>A copy of the record or patch of <paramref name="id"/> in <c>records/<paramref name="file"/></c>, or null if it isn't there.</summary>
+    public JsonObject? Record(string file, RecordId id)
+    {
+        var path = Path.Combine(Directory, "records", file);
+        if (!File.Exists(path))
+            return null;
+        var text = id.ToString();
+        return ReadRecords(path).OfType<JsonObject>().FirstOrDefault(o => ((o["patch"] ?? o["id"])?.GetValue<string>()) == text)?.DeepClone() as JsonObject;
+    }
+
+    /// <summary>
+    /// The record file under <c>records</c>, with / between its folders, that defines <paramref name="id"/> in this plugin (its
+    /// <c>"id"</c>, not a patch), or null: where a tool changes one of the plugin's own records in place rather than patching it.
+    /// </summary>
+    public string? FileDefining(RecordId id)
+    {
+        var records = Path.Combine(Directory, "records");
+        if (!System.IO.Directory.Exists(records))
+            return null;
+        var text = id.ToString();
+        foreach (var path in System.IO.Directory.EnumerateFiles(records, "*.json", SearchOption.AllDirectories)
+                     .OrderBy(f => Path.GetRelativePath(records, f).Replace(Path.DirectorySeparatorChar, '/'), StringComparer.Ordinal))
+        {
+            if (ReadRecords(path).OfType<JsonObject>().Any(o => o["id"] is JsonValue v && v.TryGetValue(out string? s) && s == text))
+                return Path.GetRelativePath(records, path).Replace(Path.DirectorySeparatorChar, '/');
+        }
+        return null;
+    }
+
     /// <summary>Takes the record or patch of <paramref name="id"/> out of <c>records/<paramref name="file"/></c>, if it's there.</summary>
     public void RemoveRecord(string file, RecordId id)
     {

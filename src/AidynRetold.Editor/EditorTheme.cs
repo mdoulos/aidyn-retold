@@ -5,11 +5,13 @@ namespace AidynRetold.Editor;
 /// <summary>The colours of one of the editor's modes, dark or light, which <see cref="EditorTheme"/> builds its theme from.</summary>
 public sealed record Palette(
     Color Background, Color Surface, Color Raised, Color Band, Color Border, Color Text, Color Dim, Color Accent, Color OnAccent,
-    Color Danger, Color Field, Color Hover, Color Selection, Color Changed, Color Problem, Color Good, Color Viewport, Color Backdrop);
+    Color Danger, Color Field, Color Hover, Color Selection, Color Changed, Color Problem, Color Good, Color Viewport, Color Backdrop,
+    Color Rule, Color Sunken);
 
 /// <summary>
-/// The editor's theme, dark by default or light, one look in both: thin borders and small radii, a band under each dialog's title,
-/// filled primary buttons and outlined others, and its own drawn icons, so the check boxes and arrows suit either. The record
+/// The editor's theme, dark by default or light, one look in both: 13 type, a crisp 1px border round every panel and a lighter rule
+/// inside one, small radii on controls and 8 on cards, the owner's paddings throughout, filled primary buttons and outlined others,
+/// and its own drawn icons, so the check boxes and arrows suit either. The record
 /// pages name what they show by type variations (<c>DimLabel</c>, <c>Chip</c>, <c>PrimaryButton</c> and the rest), so a change of
 /// mode reaches every page; what's drawn by code reads <see cref="Current"/>. The mode is kept in <c>user://editor.cfg</c>.
 /// </summary>
@@ -17,17 +19,17 @@ public static class EditorTheme
 {
     public static readonly Palette Dark = new(
         Background: new(0.13f, 0.14f, 0.16f), Surface: new(0.17f, 0.18f, 0.21f), Raised: new(0.22f, 0.235f, 0.27f), Band: new(0.2f, 0.215f, 0.25f),
-        Border: new(0.32f, 0.34f, 0.39f), Text: new(0.9f, 0.91f, 0.93f), Dim: new(0.62f, 0.64f, 0.68f), Accent: new(0.29f, 0.56f, 0.85f),
+        Border: new(0.38f, 0.4f, 0.46f), Text: new(0.9f, 0.91f, 0.93f), Dim: new(0.62f, 0.64f, 0.68f), Accent: new(0.29f, 0.56f, 0.85f),
         OnAccent: new(1, 1, 1), Danger: new(0.75f, 0.26f, 0.25f), Field: new(0.12f, 0.13f, 0.15f), Hover: new(0.27f, 0.29f, 0.33f),
         Selection: new(0.24f, 0.38f, 0.56f), Changed: new(1f, 0.75f, 0.4f), Problem: new(1f, 0.5f, 0.45f), Good: new(0.55f, 0.85f, 0.55f),
-        Viewport: new(0.16f, 0.17f, 0.2f), Backdrop: new(0, 0, 0, 0.45f));
+        Viewport: new(0.16f, 0.17f, 0.2f), Backdrop: new(0, 0, 0, 0.45f), Rule: new(0.25f, 0.265f, 0.3f), Sunken: new(0.155f, 0.165f, 0.19f));
 
     public static readonly Palette Light = new(
         Background: new(0.94f, 0.945f, 0.95f), Surface: new(0.985f, 0.985f, 0.99f), Raised: new(1, 1, 1), Band: new(0.965f, 0.968f, 0.97f),
-        Border: new(0.8f, 0.81f, 0.83f), Text: new(0.11f, 0.14f, 0.15f), Dim: new(0.4f, 0.42f, 0.46f), Accent: new(0.13f, 0.44f, 0.69f),
+        Border: new(0.74f, 0.75f, 0.78f), Text: new(0.11f, 0.14f, 0.15f), Dim: new(0.4f, 0.42f, 0.46f), Accent: new(0.13f, 0.44f, 0.69f),
         OnAccent: new(1, 1, 1), Danger: new(0.7f, 0.18f, 0.18f), Field: new(1, 1, 1), Hover: new(0.92f, 0.93f, 0.95f),
         Selection: new(0.8f, 0.88f, 0.96f), Changed: new(0.72f, 0.42f, 0.05f), Problem: new(0.75f, 0.2f, 0.18f), Good: new(0.2f, 0.55f, 0.25f),
-        Viewport: new(0.78f, 0.8f, 0.83f), Backdrop: new(0, 0, 0, 0.35f));
+        Viewport: new(0.78f, 0.8f, 0.83f), Backdrop: new(0, 0, 0, 0.35f), Rule: new(0.915f, 0.92f, 0.925f), Sunken: new(0.972f, 0.974f, 0.978f));
 
     private const string Config = "user://editor.cfg";
 
@@ -85,7 +87,11 @@ public static class EditorTheme
 
     public static Theme Build(Palette p)
     {
-        var t = new Theme();
+        // One scale of type, spacing and edges, the owner's for the UI they design: 13 for text and controls, 12 for help, 11 in
+        // capitals for a column's or a band's label, 16 for a section's title, 18 for a heading, 22 for a page's title; a 1px border
+        // round every panel and a lighter rule inside one; a radius of 4 on a control and 8 on a card; a card's title 16 by 24 in, its
+        // body 18 by 24, a control 6 by 10 or 12, 16 between cards, and every box padded alike top and bottom.
+        var t = new Theme { DefaultFontSize = 13 };
         var bold = new FontVariation { BaseFont = ThemeDB.FallbackFont, VariationEmbolden = 0.6f };
 
         // Panels and the page.
@@ -94,14 +100,14 @@ public static class EditorTheme
         t.SetColor("font_color", "Label", p.Text);
         t.SetColor("font_shadow_color", "Label", Colors.Transparent);
 
-        // Buttons: outlined, a primary filled with the accent, a dangerous one with red.
+        // Buttons: outlined, a primary filled with the accent, a dangerous one with red, all 6 by 12 in.
         foreach (var type in new[] { "Button", "OptionButton", "MenuButton" })
         {
-            t.SetStylebox("normal", type, Box(p.Raised, p.Border, 3, 1, 10, 4));
-            t.SetStylebox("hover", type, Box(p.Hover, p.Border, 3, 1, 10, 4));
-            t.SetStylebox("pressed", type, Box(p.Selection, p.Accent, 3, 1, 10, 4));
-            t.SetStylebox("disabled", type, Box(p.Surface, p.Border with { A = 0.5f }, 3, 1, 10, 4));
-            t.SetStylebox("focus", type, Box(Colors.Transparent, p.Accent, 3, 1, 10, 4));
+            t.SetStylebox("normal", type, Box(p.Raised, p.Border, 4, 1, 12, 6));
+            t.SetStylebox("hover", type, Box(p.Hover, p.Border, 4, 1, 12, 6));
+            t.SetStylebox("pressed", type, Box(p.Selection, p.Accent, 4, 1, 12, 6));
+            t.SetStylebox("disabled", type, Box(p.Surface, p.Border with { A = 0.5f }, 4, 1, 12, 6));
+            t.SetStylebox("focus", type, Box(Colors.Transparent, p.Accent, 4, 1, 12, 6));
             t.SetColor("font_color", type, p.Text);
             t.SetColor("font_hover_color", type, p.Text);
             t.SetColor("font_pressed_color", type, p.Text);
@@ -110,14 +116,15 @@ public static class EditorTheme
             t.SetColor("font_disabled_color", type, p.Dim with { A = 0.6f });
         }
         t.SetIcon("arrow", "OptionButton", Chevron(p.Dim, down: true));
+        t.SetConstant("arrow_margin", "OptionButton", 10);
         Variation(t, "PrimaryButton", "Button", p.Accent, p.Accent.Lightened(0.12f), p.Accent.Darkened(0.15f), p.OnAccent);
         Variation(t, "DangerButton", "Button", p.Danger, p.Danger.Lightened(0.12f), p.Danger.Darkened(0.15f), p.OnAccent);
         t.SetTypeVariation("FlatButton", "Button");
         foreach (var state in new[] { "normal", "hover", "pressed", "focus", "disabled" })
-            t.SetStylebox(state, "FlatButton", Box(state == "hover" ? p.Hover : Colors.Transparent, null, 3, 0, 4, 2));
+            t.SetStylebox(state, "FlatButton", Box(state == "hover" ? p.Hover : Colors.Transparent, null, 4, 0, 8, 4));
         // A progress bar: a field's track, filled with the accent; an indeterminate one's band slides along it.
-        t.SetStylebox("background", "ProgressBar", Box(p.Field, p.Border, 3, 1));
-        t.SetStylebox("fill", "ProgressBar", Box(p.Accent, null, 3));
+        t.SetStylebox("background", "ProgressBar", Box(p.Field, p.Border, 4, 1));
+        t.SetStylebox("fill", "ProgressBar", Box(p.Accent, null, 4));
         t.SetColor("font_color", "LinkButton", p.Accent);
         t.SetColor("font_hover_color", "LinkButton", p.Accent.Lightened(0.2f));
         t.SetColor("font_pressed_color", "LinkButton", p.Accent.Darkened(0.2f));
@@ -126,7 +133,7 @@ public static class EditorTheme
         foreach (var type in new[] { "CheckBox", "CheckButton" })
         {
             foreach (var state in new[] { "normal", "hover", "pressed", "focus", "disabled", "hover_pressed" })
-                t.SetStylebox(state, type, Box(state is "hover" or "hover_pressed" ? p.Hover : Colors.Transparent, null, 3, 0, 4, 2));
+                t.SetStylebox(state, type, Box(state is "hover" or "hover_pressed" ? p.Hover : Colors.Transparent, null, 4, 0, 6, 4));
             t.SetColor("font_color", type, p.Text);
             t.SetColor("font_hover_color", type, p.Text);
             t.SetColor("font_pressed_color", type, p.Text);
@@ -143,12 +150,12 @@ public static class EditorTheme
         t.SetIcon("unchecked", "CheckButton", Switch(p, false));
         t.SetIcon("checked", "CheckButton", Switch(p, true));
 
-        // Fields.
+        // Fields, 6 by 10 in.
         foreach (var type in new[] { "LineEdit", "TextEdit" })
         {
-            t.SetStylebox("normal", type, Box(p.Field, p.Border, 3, 1, 8, 4));
-            t.SetStylebox("focus", type, Box(Colors.Transparent, p.Accent, 3, 1, 8, 4));
-            t.SetStylebox("read_only", type, Box(p.Surface, p.Border, 3, 1, 8, 4));
+            t.SetStylebox("normal", type, Box(p.Field, p.Border, 4, 1, 10, 6));
+            t.SetStylebox("focus", type, Box(Colors.Transparent, p.Accent, 4, 1, 10, 6));
+            t.SetStylebox("read_only", type, Box(p.Surface, p.Border, 4, 1, 10, 6));
             t.SetColor("font_color", type, p.Text);
             t.SetColor("font_placeholder_color", type, p.Dim);
             t.SetColor("caret_color", type, p.Text);
@@ -156,46 +163,56 @@ public static class EditorTheme
             t.SetColor("font_readonly_color", type, p.Dim);
         }
 
-        // Lists and trees.
-        t.SetStylebox("panel", "Tree", Box(p.Field, p.Border, 3, 1, 2, 2));
-        t.SetStylebox("focus", "Tree", Box(Colors.Transparent, p.Accent, 3, 1));
+        // Lists and trees, as tables: in a bordered box, their heads in small dim capitals over a line, a rule between rows, 12 in.
+        t.SetStylebox("panel", "Tree", Box(p.Field, p.Border, 8, 1, 1, 1));
+        t.SetStylebox("focus", "Tree", Box(Colors.Transparent, p.Accent, 8, 1));
         t.SetStylebox("selected", "Tree", Box(p.Selection));
         t.SetStylebox("selected_focus", "Tree", Box(p.Selection));
         t.SetStylebox("hovered", "Tree", Box(p.Hover));
         t.SetStylebox("cursor", "Tree", Box(Colors.Transparent, p.Accent, 0, 1));
         t.SetStylebox("cursor_unfocused", "Tree", Box(Colors.Transparent, p.Border, 0, 1));
         foreach (var state in new[] { "title_button_normal", "title_button_hover", "title_button_pressed" })
-            t.SetStylebox(state, "Tree", Box(state == "title_button_hover" ? p.Hover : p.Band, p.Border, 0, 0, 6, 4, bottom: 1));
+            t.SetStylebox(state, "Tree", Box(state == "title_button_hover" ? p.Hover : p.Sunken, p.Border, 0, 0, 12, 8, top: 0, bottom: 1));
+        t.SetFontSize("title_button_font_size", "Tree", 11);
+        t.SetFont("title_button_font", "Tree", bold);
+        t.SetColor("title_button_color", "Tree", p.Dim);
+        t.SetConstant("inner_item_margin_left", "Tree", 12);
+        t.SetConstant("inner_item_margin_right", "Tree", 12);
+        t.SetConstant("v_separation", "Tree", 8);
+        t.SetConstant("draw_guides", "Tree", 1);
         t.SetColor("font_color", "Tree", p.Text);
         t.SetColor("font_selected_color", "Tree", p.Text);
-        t.SetColor("title_button_color", "Tree", p.Text);
-        t.SetColor("guide_color", "Tree", p.Border with { A = 0.5f });
+        t.SetColor("guide_color", "Tree", p.Rule);
         t.SetColor("relationship_line_color", "Tree", p.Border);
         t.SetColor("children_hl_line_color", "Tree", p.Border);
         t.SetColor("parent_hl_line_color", "Tree", p.Border);
         t.SetIcon("arrow", "Tree", Chevron(p.Dim, down: true));
         t.SetIcon("arrow_collapsed", "Tree", Chevron(p.Dim, down: false));
-        t.SetStylebox("panel", "PopupMenu", Box(p.Raised, p.Border, 4, 1, 4, 4));
-        t.SetStylebox("hover", "PopupMenu", Box(p.Selection, null, 3));
+        t.SetStylebox("panel", "PopupMenu", Box(p.Raised, p.Border, 8, 1, 6, 6));
+        t.SetStylebox("hover", "PopupMenu", Box(p.Selection, null, 4));
+        t.SetConstant("v_separation", "PopupMenu", 8);
+        t.SetConstant("item_start_padding", "PopupMenu", 10);
+        t.SetConstant("item_end_padding", "PopupMenu", 10);
         t.SetColor("font_color", "PopupMenu", p.Text);
         t.SetColor("font_hover_color", "PopupMenu", p.Text);
         t.SetColor("font_disabled_color", "PopupMenu", p.Dim);
         t.SetColor("font_separator_color", "PopupMenu", p.Dim);
-        t.SetStylebox("separator", "PopupMenu", Line(p.Border, vertical: false));
+        t.SetStylebox("separator", "PopupMenu", Line(p.Rule, vertical: false));
         t.SetIcon("checked", "PopupMenu", CheckIcon(p, true, false));
         t.SetIcon("unchecked", "PopupMenu", CheckIcon(p, false, false));
         t.SetIcon("radio_checked", "PopupMenu", CheckIcon(p, true, true));
         t.SetIcon("radio_unchecked", "PopupMenu", CheckIcon(p, false, true));
         t.SetIcon("submenu", "PopupMenu", Chevron(p.Dim, down: false));
 
-        // Tabs: the selected one underlined with the accent.
+        // Tabs: 16, 10 by 16 in, the selected one underlined 2 with the accent.
         foreach (var type in new[] { "TabBar", "TabContainer" })
         {
-            t.SetStylebox("tab_selected", type, Box(p.Surface, p.Accent, 0, 0, 12, 5, bottom: 2));
-            t.SetStylebox("tab_unselected", type, Box(Colors.Transparent, null, 0, 0, 12, 5));
-            t.SetStylebox("tab_hovered", type, Box(p.Hover, null, 0, 0, 12, 5));
-            t.SetStylebox("tab_disabled", type, Box(Colors.Transparent, null, 0, 0, 12, 5));
-            t.SetStylebox("tab_focus", type, Box(Colors.Transparent, p.Accent, 0, 1));
+            t.SetStylebox("tab_selected", type, Box(Colors.Transparent, p.Accent, 0, 0, 16, 8, top: 0, bottom: 2));
+            t.SetStylebox("tab_unselected", type, Box(Colors.Transparent, null, 0, 0, 16, 8));
+            t.SetStylebox("tab_hovered", type, Box(p.Hover, null, 4, 0, 16, 8));
+            t.SetStylebox("tab_disabled", type, Box(Colors.Transparent, null, 0, 0, 16, 8));
+            t.SetStylebox("tab_focus", type, Box(Colors.Transparent, p.Accent, 4, 1));
+            t.SetFontSize("font_size", type, 16);
             t.SetColor("font_selected_color", type, p.Text);
             t.SetColor("font_unselected_color", type, p.Dim);
             t.SetColor("font_hovered_color", type, p.Text);
@@ -213,57 +230,86 @@ public static class EditorTheme
         }
         t.SetStylebox("separator", "HSeparator", Line(p.Border, vertical: false));
         t.SetStylebox("separator", "VSeparator", Line(p.Border, vertical: true));
-        t.SetStylebox("panel", "TooltipPanel", Box(p.Raised, p.Border, 3, 1, 8, 5));
+        t.SetConstant("separation", "HSplitContainer", 12);
+        t.SetConstant("separation", "VSplitContainer", 12);
+        t.SetStylebox("panel", "TooltipPanel", Box(p.Raised, p.Border, 4, 1, 10, 6));
         t.SetColor("font_color", "TooltipLabel", p.Text);
-        t.SetStylebox("embedded_border", "Window", Box(p.Surface, p.Border, 4, 1, 0, 0));
+        t.SetStylebox("embedded_border", "Window", Box(p.Surface, p.Border, 8, 1, 0, 0));
         t.SetColor("title_color", "Window", p.Text);
 
         // The states graph.
-        t.SetStylebox("panel", "GraphEdit", Box(p.Field));
+        t.SetStylebox("panel", "GraphEdit", Box(p.Field, p.Border, 8, 1));
         t.SetColor("grid_major", "GraphEdit", p.Border with { A = 0.4f });
         t.SetColor("grid_minor", "GraphEdit", p.Border with { A = 0.2f });
-        t.SetStylebox("panel", "GraphNode", Box(p.Surface, p.Border, 0, 1, 10, 4, top: 0, bottomRadius: 4));
-        t.SetStylebox("panel_selected", "GraphNode", Box(p.Surface, p.Accent, 0, 2, 10, 4, top: 0, bottomRadius: 4));
-        t.SetStylebox("titlebar", "GraphNode", Box(p.Band, p.Border, 0, 1, 10, 4, topRadius: 4));
-        t.SetStylebox("titlebar_selected", "GraphNode", Box(p.Selection, p.Accent, 0, 2, 10, 4, topRadius: 4));
+        t.SetStylebox("panel", "GraphNode", Box(p.Surface, p.Border, 0, 1, 12, 6, top: 0, bottomRadius: 8));
+        t.SetStylebox("panel_selected", "GraphNode", Box(p.Surface, p.Accent, 0, 2, 12, 6, top: 0, bottomRadius: 8));
+        t.SetStylebox("titlebar", "GraphNode", Box(p.Sunken, p.Border, 0, 1, 12, 6, topRadius: 8));
+        t.SetStylebox("titlebar_selected", "GraphNode", Box(p.Selection, p.Accent, 0, 2, 12, 6, topRadius: 8));
         t.SetColor("font_color", "GraphNodeTitleLabel", p.Text);
 
         // What the pages name by variation.
-        Label(t, "DimLabel", p.Dim);
+        Label(t, "DimLabel", p.Dim, 12);
         Label(t, "ChangedLabel", p.Changed);
         Label(t, "ProblemLabel", p.Problem);
         Label(t, "GoodLabel", p.Good);
-        Label(t, "TitleLabel", p.Text, 20, bold);
-        Label(t, "DialogTitleLabel", p.Text, 15, bold);
-        Label(t, "HeadingLabel", p.Text, 16, bold);
-        Label(t, "ChipLabel", p.Text, 13);
-        Label(t, "ChangedChipLabel", p.Changed, 13);
+        Label(t, "TitleLabel", p.Text, 22, bold);
+        Label(t, "DialogTitleLabel", p.Text, 18, bold);
+        Label(t, "HeadingLabel", p.Text, 18, bold);
+        Label(t, "SubheadLabel", p.Dim, 11, bold);
+        Label(t, "FieldLabel", p.Text, 16);
+        Label(t, "CardTitleLabel", p.Text, 16, bold);
+        Label(t, "ChipLabel", p.Text, 11, bold);
+        Label(t, "ChangedChipLabel", p.Changed, 11, bold);
+        // A chip is a pill: a tint, its line, its ink.
         t.SetTypeVariation("Chip", "PanelContainer");
-        t.SetStylebox("panel", "Chip", Box(p.Raised, p.Border, 4, 1, 7, 1));
+        t.SetStylebox("panel", "Chip", Box(p.Raised, p.Border, 99, 1, 10, 2));
         t.SetTypeVariation("ChangedChip", "PanelContainer");
-        t.SetStylebox("panel", "ChangedChip", Box(p.Raised, p.Changed, 4, 1, 7, 1));
+        t.SetStylebox("panel", "ChangedChip", Box(p.Raised, p.Changed, 99, 1, 10, 2));
         t.SetTypeVariation("Toolbar", "PanelContainer");
-        t.SetStylebox("panel", "Toolbar", Box(p.Band, p.Border, 0, 0, 8, 4, bottom: 1));
+        t.SetStylebox("panel", "Toolbar", Box(p.Band, p.Border, 0, 0, 16, 8, top: 0, bottom: 1));
+        // A card: a 1px border round a surface, its corners 8; its head 16 by 24 in, over a line while it's open; a band across it in
+        // small capitals, over a line, to divide it.
+        t.SetTypeVariation("Card", "PanelContainer");
+        t.SetStylebox("panel", "Card", Box(p.Surface, p.Border, 8, 1));
+        t.SetTypeVariation("CardHead", "PanelContainer");
+        t.SetStylebox("panel", "CardHead", Box(Colors.Transparent, p.Border, 0, 0, 24, 16, top: 0, bottom: 1));
+        t.SetTypeVariation("CardHeadFolded", "PanelContainer");
+        t.SetStylebox("panel", "CardHeadFolded", Box(Colors.Transparent, null, 0, 0, 24, 16));
+        t.SetTypeVariation("CardBody", "PanelContainer");
+        t.SetStylebox("panel", "CardBody", Box(Colors.Transparent, null, 0, 0, 24, 18));
+        t.SetTypeVariation("Subhead", "PanelContainer");
+        t.SetStylebox("panel", "Subhead", Box(p.Sunken, p.Border, 0, 0, 24, 14, top: 1, bottom: 1));
+        // A row of a card: a label column and a field, 18 by 24 in, a rule above all but the first.
+        t.SetTypeVariation("CardRow", "PanelContainer");
+        t.SetStylebox("panel", "CardRow", Box(Colors.Transparent, p.Rule, 0, 0, 24, 18, top: 1, bottom: 0));
+        t.SetTypeVariation("CardRowFirst", "PanelContainer");
+        t.SetStylebox("panel", "CardRowFirst", Box(Colors.Transparent, null, 0, 0, 24, 18));
+        // A well a picture sits in, as an input does.
+        t.SetTypeVariation("Well", "PanelContainer");
+        t.SetStylebox("panel", "Well", Box(p.Field, p.Border, 4, 1, 6, 6));
+        // A frame round a view, so its edge shows against the page.
+        t.SetTypeVariation("Frame", "PanelContainer");
+        t.SetStylebox("panel", "Frame", Box(p.Viewport, p.Border, 4, 1, 1, 1));
         t.SetTypeVariation("DialogBox", "PanelContainer");
-        var dialog = Box(p.Surface, p.Accent, 4, 1);
-        dialog.ShadowColor = new Color(0, 0, 0, 0.25f);
+        var dialog = Box(p.Surface, p.Border, 8, 1);
+        dialog.ShadowColor = new Color(0, 0, 0, 0.3f);
         dialog.ShadowSize = 24;
         dialog.ShadowOffset = new Vector2(0, 8);
         t.SetStylebox("panel", "DialogBox", dialog);
         t.SetTypeVariation("Toast", "PanelContainer");
-        var toast = Box(p.Raised, p.Border, 6, 1, 16, 8);
+        var toast = Box(p.Raised, p.Border, 8, 1, 16, 12);
         toast.ShadowColor = new Color(0, 0, 0, 0.25f);
         toast.ShadowSize = 14;
         toast.ShadowOffset = new Vector2(0, 4);
         t.SetStylebox("panel", "Toast", toast);
         t.SetTypeVariation("DialogTitle", "PanelContainer");
-        t.SetStylebox("panel", "DialogTitle", Box(p.Band, p.Border, 0, 0, 14, 10, bottom: 1, topRadius: 4));
+        t.SetStylebox("panel", "DialogTitle", Box(Colors.Transparent, p.Border, 0, 0, 24, 16, top: 0, bottom: 1, topRadius: 8));
         t.SetTypeVariation("SectionTitle", "Button");
-        foreach (var state in new[] { "normal", "hover", "pressed", "focus", "hover_pressed" })
-            t.SetStylebox(state, "SectionTitle", Box(state is "hover" or "hover_pressed" ? p.Hover : Colors.Transparent, null, 3, 0, 4, 3));
-        t.SetFontSize("font_size", "SectionTitle", 15);
+        foreach (var state in new[] { "normal", "hover", "pressed", "focus", "hover_pressed", "disabled" })
+            t.SetStylebox(state, "SectionTitle", Box(Colors.Transparent, null, 0, 0, 0, 0));
+        t.SetFontSize("font_size", "SectionTitle", 16);
         t.SetFont("font", "SectionTitle", bold);
-        foreach (var c in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color" })
+        foreach (var c in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color", "font_disabled_color" })
             t.SetColor(c, "SectionTitle", p.Text);
         return t;
     }
@@ -281,14 +327,15 @@ public static class EditorTheme
     private static void Variation(Theme t, string name, string type, Color fill, Color hover, Color pressed, Color text)
     {
         t.SetTypeVariation(name, type);
-        t.SetStylebox("normal", name, Box(fill, fill, 3, 1, 12, 4));
-        t.SetStylebox("hover", name, Box(hover, hover, 3, 1, 12, 4));
-        t.SetStylebox("pressed", name, Box(pressed, pressed, 3, 1, 12, 4));
-        t.SetStylebox("focus", name, Box(Colors.Transparent, text with { A = 0.8f }, 3, 1, 12, 4));
-        t.SetStylebox("disabled", name, Box(fill with { A = 0.45f }, null, 3, 0, 12, 4));
+        t.SetStylebox("normal", name, Box(fill, fill, 4, 1, 12, 6));
+        t.SetStylebox("hover", name, Box(hover, hover, 4, 1, 12, 6));
+        t.SetStylebox("pressed", name, Box(pressed, pressed, 4, 1, 12, 6));
+        t.SetStylebox("focus", name, Box(Colors.Transparent, text with { A = 0.8f }, 4, 1, 12, 6));
+        // Disabled, it's only an outline, so it never reads as the way forward.
+        t.SetStylebox("disabled", name, Box(Colors.Transparent, fill with { A = 0.45f }, 4, 1, 12, 6));
         foreach (var c in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color" })
             t.SetColor(c, name, text);
-        t.SetColor("font_disabled_color", name, text with { A = 0.6f });
+        t.SetColor("font_disabled_color", name, fill with { A = 0.7f });
     }
 
     /// <summary>A flat box: its fill, its border all round or at its top or bottom alone, its radius and its margins.</summary>

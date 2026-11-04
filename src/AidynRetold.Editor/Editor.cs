@@ -113,6 +113,14 @@ public partial class Editor : Control
             args.TryGetValue("details", out var details) ? details == "1" : null);
         if (args.TryGetValue("press", out var presses))
             _records.PressPartyTab(presses.Split(','));
+        // An armor's page: --armor-change name=…,price=… holds values as if typed, --armor-save 1 saves them, and --armor-picture 1
+        // opens the picture's dialog.
+        if (args.TryGetValue("armor-change", out var changes))
+            _records.Armor?.ChangeFor(changes.Split(',').Select(c => c.Split('=', 2)).Where(c => c.Length == 2).Select(c => (c[0], c[1])));
+        if (args.GetValueOrDefault("armor-save") == "1")
+            _records.Armor?.SaveChanges();
+        if (args.GetValueOrDefault("armor-picture") == "1")
+            _records.Armor?.PickPicture();
         if (args.TryGetValue("drive", out var request))
             _records.Model.Drive(int.Parse(request, CultureInfo.InvariantCulture));
         // --mod-dialog toolbar opens the toolbar's mod dialog, which closes by its cross.

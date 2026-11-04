@@ -51,7 +51,8 @@ public partial class RecordHeader : HBoxContainer
         _title.Text = title.ReplaceLineEndings(" ");
         _title.TooltipText = title;
         // A long title gives up its room before the tabs do.
-        _title.CustomMinimumSize = new Vector2(Math.Min(_title.GetThemeFont("font").GetStringSize(_title.Text, fontSize: 20).X, 520), 0);
+        _title.CustomMinimumSize = new Vector2(Math.Min(
+            _title.GetThemeFont("font").GetStringSize(_title.Text, fontSize: _title.GetThemeFontSize("font_size")).X + 2, 560), 0);
         _id.Text = id;
         // The ID alone, without the Borg or the object's place that follow it.
         _copied = id.Split(" · ")[0];

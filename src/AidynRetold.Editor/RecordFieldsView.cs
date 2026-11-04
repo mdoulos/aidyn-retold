@@ -27,9 +27,9 @@ public partial class RecordFieldsView : Tree
         Columns = 3;
         HideRoot = true;
         ColumnTitlesVisible = true;
-        SetColumnTitle(0, "Field");
-        SetColumnTitle(1, "Value");
-        SetColumnTitle(2, "Set by");
+        SetColumnTitle(0, "FIELD");
+        SetColumnTitle(1, "VALUE");
+        SetColumnTitle(2, "SET BY");
         SetColumnExpandRatio(0, 2);
         SetColumnExpandRatio(1, 3);
         SetColumnExpand(2, false);

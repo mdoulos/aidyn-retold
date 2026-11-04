@@ -3,37 +3,51 @@ using Godot;
 namespace AidynRetold.Editor;
 
 /// <summary>
-/// A section of an inspector that folds: its title, with a count or note after it, over its content. Clicking the title folds it.
+/// A card that folds, as the inspector's sections and a record's page are made of: its title, with a count or note after it, in the
+/// card's head over a line, and its content in the card's body, both padded as the theme's cards are (<c>Card</c>, <c>CardHead</c>,
+/// <c>CardBody</c>). Clicking the title folds it to its head.
 /// </summary>
-public partial class Section : VBoxContainer
+public partial class Section : PanelContainer
 {
-    private readonly Button _title = new() { ThemeTypeVariation = "SectionTitle", Alignment = HorizontalAlignment.Left, ToggleMode = true, ButtonPressed = true };
-    private readonly Label _note = EditorStyle.DimLabel(size: 13);
+    private readonly Button _title = new()
+    {
+        ThemeTypeVariation = "SectionTitle", Alignment = HorizontalAlignment.Left, ToggleMode = true, ButtonPressed = true, FocusMode = FocusModeEnum.None,
+        SizeFlagsHorizontal = SizeFlags.ExpandFill,
+    };
+    private readonly Label _note = EditorStyle.DimLabel();
+    private readonly PanelContainer _head = new() { ThemeTypeVariation = "CardHead" };
+    private readonly PanelContainer _body = new() { ThemeTypeVariation = "CardBody" };
     private readonly string _name;
 
-    public Section(string name, Control content)
+    /// <param name="foldable">Whether the title folds it; a page's card that's always open says no.</param>
+    public Section(string name, Control content, bool foldable = true)
     {
         _name = name;
         Content = content;
-        AddThemeConstantOverride("separation", 4);
-        var head = EditorStyle.Row(6);
-        _title.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        ThemeTypeVariation = "Card";
+        var column = new VBoxContainer();
+        column.AddThemeConstantOverride("separation", 0);
+        var head = EditorStyle.Row(8);
+        _title.Disabled = !foldable;
         head.AddChild(_title);
         head.AddChild(_note);
-        AddChild(head);
-        var margin = new MarginContainer();
-        margin.AddThemeConstantOverride("margin_left", 10);
-        margin.AddChild(content);
-        AddChild(margin);
-        AddChild(new HSeparator());
+        _head.AddChild(head);
+        column.AddChild(_head);
+        _body.AddChild(content);
+        column.AddChild(_body);
+        AddChild(column);
         _title.Toggled += open =>
         {
-            margin.Visible = open;
+            _body.Visible = open;
+            _head.ThemeTypeVariation = open ? "CardHead" : "CardHeadFolded";
             UpdateTitle();
             Toggled?.Invoke(open);
         };
+        _foldable = foldable;
         UpdateTitle();
     }
+
+    private readonly bool _foldable;
 
     public Control Content { get; }
 
@@ -56,5 +70,5 @@ public partial class Section : VBoxContainer
         set => _title.ButtonPressed = value;
     }
 
-    private void UpdateTitle() => _title.Text = (_title.ButtonPressed ? "▾ " : "▸ ") + _name;
+    private void UpdateTitle() => _title.Text = !_foldable ? _name : (_title.ButtonPressed ? "▾  " : "▸  ") + _name;
 }

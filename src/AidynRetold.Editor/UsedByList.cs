@@ -1,0 +1,43 @@
+using AidynRetold.Plugins;
+using Godot;
+
+namespace AidynRetold.Editor;
+
+/// <summary>What names a record, as a card on a one-page record shows it: a table of the records, double-clicked to open one.</summary>
+public static class UsedByList
+{
+    /// <summary>The records naming it, one row each, with their summaries; a line saying so when nothing does.</summary>
+    public static Control Create(PluginCatalog catalog, IReadOnlyList<RecordReference> references, Action<RecordId> open)
+    {
+        var groups = references.GroupBy(r => r.From).ToList();
+        if (groups.Count == 0)
+            return EditorStyle.DimLabel("Nothing names it.");
+        var tree = new Tree
+        {
+            Columns = 2, HideRoot = true, ColumnTitlesVisible = true, SelectMode = Tree.SelectModeEnum.Row,
+            CustomMinimumSize = new Vector2(0, Math.Min(44 + groups.Count * 30, 320)),
+        };
+        tree.SetColumnTitle(0, "RECORD");
+        tree.SetColumnTitle(1, "SUMMARY");
+        tree.SetColumnExpand(0, false);
+        tree.SetColumnCustomMinimumWidth(0, 190);
+        tree.SetColumnClipContent(1, true);
+        var root = tree.CreateItem();
+        foreach (var group in groups)
+        {
+            var row = tree.CreateItem(root);
+            var id = group.Key;
+            row.SetText(0, id.Namespace == RecordId.RomNamespace ? $"{id.Type}/{id.Key}" : id.ToString());
+            var paths = group.Select(r => r.Path).ToList();
+            row.SetTooltipText(0, $"{id}, by {(paths.Count <= 6 ? string.Join(", ", paths) : $"{string.Join(", ", paths.Take(6))} and {paths.Count - 6} more")}");
+            row.SetText(1, catalog.Find(id)?.Summary ?? "");
+            row.SetMetadata(0, id.ToString());
+        }
+        tree.ItemActivated += () =>
+        {
+            if (tree.GetSelected()?.GetMetadata(0).AsString() is { } text && RecordId.TryParse(text, out var id))
+                open(id);
+        };
+        return tree;
+    }
+}

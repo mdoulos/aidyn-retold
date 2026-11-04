@@ -51,6 +51,29 @@ public sealed class ModFolderTests
         Assert.Equal(before, File.ReadAllText(Path.Combine(mod.Directory, "records", "maps", "Overworld.json")));
     }
 
+    /// <summary>
+    /// A tool reads back what it wrote, to change one field of a patch without losing the others, and finds where a plugin defines one
+    /// of its own records, to change it in place.
+    /// </summary>
+    [Fact]
+    public void Reads_a_patch_back_and_finds_where_a_record_is_defined()
+    {
+        using var data = new TempPlugins();
+        Directory.CreateDirectory(data.Root);
+        var mod = ModFolder.OpenOrCreate(data.Root, "my_village");
+        var armor = RecordId.Parse("aidyn:armor/0x0500");
+        mod.WriteRecord("armor.json", new System.Text.Json.Nodes.JsonObject { ["patch"] = armor.ToString(), ["price"] = 12 });
+        mod.WriteRecord("people/armor.json", new System.Text.Json.Nodes.JsonObject { ["id"] = "my_village:armor/0x0001", ["name"] = "Hide" });
+
+        var patch = mod.Record("armor.json", armor)!;
+        Assert.Equal(12, (int)patch["price"]!);
+        Assert.Null(mod.Record("armor.json", RecordId.Parse("aidyn:armor/0x0501")));
+        Assert.Null(mod.Record("missing.json", armor));
+        Assert.Equal("people/armor.json", mod.FileDefining(RecordId.Parse("my_village:armor/0x0001")));
+        // A patch isn't a definition.
+        Assert.Null(mod.FileDefining(armor));
+    }
+
     /// <summary>A tool writing to the ACRE plugin's ID writes into the ACRE plugin, never a mod of its ID (ADR 0045).</summary>
     [Fact]
     public void Opens_the_acre_plugin_where_it_is()

@@ -45,7 +45,7 @@ public partial class ActorPanel : VBoxContainer
         _states.HideRoot = true;
         _states.ColumnTitlesVisible = true;
         _states.SelectMode = Tree.SelectModeEnum.Row;
-        string[] titles = ["State", "Animation", "Ticks", "Branches (request, chance → state; orange interrupts)"];
+        string[] titles = ["STATE", "ANIMATION", "TICKS", "BRANCHES (REQUEST, CHANCE → STATE; ORANGE INTERRUPTS)"];
         for (var c = 0; c < titles.Length; c++)
             _states.SetColumnTitle(c, titles[c]);
         for (var c = 0; c < 3; c++)

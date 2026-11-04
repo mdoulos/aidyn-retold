@@ -26,7 +26,6 @@ public partial class ModelView : VBoxContainer
     private readonly Timeline _time = new() { TooltipText = "Scrub by the tick (comma and full stop step)" };
     private readonly Label _tick = new() { CustomMinimumSize = new Vector2(150, 0) };
     private readonly HBoxContainer _legend = EditorStyle.Row(10);
-    private readonly VSeparator _actorSeparator = new() { Visible = false };
     private readonly HSplitContainer _body = new() { SizeFlagsVertical = SizeFlags.ExpandFill };
     private readonly ScrollContainer _inspectorScroll = new()
     {
@@ -68,24 +67,22 @@ public partial class ModelView : VBoxContainer
         // Wireframes are drawn only for meshes made after this.
         RenderingServer.SetDebugGenerateWireframes(true);
 
-        // One toolbar: playing the animation, driving an actor, and what the view shows.
-        AddThemeConstantOverride("separation", 4);
+        // The left column: over the view, driving an actor and what the view shows; the view, framed; under it, playing the clip,
+        // then one row of the states' Table and Graph and the timeline, then the actor's states. The inspector beside it all, the
+        // page's height.
+        AddThemeConstantOverride("separation", 0);
+        var left = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        left.AddThemeConstantOverride("separation", 8);
         var bar = EditorStyle.Row(6);
-        bar.AddChild(_play);
-        bar.AddChild(_animations);
-        bar.AddChild(_tick);
-        bar.AddChild(EditorStyle.Spacer());
-        bar.AddChild(_actorSeparator);
         _actorPanel.Bar.Visible = false;
         bar.AddChild(_actorPanel.Bar);
-        bar.AddChild(new VSeparator());
+        bar.AddChild(EditorStyle.Spacer());
         bar.AddChild(_emitters);
         bar.AddChild(_sceneCamera);
         bar.AddChild(_wireframe);
-        AddChild(bar);
+        left.AddChild(bar);
 
-        // The view, with the actor's states under it, and the inspector beside them.
-        var split = new VSplitContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var split = new VSplitContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
         _container.GuiInput += OnViewInput;
         _container.AddChild(_viewport);
         _frame.AddChild(_container);
@@ -93,11 +90,18 @@ public partial class ModelView : VBoxContainer
 
         _frame.AddChild(_note);
         _frame.Resized += Layout;
-        split.AddChild(_frame);
-        // Under the view: one row of the states' Table and Graph, the timeline and its legend, then the actor's states, which take
-        // the rest of the height the split gives.
+        var framed = new PanelContainer { ThemeTypeVariation = "Frame", SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
+        framed.AddChild(_frame);
+        split.AddChild(framed);
+        // Under the view: playing the clip, then one row of the states' Table and Graph, the timeline and its legend, then the actor's
+        // states, which take the rest of the height the split gives.
         var under = new VBoxContainer();
-        under.AddThemeConstantOverride("separation", 4);
+        under.AddThemeConstantOverride("separation", 8);
+        var playing = EditorStyle.Row(6);
+        playing.AddChild(_play);
+        playing.AddChild(_animations);
+        playing.AddChild(_tick);
+        under.AddChild(playing);
         var row = EditorStyle.Row(8);
         _actorPanel.ViewButtons.Visible = false;
         row.AddChild(_actorPanel.ViewButtons);
@@ -115,12 +119,13 @@ public partial class ModelView : VBoxContainer
         under.AddChild(row);
         under.AddChild(_actorPanel);
         split.AddChild(under);
-        _body.AddChild(split);
-        Inspector.AddThemeConstantOverride("separation", 6);
+        left.AddChild(split);
+        _body.AddChild(left);
+        Inspector.AddThemeConstantOverride("separation", 16);
         Inspector.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        var inset = new MarginContainer();
-        inset.AddThemeConstantOverride("margin_left", 8);
-        inset.AddThemeConstantOverride("margin_right", 8);
+        // The inspector takes the width its side of the split is given, however wide that's dragged.
+        var inset = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
+        inset.AddThemeConstantOverride("margin_right", 6);
         inset.AddChild(Inspector);
         _inspectorScroll.AddChild(inset);
         _body.AddChild(_inspectorScroll);
@@ -242,7 +247,7 @@ public partial class ModelView : VBoxContainer
         _markedState = -1;
         Marks = null;
         _emitters.Visible = _sceneCamera.Visible = false;
-        _actorPanel.Visible = _actorPanel.Bar.Visible = _actorPanel.ViewButtons.Visible = _actorSeparator.Visible = false;
+        _actorPanel.Visible = _actorPanel.Bar.Visible = _actorPanel.ViewButtons.Visible = false;
         _note.Text = "";
     }
 
@@ -322,7 +327,7 @@ public partial class ModelView : VBoxContainer
             _motion = Vector3.Zero;
             var clips = file.Clips(actor.RootTransform);
             _actorPanel.Show(actor, n => clips.Clip(actor.States[n].Animation)?.Length ?? 0);
-            _actorPanel.Visible = _actorPanel.Bar.Visible = _actorPanel.ViewButtons.Visible = _actorSeparator.Visible = true;
+            _actorPanel.Visible = _actorPanel.Bar.Visible = _actorPanel.ViewButtons.Visible = true;
             _ground = Ground(radius);
             _viewport.AddChild(_ground);
             ShowFrame();

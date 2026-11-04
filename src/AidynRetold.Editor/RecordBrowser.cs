@@ -312,7 +312,7 @@ public partial class RecordBrowser : Control
         _list.HideRoot = true;
         _list.ColumnTitlesVisible = true;
         _list.SelectMode = Tree.SelectModeEnum.Row;
-        string[] titles = ["Record", "Borg", "Summary"];
+        string[] titles = ["RECORD", "BORG", "SUMMARY"];
         for (var c = 0; c < titles.Length; c++)
         {
             _list.SetColumnTitle(c, titles[c]);
@@ -358,7 +358,7 @@ public partial class RecordBrowser : Control
         _usedBy.HideRoot = true;
         _usedBy.ColumnTitlesVisible = true;
         _usedBy.SelectMode = Tree.SelectModeEnum.Row;
-        string[] usedByTitles = ["Record", "Fields", "Summary"];
+        string[] usedByTitles = ["RECORD", "FIELDS", "SUMMARY"];
         for (var c = 0; c < usedByTitles.Length; c++)
         {
             _usedBy.SetColumnTitle(c, usedByTitles[c]);
@@ -569,6 +569,11 @@ public partial class RecordBrowser : Control
             return;
         _current = id;
         _header.Visible = true;
+        // An actor's, a model's and an armor's page is one page: what the tabs would hold is in its cards, so it has no tabs.
+        var onePage = OnePage(id);
+        _header.Tabs.Visible = !onePage;
+        if (onePage)
+            _tabs.CurrentTab = 0;
         var plugins = catalog.Plugins;
         var entry = catalog.Find(id);
         var voxel = id.Type == RecordTypes.Voxel;
@@ -614,9 +619,19 @@ public partial class RecordBrowser : Control
                     : _original && _originalPlugins?.TryGet<ActorRecord>(id) is { } originalActor ? originalActor : plugins.TryGet<ActorRecord>(id);
                 var model = actor?.Scene ?? (id.Type == RecordTypes.Scene ? id : (RecordId?)null);
                 _model.Show(glb, animation.Length > 0 ? animation : null, note.Length > 0 ? note : null, actor, model);
-                ShowInspector(catalog, id, actor);
+                ShowInspector(catalog, id, actor, plugins.GetJson(id), references);
                 break;
         }
+    }
+
+    /// <summary>Whether a record's page is one page, with what the tabs would hold in its cards: an actor's, a model's, an armor's.</summary>
+    private static bool OnePage(RecordId id) => id.Type is RecordTypes.Actor or RecordTypes.Scene or RecordTypes.Armor;
+
+    /// <summary>Loads the plugins again, then opens the record afresh: after a save, or its undoing.</summary>
+    private async Task ReloadAt(RecordId id)
+    {
+        await LoadAsync(_pluginsDirectory);
+        await OpenAsync(id);
     }
 
     /// <summary>
@@ -711,6 +726,8 @@ public partial class RecordBrowser : Control
             return new CharacterPanel(catalog, _game, entity, rules, _items, FollowLink);
         if (_items is { } items)
         {
+            if (id.Type == RecordTypes.Armor && items.TryGet(id) is { } armorItem && plugins.TryGet<ArmorRecord>(id) is { } armor && json is not null)
+                return new ArmorPage(catalog, _game, _rules, items, armorItem, armor, json, catalog.ReferencesTo(id), FollowLink, () => ReloadAt(id));
             if (id.Type is RecordTypes.Weapon or RecordTypes.Armor or RecordTypes.Item && items.TryGet(id) is { } item)
                 return new ItemPanel(catalog, _game, _rules, items, item, FollowLink);
             if (id.Type == RecordTypes.Shop && plugins.TryGet<ShopRecord>(id) is { } shop)
@@ -763,11 +780,17 @@ public partial class RecordBrowser : Control
         return fields;
     }
 
+    /// <summary>The armor's page, if one is showing, for scripts.</summary>
+    public ArmorPage? Armor => _preview.GetChildren().OfType<ArmorPage>().FirstOrDefault();
+
     /// <summary>The model page's inspector, if a model's page is showing.</summary>
     public ModelInspector? Inspector => _model.Inspector.GetChildren().OfType<ModelInspector>().FirstOrDefault();
 
-    /// <summary>The model view's inspector, for an actor's or a scene's model; none for a map's collision or anything else.</summary>
-    private void ShowInspector(PluginCatalog catalog, RecordId id, ActorRecord? actor)
+    /// <summary>
+    /// The model view's inspector, for an actor's or a scene's model, with the record's fields and what names it as its last cards;
+    /// none for a map's collision or anything else.
+    /// </summary>
+    private void ShowInspector(PluginCatalog catalog, RecordId id, ActorRecord? actor, JsonObject? json, IReadOnlyList<RecordReference> references)
     {
         foreach (var child in _model.Inspector.GetChildren())
         {
@@ -777,7 +800,7 @@ public partial class RecordBrowser : Control
         _model.InspectorVisible = id.Type is RecordTypes.Actor or RecordTypes.Scene;
         if (!_model.InspectorVisible)
             return;
-        _model.Inspector.AddChild(new ModelInspector(new ModelContext
+        var inspector = new ModelInspector(new ModelContext
         {
             Catalog = catalog, View = _model, Scene = actor?.Scene ?? id, ActorId = actor is null ? null : id, Open = FollowLink, Models = _models,
             Original = _original,
@@ -786,13 +809,20 @@ public partial class RecordBrowser : Control
                 _original = original;
                 _showing = Report(ShowAsync(id));
             },
-            Reload = async () =>
-            {
-                await LoadAsync(_pluginsDirectory);
-                await OpenAsync(id);
-            },
+            Reload = () => ReloadAt(id),
             Usage = () => _usage ??= Task.Run(() => AidynRetold.Plugins.Assets.TextureUsage.Build(catalog.Plugins)),
-        }));
+        });
+        _model.Inspector.AddChild(inspector);
+        if (json is not null)
+        {
+            var fields = new RecordFieldsView { CustomMinimumSize = new Vector2(0, 320) };
+            fields.Show(json, field => catalog.Plugins.Setters(id, field), other => catalog.Find(other) is not null || other.Type == RecordTypes.Voxel,
+                other => catalog.Find(other)?.Summary);
+            fields.Opened += FollowLink;
+            inspector.AddSection("Fields", fields, $"{json.Count - 1} fields");
+        }
+        var usedBy = references.Select(r => r.From).Distinct().Count();
+        inspector.AddSection("Used by", UsedByList.Create(catalog, references, FollowLink), usedBy == 0 ? "" : $"{usedBy:N0} {(usedBy == 1 ? "record" : "records")}");
     }
 
     /// <summary>The ROM plugin alone, for the original of a record a later plugin patches, loaded once when first asked.</summary>

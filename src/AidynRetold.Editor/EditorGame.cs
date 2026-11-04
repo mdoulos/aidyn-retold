@@ -110,6 +110,29 @@ public sealed class EditorGame
         Check = game.Problems.Count == 0 ? null : $"Loading it couldn't use: {string.Join(" ", game.Problems)}";
     }
 
+    /// <summary>
+    /// Takes over the game another set of plugins held, as it stands, so a save in the editor and its plugins' reload keep the
+    /// checkpoint or the save it showed, and what was played or set on it: false, leaving a new game, where these plugins can't load it.
+    /// An untouched new game stays this one's own.
+    /// </summary>
+    public bool Carry(EditorGame from)
+    {
+        if (from.IsNewGame && from.Name == "a new game")
+            return true;
+        try
+        {
+            var game = GameState.Load(_plugins, from.Game.Save());
+            Start(game, from.Name, from.IsNewGame);
+            (Console, Check) = (from.Console, from.Check);
+            _loadedParty = from._loadedParty;
+            return true;
+        }
+        catch (Exception e) when (e is InvalidDataException or KeyNotFoundException or InvalidOperationException or ArgumentException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>Saves the game as it stands, flags, party and all, where the save it came from stood.</summary>
     public void Save(string path)
     {

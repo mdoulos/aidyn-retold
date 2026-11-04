@@ -35,7 +35,8 @@ public partial class ArmorPage : ItemEditPage
 
     protected override RecordId? RecordModel => _armor.Model;
 
-    protected override string CardTitle => _armor.Slot == ArmorSlot.Shield ? "Shield" : "Armor";
+    /// <summary>Shield or Armor, following the slot as it's changed.</summary>
+    protected override string CardTitle => IsShield ? "Shield" : "Armor";
 
     protected override string RecordsFile => "armor.json";
 

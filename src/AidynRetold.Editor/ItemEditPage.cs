@@ -36,8 +36,10 @@ public abstract partial class ItemEditPage : HSplitContainer
     private readonly Button _save = new() { Text = "Save", ThemeTypeVariation = "PrimaryButton", Disabled = true, TooltipText = "Save the changes to your mod" };
     private TextureRect? _picture;
     private Label? _pictureId;
-    // A picture from a file, which saving writes as the mod's own image and points the record at.
+    // A picture from a file, which saving writes as the mod's own image and points the record at, and what the page says of it.
     private byte[]? _png;
+    private string? _pngText;
+    private Label? _title;
     // What the panel beside the cards needs, to build it again as the model, or what decides whether there's one, changes.
     private readonly AidynRetold.Views.Models? _models;
     private readonly Action<RecordId> _open;
@@ -51,6 +53,39 @@ public abstract partial class ItemEditPage : HSplitContainer
         Func<Task<TextureUsage>> usage)
     {
         (Catalog, Item, _open, _reload, _models, _usage) = (catalog, item, open, reload, models, usage);
+    }
+
+    /// <summary>The changes a page holds, to carry over to the next page of the same record: its values, and a picture from a file.</summary>
+    public sealed record Held(IReadOnlyDictionary<string, JsonNode?> Changes, byte[]? Png, string? PngText);
+
+    /// <summary>The record the page edits.</summary>
+    public RecordId Record => Id;
+
+    /// <summary>Its name as the page has it now, changed or not.</summary>
+    public string ItemName => Text(Shown("name", RecordName)) is { Length: > 0 } name ? name : RecordName;
+
+    /// <summary>Whether the page holds changes not saved yet, and how many.</summary>
+    public bool HasChanges => _changes.Count > 0;
+
+    public int ChangeCount => _changes.Count;
+
+    /// <summary>The changes held, to carry over (<see cref="Restore"/>).</summary>
+    public Held Hold() => new(_changes.ToDictionary(c => c.Key, c => c.Value?.DeepClone()), _png, _pngText);
+
+    /// <summary>Holds another page's changes as this one's, as if typed again, but those the record now has anyway.</summary>
+    public void Restore(Held held)
+    {
+        var json = Catalog.Plugins.GetJson(Id);
+        _changes.Clear();
+        foreach (var (field, value) in held.Changes)
+        {
+            if (!JsonNode.DeepEquals(value, json?[field]))
+                _changes[field] = value?.DeepClone();
+        }
+        (_png, _pngText) = _changes.ContainsKey("icon") ? (held.Png, held.PngText) : (null, null);
+        _title?.Text = CardTitle;
+        BuildRows();
+        UpdateSide();
     }
 
     // ---- What a page says of its record ------------------------------------------------------------------------------------------
@@ -126,6 +161,12 @@ public abstract partial class ItemEditPage : HSplitContainer
 
     /// <summary>A value as it reads now: the change held for it, or the record's.</summary>
     protected bool TryChanged(string field, out JsonNode? value) => _changes.TryGetValue(field, out value);
+
+    /// <summary>A value as a row shows it: the change held for it, else the record's own.</summary>
+    private JsonNode? Shown(string field, JsonNode? value) => _changes.TryGetValue(field, out var held) ? held : value;
+
+    /// <summary>A value's text, or null where it's none or not text.</summary>
+    private static string? Text(JsonNode? node) => node is JsonValue v && v.TryGetValue(out string? text) ? text : null;
 
     /// <summary>The model as it reads now, changed or not; none where it has none.</summary>
     protected RecordId? CurrentModel => _changes.TryGetValue("model", out var model)
@@ -366,7 +407,8 @@ public abstract partial class ItemEditPage : HSplitContainer
         column.AddThemeConstantOverride("separation", 0);
         var head = new PanelContainer { ThemeTypeVariation = "CardHead" };
         var row = EditorStyle.Row(8);
-        row.AddChild(new Label { Text = CardTitle, ThemeTypeVariation = "CardTitleLabel", SizeFlagsHorizontal = SizeFlags.ExpandFill });
+        _title = new Label { Text = CardTitle, ThemeTypeVariation = "CardTitleLabel", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        row.AddChild(_title);
         row.AddChild(_count);
         row.AddChild(_discard);
         row.AddChild(_save);
@@ -390,8 +432,8 @@ public abstract partial class ItemEditPage : HSplitContainer
         }
         _modelRow = null;
         _modelName = null;
-        AddRow("Picture", PictureField(), "Drawn wherever the game shows it: the inventory, a shop, the silhouette's slot. A larger picture is drawn into the original's size.");
-        var name = new LineEdit { Text = RecordName, CustomMinimumSize = new Vector2(300, 0), SizeFlagsHorizontal = SizeFlags.ShrinkBegin };
+        AddRow("Picture", PictureField(), "Drawn wherever the game shows it: the inventory, a shop, the silhouette's slot. A PNG from a file is fitted to the original's size, as the game lays a picture out at its own.");
+        var name = new LineEdit { Text = ItemName, CustomMinimumSize = new Vector2(300, 0), SizeFlagsHorizontal = SizeFlags.ShrinkBegin };
         name.TextChanged += text => Change("name", text, RecordName);
         AddRow("Name", name, "What the menus, the shops and the conversations call it.");
         AddValueRows();
@@ -448,10 +490,12 @@ public abstract partial class ItemEditPage : HSplitContainer
     /// <summary>A whole number in a spin box, from <paramref name="min"/> to <paramref name="max"/>, held as <paramref name="field"/>.</summary>
     protected SpinBox Number(string field, int value, int min, int max, string suffix = "")
     {
+        // A number typed counts as it's typed, so Save is there without Enter first.
         var spin = new SpinBox
         {
-            MinValue = min, MaxValue = max, Step = 1, Rounded = true, Value = value, Suffix = suffix.Trim(),
+            MinValue = min, MaxValue = max, Step = 1, Rounded = true, Suffix = suffix.Trim(), UpdateOnTextChanged = true,
             CustomMinimumSize = new Vector2(150, 0), SizeFlagsHorizontal = SizeFlags.ShrinkBegin, SelectAllOnFocus = true,
+            Value = Shown(field, value) is JsonValue held && held.TryGetValue(out int n) ? n : value,
         };
         spin.ValueChanged += v => Change(field, (int)v, value);
         return spin;
@@ -464,7 +508,8 @@ public abstract partial class ItemEditPage : HSplitContainer
         var list = values.ToList();
         foreach (var v in list)
             choice.AddItem(label?.Invoke(v) ?? Words(v.ToString()));
-        choice.Select(Math.Max(list.IndexOf(value), 0));
+        var shown = Text(Shown(field, value.ToString())) is { } name && Enum.TryParse<TEnum>(name, out var held) ? held : value;
+        choice.Select(Math.Max(list.IndexOf(shown), 0));
         choice.ItemSelected += i => Change(field, list[(int)i].ToString(), value.ToString());
         return choice;
     }
@@ -472,7 +517,8 @@ public abstract partial class ItemEditPage : HSplitContainer
     /// <summary>On or off, held as <paramref name="field"/>.</summary>
     protected CheckBox Switch(string field, bool value, string text)
     {
-        var box = new CheckBox { Text = text, ButtonPressed = value, SizeFlagsHorizontal = SizeFlags.ShrinkBegin };
+        var shown = Shown(field, value) is JsonValue held && held.TryGetValue(out bool on) ? on : value;
+        var box = new CheckBox { Text = text, ButtonPressed = shown, SizeFlagsHorizontal = SizeFlags.ShrinkBegin };
         box.Toggled += on => Change(field, on, value);
         return box;
     }
@@ -482,7 +528,7 @@ public abstract partial class ItemEditPage : HSplitContainer
     {
         var edit = new TextEdit
         {
-            Text = value ?? "", WrapMode = TextEdit.LineWrappingMode.Boundary, CustomMinimumSize = new Vector2(300, 96),
+            Text = _changes.ContainsKey(field) ? Text(_changes[field]) ?? "" : value ?? "", WrapMode = TextEdit.LineWrappingMode.Boundary, CustomMinimumSize = new Vector2(300, 96),
             SizeFlagsHorizontal = SizeFlags.ExpandFill, ScrollFitContentHeight = true,
         };
         edit.TextChanged += () => Change(field, edit.Text.Length == 0 ? null : edit.Text, value);
@@ -619,7 +665,14 @@ public abstract partial class ItemEditPage : HSplitContainer
         _pictureId = EditorStyle.DimLabel();
         side.AddChild(_pictureId);
         row.AddChild(side);
-        ShowPicture(Texture(Icon), Icon.ToString());
+        // The picture held, if there's one: a file's, or another of the game's.
+        var held = Text(Shown("icon", null));
+        if (held is not null && held.StartsWith("file:", StringComparison.Ordinal) && _png is not null && FromPng(_png) is { } file)
+            ShowPicture(file, _pngText ?? held[5..]);
+        else if (held is not null && RecordId.TryParse(held, out var picked))
+            ShowPicture(Texture(picked), picked.ToString());
+        else
+            ShowPicture(Texture(Icon), Icon.ToString());
         return row;
     }
 
@@ -632,6 +685,13 @@ public abstract partial class ItemEditPage : HSplitContainer
             _picture.TextureFilter = texture is not null && texture.GetWidth() <= 32 ? TextureFilterEnum.Nearest : TextureFilterEnum.LinearWithMipmaps;
         }
         _pictureId?.Text = what;
+    }
+
+    /// <summary>A PNG's bytes as a texture, mipmapped, or null if it can't be read.</summary>
+    private static Texture2D? FromPng(byte[] png)
+    {
+        var image = new Image();
+        return image.LoadPngFromBuffer(png) == Error.Ok ? ImageTexture.CreateFromImage(Png.Mipmapped(image)) : null;
     }
 
     /// <summary>An image record's PNG as a texture, mipmapped, or null if no plugin has it.</summary>
@@ -699,14 +759,19 @@ public abstract partial class ItemEditPage : HSplitContainer
         };
         files.FileSelected += path =>
         {
-            var bytes = File.ReadAllBytes(path);
             if (Png.Load(path) is not { } image)
             {
                 EditorDialog.Tell(this, "That isn't a picture the editor can read", $"{path} isn't a PNG Godot can read.");
                 return;
             }
-            _png = bytes;
-            ShowPicture(ImageTexture.CreateFromImage(Png.Mipmapped(image)), $"{Path.GetFileName(path)}, {image.GetWidth()}×{image.GetHeight()}, saved into your mod");
+            // The game lays a picture out at its own size, and a mod's own has no original to be drawn into, so it's fitted to the
+            // original's as it's saved.
+            var (width, height) = Catalog.Plugins.ImageSize(Icon);
+            var fitted = Fitted(image, width, height);
+            var size = fitted == image ? $"{image.GetWidth()}×{image.GetHeight()}" : $"{image.GetWidth()}×{image.GetHeight()} fitted to {width}×{height}";
+            _png = fitted.SavePngToBuffer();
+            _pngText = $"{Path.GetFileName(path)}, {size}, saved into your mod";
+            ShowPicture(FromPng(_png), _pngText);
             Change("icon", "file:" + path, Icon.ToString());
         };
         files.VisibilityChanged += () =>
@@ -716,6 +781,24 @@ public abstract partial class ItemEditPage : HSplitContainer
         };
         GetTree().Root.AddChild(files);
         files.PopupCentered(new Vector2I(800, 500));
+    }
+
+    /// <summary>
+    /// A picture at <paramref name="width"/> × <paramref name="height"/>: scaled to fit, its shape kept, and centred, clear round it;
+    /// itself where it's that size already, or there's no size to fit.
+    /// </summary>
+    private static Image Fitted(Image image, int width, int height)
+    {
+        if (width <= 0 || height <= 0 || (image.GetWidth() == width && image.GetHeight() == height))
+            return image;
+        var scale = Math.Min((float)width / image.GetWidth(), (float)height / image.GetHeight());
+        var (w, h) = (Math.Max(1, (int)MathF.Round(image.GetWidth() * scale)), Math.Max(1, (int)MathF.Round(image.GetHeight() * scale)));
+        var copy = (Image)image.Duplicate();
+        copy.Convert(Image.Format.Rgba8);
+        copy.Resize(w, h, Image.Interpolation.Lanczos);
+        var canvas = Image.CreateEmpty(width, height, false, Image.Format.Rgba8);
+        canvas.BlitRect(copy, new Rect2I(0, 0, w, h), new Vector2I((width - w) / 2, (height - h) / 2));
+        return canvas;
     }
 
     // ---- Changes -----------------------------------------------------------------------------------------------------------------
@@ -728,6 +811,7 @@ public abstract partial class ItemEditPage : HSplitContainer
         else
             _changes[field] = value;
         UpdateCount();
+        _title?.Text = CardTitle;
         if (field == "model" || ChangesModelPanel(field))
             UpdateSide();
     }
@@ -742,12 +826,16 @@ public abstract partial class ItemEditPage : HSplitContainer
         _discard.Disabled = _save.Disabled = n == 0;
     }
 
-    /// <summary>Holds new values as if typed into the rows, for scripts (<c>--item-change</c>): a number as a number, else text.</summary>
+    /// <summary>
+    /// Holds new values as if typed into the rows, for scripts (<c>--item-change</c>): a number as a number, true and false as a
+    /// switch's, else text. The rows show them.
+    /// </summary>
     public void ChangeFor(IEnumerable<(string Field, string Value)> pairs)
     {
         var json = Catalog.Plugins.GetJson(Id);
         foreach (var (field, value) in pairs)
-            Change(field, int.TryParse(value, out var n) ? n : value, json?[field]?.DeepClone());
+            Change(field, int.TryParse(value, out var n) ? n : bool.TryParse(value, out var on) ? on : value, json?[field]?.DeepClone());
+        BuildRows();
     }
 
     /// <summary>Saves what's held, as Save does (<c>--item-save 1</c>).</summary>
@@ -760,7 +848,8 @@ public abstract partial class ItemEditPage : HSplitContainer
     private void Discard()
     {
         _changes.Clear();
-        _png = null;
+        (_png, _pngText) = (null, null);
+        _title?.Text = CardTitle;
         BuildRows();
         UpdateSide();
     }
@@ -789,6 +878,10 @@ public abstract partial class ItemEditPage : HSplitContainer
             foreach (var (field, value) in changes)
                 record[field] = value?.DeepClone();
             folder.WriteRecord(file, record);
+            // Saved: nothing's held any more, so the reload after doesn't carry it over.
+            _changes.Clear();
+            (_png, _pngText) = (null, null);
+            UpdateCount();
         }, _reload);
     }
 }

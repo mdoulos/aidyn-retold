@@ -75,6 +75,9 @@ public partial class RecordBrowser : Control
     private bool _selecting;
     private int _generation;
     private Task _showing = Task.CompletedTask;
+    // An edit page's held changes, carried over when its own record's page is built again: after the plugins reload for a texture or
+    // a model it replaced, or when the mode changes.
+    private (RecordId Id, ItemEditPage.Held Held)? _carry;
 
     // A model's page can show the original a plugin replaces, from the ROM plugin alone, loaded when first asked; and the index of
     // which models use which textures, built when first asked. Both go with the plugins.
@@ -129,6 +132,9 @@ public partial class RecordBrowser : Control
     public async Task LoadAsync(string pluginsDirectory)
     {
         _pluginsDirectory = pluginsDirectory;
+        // The type listed and the game shown stay through a reload, as after a save.
+        var listed = _types.GetSelectedId() is > 0 and var t && t <= _typeNames.Count ? _typeNames[t - 1] : null;
+        var oldGame = _game;
         _catalog = null;
         (_original, _originalPlugins, _usage) = (false, null, null);
         _map.Clear();
@@ -152,7 +158,7 @@ public partial class RecordBrowser : Control
 
         ShowLoading();
         var generation = ++_generation;
-        var (catalog, quests, game, rules, items, report) = await Task.Run(() =>
+        var loading = Task.Run(() =>
         {
             var plugins = PluginSet.LoadInstalled(pluginsDirectory, DataPaths.AcrePlugin);
             // The game refuses a set with a record it can't read; the editor shows the report and loads anyway, to fix it by.
@@ -160,8 +166,20 @@ public partial class RecordBrowser : Control
             return (PluginCatalog.Build(plugins), Partly(() => QuestIndex.Build(plugins), "No quest index"), Partly(() => new EditorGame(plugins), "No game"),
                 Partly(() => EditorCharacters.Rules(plugins), "No character rules"), Partly(() => EditorCharacters.Items(plugins), "No items"), report);
         });
+        try
+        {
+            await loading;
+        }
+        catch (Exception e)
+        {
+            // A plugin the set can't be made with: a bad manifest, a patch of a record no plugin has, a dependency loop.
+            if (generation == _generation)
+                ShowFailed(e.Message);
+            return;
+        }
         if (generation != _generation)
             return;
+        var (catalog, quests, game, rules, items, report) = loading.Result;
         // Text is drawn in the typeface, as the runtime's Text Font setting does by default, and the game lays it out by its widths.
         TextFace.Current = TextFace.For(catalog.Plugins);
         game?.TextWidths = TextFace.Current.Widths;
@@ -172,6 +190,8 @@ public partial class RecordBrowser : Control
         _game = game;
         _rules = rules;
         _items = items;
+        if (oldGame is not null && game is not null && !game.Carry(oldGame))
+            _status.Text = $"{char.ToUpperInvariant(oldGame.Name[0])}{oldGame.Name[1..]} couldn't be loaded with these plugins, so pages show a new game.";
 
         _typeNames.Clear();
         _typeNames.AddRange(catalog.Types);
@@ -180,6 +200,8 @@ public partial class RecordBrowser : Control
         var counts = catalog.Entries.GroupBy(e => e.Id.Type).ToDictionary(g => g.Key, g => g.Count());
         for (var i = 0; i < _typeNames.Count; i++)
             _types.AddItem($"{_typeNames[i]} ({counts[_typeNames[i]]:N0})", i + 1);
+        if (listed is not null && _typeNames.IndexOf(listed) is >= 0 and var at)
+            _types.Select(_types.GetItemIndex(at + 1));
         Populate();
         ShowStart(catalog, report.IsClean ? null : report.Describe(limit: 12));
     }
@@ -308,9 +330,13 @@ public partial class RecordBrowser : Control
         light.Toggled += on =>
         {
             EditorTheme.Use(GetWindow(), on);
-            // What a page draws by code, such as a tree's colours and the timeline, is drawn again in the mode's.
+            // What a page draws by code, such as a tree's colours and the timeline, is drawn again in the mode's, the list's too.
             if (_current is { } id)
+            {
+                _carry = HeldFor(id);
                 _showing = Report(ShowAsync(id));
+            }
+            Populate();
         };
         bar.AddChild(light);
         var toolbar = new PanelContainer { ThemeTypeVariation = "Toolbar" };
@@ -395,7 +421,12 @@ public partial class RecordBrowser : Control
         };
         _fields.Opened += FollowLink;
         _map.Opened += FollowLink;
-        _map.Saved += () => _ = Report(LoadAsync(_pluginsDirectory));
+        // A map's save, and its undoing, load the plugins again and show the page as it was, its view kept.
+        _map.Saved += () =>
+        {
+            _map.KeepView();
+            _ = Report(_current is { } id ? ReloadAt(id) : LoadAsync(_pluginsDirectory));
+        };
 
         _back.Pressed += () => Step(-1);
         _forward.Pressed += () => Step(1);
@@ -408,7 +439,8 @@ public partial class RecordBrowser : Control
 
     public override void _Input(InputEvent e)
     {
-        if (!IsVisibleInTree())
+        // A dialog over the page has the keys and the mouse: back and forward under it would change the page it's acting on.
+        if (!IsVisibleInTree() || EditorDialog.IsOpen(this))
             return;
         // Ctrl+F to the search box, Escape there to clear it.
         if (e is InputEventKey { Pressed: true, CtrlPressed: true, Keycode: Key.F })
@@ -524,10 +556,13 @@ public partial class RecordBrowser : Control
     {
         if (_current == id)
             return;
-        _history.RemoveRange(_position + 1, _history.Count - _position - 1);
-        _history.Add(id);
-        _position = _history.Count - 1;
-        Go(id);
+        Leave(() =>
+        {
+            _history.RemoveRange(_position + 1, _history.Count - _position - 1);
+            _history.Add(id);
+            _position = _history.Count - 1;
+            Go(id);
+        });
     }
 
     private void Step(int by)
@@ -535,9 +570,48 @@ public partial class RecordBrowser : Control
         var to = _position + by;
         if (to < 0 || to >= _history.Count)
             return;
-        _position = to;
-        Go(_history[to]);
+        Leave(() =>
+        {
+            _position = to;
+            Go(_history[to]);
+        });
     }
+
+    /// <summary>
+    /// Leaves the page: at once, unless it's an edit page holding changes, which asks first, so they aren't lost without a word.
+    /// Keeping them stays on the page, its row picked again in the list.
+    /// </summary>
+    private void Leave(Action go)
+    {
+        // The page moved on to shows its own problems, not the last one's.
+        void Go()
+        {
+            _status.Text = "";
+            go();
+        }
+        if (EditPage is not { HasChanges: true } page)
+        {
+            Go();
+            return;
+        }
+        void Stay()
+        {
+            if (_current is { } current && _rows.TryGetValue(current, out var row))
+                SelectRow(row);
+            else
+                _list.DeselectAll();
+        }
+        var n = page.ChangeCount;
+        new EditorDialog("Leave without saving?",
+            EditorDialog.Paragraphs($"{n} {(n == 1 ? "change" : "changes")} to {page.Name} {(n == 1 ? "isn't" : "aren't")} saved. Leaving the page loses them."),
+            [
+                new DialogButton("Keep Editing", DialogButtonKind.Cancel, Stay),
+                new DialogButton("Discard Changes", DialogButtonKind.Danger, Go),
+            ]).Open(this);
+    }
+
+    /// <summary>The changes the page holds, if it's an edit page of <paramref name="id"/> holding any, to carry over to its next page.</summary>
+    private (RecordId, ItemEditPage.Held)? HeldFor(RecordId id) => EditPage is { HasChanges: true } page && page.Record == id ? (id, page.Hold()) : null;
 
     private void Go(RecordId id)
     {
@@ -599,6 +673,8 @@ public partial class RecordBrowser : Control
         if (_catalog is not { } catalog)
             return;
         _current = id;
+        var carry = _carry is { } c && c.Id == id ? c.Held : null;
+        _carry = null;
         PlaceHeader(inModel: false);
         _header.Visible = true;
         // An actor's, a model's and an armor's page is one page: what the tabs would hold is in its cards, so it has no tabs.
@@ -631,15 +707,24 @@ public partial class RecordBrowser : Control
             _atlas.Show(catalog, _quests!, id, Explore);
             SetTabTitle(3, _atlas.Count == 0 ? Atlas : $"{Atlas} ({_atlas.Count:N0})");
         }
-        SetPreview(new Label { Text = "Loading…" });
+        // The map stays up while another of its objects or maps opens, keeping the focus its keys need.
+        if (!(MapFocus(plugins, id) is not null && _map.GetParent() == _preview))
+            SetPreview(new Label { Text = "Loading…" });
 
         var preview = await BuildPreviewAsync(catalog, id, entry, json);
         if (_current != id || _catalog != catalog)
+        {
+            // Built for a page that's been left: it never shows, so nothing else frees it.
+            if (preview is Control dropped && dropped != _model && dropped != _map)
+                dropped.QueueFree();
             return;
+        }
         switch (preview)
         {
             case Control control:
                 SetPreview(control);
+                if (control is ItemEditPage page && carry is not null)
+                    page.Restore(carry);
                 break;
             case MapSetView.Focus focus when _models is { } models:
                 SetPreview(_map);
@@ -679,11 +764,43 @@ public partial class RecordBrowser : Control
     /// </summary>
     private static bool OnePage(RecordId id) => id.Type is RecordTypes.Actor or RecordTypes.Scene or RecordTypes.Armor or RecordTypes.Weapon or RecordTypes.Item;
 
-    /// <summary>Loads the plugins again, then opens the record afresh: after a save, or its undoing.</summary>
+    /// <summary>
+    /// Loads the plugins again, then opens the record afresh, the history kept, and an edit page's held changes with it: after a save,
+    /// or its undoing, or a texture or a model replaced from the page.
+    /// </summary>
     private async Task ReloadAt(RecordId id)
     {
+        var carry = HeldFor(id);
+        var (history, position) = (_history.ToList(), _position);
         await LoadAsync(_pluginsDirectory);
-        await OpenAsync(id);
+        if (_catalog is null)
+            return;
+        _carry = carry;
+        _history.AddRange(history);
+        _position = position;
+        if (position >= 0 && position < history.Count && history[position] == id)
+        {
+            Go(id);
+            await _showing;
+        }
+        else
+        {
+            await OpenAsync(id);
+        }
+    }
+
+    /// <summary>The plugins couldn't be loaded: what's wrong, and <b>Load Again</b>, for after it's put right.</summary>
+    private void ShowFailed(string message)
+    {
+        _status.Text = "The plugins couldn't be loaded.";
+        var column = new VBoxContainer();
+        column.AddThemeConstantOverride("separation", 12);
+        column.AddChild(new Label { Text = "The plugins couldn't be loaded", ThemeTypeVariation = "CardTitleLabel" });
+        column.AddChild(Message($"{message}\n\nPut right or take out the plugin it names, then load them again."));
+        var again = new Button { Text = "Load Again", SizeFlagsHorizontal = SizeFlags.ShrinkBegin };
+        again.Pressed += () => _ = Report(LoadAsync(_pluginsDirectory));
+        column.AddChild(again);
+        SetPreview(column);
     }
 
     /// <summary>
@@ -971,6 +1088,9 @@ public partial class RecordBrowser : Control
 
     private void SetPreview(Control content)
     {
+        // What's shown already stays, keeping its focus.
+        if (_preview.GetChildCount() == 1 && _preview.GetChild(0) == content)
+            return;
         foreach (var child in _preview.GetChildren())
         {
             _preview.RemoveChild(child);

@@ -56,8 +56,8 @@ public partial class ItemPage : ItemEditPage
 
     private bool IsWorn => Worn.Contains(_record.Kind);
 
-    /// <summary>Whether the game's details show its description rather than numbers: a potion's, a scroll's, another item's but a key item's.</summary>
-    private bool ShowsDescription => _record.Kind is ItemKind.Potion or ItemKind.Scroll || _record.Kind == ItemKind.Misc && _record.KeyItem is null;
+    /// <summary>Whether the game's details show its description rather than numbers: a potion's, a scroll's or another item's, a key item's too; not a key's.</summary>
+    private bool ShowsDescription => _record.Kind is ItemKind.Potion or ItemKind.Scroll or ItemKind.Misc;
 
     protected override void AddValueRows()
     {
@@ -80,6 +80,6 @@ public partial class ItemPage : ItemEditPage
             AddRow("Strength needed", Number("requiredStrength", r.RequiredStrength, 0, 255), "Wearing it needs at least this base Strength: the details' Min. Strength.");
             AddRow("Intelligence needed", Number("requiredIntelligence", r.RequiredIntelligence, 0, 255), "Wearing it needs at least this base Intelligence: the details' Min. Intelligence.");
         }
-        AddRow("Experience multiplier", Number("expMultiplier", r.ExpMultiplier, 0, 255), "Read into the game's memory with the rest; what reads it isn't known.");
+        AddRow("Experience multiplier", Number("expMultiplier", r.ExpMultiplier, 0, 65535), "Read into the game's memory with the rest; what reads it isn't known.");
     }
 }

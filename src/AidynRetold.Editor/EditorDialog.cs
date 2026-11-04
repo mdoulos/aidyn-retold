@@ -181,6 +181,10 @@ public partial class EditorDialog : Control
 
     public void Close() => QueueFree();
 
+    /// <summary>Whether a dialog is open over <paramref name="near"/>'s window, which then has the keys and the mouse.</summary>
+    public static bool IsOpen(Node near) =>
+        near.GetTree()?.Root.GetChildren().Any(c => c is EditorDialog && !c.IsQueuedForDeletion()) == true;
+
     /// <summary>A message's paragraphs, split at blank lines, wrapping at the box's width.</summary>
     public static IEnumerable<Control> Paragraphs(string message, float width = 432) =>
         message.Split("\n\n").Select(p => (Control)new Label { Text = p, AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(width, 0) });

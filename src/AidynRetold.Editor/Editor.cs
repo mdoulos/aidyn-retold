@@ -47,7 +47,21 @@ public partial class Editor : Control
         N64Material.RspLighting = true;
         _records.SetAnchorsPreset(LayoutPreset.FullRect);
         AddChild(_records);
-        _ = BackgroundTask.Report(StartAsync(CommandLine.Parse(OS.GetCmdlineUserArgs())));
+        _ = BackgroundTask.Report(RunAsync(CommandLine.Parse(OS.GetCmdlineUserArgs())));
+    }
+
+    /// <summary>The run, which for a screenshot ends at once on an option it can't read, such as a mistyped record ID, not at the watchdog's minute.</summary>
+    private async Task RunAsync(Dictionary<string, string> args)
+    {
+        try
+        {
+            await StartAsync(args);
+        }
+        catch (Exception e) when (args.ContainsKey("screenshot"))
+        {
+            GD.PrintErr($"The run stopped: {e.Message}");
+            GetTree().Quit(1);
+        }
     }
 
     private async Task StartAsync(Dictionary<string, string> args)
@@ -58,7 +72,7 @@ public partial class Editor : Control
         if (png is not null)
             CommandLine.Watchdog(GetTree(), args.GetValueOrDefault("import") == "1" ? 900 : 60);
 
-        var plugins =args.GetValueOrDefault("data") ?? DataPaths.Plugins;
+        var plugins = args.GetValueOrDefault("data") ?? DataPaths.Plugins;
         if (RomPlugin.Diagnose(plugins) is not null && !await ImportFirstAsync(plugins, args, png))
             return;
         if (!await PickModFirstAsync(plugins, args, png))

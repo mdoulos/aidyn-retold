@@ -72,8 +72,6 @@ public sealed class ModelContext
 /// </summary>
 public static class PluginFiles
 {
-    private static string _lastPlugin = "";
-
     /// <summary>The folder the plugins are installed in, which holds the ROM plugin and the mods.</summary>
     public static string PluginsDirectory(PluginSet plugins) => System.IO.Path.GetDirectoryName(plugins.Plugins[0].Directory.TrimEnd('/', '\\'))!;
 
@@ -105,27 +103,25 @@ public static class PluginFiles
     }
 
     /// <summary>
-    /// Asks which mod to save <paramref name="what"/> to, saves it with <paramref name="write"/>, and then runs
+    /// Saves <paramref name="what"/> with <paramref name="write"/> to the mod the editor saves to, and then runs
     /// <paramref name="after"/>, the plugins' reload. What goes wrong is said in a dialog. The ACRE plugin's ID saves into the ACRE
     /// plugin's own folder, as the owner's own changes are kept (<see cref="ModFolder.OpenOrCreate"/>).
     /// </summary>
-    public static void Write(Node parent, PluginSet plugins, string what, Action<ModFolder> write, Func<Task> after)
+    public static void Write(Node parent, PluginSet plugins, string what, Action<ModFolder> write, Func<Task> after) =>
+        _ = BackgroundTask.Report(WriteAsync(parent, plugins, what, write, after));
+
+    private static async Task WriteAsync(Node parent, PluginSet plugins, string what, Action<ModFolder> write, Func<Task> after)
     {
-        if (CurrentMod.Id is { } current)
-        {
-            Save(parent, plugins, current, what, "was saved to", write, after);
-            return;
-        }
-        // No mod yet, as when the person was just looking around: this first save asks, and the mod named is the one from then on.
-        EditorDialog.Ask(parent, "Save to a mod",
-            $"Which mod to save {what} to. A mod's ID is lower-case letters, digits and underscores, such as my_village; a mod that isn't there yet is made. " +
-            "Saves after this one go to it too.", _lastPlugin, "my_mod", "Save", id =>
-            {
-                _lastPlugin = id;
-                if (Save(parent, plugins, id, what, "was saved to", write, after))
-                    CurrentMod.Use(PluginsDirectory(plugins), id);
-            });
+        if (await ModAsync(parent, plugins) is { } mod)
+            Save(parent, plugins, mod, what, "was saved to", write, after);
     }
+
+    /// <summary>
+    /// The mod to save to: the editor's, or with none yet, as when the person was just looking around, the one the mod dialog loads or
+    /// makes (<see cref="ModSetup"/>), which is the one from then on; null if it's closed without one.
+    /// </summary>
+    public static async Task<string?> ModAsync(Node parent, PluginSet plugins) =>
+        CurrentMod.Id ?? await ModSetup.AskAsync(parent, PluginsDirectory(plugins), blocking: false);
 
     /// <summary>
     /// Writes into <paramref name="mod"/>, noting what it overwrote, loads the plugins again, and shows a toast of what was done with
@@ -134,9 +130,10 @@ public static class PluginFiles
     private static bool Save(Node parent, PluginSet plugins, string mod, string what, string done, Action<ModFolder> write, Func<Task> after)
     {
         var root = parent.GetTree().Root;
+        ModFolder? folder = null;
         try
         {
-            var folder = ModFolder.OpenOrCreate(PluginsDirectory(plugins), mod, acrePlugin: DataPaths.AcrePlugin);
+            folder = ModFolder.OpenOrCreate(PluginsDirectory(plugins), mod, acrePlugin: DataPaths.AcrePlugin);
             folder.Journal = [];
             write(folder);
             var journal = folder.Journal;
@@ -156,16 +153,30 @@ public static class PluginFiles
             });
             return true;
         }
-        catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException)
+        catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException
+            or ArgumentException or System.Text.Json.JsonException)
         {
-            Tell(root, "Couldn't save it", e.Message);
+            // What was written before it went wrong, such as a picture before its record, is put back, so nothing's left half saved.
+            var undone = "";
+            if (folder?.Journal is { Count: > 0 } written)
+            {
+                try
+                {
+                    ModFolder.Restore(written);
+                }
+                catch (Exception again) when (again is IOException or UnauthorizedAccessException)
+                {
+                    undone = $"\n\nWhat was written before it couldn't be put back either: {again.Message}";
+                }
+            }
+            Tell(root, "Couldn't save it", e.Message + undone);
             return false;
         }
     }
 
     /// <summary>Takes <paramref name="id"/>'s asset out of the mod <paramref name="mod"/>, after asking, so the one below it shows again.</summary>
     public static void Remove(Node parent, PluginSet plugins, string mod, RecordId id, string extension, string what, Func<Task> after) =>
-        EditorDialog.Confirm(parent, "Take it out of the mod", $"Take {what} out of {mod}?\n\nWhat it replaced shows again: another mod's, or the original's.",
+        EditorDialog.Confirm(parent, "Take it out of the mod", $"Take {what} out of {EditorStyle.ModName(mod)}?\n\nWhat it replaced shows again: another mod's, or the original's.",
             "Take it out", () => Save(parent, plugins, mod, what, "was taken out of", folder => folder.RemoveAsset(id, extension), after), danger: true);
 
     /// <summary>A message in a dialog, with OK.</summary>

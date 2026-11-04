@@ -83,7 +83,6 @@ public partial class MapSetView : VBoxContainer
     private readonly Button _all = new() { Text = "Whole map set", TooltipText = "Load every chunk of the map set, not just those around this one" };
     private readonly Button _save = new() { Visible = false, TooltipText = "Write the objects moved, changed, added or removed into a mod, as patches to their maps" };
     private readonly Button _discard = new() { Text = "Discard edits", Visible = false };
-    private static string _modId = "my_mod";
     private readonly HFlowContainer _legend = new();
     private readonly HSplitContainer _split = new() { SizeFlagsVertical = SizeFlags.ExpandFill };
     private readonly SubViewportContainer _container = new()
@@ -132,9 +131,15 @@ public partial class MapSetView : VBoxContainer
     private readonly Label _editStatus = new() { AutowrapMode = TextServer.AutowrapMode.WordSmart };
     private bool _filling;
     private bool _dragging;
+    // Whether the drag has gone far enough to be one, and with Shift, which moves it up and down.
+    private bool _dragMoved, _dragShift;
     private Vector2 _dragFrom;
     private Vector3 _dragStart;
     private float _dragAbove;
+    // Where the object stands from the ground point first under the cursor, across the ground, so it doesn't jump to the cursor.
+    private Vector3 _grab;
+    // The view kept through a reload of the plugins, as after a save: the camera, and the chunks loaded, of the set they're of.
+    private (RecordId Set, Vector3 Target, float Distance, float Yaw, float Pitch, float? Far, List<(int Row, int Column)> Chunks)? _kept;
 
     private readonly Dictionary<(int Row, int Column), ChunkScenery> _chunks = [];
     private readonly List<Marked> _objects = [];
@@ -226,18 +231,10 @@ public partial class MapSetView : VBoxContainer
                 _json.Text = MapPatch.ToJson(selected.Object).ToJsonString(PluginJson.Options);
         };
         _apply.Pressed += ApplyFields;
-        _save.Pressed += AskToSave;
-        _discard.Pressed += () =>
-        {
-            Edits.Clear();
-            if (_set is { } set && _catalog is { } catalog && _models is { } models)
-            {
-                var chunks = _chunks.Keys.Select(k => set.Chunk(k.Row, k.Column)!).ToList();
-                Clear();
-                _ = BackgroundTask.Report(ShowAsync(catalog, models, _game, new Focus(set, chunks)));
-            }
-            UpdateSaveButton();
-        };
+        _save.Pressed += () => _ = BackgroundTask.Report(SaveAsync());
+        _discard.Pressed += () => EditorDialog.Confirm(this, "Discard the edits",
+            $"Put back the {Edits.Count:N0} {(Edits.Count == 1 ? "edit" : "edits")} made here and not saved? The objects go back as the plugins have them.",
+            "Discard", DiscardEdits, danger: true);
         AddChild(_split);
         AddChild(_legend);
         AddChild(_status);
@@ -296,6 +293,26 @@ public partial class MapSetView : VBoxContainer
         return row;
     }
 
+    /// <summary>Puts back every edit not saved: the objects as the plugins have them, the chunks loaded again.</summary>
+    private void DiscardEdits()
+    {
+        Edits.Clear();
+        if (_set is { } set && _catalog is { } catalog && _models is { } models)
+        {
+            var chunks = _chunks.Keys.Select(k => set.Chunk(k.Row, k.Column)!).ToList();
+            Clear();
+            _ = BackgroundTask.Report(ShowAsync(catalog, models, _game, new Focus(set, chunks)));
+        }
+        UpdateSaveButton();
+    }
+
+    /// <summary>Keeps the camera and the chunks loaded for the next showing of the same map set: after a save, which reloads the plugins.</summary>
+    public void KeepView()
+    {
+        if (_set is { } set)
+            _kept = (set.Id, _orbit.Target, _orbit.Distance, _orbit.Yaw, _orbit.Pitch, _orbit.Far, [.. _chunks.Keys]);
+    }
+
     /// <summary>Colours the collision, for scripts (<c>--collision surface|role</c>).</summary>
     public void SetCollision(string mode)
     {
@@ -332,6 +349,11 @@ public partial class MapSetView : VBoxContainer
     {
         if (_catalog != catalog || _models != models || _set?.Id != focus.Set.Id)
             Clear();
+        // The view as it was before a reload, for the same set: its chunks loaded again, and the camera where it stood.
+        var kept = _kept is { } k && k.Set == focus.Set.Id ? _kept : null;
+        _kept = null;
+        if (kept is { } view)
+            focus = focus with { Chunks = [.. focus.Chunks.Union(view.Chunks.Select(c => focus.Set.Chunk(c.Row, c.Column)).OfType<ChunkEntry>())] };
         var generation = ++_generation;
         (_catalog, _models, _game, _set) = (catalog, models, game, focus.Set);
         _gate.Disabled = game is null;
@@ -358,7 +380,12 @@ public partial class MapSetView : VBoxContainer
             AddGridCell(chunk, origin);
         }
         // A picked object is framed once it's selected, if it's out of view.
-        if (focus.Object is null && focus.Chunk is not null)
+        if (kept is { } before)
+        {
+            (_orbit.Target, _orbit.Distance, _orbit.Yaw, _orbit.Pitch, _orbit.Far) = (before.Target, before.Distance, before.Yaw, before.Pitch, before.Far);
+            _orbit.Apply(_camera);
+        }
+        else if (focus.Object is null && focus.Chunk is not null)
             FrameCells([focus.Chunk]);
         else if (focus.Object is not null ? missing.Count > 0 && centre is not null : missing.Count == focus.Chunks.Count)
             FrameCells(focus.Object is not null ? [centre!] : focus.Chunks);
@@ -381,7 +408,8 @@ public partial class MapSetView : VBoxContainer
             {
                 SetStatus(summary: $"Loading {focus.Set.Label}: {i + 1:N0} of {missing.Count:N0} chunks…");
                 ApplySceneFilters();
-                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                // The tree's, not the view's: the view leaves it when another page opens, and the load goes on meanwhile.
+                await ToSignal((SceneTree)Engine.GetMainLoop(), SceneTree.SignalName.ProcessFrame);
                 if (generation != _generation)
                     return;
                 clock.Restart();
@@ -395,10 +423,14 @@ public partial class MapSetView : VBoxContainer
         SetStatus(summary: Summary());
         UpdateSaveButton();
         // An object opened from elsewhere is framed; one picked here only if it's out of view.
-        Select(focus.Object is { } id ? _objects.FirstOrDefault(m => m.Id == id) : null, missing.Count > 0 ? Framing.Always : Framing.OutOfView);
+        Select(focus.Object is { } id ? _objects.FirstOrDefault(m => m.Id == id) : null,
+            kept is not null ? Framing.None : missing.Count > 0 ? Framing.Always : Framing.OutOfView);
     }
 
-    /// <summary>Puts a chunk's scenery as the edits have it: changed scene objects moved, added ones placed, removed ones gone.</summary>
+    /// <summary>
+    /// Puts a chunk's scenery as the edits have it: changed scene objects placed again, as their models, tint or flags may have changed
+    /// with their place, added ones placed, removed ones gone.
+    /// </summary>
     private void ApplyEdits(ChunkScenery scenery, MapRecord map)
     {
         if (!Edits.Dirty || _catalog is not { } catalog || _models is not { } models)
@@ -410,13 +442,10 @@ public partial class MapSetView : VBoxContainer
                 continue;
             if (scenery.Find(o.Index) is { } placed)
             {
-                placed.Node.Transform = ChunkScenery.TransformOf(o);
-                Billboards.Face(Billboards.Facings(placed.Node), _camera.GlobalPosition);
+                _bounds.Remove(placed);
+                scenery.Remove(o.Index);
             }
-            else
-            {
-                PlaceNew(scenery, o);
-            }
+            PlaceNew(scenery, o);
         }
         var present = edited.Select(o => o.Index).ToHashSet();
         foreach (var o in map.Objects.OfType<SceneObject>().Where(o => !present.Contains(o.Index)))
@@ -743,18 +772,16 @@ public partial class MapSetView : VBoxContainer
                 _container.GrabFocus();
                 _pressedAt = press.Position;
                 _dragging = true;
-                _dragFrom = press.Position;
-                _dragStart = selected.Position;
-                var ground = _collisionLayer.Cast(selected.Position + Vector3.Up * 0.5f, Vector3.Down);
-                _dragAbove = ground is { } g && g.Point.Y <= selected.Position.Y + 0.5f ? selected.Position.Y - g.Point.Y : 0;
+                _dragMoved = false;
+                BeginDrag(press.Position, selected, press.ShiftPressed);
                 return;
             case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left or MouseButton.Right or MouseButton.Middle } press:
                 _container.GrabFocus();
                 _pressedAt = press.Position;
                 break;
-            case InputEventMouseButton { Pressed: false, ButtonIndex: MouseButton.Left } release when _dragging:
+            case InputEventMouseButton { Pressed: false, ButtonIndex: MouseButton.Left } when _dragging:
                 _dragging = false;
-                if (release.Position.DistanceTo(_pressedAt) >= 4)
+                if (_dragMoved)
                 {
                     RebuildMarkers();
                     Select(_selected);
@@ -772,6 +799,13 @@ public partial class MapSetView : VBoxContainer
                 }
                 return;
             case InputEventMouseMotion motion when _dragging && _selected is { } selected:
+                // A click that wanders a pixel or two is a click, not a move.
+                if (!_dragMoved && motion.Position.DistanceTo(_pressedAt) < 4)
+                    return;
+                _dragMoved = true;
+                // Shift pressed or let go mid-drag goes on from where the object is, not from where the drag began.
+                if (motion.ShiftPressed != _dragShift)
+                    BeginDrag(motion.Position, selected, motion.ShiftPressed);
                 if (motion.ShiftPressed)
                 {
                     var rise = (_dragFrom.Y - motion.Position.Y) * Mathf.Clamp(_orbit.Distance, 1, 2000) * 0.0015f;
@@ -779,7 +813,10 @@ public partial class MapSetView : VBoxContainer
                 }
                 else if (Cast(motion.Position) is { } under)
                 {
-                    MoveSelected(under.Point + Vector3.Up * _dragAbove, rebuild: false);
+                    // Where it's grabbed stays under the cursor, and it stands on the ground under where it goes, as high over it as it was.
+                    var place = under.Point + _grab;
+                    var ground = _collisionLayer.Cast(new Vector3(place.X, under.Point.Y + 2, place.Z), Vector3.Down) is { } g ? g.Point.Y : under.Point.Y;
+                    MoveSelected(new Vector3(place.X, ground + _dragAbove, place.Z), rebuild: false);
                 }
                 return;
             case InputEventMouseMotion motion:
@@ -787,6 +824,18 @@ public partial class MapSetView : VBoxContainer
                 break;
         }
         _orbit.Handle(e, _camera);
+    }
+
+    /// <summary>
+    /// Starts a drag of the picked object, or goes on with it from where the object is: how high it stands over the ground under it,
+    /// and where it is from the ground point under the cursor.
+    /// </summary>
+    private void BeginDrag(Vector2 at, Marked selected, bool shift)
+    {
+        (_dragFrom, _dragStart, _dragShift) = (at, selected.Position, shift);
+        var ground = _collisionLayer.Cast(selected.Position + Vector3.Up * 0.5f, Vector3.Down);
+        _dragAbove = ground is { } g && g.Point.Y <= selected.Position.Y + 0.5f ? selected.Position.Y - g.Point.Y : 0;
+        _grab = Cast(at) is { } under ? new Vector3(selected.Position.X - under.Point.X, 0, selected.Position.Z - under.Point.Z) : Vector3.Zero;
     }
 
     /// <summary>How far along a ray a box is first met, or null if it isn't (the slab test).</summary>
@@ -1002,8 +1051,11 @@ public partial class MapSetView : VBoxContainer
         SetObject(marked.Object with { Position = (position - origin).ToNumerics() }, rebuild);
     }
 
-    /// <summary>Puts an object, changed, in its map and the view, and keeps it picked.</summary>
-    private void SetObject(MapObject o, bool rebuild = true)
+    /// <summary>
+    /// Puts an object, changed, in its map and the view, and keeps it picked. A scene object is moved where it's only moved, or
+    /// with <paramref name="replace"/>, placed again, as its fields typed may change its models, tint or flags.
+    /// </summary>
+    private void SetObject(MapObject o, bool rebuild = true, bool replace = false)
     {
         if (_selected is not { } marked || _catalog is not { } catalog)
             return;
@@ -1016,14 +1068,17 @@ public partial class MapSetView : VBoxContainer
             _objects[at] = updated;
         if (o is SceneObject scene && _chunks.TryGetValue((marked.Chunk.Row, marked.Chunk.Column), out var scenery))
         {
-            if (scenery.Find(o.Index) is { } placed)
+            var placed = scenery.Find(o.Index);
+            if (placed is not null)
+                _bounds.Remove(placed);
+            if (placed is not null && !replace)
             {
                 placed.Node.Transform = ChunkScenery.TransformOf(scene);
                 Billboards.Face(Billboards.Facings(placed.Node), _camera.GlobalPosition);
-                _bounds.Remove(placed);
             }
             else
             {
+                scenery.Remove(o.Index);
                 PlaceNew(scenery, scene);
             }
         }
@@ -1054,7 +1109,8 @@ public partial class MapSetView : VBoxContainer
     {
         if (_selected is not { } marked)
             return;
-        var ground = _collisionLayer.Cast(marked.Position + Vector3.Up * 50, Vector3.Down);
+        // Onto what's under it, cast from just over it, so a bridge or a roof above isn't where it lands; from high up if it's sunk.
+        var ground = _collisionLayer.Cast(marked.Position + Vector3.Up * 0.5f, Vector3.Down) ?? _collisionLayer.Cast(marked.Position + Vector3.Up * 50, Vector3.Down);
         if (ground is { } g)
             MoveSelected(new Vector3(marked.Position.X, g.Point.Y, marked.Position.Z), rebuild: true);
         else
@@ -1107,7 +1163,7 @@ public partial class MapSetView : VBoxContainer
             json["index"] = marked.Object.Index;
             JsonShape.Normalise(json, typeof(MapObject));
             var o = json.Deserialize<MapObject>(PluginJson.Strict) ?? throw new InvalidDataException("Nothing to read.");
-            SetObject(o);
+            SetObject(o, replace: true);
         }
         catch (Exception e) when (e is System.Text.Json.JsonException or InvalidDataException)
         {
@@ -1121,26 +1177,16 @@ public partial class MapSetView : VBoxContainer
         _save.Text = $"Save {Edits.Count} edit{(Edits.Count == 1 ? "" : "s")} to mod…";
     }
 
-    /// <summary>Asks which mod to write the edits to, writes them, and asks for the plugins to be loaded again.</summary>
-    private void AskToSave()
+    /// <summary>
+    /// Writes the edits to the mod the editor saves to, or with none yet, the one the mod dialog loads or makes (<see cref="PluginFiles.ModAsync"/>),
+    /// and asks for the plugins to be loaded again.
+    /// </summary>
+    private async Task SaveAsync()
     {
         if (_catalog is not { } catalog)
             return;
-        var what = $"{Edits.Count} {(Edits.Count == 1 ? "edit" : "edits")}";
-        if (CurrentMod.Id is { } current)
-        {
-            SaveEdits(catalog, current, what, Edits.Count == 1);
-            return;
-        }
-        // No mod yet: this first save asks, and the mod named is the one from then on.
-        EditorDialog.Ask(this, "Save edits to a mod",
-            $"Which mod to save the {what} to. A mod's ID is lower-case letters, digits and underscores, such as my_village; a mod that isn't there yet " +
-            "is made. Saves after this one go to it too.", _modId, "my_village", "Save", id =>
-            {
-                _modId = id;
-                if (SaveEdits(catalog, id, what, Edits.Count == 1))
-                    CurrentMod.Use(PluginFiles.PluginsDirectory(catalog.Plugins), id);
-            });
+        if (await PluginFiles.ModAsync(this, catalog.Plugins) is { } mod && _catalog == catalog)
+            SaveEdits(catalog, mod, $"{Edits.Count} {(Edits.Count == 1 ? "edit" : "edits")}", Edits.Count == 1);
     }
 
     /// <summary>

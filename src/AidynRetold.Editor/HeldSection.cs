@@ -92,7 +92,10 @@ public partial class HeldSection : VBoxContainer
         {
             Clear();
             if (_head is not null && IsInstanceValid(_head))
+            {
+                _head.GetParent()?.RemoveChild(_head);
                 _head.QueueFree();
+            }
         };
     }
 
@@ -139,7 +142,8 @@ public partial class HeldSection : VBoxContainer
         if (_ctx.ViewOrThrow.Content is not { } content || _ctx.Models is not { } models)
             return;
         var weapon = _weapon.Selected > 0 ? _weapons[_weapon.Selected - 1] : null;
-        var shield = _shield.Selected > 0 && _entity?.ShieldSkill is not null ? _shields[_shield.Selected - 1].Model : null;
+        // A character who can never learn the shield skill bears none, as the note under it says; a model nobody wears bears what's picked.
+        var shield = _shield.Selected > 0 && (_entity is null || _entity.ShieldSkill is not null) ? _shields[_shield.Selected - 1].Model : null;
         var rules = _ctx.Plugins.TryGet<CombatRecord>(RecordId.Decimal(RecordTypes.Combat, 0));
         var (hand, arm, _) = Combatant.Holding(_entity?.Id ?? _actor.Id, weapon, shield, rules);
         foreach (var held in new[] { hand, arm })
@@ -155,7 +159,10 @@ public partial class HeldSection : VBoxContainer
     private void Clear()
     {
         foreach (var item in _held.Where(IsInstanceValid))
+        {
+            item.GetParent()?.RemoveChild(item);
             item.QueueFree();
+        }
         _held.Clear();
     }
 

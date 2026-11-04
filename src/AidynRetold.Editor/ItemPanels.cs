@@ -98,18 +98,17 @@ public partial class ItemPanel : PagePanel
     private readonly ItemCatalog _items;
     private readonly Item _item;
 
-    /// <param name="header">Whether it starts with the item's icon, name and kind: not where a card of another page stands for them.</param>
-    public ItemPanel(PluginCatalog catalog, EditorGame? game, CharacterRules? rules, ItemCatalog items, Item item, Action<RecordId> open, bool header = true)
+    public ItemPanel(PluginCatalog catalog, EditorGame? game, CharacterRules? rules, ItemCatalog items, Item item, Action<RecordId> open)
         : base(catalog, open)
     {
         (_game, _rules, _items, _item) = (game, rules, items, item);
-        Build(header);
+        Build();
     }
 
-    private void Build(bool withHeader)
+    private void Build()
     {
         var item = _item;
-        var header = new HBoxContainer { Visible = withHeader };
+        var header = new HBoxContainer();
         header.AddThemeConstantOverride("separation", 12);
         if (Picture(item.Icon, 3) is { } icon)
             header.AddChild(icon);
@@ -155,8 +154,6 @@ public partial class ItemPanel : PagePanel
             if (item.Bonuses.Skill is not null)
                 Line("A skill bonus counts only while the wearer's base level in it is above 0.", Dim);
         }
-        if (item.Kind == ItemKind.Potion)
-            Line("What potions do comes with combat (2.5).", Dim);
 
         if (item.KeyItem is { } key)
         {
@@ -402,7 +399,7 @@ public partial class LootPanel : PagePanel
         }
         Body.AddChild(grid);
         Line("A roll at 0% never hits, and an empty roll that hits gives nothing.", Dim);
-        Line($"Beaten enemies drop their armor {loot.ArmorChance}%, shield {loot.ShieldChance}% and weapons {string.Join(", ", loot.WeaponChances.Select(c => $"{c}%"))} of the time, which combat's rewards read (2.5).", Dim);
+        Line($"Beaten enemies drop their armor {loot.ArmorChance}%, shield {loot.ShieldChance}% and weapons {string.Join(", ", loot.WeaponChances.Select(c => $"{c}%"))} of the time, which combat's rewards read.", Dim);
 
         Heading("Rolls");
         var row = new HBoxContainer();

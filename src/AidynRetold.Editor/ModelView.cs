@@ -152,7 +152,11 @@ public partial class ModelView : VBoxContainer
         _viewport.AddChild(_headlight);
         _viewport.AddChild(_camera);
 
-        _animations.ItemSelected += _ => PlaySelected();
+        _animations.ItemSelected += _ =>
+        {
+            _clickedState = -1;
+            PlaySelected();
+        };
         _play.Pressed += TogglePlay;
         _time.Scrubbed += OnScrub;
         _wireframe.Toggled += on => _viewport.DebugDraw = on ? Viewport.DebugDrawEnum.Wireframe : Viewport.DebugDrawEnum.Disabled;
@@ -210,8 +214,11 @@ public partial class ModelView : VBoxContainer
     /// <summary>The model's size, drawn at <paramref name="scale"/>, as a body's scale draws it in the game.</summary>
     public void ScaleModel(float scale)
     {
-        if (_content is not null)
-            _content.Scale = Vector3.One * scale;
+        if (_content is null || _content.Scale.IsEqualApprox(Vector3.One * scale))
+            return;
+        _content.Scale = Vector3.One * scale;
+        // Framed again at its new size, so a large creature doesn't grow out of the view.
+        Frame(_content);
     }
 
     /// <summary>The inspector beside the view, which the record browser fills with sections for what's shown.</summary>
@@ -251,8 +258,17 @@ public partial class ModelView : VBoxContainer
         _ground = null;
         _animations.Clear();
         _animations.Visible = _play.Visible = _time.Visible = _tick.Visible = false;
-        // Driving an actor locks the scrub (SetDrive), and the next actor's panel turns Drive off without saying so.
+        // Driving an actor locks the scrub and the clips (SetDrive), and the next actor's panel turns Drive off without saying so.
         _time.Editable = true;
+        _animations.Disabled = false;
+        _actorPanel.Driving = false;
+        _clickedState = -1;
+        // The inspector is the model's, and goes with it, so nothing reads a page that's gone.
+        foreach (var child in Inspector.GetChildren())
+        {
+            Inspector.RemoveChild(child);
+            child.QueueFree();
+        }
         _time.Marks = [];
         _legend.Visible = false;
         _markedState = -1;
@@ -266,7 +282,8 @@ public partial class ModelView : VBoxContainer
     /// <param name="note">What the preview shows, when that isn't just the asset itself.</param>
     /// <param name="actor">The actor whose scene this is, to show its states and drive it.</param>
     /// <param name="model">The model's ID, whose textures the plugins may give in place of its own copies, as the game draws them (ADR 0044).</param>
-    public void Show(byte[] glb, string? animation, string? note, ActorRecord? actor = null, AidynRetold.Plugins.RecordId? model = null)
+    /// <param name="original">Whether it's the original, drawn with its own textures, not the plugins' replacements of them.</param>
+    public void Show(byte[] glb, string? animation, string? note, ActorRecord? actor = null, AidynRetold.Plugins.RecordId? model = null, bool original = false)
     {
         Clear();
         _note.Text = note ?? "";
@@ -282,7 +299,7 @@ public partial class ModelView : VBoxContainer
             return;
         }
         Scene = model;
-        var textures = _plugins is { } plugins && model is { } id ? TextureReplacements.For(plugins, id) : null;
+        var textures = !original && _plugins is { } plugins && model is { } id ? TextureReplacements.For(plugins, id) : null;
         if (GlbFile.Load(file, out var error, textures) is not { } scene)
         {
             file.Dispose();
@@ -461,9 +478,15 @@ public partial class ModelView : VBoxContainer
         }
         else if (_player is not null)
         {
-            _tick.Text = $"tick {tick + 1} / {_time.Length}";
+            // The last tick of a loop is the length, not one past it.
+            _tick.Text = $"tick {Math.Min(tick + 1, Math.Max(_time.Length, 1))} / {_time.Length}";
             if (_actor is not null)
-                _actorPanel.Mark(_actor.States.ToList().FindIndex(s => ActorAnimator.AnimationName(s) == Selected()));
+            {
+                // The state clicked, if it plays this clip, else the first state that does.
+                var states = _actor.States;
+                var clicked = _clickedState >= 0 && _clickedState < states.Count && ActorAnimator.AnimationName(states[_clickedState]) == Selected();
+                _actorPanel.Mark(clicked ? _clickedState : states.ToList().FindIndex(s => ActorAnimator.AnimationName(s) == Selected()));
+            }
         }
     }
 
@@ -474,6 +497,8 @@ public partial class ModelView : VBoxContainer
     public Func<string, int, IReadOnlyList<TimelineMark>>? Marks { get; set; }
 
     private int _markedState = -1;
+    // The state last clicked in the table or the graph, which is marked while its clip plays, not the first state that plays it.
+    private int _clickedState = -1;
 
     /// <summary>The timeline's marks afresh, for the driven state's clip or the one picked.</summary>
     public void RefreshMarks()
@@ -540,6 +565,10 @@ public partial class ModelView : VBoxContainer
             _animator.Particles = _particles.For(_actor, _content);
         }
         _time.Editable = !on;
+        // Driving picks the clips itself, by the states, and always holds the root; a still actor, with no clips, shows its states' ticks.
+        _animations.Disabled = on;
+        _actorPanel.Driving = on;
+        _play.Visible = _time.Visible = _tick.Visible = on || _animations.ItemCount > 0;
         if (_animator is not null)
         {
             _animator.Driven = true;
@@ -561,6 +590,7 @@ public partial class ModelView : VBoxContainer
             return;
         }
         var name = ActorAnimator.AnimationName(_actor.States[state]);
+        _clickedState = state;
         for (var i = 0; i < _animations.ItemCount; i++)
         {
             if (_animations.GetItemMetadata(i).AsString() == name)
@@ -643,6 +673,7 @@ public partial class ModelView : VBoxContainer
                     RenderPriority = 1,
                 },
                 Visible = _emitters.ButtonPressed,
+                Name = "emitter mark",
             };
             node.AddChild(marker);
             _markers.Add((marker, node));
@@ -683,7 +714,8 @@ public partial class ModelView : VBoxContainer
         Aabb? bounds = null;
         foreach (var mesh in Nodes.FindAll<MeshInstance3D>(scene))
         {
-            if (mesh.Mesh is null)
+            // The model's own meshes, not the view's marks on it.
+            if (mesh.Mesh is null || mesh.Name.ToString() is "emitter mark" or "part mark")
                 continue;
             var box = mesh.GlobalTransform * mesh.GetAabb();
             bounds = bounds is { } b ? b.Merge(box) : box;

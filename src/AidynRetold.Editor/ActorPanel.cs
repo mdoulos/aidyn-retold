@@ -94,6 +94,12 @@ public partial class ActorPanel : VBoxContainer
     }
     public bool InPlace => _inPlace.ButtonPressed;
 
+    /// <summary>While the actor's driven, Root in place has nothing to do: driving always holds the root and moves the actor instead.</summary>
+    public bool Driving
+    {
+        set => _inPlace.Disabled = value;
+    }
+
     public void Show(ActorRecord actor, Func<int, int> length)
     {
         _drive.SetPressedNoSignal(false);

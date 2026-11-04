@@ -120,10 +120,13 @@ public partial class ModelInspector : VBoxContainer
         var textures = new TexturesSection(_ctx);
         Add("Textures", textures, textures.Summary);
         var isActor = _ctx.ActorId is not null;
-        // A model's parts follow its textures; an actor's are the last card, under its fields and the body over them.
-        var parts = new PartsSection(_ctx);
+        // A model's parts follow its textures; an actor's are the last card, under its fields and the body over them, and listed
+        // once what's held and the head hang from it.
         if (!isActor)
+        {
+            var parts = new PartsSection(_ctx);
             Add("Parts", parts, parts.Summary, flush: true);
+        }
         if (_ctx.ViewOrThrow.Actor is { } dressed)
         {
             var held = new HeldSection(_ctx, dressed, Shown?.Entity);
@@ -135,7 +138,10 @@ public partial class ModelInspector : VBoxContainer
             Add("Body", new BodySection(_ctx.ViewOrThrow, wearer.Body, alaron), wearer.Name, last: true);
         }
         if (isActor)
+        {
+            var parts = new PartsSection(_ctx);
             Add("Parts", parts, parts.Summary, flush: true, last: true, fill: true);
+        }
     }
 
     /// <param name="fill">Whether the card takes the height left under the rest, as the last card's table does.</param>

@@ -57,12 +57,17 @@ public partial class StartPage : ScrollContainer
         _body.AddChild(EditorStyle.DimLabel($"{_catalog.Entries.Count:N0} records and assets from {plugins.Count} {(plugins.Count == 1 ? "plugin" : "plugins")}."));
         if (problems is not null)
         {
-            var box = new PanelContainer { ThemeTypeVariation = "ChangedChip" };
-            box.AddChild(new Label
+            // A card, not a chip: the report runs to several lines, which a chip's round ends don't hold.
+            var box = new PanelContainer { ThemeTypeVariation = "Card" };
+            var inset = new MarginContainer();
+            foreach (var side in new[] { "left", "top", "right", "bottom" })
+                inset.AddThemeConstantOverride($"margin_{side}", 14);
+            inset.AddChild(new Label
             {
                 Text = $"{problems}\nThe game refuses to load these; the editor shows them as they are, to fix them by.",
                 ThemeTypeVariation = "ProblemLabel", AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(400, 0),
             });
+            box.AddChild(inset);
             _body.AddChild(box);
         }
 

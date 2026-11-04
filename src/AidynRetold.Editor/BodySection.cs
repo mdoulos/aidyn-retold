@@ -58,7 +58,8 @@ public partial class BodySection : VBoxContainer
 
         foreach (var box in new[] { _sphere, _height, _beside, _scale })
             box.Toggled += _ => Mark();
-        TreeExiting += () => _marks?.QueueFree();
+        // The marks may have gone with the model already, as the page changed.
+        TreeExiting += () => Unmark();
     }
 
     public override void _Ready() => Mark();
@@ -66,8 +67,7 @@ public partial class BodySection : VBoxContainer
     /// <summary>Draws the marks on the model as the switches say, replacing what was drawn.</summary>
     private void Mark()
     {
-        _marks?.QueueFree();
-        _marks = null;
+        Unmark();
         if (_view.Content is not { } content)
             return;
         _view.ScaleModel(_scale.ButtonPressed ? _body.Scale : 1);
@@ -102,6 +102,17 @@ public partial class BodySection : VBoxContainer
             _marks.AddChild(figure);
         }
         content.AddChild(_marks);
+    }
+
+    /// <summary>Takes the marks away at once, out of the model's tree, so framing and the parts' list don't find them as they go.</summary>
+    private void Unmark()
+    {
+        if (_marks is not null && IsInstanceValid(_marks))
+        {
+            _marks.GetParent()?.RemoveChild(_marks);
+            _marks.QueueFree();
+        }
+        _marks = null;
     }
 
     private static MeshInstance3D Mesh(Mesh mesh, Color color, Vector3 at) => new()

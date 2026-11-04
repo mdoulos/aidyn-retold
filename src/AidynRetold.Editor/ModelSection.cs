@@ -42,7 +42,10 @@ public partial class ModelSection : VBoxContainer
         var buttons = new List<Button>(FileButtons(this, ctx));
         if (ctx.Replaced && ctx.File is { } replacing && plugins.PluginWith(replacing) is { } replacer && replacer != RecordId.RomNamespace)
         {
-            var back = new Button { Text = "Put Back Original", TooltipText = $"Take {replacer}'s model out, so the original shows again" };
+            var back = new Button
+            {
+                Text = "Put Back Original", TooltipText = $"Take {EditorStyle.ModName(replacer)}'s model out, so what it replaced shows again: the original, or another mod's",
+            };
             back.Pressed += () => PluginFiles.Remove(this, plugins, replacer, ctx.Scene, "glb", "the replacement model", ctx.Reload);
             buttons.Add(back);
         }

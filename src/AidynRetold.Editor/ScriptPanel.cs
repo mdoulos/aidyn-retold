@@ -70,6 +70,9 @@ public partial class ScriptPanel : VBoxContainer
     private ScriptRunner? _runner;
     private bool[]? _before;
     private bool _arranged;
+    // The node the graph was last put in the middle of, which it's put there again when the graph changes size, as the box under it grows.
+    private int _focused;
+    private readonly Button _skip = new() { Text = "Skip", TooltipText = "End it, as R + A + Z + B does.", Disabled = true };
 
     public ScriptPanel(PluginCatalog catalog, EditorGame? game, CharacterRules? rules, ItemCatalog? items, DialogueRecord script, Action<RecordId> open)
     {
@@ -101,6 +104,14 @@ public partial class ScriptPanel : VBoxContainer
         split.AddChild(Player());
         AddChild(split);
         BuildGraph();
+        _graph.Resized += () => Focus(_focused);
+    }
+
+    public override void _Notification(int what)
+    {
+        // With no fonts there's no box to draw, so the screen never joined the tree, and nothing else frees it.
+        if (what == NotificationPredelete && _screen.GetParent() is null)
+            _screen.Free();
     }
 
     /// <summary>Makes a number of moves as a player might: moves on, takes the first choice, or finishes a wait (<c>--play</c>).</summary>
@@ -417,6 +428,7 @@ public partial class ScriptPanel : VBoxContainer
     /// <summary>Lights up a node and scrolls the graph to put it in the middle.</summary>
     private void Focus(int index)
     {
+        _focused = index;
         foreach (var (i, section) in _sections)
             section.AddThemeStyleboxOverride("panel", i == index ? Current : Plain);
         foreach (var card in _nodes.Values.Distinct())
@@ -437,15 +449,15 @@ public partial class ScriptPanel : VBoxContainer
         box.AddThemeConstantOverride("separation", 6);
         var bar = new HBoxContainer();
         var play = new Button { Text = "Play", TooltipText = "Run the script from the start with the core's runner, against the editor's game: its flags and party." };
-        var skip = new Button { Text = "Skip", TooltipText = "End it, as R + A + Z + B does." };
         play.Pressed += Restart;
-        skip.Pressed += () =>
+        // Only while it runs.
+        _skip.Pressed += () =>
         {
-            if (_runner is { } runner)
+            if (_runner is { Status: not ScriptStatus.Ended } runner)
                 Act(runner.Skip);
         };
         bar.AddChild(play);
-        bar.AddChild(skip);
+        bar.AddChild(_skip);
         box.AddChild(bar);
         // How the box under the graph is drawn; it's as wide as the graph, so there's no zoom.
         if (_conversation is not null)
@@ -647,6 +659,7 @@ public partial class ScriptPanel : VBoxContainer
             child.QueueFree();
         }
         _status.Visible = true;
+        _skip.Disabled = _runner is not { Status: not ScriptStatus.Ended };
         if (_runner is not { } runner)
             return;
 
@@ -668,6 +681,7 @@ public partial class ScriptPanel : VBoxContainer
                     _ => "Ended",
                 } + (ending.RestHours > 0 ? $"; {ending.RestHours} hours pass" : "")
                     + (ending.PartnerJoined ? ", and the one talking leaves to join" : "") + (ending.Fault is { } fault ? $". {fault}" : ".");
+                _preview?.Hint = "The script has ended. Play runs it again.";
                 // Where it leads, as the runtime decides it (Transition.AfterScript), without the hours passing here. The keeper is
                 // the speaker at the end; in the game, one who wanders keeps the shop or training instead, which a script alone
                 // doesn't know, so only a shop the speaker keeps is shown.
@@ -687,6 +701,7 @@ public partial class ScriptPanel : VBoxContainer
                 return;
             case ScriptStatus.Waiting:
                 _status.Text = $"Waiting: {runner.Wait}.";
+                _preview?.Hint = $"The script is waiting: {runner.Wait}. The button beside finishes the wait.";
                 var resume = new Button { Text = runner.Wait == ScriptWait.Timer ? "Let the time pass" : $"{runner.Wait} done" };
                 resume.Pressed += () => Act(runner.Wait == ScriptWait.Timer ? () => runner.Step(int.MaxValue) : runner.Resume);
                 _page.AddChild(resume);

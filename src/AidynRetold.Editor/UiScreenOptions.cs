@@ -43,7 +43,16 @@ public partial class UiScreenOptions : HFlowContainer
         }));
         AddChild(_lines = Choice("How many pixels tall the UI screen is: 240 is the original's, and more draws the UI smaller.",
             [(240, "240 lines"), (360, "360 lines"), (480, "480 lines")], id => _screen.Lines = id));
+        // The choices say what the screen draws to begin with: its own filter and lines.
+        Show(_filter, (int)screen.Filter);
+        Show(_lines, screen.Lines);
         Fit();
+    }
+
+    private static void Show(OptionButton choice, int id)
+    {
+        if (choice.GetItemIndex(id) is var i and >= 0)
+            choice.Select(i);
     }
 
     /// <summary>Whether the window's shape is 16:9 rather than 4:3.</summary>

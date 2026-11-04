@@ -70,8 +70,8 @@ public partial class PartsSection : VBoxContainer
 
     private void Add(TreeItem parent, Node3D node)
     {
-        // The view's own marks aren't the model's.
-        if (node.Name.ToString() is "body marks" or "OutfitSwitch")
+        // The view's own marks aren't the model's, nor is what's going as the inspector's built again.
+        if (node.Name.ToString() is "body marks" or "OutfitSwitch" or "emitter mark" or "part mark" || node.IsQueuedForDeletion())
             return;
         var name = node.Name.ToString();
         var item = _tree.CreateItem(parent);

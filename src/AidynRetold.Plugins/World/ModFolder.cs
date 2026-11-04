@@ -148,19 +148,27 @@ public sealed class ModFolder
     /// The record file under <c>records</c>, with / between its folders, that defines <paramref name="id"/> in this plugin (its
     /// <c>"id"</c>, not a patch), or null: where a tool changes one of the plugin's own records in place rather than patching it.
     /// </summary>
-    public string? FileDefining(RecordId id)
+    public string? FileDefining(RecordId id) => FilesWith(id, "id").FirstOrDefault();
+
+    /// <summary>
+    /// The record file under <c>records</c>, with / between its folders, whose patch of <paramref name="id"/> this plugin loads last,
+    /// or null: where a tool's own patch of it goes, so it isn't written into another file whose patch would then win over it.
+    /// </summary>
+    public string? FilePatching(RecordId id) => FilesWith(id, "patch").LastOrDefault();
+
+    /// <summary>The record files, in the order the plugin loads them, that hold an object whose <paramref name="key"/> is <paramref name="id"/>.</summary>
+    private IEnumerable<string> FilesWith(RecordId id, string key)
     {
         var records = Path.Combine(Directory, "records");
         if (!System.IO.Directory.Exists(records))
-            return null;
+            yield break;
         var text = id.ToString();
         foreach (var path in System.IO.Directory.EnumerateFiles(records, "*.json", SearchOption.AllDirectories)
                      .OrderBy(f => Path.GetRelativePath(records, f).Replace(Path.DirectorySeparatorChar, '/'), StringComparer.Ordinal))
         {
-            if (ReadRecords(path).OfType<JsonObject>().Any(o => o["id"] is JsonValue v && v.TryGetValue(out string? s) && s == text))
-                return Path.GetRelativePath(records, path).Replace(Path.DirectorySeparatorChar, '/');
+            if (ReadRecords(path).OfType<JsonObject>().Any(o => o[key] is JsonValue v && v.TryGetValue(out string? s) && s == text))
+                yield return Path.GetRelativePath(records, path).Replace(Path.DirectorySeparatorChar, '/');
         }
-        return null;
     }
 
     /// <summary>Takes the record or patch of <paramref name="id"/> out of <c>records/<paramref name="file"/></c>, if it's there.</summary>

@@ -508,7 +508,8 @@ public partial class MapSetView : VBoxContainer
     /// </summary>
     private void Fly(double delta)
     {
-        if (!_container.HasFocus())
+        // Not while Ctrl is down, so Ctrl+D duplicates without flying right.
+        if (!_container.HasFocus() || Input.IsKeyPressed(Key.Ctrl))
             return;
         float Held(Key key) => Input.IsKeyPressed(key) ? 1 : 0;
         var move = FreeFly.Direction(_camera.GlobalBasis, Held(Key.D) - Held(Key.A), Held(Key.E) - Held(Key.Q), Held(Key.S) - Held(Key.W));

@@ -873,7 +873,8 @@ public abstract partial class ItemEditPage : HSplitContainer
                 folder.WriteAsset(image, "png", png);
                 changes["icon"] = image.ToString();
             }
-            var file = folder.FileDefining(id) ?? RecordsFile;
+            // The mod's own record, or its patch that wins, wherever it is, else a new patch in the records file of its kind.
+            var file = folder.FileDefining(id) ?? folder.FilePatching(id) ?? RecordsFile;
             var record = folder.Record(file, id) ?? new JsonObject { ["patch"] = id.ToString() };
             foreach (var (field, value) in changes)
                 record[field] = value?.DeepClone();

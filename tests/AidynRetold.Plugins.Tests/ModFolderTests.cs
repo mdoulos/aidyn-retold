@@ -52,8 +52,8 @@ public sealed class ModFolderTests
     }
 
     /// <summary>
-    /// A tool reads back what it wrote, to change one field of a patch without losing the others, and finds where a plugin defines one
-    /// of its own records, to change it in place.
+    /// A tool reads back what it wrote, to change one field of a patch without losing the others, finds where a plugin defines one
+    /// of its own records, to change it in place, and where its patch of a record that wins is.
     /// </summary>
     [Fact]
     public void Reads_a_patch_back_and_finds_where_a_record_is_defined()
@@ -72,6 +72,11 @@ public sealed class ModFolderTests
         Assert.Equal("people/armor.json", mod.FileDefining(RecordId.Parse("my_village:armor/0x0001")));
         // A patch isn't a definition.
         Assert.Null(mod.FileDefining(armor));
+        // A patch of it in a file loaded after the first is the one that wins, so a tool's next patch goes there.
+        Assert.Equal("armor.json", mod.FilePatching(armor));
+        mod.WriteRecord("zz/late.json", new System.Text.Json.Nodes.JsonObject { ["patch"] = armor.ToString(), ["price"] = 14 });
+        Assert.Equal("zz/late.json", mod.FilePatching(armor));
+        Assert.Null(mod.FilePatching(RecordId.Parse("aidyn:armor/0x0501")));
     }
 
     /// <summary>A tool writing to the ACRE plugin's ID writes into the ACRE plugin, never a mod of its ID (ADR 0045).</summary>

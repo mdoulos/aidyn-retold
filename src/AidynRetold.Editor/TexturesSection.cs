@@ -108,7 +108,7 @@ public partial class TexturesSection : VBoxContainer
     }
 
     private static string Tooltip(Entry entry) => entry.Override is { } o
-        ? $"{entry.Label}: {(o.Reach == TextureReach.Model ? "this model's own" : "everywhere")}, from {o.Plugin}"
+        ? $"{entry.Label}: {(o.Reach == TextureReach.Model ? "this model's own" : "everywhere")}, from {EditorStyle.PluginName(o.Plugin)}"
         : entry.Borg1 is null ? $"{entry.Name}: the model's own image, with no texture number" : $"{entry.Label}: the model's copy";
 
     /// <summary>The texture as the model draws it: the plugin's PNG, or the model's own copy.</summary>
@@ -161,13 +161,17 @@ public partial class TexturesSection : VBoxContainer
         head.AddChild(title);
         head.AddChild(EditorStyle.DimLabel(size));
         if (entry.Override is { } over)
-            head.AddChild(EditorStyle.Chip($"{(over.Reach == TextureReach.Model ? "this model" : "everywhere")} · {over.Plugin}", over.Path, changed: true));
+            head.AddChild(EditorStyle.Chip($"{(over.Reach == TextureReach.Model ? "this model" : "everywhere")} · {EditorStyle.PluginName(over.Plugin)}", over.Path, changed: true));
         _details.AddChild(head);
 
         // Where it comes from, when that's other than the copy in the model's file, which a texture is unless said.
         if (entry.Override is { } r)
-            _details.AddChild(Wrapped(r.Reach == TextureReach.Model ? $"{r.Plugin} gives this model its own PNG, in place of the copy in its file."
-                : $"{r.Plugin} replaces this texture on every model that uses it."));
+        {
+            var by = EditorStyle.ModName(r.Plugin);
+            by = char.ToUpperInvariant(by[0]) + by[1..];
+            _details.AddChild(Wrapped(r.Reach == TextureReach.Model ? $"{by} gives this model its own PNG, in place of the copy in its file."
+                : $"{by} replaces this texture on every model that uses it."));
+        }
         else if (entry.Borg1 is null)
             _details.AddChild(Wrapped("The model's own image. It has no texture number, so a texture PNG can't replace it: edit the model to change it."));
 
@@ -190,7 +194,11 @@ public partial class TexturesSection : VBoxContainer
             buttons.Add(replace);
             if (entry.Override is { } put && put.Plugin != RecordId.RomNamespace)
             {
-                var back = new Button { Text = "Put Back Texture", TooltipText = $"Take {put.Plugin}'s PNG out, so the {(put.Reach == TextureReach.Model ? "texture everywhere, or the model's copy," : "model's copy")} shows again" };
+                var back = new Button
+                {
+                    Text = "Put Back Texture",
+                    TooltipText = $"Take {EditorStyle.ModName(put.Plugin)}'s PNG out, so the {(put.Reach == TextureReach.Model ? "texture everywhere, or the model's copy," : "model's copy")} shows again",
+                };
                 var id = put.Reach == TextureReach.Model ? RecordId.ModelTexture(_ctx.Scene, texture) : RecordId.Hex(RecordTypes.Texture, texture);
                 back.Pressed += () => PluginFiles.Remove(this, _ctx.Plugins, put.Plugin, id, "png", $"texture {entry.Label}'s PNG", _ctx.Reload);
                 buttons.Add(back);

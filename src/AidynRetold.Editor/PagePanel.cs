@@ -33,16 +33,6 @@ public partial class PagePanel : ScrollContainer
 
     protected VBoxContainer Body { get; } = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill };
 
-    /// <summary>
-    /// The page's content, taken out of its scroll to stand in a card of another page, which keeps this page, hidden, as its owner,
-    /// so what the content's buttons do still has its page.
-    /// </summary>
-    public VBoxContainer TakeBody()
-    {
-        RemoveChild(Body);
-        return Body;
-    }
-
     protected void ClearBody()
     {
         foreach (var child in Body.GetChildren())

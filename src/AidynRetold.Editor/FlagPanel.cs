@@ -61,7 +61,7 @@ public partial class FlagPanel : VBoxContainer
             }
             catch (Exception e) when (e is IOException or InvalidDataException)
             {
-                GD.PrintErr(e.ToString());
+                EditorDialog.Tell(this, "Couldn't load the checkpoint", $"{Path.GetFileName(path)}: {e.Message}");
             }
             Refresh();
         };
@@ -74,7 +74,7 @@ public partial class FlagPanel : VBoxContainer
             }
             catch (Exception e) when (e is IOException or InvalidDataException or System.Text.Json.JsonException)
             {
-                GD.PrintErr(e.ToString());
+                EditorDialog.Tell(this, "Couldn't load the save", $"{Path.GetFileName(path)}: {e.Message}");
             }
             Refresh();
         };

@@ -83,6 +83,11 @@ public partial class CharacterPanel : PagePanel
     private Party? _party;
     private Trainer? _trainer;
     private uint _gold;
+    // The experience to award, kept as the sheet's built again after each award; and the gold's edits, counted so the sheet's built
+    // again once they stop, its box keeping the focus, not under the arrows as they're clicked.
+    private int _award = 1000;
+    private int _goldEdits;
+    private bool _focusGold;
     private bool _fromGame;
     private TrainingWindowPanel? _window;
 
@@ -210,7 +215,6 @@ public partial class CharacterPanel : PagePanel
             foreach (var gear in _entity.Weapons.Append(_entity.Armor).Append(_entity.Shield).OfType<RecordId>())
                 Body.AddChild(LinkButton(gear, Catalog.Find(gear)?.Summary ?? gear.ToString()));
         }
-        Line("Spell and potion effects, and what enchantments and resistances do, come with combat (2.5).", Dim);
 
         if (_window is not null)
         {
@@ -313,7 +317,8 @@ public partial class CharacterPanel : PagePanel
     {
         var row = new HFlowContainer();
         row.AddThemeConstantOverride("h_separation", 8);
-        var exp = new SpinBox { MinValue = 0, MaxValue = 10_000_000, Step = 50, Value = 1000, TooltipText = "Experience to award, before the award multiplier." };
+        var exp = new SpinBox { MinValue = 0, MaxValue = 10_000_000, Step = 50, Value = _award, TooltipText = "Experience to award, before the award multiplier." };
+        exp.ValueChanged += v => _award = (int)v;
         var add = new Button { Text = "Award experience", TooltipText = "As a script or a battle does: × the award multiplier, and any levels it reaches." };
         add.Pressed += () =>
         {
@@ -342,9 +347,21 @@ public partial class CharacterPanel : PagePanel
         gold.ValueChanged += v =>
         {
             _gold = (uint)v;
-            Refresh();
+            var edit = ++_goldEdits;
+            GetTree().CreateTimer(0.4).Timeout += () =>
+            {
+                if (!IsInstanceValid(this) || edit != _goldEdits || !IsInsideTree())
+                    return;
+                _focusGold = IsInstanceValid(gold) && (gold.HasFocus() || gold.GetLineEdit().HasFocus());
+                Refresh();
+            };
         };
         row.AddChild(gold);
+        if (_focusGold)
+        {
+            _focusGold = false;
+            gold.GetLineEdit().CallDeferred(Control.MethodName.GrabFocus);
+        }
 
         var reset = new Button { Text = "Reset", TooltipText = "Back to the sheet as it started." };
         reset.Pressed += () => Reset(_fromGame);

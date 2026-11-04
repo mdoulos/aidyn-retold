@@ -736,7 +736,7 @@ public partial class RecordBrowser : Control
                 var actor = id.Type != RecordTypes.Actor ? null
                     : _original && _originalPlugins?.TryGet<ActorRecord>(id) is { } originalActor ? originalActor : plugins.TryGet<ActorRecord>(id);
                 var model = actor?.Scene ?? (id.Type == RecordTypes.Scene ? id : (RecordId?)null);
-                _model.Show(glb, animation.Length > 0 ? animation : null, note.Length > 0 ? note : null, actor, model);
+                _model.Show(glb, animation.Length > 0 ? animation : null, note.Length > 0 ? note : null, actor, model, original: _original);
                 ShowInspector(catalog, id, actor, plugins.GetJson(id), references);
                 break;
         }

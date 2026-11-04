@@ -37,9 +37,6 @@ public static class EditorTheme
 
     public static Palette Current => IsLight ? Light : Dark;
 
-    /// <summary>The mode changed, after the theme was set: what's drawn by code draws itself again.</summary>
-    public static event Action? Changed;
-
     /// <summary>The mode last chosen, light or not.</summary>
     public static bool SavedLight()
     {
@@ -82,7 +79,6 @@ public static class EditorTheme
             config.SetValue("view", "light", light);
             config.Save(Config);
         }
-        Changed?.Invoke();
     }
 
     public static Theme Build(Palette p)

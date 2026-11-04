@@ -58,9 +58,7 @@ public partial class Editor : Control
         if (png is not null)
             CommandLine.Watchdog(GetTree(), args.GetValueOrDefault("import") == "1" ? 900 : 60);
 
-        if (args.TryGetValue("tab", out var tab))
-            _records.SelectTab(tab);
-        var plugins = args.GetValueOrDefault("data") ?? DataPaths.Plugins;
+        var plugins =args.GetValueOrDefault("data") ?? DataPaths.Plugins;
         if (RomPlugin.Diagnose(plugins) is not null && !await ImportFirstAsync(plugins, args, png))
             return;
         if (!await PickModFirstAsync(plugins, args, png))
@@ -98,6 +96,9 @@ public partial class Editor : Control
         }
         if (args.TryGetValue("record", out var record))
             await _records.OpenAsync(RecordId.Parse(record));
+        // After the record, as the loading card and the start page show the Preview tab, and the record says which tabs it has.
+        if (args.TryGetValue("tab", out var tab))
+            _records.SelectTab(tab);
         if (args.TryGetValue("play", out var moves))
             _records.PlayScript(int.Parse(moves, CultureInfo.InvariantCulture));
         if (args.GetValueOrDefault("roll") == "1")

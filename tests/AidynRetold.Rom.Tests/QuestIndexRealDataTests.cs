@@ -55,6 +55,25 @@ public sealed class QuestIndexRealDataTests(Na10Import fixture)
     }
 
     /// <summary>
+    /// The index has nothing for a record of a type it doesn't cover, so the editor, which shows the atlas
+    /// on the covered types alone, hides nothing. A map's own entries are its objects'.
+    /// </summary>
+    [Fact]
+    public void CoveredTypesHoldEveryUse()
+    {
+        var uncovered = Data.Set.Ids.Where(id => !QuestIndex.Covers(id)).ToList();
+        Assert.NotEmpty(uncovered);
+        Assert.All(uncovered, id =>
+        {
+            Assert.Empty(Data.Index.UsesBy(id));
+            Assert.Empty(Data.Index.UsesOf(id));
+            Assert.Empty(Data.Index.StartersOf(id));
+            Assert.Empty(Data.Index.StartedBy(id));
+        });
+        Assert.All(Data.Objects.Keys, id => Assert.True(QuestIndex.Covers(id)));
+    }
+
+    /// <summary>
     /// The 49 flags the checkpoints set that a first pass found no data setter for. Engine code sets all
     /// but eight, which nothing in the data or the retail code names (see docs/formats/quests.md).
     /// The index finds the eight, secret doors in Ehud's underground, and the flags' labels name the engine's.

@@ -104,8 +104,13 @@ public partial class RecordBrowser : Control
     /// <summary>The map set preview, for scripted screenshots.</summary>
     public MapSetView Map => _map;
 
-    /// <summary>Shows the Preview, Fields or Used by tab.</summary>
-    public void SelectTab(string tab) => _tabs.CurrentTab = tab.ToLowerInvariant() switch { "fields" => 1, "used-by" => 2, "atlas" => 3, _ => 0 };
+    /// <summary>Shows the Preview, Fields, Used by or Atlas tab, unless the record has none of that kind (an actor has no atlas).</summary>
+    public void SelectTab(string tab)
+    {
+        var index = tab.ToLowerInvariant() switch { "fields" => 1, "used-by" => 2, "atlas" => 3, _ => 0 };
+        if (!_tabs.IsTabHidden(index))
+            _tabs.CurrentTab = index;
+    }
 
     /// <summary>Loads the plugins in a folder, as the runtime does: <c>aidyn.rom</c> first, then the ACRE plugin (ADRs 0039, 0045), then the mods in <see cref="PluginSet.LoadOrder"/>.</summary>
     public async Task LoadAsync(string pluginsDirectory)
@@ -578,9 +583,15 @@ public partial class RecordBrowser : Control
         _fields.Show(json, field => voxel ? plugins.Setters(MapRecord.MapOf(id), $"objects[{MapRecord.IndexOf(id)}].{field}") : plugins.Setters(id, field),
             other => catalog.Find(other) is not null || other.Type == RecordTypes.Voxel, other => catalog.Find(other)?.Summary);
         ShowUsedBy(catalog, references);
-        if (_quests is { } quests)
+        // The atlas only on the types the quest index reads: an actor's, a texture's or a weapon's would always be empty.
+        var atlas = _quests is not null && QuestIndex.Covers(id);
+        if (!atlas && _tabs.CurrentTab == 3)
+            _tabs.CurrentTab = 0;
+        _tabs.SetTabHidden(3, !atlas);
+        _header.Tabs.SetTabHidden(3, !atlas);
+        if (atlas)
         {
-            _atlas.Show(catalog, quests, id, Explore);
+            _atlas.Show(catalog, _quests!, id, Explore);
             SetTabTitle(3, _atlas.Count == 0 ? Atlas : $"{Atlas} ({_atlas.Count:N0})");
         }
         SetPreview(new Label { Text = "Loading…" });

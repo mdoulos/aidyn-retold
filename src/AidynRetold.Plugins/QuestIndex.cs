@@ -129,10 +129,24 @@ public sealed record QuestEdge(RecordId From, RecordId To, FlagRole Role, FlagAc
 /// <see cref="PluginSet"/>, like <see cref="PluginCatalog"/>.
 /// </summary>
 /// <remarks>
-/// A new kind of record that uses flags is one more loop in <see cref="Build"/>.
+/// A new kind of record that uses flags is one more loop in <see cref="Build"/>, and its type one more
+/// in <see cref="CoveredTypes"/>.
 /// </remarks>
 public sealed class QuestIndex
 {
+    /// <summary>
+    /// The types of record the index reads, so the only ones it can say anything of: a map through its
+    /// objects, a member's entity and a key item through their flags. The editor's atlas is on these alone.
+    /// </summary>
+    public static IReadOnlySet<string> CoveredTypes { get; } = new HashSet<string>
+    {
+        RecordTypes.Flag, RecordTypes.Dialogue, RecordTypes.Journal, RecordTypes.Map, RecordTypes.Voxel,
+        RecordTypes.Shop, RecordTypes.Entity, RecordTypes.Item, RecordTypes.MapSet, RecordTypes.StateFlags,
+    };
+
+    /// <summary>Whether the index can say anything of <paramref name="id"/>: its type is one it reads (<see cref="CoveredTypes"/>).</summary>
+    public static bool Covers(RecordId id) => CoveredTypes.Contains(id.Type);
+
     private readonly ILookup<RecordId, FlagUse> _byFlag;
     private readonly ILookup<RecordId, FlagUse> _byUser;
     private readonly ILookup<RecordId, QuestEdge> _into;

@@ -5,9 +5,10 @@ using Godot;
 namespace AidynRetold.Editor;
 
 /// <summary>
-/// The Model section of a model's inspector: which plugin's file it is, what's in it, and, when a plugin replaces it, a switch
-/// between the replacement and the original and the remodel check of the one against the other (<see cref="RemodelCheck"/>). Its
-/// buttons export the file, replace it with another, checked first and written into a plugin, and put the original back.
+/// The Model section of a model's inspector: what's in the model's file, the plugin it's from in the card's note (its ID is the view's
+/// and the header's), and, when a plugin replaces it, a switch between the replacement and the original and the remodel check of the
+/// one against the other (<see cref="RemodelCheck"/>). Its buttons export the file, replace it with another, checked first and
+/// written into a plugin, and put the original back.
 /// </summary>
 public partial class ModelSection : VBoxContainer
 {
@@ -16,22 +17,11 @@ public partial class ModelSection : VBoxContainer
     public ModelSection(ModelContext ctx)
     {
         _ctx = ctx;
-        AddThemeConstantOverride("separation", 6);
+        // The file's line, then the buttons, set apart from it.
+        AddThemeConstantOverride("separation", 12);
         var plugins = ctx.Plugins;
         var file = ctx.Original ? ctx.OriginalFile : ctx.File;
         var provider = file is null ? null : plugins.PluginWith(file);
-        var original = ctx.OriginalFile is { } o ? plugins.PluginWith(o) : null;
-
-        var from = EditorStyle.Row(4);
-        from.AddChild(EditorStyle.DimLabel(ctx.Scene.ToString(), 13));
-        if (original is not null)
-            from.AddChild(EditorStyle.Chip(EditorStyle.PluginName(original), "gives the original model"));
-        if (ctx.Replaced && provider is not null && provider != original)
-        {
-            from.AddChild(EditorStyle.DimLabel("›"));
-            from.AddChild(EditorStyle.Chip(EditorStyle.PluginName(plugins.PluginWith(ctx.File!)!), "replaces the model", changed: true));
-        }
-        AddChild(from);
         if (file is not null)
             AddChild(EditorStyle.DimLabel(Contents(file), 13));
 
@@ -70,9 +60,12 @@ public partial class ModelSection : VBoxContainer
         if (ctx.Replaced && ctx.OriginalFile is { } originalFile && ctx.File is { } replacementFile)
         {
             var results = Check(originalFile, replacementFile);
-            AddChild(EditorStyle.DimLabel("Remodel check, against the original", 13));
-            AddChild(Results(results));
-            Summary = Verdict(results);
+            var check = new VBoxContainer();
+            check.AddThemeConstantOverride("separation", 6);
+            check.AddChild(EditorStyle.DimLabel("Remodel check, against the original", 13));
+            check.AddChild(Results(results));
+            AddChild(check);
+            Summary = plugins.PluginWith(replacementFile) is { } by ? $"{EditorStyle.PluginName(by)} · {Verdict(results)}" : Verdict(results);
         }
         else
         {
@@ -80,7 +73,10 @@ public partial class ModelSection : VBoxContainer
         }
     }
 
-    /// <summary>What to say after the section's title: where the model's from, or how the remodel check came out.</summary>
+    /// <summary>
+    /// What to say after the section's title: the plugin the model's from, or, replaced, the plugin replacing it and how the remodel
+    /// check came out.
+    /// </summary>
     public string Summary { get; }
 
     /// <summary>The root transform the check looks for: the actor's, for an actor's model.</summary>

@@ -158,11 +158,12 @@ public partial class TexturesSection : VBoxContainer
             head.AddChild(EditorStyle.Chip($"{(over.Reach == TextureReach.Model ? "this model" : "everywhere")} · {over.Plugin}", over.Path, changed: true));
         _details.AddChild(head);
 
-        _details.AddChild(Wrapped(entry.Override is { } r
-            ? r.Reach == TextureReach.Model ? $"{r.Plugin} gives this model its own PNG, in place of the copy in its file."
-                : $"{r.Plugin} replaces this texture on every model that uses it."
-            : entry.Borg1 is null ? "The model's own image. It has no texture number, so a texture PNG can't replace it: edit the model to change it."
-            : "The model draws the copy in its file."));
+        // Where it comes from, when that's other than the copy in the model's file, which a texture is unless said.
+        if (entry.Override is { } r)
+            _details.AddChild(Wrapped(r.Reach == TextureReach.Model ? $"{r.Plugin} gives this model its own PNG, in place of the copy in its file."
+                : $"{r.Plugin} replaces this texture on every model that uses it."));
+        else if (entry.Borg1 is null)
+            _details.AddChild(Wrapped("The model's own image. It has no texture number, so a texture PNG can't replace it: edit the model to change it."));
 
         if (entry.Borg1 is { } borg1)
         {
@@ -192,35 +193,48 @@ public partial class TexturesSection : VBoxContainer
         _details.AddChild(new ButtonRows([.. buttons]));
     }
 
-    /// <summary>The other models that use a texture, by who they are, each a link, the first few and a menu of all.</summary>
+    /// <summary>
+    /// The other models that use a texture, a list of their own in a box under the count: a row each, as a link, who wears it with
+    /// the model's key dim at the right, or the model by its key where no one does, double-clicked to open; five rows show, the
+    /// rest scroll.
+    /// </summary>
     private Control Shared(IReadOnlyList<RecordId> models)
     {
-        var flow = new HFlowContainer();
-        flow.AddThemeConstantOverride("h_separation", 4);
-        string Name(RecordId m)
+        var list = new Tree
+        {
+            Columns = 2, HideRoot = true, SelectMode = Tree.SelectModeEnum.Row,
+            CustomMinimumSize = new Vector2(0, Math.Min(models.Count, 5) * TableRow + 4), ScrollVerticalEnabled = models.Count > 5,
+        };
+        list.SetColumnExpand(0, true);
+        list.SetColumnClipContent(0, true);
+        list.SetColumnExpand(1, false);
+        list.SetColumnCustomMinimumWidth(1, 80);
+        var root = list.CreateItem();
+        foreach (var m in models)
         {
             var summary = _ctx.Catalog.Find(m)?.Summary ?? "";
             var cut = summary.IndexOf(", used by", StringComparison.Ordinal);
             var who = cut > 0 ? summary[..cut] : "";
-            return who.Length > 0 ? $"{who} ({m.Key})" : m.Key;
+            var row = list.CreateItem(root);
+            row.SetText(0, who.Length > 0 ? who : $"Model {m.Key}");
+            row.SetCustomColor(0, RecordFieldsView.LinkColor);
+            row.SetTooltipText(0, $"{(who.Length > 0 ? $"{who}: " : "")}{m}. Double-click to open.");
+            row.SetText(1, who.Length > 0 ? m.Key : "");
+            row.SetCustomColor(1, EditorStyle.Dim);
+            row.SetTextAlignment(1, HorizontalAlignment.Right);
+            row.SetTooltipText(1, $"{m}. Double-click to open.");
+            row.SetMetadata(0, m.ToString());
         }
-        foreach (var m in models.Take(5))
+        list.ItemActivated += () =>
         {
-            var link = new LinkButton { Text = Name(m), TooltipText = $"Open {m}", Underline = LinkButton.UnderlineMode.OnHover };
-            link.Pressed += () => _ctx.Open(m);
-            flow.AddChild(link);
-        }
-        if (models.Count > 5)
-        {
-            var more = new MenuButton { Text = $"and {models.Count - 5} more ▾", Flat = true };
-            var popup = more.GetPopup();
-            for (var i = 0; i < models.Count; i++)
-                popup.AddItem(Name(models[i]), i);
-            popup.IdPressed += i => _ctx.Open(models[(int)i]);
-            flow.AddChild(more);
-        }
-        return flow;
+            if (list.GetSelected()?.GetMetadata(0).AsString() is { } text && RecordId.TryParse(text, out var id))
+                _ctx.Open(id);
+        };
+        return list;
     }
+
+    /// <summary>A table's row, its text 13 high with the theme's 8 above and below.</summary>
+    private const int TableRow = 34;
 
     /// <summary>Export: this texture, or every texture the model draws.</summary>
     private void AskExport(Entry entry)

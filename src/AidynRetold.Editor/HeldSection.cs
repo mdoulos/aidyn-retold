@@ -59,7 +59,6 @@ public partial class HeldSection : VBoxContainer
 
         _weapons = [.. plugins.All<WeaponRecord>(RecordTypes.Weapon).Where(w => w.Model is not null).OrderBy(w => w.Name, StringComparer.Ordinal)];
         _shields = [.. plugins.All<ArmorRecord>(RecordTypes.Armor).Where(a => a.Model is not null).OrderBy(a => a.Name, StringComparer.Ordinal)];
-        AddChild(EditorStyle.DimLabel("Held, as in battle", 13));
         _weapon.AddItem("No weapon drawn", 0);
         for (var i = 0; i < _weapons.Count; i++)
             _weapon.AddItem(_weapons[i].Name, i + 1);

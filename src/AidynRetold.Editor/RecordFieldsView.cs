@@ -13,8 +13,8 @@ namespace AidynRetold.Editor;
 public partial class RecordFieldsView : Tree
 {
     private const int PageSize = 256;
-    /// <summary>A link in the theme's accent, readable in either mode; a link to a record no plugin has, faded.</summary>
-    private static Color LinkColor => EditorTheme.IsLight ? EditorTheme.Current.Accent : EditorTheme.Current.Accent.Lightened(0.3f);
+    /// <summary>A link in a table, in the theme's accent, readable in either mode; a link to a record no plugin has, faded.</summary>
+    public static Color LinkColor => EditorTheme.IsLight ? EditorTheme.Current.Accent : EditorTheme.Current.Accent.Lightened(0.3f);
 
     private static Color MissingLinkColor => LinkColor with { A = 0.6f };
 

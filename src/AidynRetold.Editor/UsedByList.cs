@@ -4,8 +4,8 @@ using Godot;
 namespace AidynRetold.Editor;
 
 /// <summary>
-/// What names a record, as a card on a one-page record shows it, filling the card to its edges: a table of the records,
-/// double-clicked to open one.
+/// What names a record, as a card on a one-page record shows it, filling the card to its edges: a table of the records and their
+/// summaries, with no heads, which say no more than the rows do, double-clicked to open one.
 /// </summary>
 public static class UsedByList
 {
@@ -22,14 +22,13 @@ public static class UsedByList
             inset.AddChild(EditorStyle.DimLabel("Nothing names it."));
             return inset;
         }
+        // A row is its text 13 high with the theme's 8 above and below; up to nine show, and only more scroll.
         var tree = new Tree
         {
             ThemeTypeVariation = "FlushTree",
-            Columns = 2, HideRoot = true, ColumnTitlesVisible = true, SelectMode = Tree.SelectModeEnum.Row,
-            CustomMinimumSize = new Vector2(0, Math.Min(44 + groups.Count * 30, 320)),
+            Columns = 2, HideRoot = true, SelectMode = Tree.SelectModeEnum.Row,
+            CustomMinimumSize = new Vector2(0, Math.Min(groups.Count * 34 + 4, 9 * 34 + 4)), ScrollVerticalEnabled = groups.Count > 9,
         };
-        tree.SetColumnTitle(0, "RECORD");
-        tree.SetColumnTitle(1, "SUMMARY");
         tree.SetColumnExpand(0, false);
         tree.SetColumnCustomMinimumWidth(0, 190);
         tree.SetColumnClipContent(1, true);

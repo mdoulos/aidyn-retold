@@ -267,10 +267,24 @@ public static class EditorTheme
         t.SetStylebox("panel", "ChangedChip", Box(p.Raised, p.Changed, 99, 1, 10, 2));
         t.SetTypeVariation("Toolbar", "PanelContainer");
         t.SetStylebox("panel", "Toolbar", Box(p.Band, p.Border, 0, 0, 16, 8, top: 0, bottom: 1));
-        // A card: a 1px border round a surface, its corners 8; its head 16 by 24 in, over a line while it's open; a band across it in
-        // small capitals, over a line, to divide it.
+        // The toolbar's back and forward, each in a box, outlined as a button is and tighter, to sit in its row, its arrow its icon.
+        foreach (var (name, back) in new[] { ("BackButton", true), ("ForwardButton", false) })
+        {
+            t.SetTypeVariation(name, "Button");
+            t.SetStylebox("normal", name, Box(p.Raised, p.Border, 4, 1, 8, 4));
+            t.SetStylebox("hover", name, Box(p.Hover, p.Border, 4, 1, 8, 4));
+            t.SetStylebox("pressed", name, Box(p.Selection, p.Accent, 4, 1, 8, 4));
+            t.SetStylebox("disabled", name, Box(p.Band, p.Border with { A = 0.5f }, 4, 1, 8, 4));
+            t.SetStylebox("focus", name, Box(Colors.Transparent, p.Accent, 4, 1, 8, 4));
+            t.SetIcon("icon", name, Step(p.Text, back));
+        }
+        // A panel of the page under the toolbar, which meets it with no gap: its own padding at its top.
+        t.SetTypeVariation("PagePanel", "PanelContainer");
+        t.SetStylebox("panel", "PagePanel", Box(p.Surface, pad: (0, 6, 0, 0)));
+        // A card: a 1px border round a surface, its corners 8, what's in it inside the border, so a table filling it keeps the
+        // card's edge; its head 16 by 24 in, over a line while it's open; a band across it in small capitals, over a line, to divide it.
         t.SetTypeVariation("Card", "PanelContainer");
-        t.SetStylebox("panel", "Card", Box(p.Surface, p.Border, 8, 1));
+        t.SetStylebox("panel", "Card", Box(p.Surface, p.Border, 8, 1, 1, 1));
         t.SetTypeVariation("CardHead", "PanelContainer");
         t.SetStylebox("panel", "CardHead", Box(Colors.Transparent, p.Border, 0, 0, 24, 16, top: 0, bottom: 1));
         t.SetTypeVariation("CardHeadFolded", "PanelContainer");
@@ -281,8 +295,10 @@ public static class EditorTheme
         t.SetTypeVariation("CardBodyFlush", "PanelContainer");
         t.SetStylebox("panel", "CardBodyFlush", Box(Colors.Transparent, null, 0, 0, 0, 0));
         t.SetTypeVariation("FlushTree", "Tree");
-        t.SetStylebox("panel", "FlushTree", Box(p.Field, null, 0, 0, 1, 1, bottomRadius: 7));
+        t.SetStylebox("panel", "FlushTree", Box(p.Field, null, 0, 0, 0, 0, bottomRadius: 7));
         t.SetStylebox("focus", "FlushTree", Box(Colors.Transparent, null, 0, 0));
+        // A fold's arrow ends at the indent, so the indent leaves it 12 in from the card's edge, as a row's text is.
+        t.SetConstant("item_margin", "FlushTree", 20);
         t.SetTypeVariation("Subhead", "PanelContainer");
         t.SetStylebox("panel", "Subhead", Box(p.Sunken, p.Border, 0, 0, 24, 14, top: 1, bottom: 1));
         // A row of a card: a label column and a field, 18 by 24 in, a rule above all but the first.
@@ -344,11 +360,15 @@ public static class EditorTheme
         t.SetColor("font_disabled_color", name, fill with { A = 0.7f });
     }
 
-    /// <summary>A flat box: its fill, its border all round or at its top or bottom alone, its radius and its margins.</summary>
+    /// <summary>
+    /// A flat box: its fill, its border all round or at its top or bottom alone, its radius and its margins, the same each side or,
+    /// in <paramref name="pad"/>, left, top, right and bottom.
+    /// </summary>
     private static StyleBoxFlat Box(Color fill, Color? border = null, int radius = 0, int width = 0, float marginX = 0, float marginY = 0,
-        int? top = null, int? bottom = null, int? topRadius = null, int? bottomRadius = null)
+        int? top = null, int? bottom = null, int? topRadius = null, int? bottomRadius = null, (float Left, float Top, float Right, float Bottom)? pad = null)
     {
-        var box = new StyleBoxFlat { BgColor = fill, ContentMarginLeft = marginX, ContentMarginRight = marginX, ContentMarginTop = marginY, ContentMarginBottom = marginY };
+        var (left, over, right, under) = pad ?? (marginX, marginY, marginX, marginY);
+        var box = new StyleBoxFlat { BgColor = fill, ContentMarginLeft = left, ContentMarginRight = right, ContentMarginTop = over, ContentMarginBottom = under };
         // A border of width all round, its top's or bottom's own where given.
         if (border is { } b)
         {
@@ -442,5 +462,12 @@ public static class EditorTheme
     {
         var (a, b, c) = down ? (new Vector2(3, 4.5f), new Vector2(6, 7.5f), new Vector2(9, 4.5f)) : (new Vector2(4.5f, 3), new Vector2(7.5f, 6), new Vector2(4.5f, 9));
         return Over(Colors.Transparent, color, Cover(Math.Min(Segment(at, a, b), Segment(at, b, c)) - 0.8f));
+    });
+
+    /// <summary>A chevron, 14 square, pointing left or right, for back and forward.</summary>
+    public static ImageTexture Step(Color color, bool back) => Draw(14, 14, at =>
+    {
+        var (a, b, c) = back ? (new Vector2(8.5f, 3.5f), new Vector2(5, 7), new Vector2(8.5f, 10.5f)) : (new Vector2(5.5f, 3.5f), new Vector2(9, 7), new Vector2(5.5f, 10.5f));
+        return Over(Colors.Transparent, color, Cover(Math.Min(Segment(at, a, b), Segment(at, b, c)) - 0.9f));
     });
 }

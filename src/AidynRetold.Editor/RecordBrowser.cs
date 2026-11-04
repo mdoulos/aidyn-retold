@@ -15,7 +15,7 @@ namespace AidynRetold.Editor;
 /// <summary>
 /// The editor's view of the installed plugins (ADR 0010): every record and asset by type, in a side panel with the type and the
 /// search over it, and a record's preview, merged fields and what names it beside. Record IDs are links, with back and forward
-/// (Alt+Left and Alt+Right, or the mouse's side buttons).
+/// (the toolbar's buttons, Alt+Left and Alt+Right, or the mouse's side buttons).
 /// </summary>
 /// <remarks>
 /// It reads plugins only. The ROM is the import dialog's (<see cref="ImportDialog"/>), which the editor shows before the browser
@@ -25,6 +25,17 @@ public partial class RecordBrowser : Control
 {
     private const string Preview = "Preview", Fields = "Fields", UsedBy = "Used by", Atlas = "Atlas";
 
+    // Back and forward, each in a box at the toolbar's left, their arrows the theme's.
+    private readonly Button _back = new()
+    {
+        ThemeTypeVariation = "BackButton", TooltipText = "Back (Alt+Left)", Disabled = true, FocusMode = FocusModeEnum.None,
+        IconAlignment = HorizontalAlignment.Center, CustomMinimumSize = new Vector2(30, 26),
+    };
+    private readonly Button _forward = new()
+    {
+        ThemeTypeVariation = "ForwardButton", TooltipText = "Forward (Alt+Right)", Disabled = true, FocusMode = FocusModeEnum.None,
+        IconAlignment = HorizontalAlignment.Center, CustomMinimumSize = new Vector2(30, 26),
+    };
     private readonly OptionButton _types = new() { TooltipText = "Type", CustomMinimumSize = new Vector2(150, 0) };
     private readonly LineEdit _search = new()
     {
@@ -127,6 +138,7 @@ public partial class RecordBrowser : Control
         _current = null;
         _history.Clear();
         _position = -1;
+        UpdateHistoryButtons();
         _status.Text = "";
         Populate();
         ShowNothing("");
@@ -269,12 +281,15 @@ public partial class RecordBrowser : Control
 
     private void BuildUi()
     {
+        // The toolbar, and the page right under it: its panels meet the toolbar's line, each padded at its own top.
         var root = new VBoxContainer();
         root.SetAnchorsPreset(LayoutPreset.FullRect);
-        root.AddThemeConstantOverride("separation", 6);
+        root.AddThemeConstantOverride("separation", 0);
         AddChild(root);
 
         var bar = EditorStyle.Row(6);
+        bar.AddChild(_back);
+        bar.AddChild(_forward);
         bar.AddChild(_status);
         bar.AddChild(new VSeparator());
         // The mod saves go to, which clicking changes (ModSetup).
@@ -328,7 +343,7 @@ public partial class RecordBrowser : Control
             if (!_selecting && _list.GetSelected()?.GetMetadata(0).AsString() is { } text && RecordId.TryParse(text, out var id))
                 Navigate(id);
         };
-        // The side panel: the type and the search over the list, and the list's count under it.
+        // The side panel: the type and the search over the list, and the list's count under it, padded at its top.
         var side = new VBoxContainer();
         side.AddThemeConstantOverride("separation", 6);
         var filters = EditorStyle.Row(6);
@@ -338,12 +353,18 @@ public partial class RecordBrowser : Control
         _list.SizeFlagsVertical = SizeFlags.ExpandFill;
         side.AddChild(_list);
         side.AddChild(_count);
-        split.AddChild(side);
+        var sidePanel = new MarginContainer();
+        sidePanel.AddThemeConstantOverride("margin_top", 6);
+        sidePanel.AddChild(side);
+        split.AddChild(sidePanel);
 
+        // The record's page, one panel from the toolbar down, the header and the tabs' pages in it.
         _right.AddThemeConstantOverride("separation", 4);
         _right.AddChild(_header);
         _right.AddChild(_tabs);
-        split.AddChild(_right);
+        var recordPanel = new PanelContainer { ThemeTypeVariation = "PagePanel" };
+        recordPanel.AddChild(_right);
+        split.AddChild(recordPanel);
         _tabs.AddChild(_preview);
         _tabs.AddChild(_fields);
         _tabs.AddChild(_usedBy);
@@ -376,6 +397,8 @@ public partial class RecordBrowser : Control
         _map.Opened += FollowLink;
         _map.Saved += () => _ = Report(LoadAsync(_pluginsDirectory));
 
+        _back.Pressed += () => Step(-1);
+        _forward.Pressed += () => Step(1);
         _types.ItemSelected += _ => Populate();
         _search.TextChanged += _ => Populate();
         _search.TextSubmitted += Submit;
@@ -520,11 +543,18 @@ public partial class RecordBrowser : Control
     {
         // Another page shows the plugins' own, whatever the last one showed.
         _original = false;
+        UpdateHistoryButtons();
         if (_rows.TryGetValue(id, out var row))
             SelectRow(row);
         else
             _list.DeselectAll();
         _showing = Report(ShowAsync(id));
+    }
+
+    private void UpdateHistoryButtons()
+    {
+        _back.Disabled = _position <= 0;
+        _forward.Disabled = _position >= _history.Count - 1;
     }
 
     // ---- Showing a record -----------------------------------------------------------------------
@@ -746,7 +776,7 @@ public partial class RecordBrowser : Control
         if (_items is { } items)
         {
             if (id.Type == RecordTypes.Armor && items.TryGet(id) is { } armorItem && plugins.TryGet<ArmorRecord>(id) is { } armor && json is not null)
-                return new ArmorPage(catalog, _game, _rules, items, armorItem, armor, json, catalog.ReferencesTo(id), FollowLink, () => ReloadAt(id));
+                return new ArmorPage(catalog, _game, _rules, items, armorItem, armor, json, catalog.ReferencesTo(id), FollowLink, () => ReloadAt(id), _models);
             if (id.Type is RecordTypes.Weapon or RecordTypes.Armor or RecordTypes.Item && items.TryGet(id) is { } item)
                 return new ItemPanel(catalog, _game, _rules, items, item, FollowLink);
             if (id.Type == RecordTypes.Shop && plugins.TryGet<ShopRecord>(id) is { } shop)
@@ -806,8 +836,8 @@ public partial class RecordBrowser : Control
     public ModelInspector? Inspector => _model.Inspector.GetChildren().OfType<ModelInspector>().FirstOrDefault();
 
     /// <summary>
-    /// The model view's inspector, for an actor's or a scene's model, with the record's fields and what names it as its last cards;
-    /// none for a map's collision or anything else.
+    /// The model view's inspector, for an actor's or a scene's model, with what names the record as its first card and its fields
+    /// after the model's; none for a map's collision or anything else.
     /// </summary>
     private void ShowInspector(PluginCatalog catalog, RecordId id, ActorRecord? actor, JsonObject? json, IReadOnlyList<RecordReference> references)
     {
@@ -832,17 +862,17 @@ public partial class RecordBrowser : Control
             Usage = () => _usage ??= Task.Run(() => AidynRetold.Plugins.Assets.TextureUsage.Build(catalog.Plugins)),
         });
         _model.Inspector.AddChild(inspector);
+        var usedBy = references.Select(r => r.From).Distinct().Count();
+        inspector.AddSection("Used by", UsedByList.Create(catalog, references, FollowLink), usedBy == 0 ? "" : $"{usedBy:N0} {(usedBy == 1 ? "record" : "records")}",
+            flush: true, first: true);
         if (json is not null)
         {
-            var fields = new RecordFieldsView { CustomMinimumSize = new Vector2(0, 320), ThemeTypeVariation = "FlushTree" };
+            var fields = new RecordFieldsView { CustomMinimumSize = new Vector2(0, 320), ThemeTypeVariation = "FlushTree", ColumnTitlesVisible = false };
             fields.Show(json, field => catalog.Plugins.Setters(id, field), other => catalog.Find(other) is not null || other.Type == RecordTypes.Voxel,
                 other => catalog.Find(other)?.Summary);
             fields.Opened += FollowLink;
             inspector.AddSection("Fields", fields, $"{json.Count - 1} fields", flush: true);
         }
-        var usedBy = references.Select(r => r.From).Distinct().Count();
-        inspector.AddSection("Used by", UsedByList.Create(catalog, references, FollowLink), usedBy == 0 ? "" : $"{usedBy:N0} {(usedBy == 1 ? "record" : "records")}",
-            flush: true);
     }
 
     /// <summary>The ROM plugin alone, for the original of a record a later plugin patches, loaded once when first asked.</summary>

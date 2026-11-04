@@ -24,13 +24,23 @@ public partial class Section : PanelContainer
     /// Whether the content fills the body to the card's edges, unpadded: a table, which reads better spanning the card than inset in
     /// it, drawn as a <c>FlushTree</c>. What else such content holds pads itself.
     /// </param>
-    public Section(string name, Control content, bool foldable = true, bool flush = false)
+    /// <param name="fill">Whether, while it's open, it takes the height its column has left, and its content with it.</param>
+    public Section(string name, Control content, bool foldable = true, bool flush = false, bool fill = false)
     {
         _name = name;
         Content = content;
         ThemeTypeVariation = "Card";
+        if (fill)
+        {
+            SizeFlagsVertical = SizeFlags.ExpandFill;
+            _body.SizeFlagsVertical = SizeFlags.ExpandFill;
+            content.SizeFlagsVertical = SizeFlags.ExpandFill;
+        }
         var column = new VBoxContainer();
         column.AddThemeConstantOverride("separation", 0);
+        // Folded, it's only its head, however much height there is.
+        if (fill)
+            Toggled += open => SizeFlagsVertical = open ? SizeFlags.ExpandFill : SizeFlags.Fill;
         var head = EditorStyle.Row(8);
         _title.Disabled = !foldable;
         head.AddChild(_title);

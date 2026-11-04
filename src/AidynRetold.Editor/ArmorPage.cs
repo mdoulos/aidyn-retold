@@ -10,11 +10,16 @@ namespace AidynRetold.Editor;
 /// <summary>
 /// An armor's or a shield's page, all of it on one page as cards, with no tabs (editor.md#an-armors-page): the armor itself, its
 /// picture and values to change, held until <b>Save</b> writes them to the mod as one change (<see cref="PluginFiles.Write"/>); what
-/// wearing it does on the editor's party; what names it; and every field as the plugins merge it.
+/// wearing it does; what names it; and every field as the plugins merge it. Beside them, a shield's model, the scene the game hangs on
+/// a body's arm, in a panel of its own the page's height.
 /// </summary>
-public partial class ArmorPage : ScrollContainer
+public partial class ArmorPage : HSplitContainer
 {
     private const float LabelWidth = 260, PictureSize = 64;
+    // The picture dialog's tiles, nine across, 6 apart, as wide as its words, its edges as far from the first and the last.
+    private const int PictureTile = 56, PictureColumns = 9, PictureGap = 6, PictureGrid = PictureColumns * PictureTile + (PictureColumns - 1) * PictureGap;
+    // How far the grid's scroll reaches into the dialog's right margin, for its bar, which is about 4 wide.
+    private const int DialogBarRoom = 8;
 
     private readonly PluginCatalog _catalog;
     private readonly ArmorRecord _armor;
@@ -30,22 +35,27 @@ public partial class ArmorPage : ScrollContainer
     // A picture from a file, which saving writes as the mod's own image and points the armor at.
     private byte[]? _png;
 
+    /// <param name="models">The models to draw a shield's from, in the panel beside the cards; none, no panel.</param>
     public ArmorPage(PluginCatalog catalog, EditorGame? game, CharacterRules? rules, ItemCatalog items, Item item, ArmorRecord armor,
-        JsonObject json, IReadOnlyList<RecordReference> references, Action<RecordId> open, Func<Task> reload)
+        JsonObject json, IReadOnlyList<RecordReference> references, Action<RecordId> open, Func<Task> reload, AidynRetold.Views.Models? models)
     {
         (_catalog, _armor, _item, _reload) = (catalog, armor, item, reload);
-        HorizontalScrollMode = ScrollMode.Disabled;
+        var cards = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         column.AddThemeConstantOverride("separation", 16);
         var margin = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         margin.AddThemeConstantOverride("margin_right", 6);
         margin.AddThemeConstantOverride("margin_bottom", 6);
         margin.AddChild(column);
-        AddChild(margin);
+        cards.AddChild(margin);
+        AddChild(cards);
+        if (armor.Model is { } model && models is not null)
+            AddChild(ModelPanel(model, models, open));
 
         column.AddChild(EditCard());
-        // What wearing it does, the item page's own, without its header, which the card above stands for.
-        var preview = new ItemPanel(catalog, game, rules, items, item, open, header: false);
+        // What wearing it does, the item page's own, without its header, which the card above stands for, or what equipping it would
+        // do for the party.
+        var preview = new ItemPanel(catalog, game, rules, items, item, open, header: false, party: false);
         column.AddChild(new Section("In the game", preview.TakeBody(), foldable: false));
         preview.Visible = false;
         column.AddChild(preview);
@@ -54,11 +64,37 @@ public partial class ArmorPage : ScrollContainer
         {
             Note = usedBy == 0 ? "" : $"{usedBy:N0} {(usedBy == 1 ? "record" : "records")}",
         });
-        var fields = new RecordFieldsView { CustomMinimumSize = new Vector2(0, 360), ThemeTypeVariation = "FlushTree" };
+        var fields = new RecordFieldsView { CustomMinimumSize = new Vector2(0, 360), ThemeTypeVariation = "FlushTree", ColumnTitlesVisible = false };
         fields.Show(json, field => catalog.Plugins.Setters(armor.Id, field), other => catalog.Find(other) is not null || other.Type == RecordTypes.Voxel,
             other => catalog.Find(other)?.Summary);
         fields.Opened += open;
         column.AddChild(new Section("All fields", fields, flush: true) { Note = "as the plugins merge them", Open = false });
+    }
+
+    /// <summary>
+    /// The shield's model (a scene, <c>aidyn:scene/0x…</c>, not an actor: it has no states), in a card the panel's height, framed,
+    /// turned by dragging and zoomed by scrolling, with <b>Open Model</b> for its own page, its textures and parts.
+    /// </summary>
+    private Control ModelPanel(RecordId model, AidynRetold.Views.Models models, Action<RecordId> open)
+    {
+        var thumb = new ModelThumb { SizeFlagsVertical = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(0, 320), TooltipText = "Drag to turn it, scroll to zoom" };
+        // Framed once it's in the tree, where its bounds can be measured.
+        thumb.Ready += () => thumb.Show(_catalog.Plugins, models, model);
+        var framed = new PanelContainer { ThemeTypeVariation = "Frame", SizeFlagsVertical = SizeFlags.ExpandFill };
+        framed.AddChild(thumb);
+        var body = new VBoxContainer();
+        body.AddThemeConstantOverride("separation", 12);
+        body.AddChild(framed);
+        var go = new Button { Text = "Open Model", TooltipText = $"Open {model}: its textures and parts, to export or replace" };
+        go.Pressed += () => open(model);
+        body.AddChild(new ButtonRows(go));
+        var provider = _catalog.Plugins.FindAsset(model, "glb") is { } file ? _catalog.Plugins.PluginWith(file) : null;
+        var card = new Section("Model", body, foldable: false, fill: true) { Note = provider is null ? model.Key : $"{model.Key} · {EditorStyle.PluginName(provider)}" };
+        var panel = new MarginContainer { CustomMinimumSize = new Vector2(400, 0) };
+        panel.AddThemeConstantOverride("margin_right", 6);
+        panel.AddThemeConstantOverride("margin_bottom", 6);
+        panel.AddChild(card);
+        return panel;
     }
 
     /// <summary>The armor's card: its title with the changes and Save at its right, then a row for each value.</summary>
@@ -215,9 +251,9 @@ public partial class ArmorPage : ScrollContainer
         var icons = _catalog.Plugins.Ids.Where(i => i.Type is RecordTypes.Armor or RecordTypes.Weapon or RecordTypes.Item)
             .Select(i => (string?)_catalog.Plugins.GetJson(i)?["icon"]).OfType<string>().Distinct()
             .Select(t => RecordId.TryParse(t, out var r) ? r : (RecordId?)null).OfType<RecordId>().OrderBy(r => r.ToString(), StringComparer.Ordinal).ToList();
-        var grid = new GridContainer { Columns = 8 };
-        grid.AddThemeConstantOverride("h_separation", 6);
-        grid.AddThemeConstantOverride("v_separation", 6);
+        var grid = new GridContainer { Columns = PictureColumns };
+        grid.AddThemeConstantOverride("h_separation", PictureGap);
+        grid.AddThemeConstantOverride("v_separation", PictureGap);
         EditorDialog? dialog = null;
         foreach (var icon in icons)
         {
@@ -226,7 +262,7 @@ public partial class ArmorPage : ScrollContainer
                 continue;
             var button = new Button
             {
-                Icon = texture, ExpandIcon = true, IconAlignment = HorizontalAlignment.Center, CustomMinimumSize = new Vector2(52, 52),
+                Icon = texture, ExpandIcon = true, IconAlignment = HorizontalAlignment.Center, CustomMinimumSize = new Vector2(PictureTile, PictureTile),
                 TooltipText = icon.ToString(), TextureFilter = TextureFilterEnum.LinearWithMipmaps,
             };
             button.Pressed += () =>
@@ -238,10 +274,15 @@ public partial class ArmorPage : ScrollContainer
             };
             grid.AddChild(button);
         }
-        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, 300), HorizontalScrollMode = ScrollMode.Disabled };
+        // The grid as wide as the dialog's words, so its edges are as far from the first column as from the last; the scroll bar
+        // stands in the margin past it, the scroll reaching into the margin by a little more than the bar.
+        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, 4 * (PictureTile + PictureGap) + PictureTile / 2), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         scroll.AddChild(grid);
+        var gutter = new MarginContainer();
+        gutter.AddThemeConstantOverride("margin_right", -DialogBarRoom);
+        gutter.AddChild(scroll);
         dialog = new EditorDialog("Change the picture",
-            [.. EditorDialog.Paragraphs("Pick one of the pictures the game's weapons, armor and items have, or a PNG of your own, which saving puts in your mod.", 512), scroll],
+            [.. EditorDialog.Paragraphs("Pick one of the pictures the game's weapons, armor and items have, or a PNG of your own, which saving puts in your mod.", PictureGrid), gutter],
             [
                 new DialogButton("Cancel", DialogButtonKind.Cancel),
                 new DialogButton("From a File", DialogButtonKind.Secondary, () =>
@@ -249,7 +290,7 @@ public partial class ArmorPage : ScrollContainer
                     dialog!.Close();
                     PickFile();
                 }, Closes: false),
-            ], width: 560);
+            ], width: PictureGrid + 2 * EditorDialog.Inset);
         dialog.Open(this);
     }
 

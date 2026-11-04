@@ -7,19 +7,22 @@ namespace AidynRetold.Editor;
 
 /// <summary>
 /// The inspector beside a model's view (<see cref="ModelView.Inspector"/>): who the model is shown as, when it's an actor's that
-/// characters wear, and its sections, cards that fold, 16 apart: the model's file, its textures, its outfits and what it holds, the
-/// body of the character it's shown as, the record's own, its fields and what names it (<see cref="AddSection"/>), which the page
-/// shows here rather than in tabs, and its parts, last for an actor and after the textures for a model.
+/// characters wear, and its sections, cards that fold, 16 apart: what names the record, first; the model's file, its textures, its
+/// outfits and what it holds; the record's fields; and for an actor the body of the character it's shown as, then its parts, last,
+/// which take what height is left (a model's parts follow its textures). The record's own cards (<see cref="AddSection"/>) are the
+/// page's, here rather than in tabs.
 /// </summary>
 public partial class ModelInspector : VBoxContainer
 {
     private readonly ModelContext _ctx;
     private readonly List<Wearer> _wearers;
     private readonly OptionButton _shownAs = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, TooltipText = "The character whose body, held items and strike the sections show" };
+    // What names the record, over the model's cards.
+    private readonly VBoxContainer _first = new();
     private readonly VBoxContainer _sections = new();
     private readonly VBoxContainer _extras = new();
-    // An actor's parts, last of all, under the record's own cards.
-    private readonly VBoxContainer _last = new();
+    // An actor's body and parts, last of all, under the record's fields, the parts taking the height that's left.
+    private readonly VBoxContainer _last = new() { SizeFlagsVertical = SizeFlags.ExpandFill };
     private static readonly Dictionary<string, bool> Folded = [];
 
     /// <summary>A character whose body is the actor: an entity, or a dialogue entity, which has only a body.</summary>
@@ -28,10 +31,10 @@ public partial class ModelInspector : VBoxContainer
     public ModelInspector(ModelContext ctx)
     {
         _ctx = ctx;
+        SizeFlagsVertical = SizeFlags.ExpandFill;
         AddThemeConstantOverride("separation", 16);
-        _sections.AddThemeConstantOverride("separation", 16);
-        _extras.AddThemeConstantOverride("separation", 16);
-        _last.AddThemeConstantOverride("separation", 16);
+        foreach (var box in new[] { _first, _sections, _extras, _last })
+            box.AddThemeConstantOverride("separation", 16);
         _wearers = ctx.ActorId is { } a ? WearersOf(ctx.Plugins, a) : [];
         if (_wearers.Count > 0)
         {
@@ -46,6 +49,7 @@ public partial class ModelInspector : VBoxContainer
             AddChild(row);
             _shownAs.ItemSelected += _ => Build();
         }
+        AddChild(_first);
         AddChild(_sections);
         AddChild(_extras);
         AddChild(_last);
@@ -53,21 +57,21 @@ public partial class ModelInspector : VBoxContainer
     }
 
     /// <summary>
-    /// A section after the model's, which stays when the character it's shown as changes: the record's fields, what names it. Folded
-    /// as it was last left.
+    /// A section of the record's own, which stays when the character it's shown as changes: what names it, over the model's cards
+    /// when <paramref name="first"/>, or its fields, after them. Folded as it was last left.
     /// </summary>
-    public void AddSection(string name, Control content, string note, bool flush = false)
+    public void AddSection(string name, Control content, string note, bool flush = false, bool first = false)
     {
         var section = new Section(name, content, flush: flush) { Note = note, Open = Folded.GetValueOrDefault(name, true) };
         section.Toggled += open => Folded[name] = open;
-        _extras.AddChild(section);
+        (first ? _first : _extras).AddChild(section);
     }
 
     /// <summary>The Parts section, for <c>--part</c>.</summary>
     public PartsSection? Parts => All.Select(s => s.Content).OfType<PartsSection>().FirstOrDefault();
 
     /// <summary>Every section, in order.</summary>
-    private IEnumerable<Section> All => _sections.GetChildren().Concat(_extras.GetChildren()).Concat(_last.GetChildren()).OfType<Section>();
+    private IEnumerable<Section> All => _first.GetChildren().Concat(_sections.GetChildren()).Concat(_extras.GetChildren()).Concat(_last.GetChildren()).OfType<Section>();
 
     /// <summary>Opens the sections named, by their titles in any case, and folds the rest (<c>--open</c>).</summary>
     public void OpenOnly(IReadOnlyCollection<string> names)
@@ -107,9 +111,11 @@ public partial class ModelInspector : VBoxContainer
         Add("Model", model, model.Summary);
         var textures = new TexturesSection(_ctx);
         Add("Textures", textures, textures.Summary);
-        // An actor's parts are the last card, under its fields and what names it; a model's follow its textures.
+        var isActor = _ctx.ActorId is not null;
+        // A model's parts follow its textures; an actor's are the last card, under its fields and the body over them.
         var parts = new PartsSection(_ctx);
-        Add("Parts", parts, parts.Summary, flush: true, last: _ctx.ActorId is not null);
+        if (!isActor)
+            Add("Parts", parts, parts.Summary, flush: true);
         if (_ctx.View.Actor is { } dressed)
         {
             var held = new HeldSection(_ctx, dressed, Shown?.Entity);
@@ -118,13 +124,16 @@ public partial class ModelInspector : VBoxContainer
         if (Shown is { } wearer)
         {
             var alaron = wearer.Id == GameState.Alaron ? null : _ctx.Plugins.TryGet<EntityRecord>(GameState.Alaron)?.Body;
-            Add("Body", new BodySection(_ctx.View, wearer.Body, alaron), wearer.Name);
+            Add("Body", new BodySection(_ctx.View, wearer.Body, alaron), wearer.Name, last: true);
         }
+        if (isActor)
+            Add("Parts", parts, parts.Summary, flush: true, last: true, fill: true);
     }
 
-    private void Add(string name, Control content, string note, bool flush = false, bool last = false)
+    /// <param name="fill">Whether the card takes the height left under the rest, as the last card's table does.</param>
+    private void Add(string name, Control content, string note, bool flush = false, bool last = false, bool fill = false)
     {
-        var section = new Section(name, content, flush: flush) { Note = note, Open = Folded.GetValueOrDefault(name, true) };
+        var section = new Section(name, content, flush: flush, fill: fill) { Note = note, Open = Folded.GetValueOrDefault(name, true) };
         section.Toggled += open => Folded[name] = open;
         (last ? _last : _sections).AddChild(section);
     }

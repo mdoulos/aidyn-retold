@@ -35,6 +35,8 @@ public partial class ModelThumb : SubViewportContainer
         });
         _viewport.AddChild(new DirectionalLight3D { LightEnergy = 0.8f, RotationDegrees = new Vector3(-50, 35, 0) });
         _viewport.AddChild(_camera);
+        // The field of view is the narrower side's, so the model's framed whole in a view taller than it's wide, as a panel's is.
+        Resized += () => _camera.KeepAspect = Size.X < Size.Y ? Camera3D.KeepAspectEnum.Width : Camera3D.KeepAspectEnum.Height;
         GuiInput += e =>
         {
             if (_orbit.Handle(e, _camera) && _content is not null)

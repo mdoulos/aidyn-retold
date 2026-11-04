@@ -23,6 +23,9 @@ public sealed record DialogButton(string Label, DialogButtonKind Kind, Action? P
 /// </summary>
 public partial class EditorDialog : Control
 {
+    /// <summary>How far the message and the buttons stand in from the box's edges, its border's pixel among them.</summary>
+    public const int Inset = 14;
+
     private readonly VBoxContainer _body = new();
     private readonly List<Button> _buttons = [];
     private readonly bool _dismissable;
@@ -73,8 +76,8 @@ public partial class EditorDialog : Control
         column.AddChild(band);
 
         var margin = new MarginContainer();
-        margin.AddThemeConstantOverride("margin_left", 14);
-        margin.AddThemeConstantOverride("margin_right", 14);
+        margin.AddThemeConstantOverride("margin_left", Inset);
+        margin.AddThemeConstantOverride("margin_right", Inset);
         margin.AddThemeConstantOverride("margin_top", 12);
         margin.AddThemeConstantOverride("margin_bottom", 4);
         _body.AddThemeConstantOverride("separation", 10);
@@ -84,8 +87,8 @@ public partial class EditorDialog : Control
         column.AddChild(margin);
 
         var foot = new MarginContainer();
-        foot.AddThemeConstantOverride("margin_left", 14);
-        foot.AddThemeConstantOverride("margin_right", 14);
+        foot.AddThemeConstantOverride("margin_left", Inset);
+        foot.AddThemeConstantOverride("margin_right", Inset);
         foot.AddThemeConstantOverride("margin_top", 10);
         foot.AddThemeConstantOverride("margin_bottom", 14);
         var actions = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End };

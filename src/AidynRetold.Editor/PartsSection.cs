@@ -15,8 +15,13 @@ public partial class PartsSection : VBoxContainer
     private static readonly Color Box = new(1f, 0.85f, 0.3f), AxisX = new(1f, 0.35f, 0.35f), AxisY = new(0.4f, 1f, 0.4f), AxisZ = new(0.4f, 0.6f, 1f);
 
     private readonly ModelContext _ctx;
-    private readonly Tree _tree = new() { Columns = 2, HideRoot = true, CustomMinimumSize = new Vector2(0, 260), SelectMode = Tree.SelectModeEnum.Row };
+    private readonly Tree _tree = new()
+    {
+        Columns = 2, HideRoot = true, CustomMinimumSize = new Vector2(0, 260), SelectMode = Tree.SelectModeEnum.Row, SizeFlagsVertical = SizeFlags.ExpandFill,
+    };
     private readonly Label _about = new() { AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(300, 0) };
+    // What's picked, said under the tree; hidden until something is, so the tree runs to the card's foot.
+    private readonly MarginContainer _aboutInset = new() { Visible = false };
     private readonly Dictionary<TreeItem, Node3D> _nodes = [];
     private MeshInstance3D? _mark;
     private int _parts, _locators;
@@ -28,18 +33,16 @@ public partial class PartsSection : VBoxContainer
         _tree.SetColumnExpand(0, true);
         _tree.SetColumnExpand(1, false);
         _tree.SetColumnCustomMinimumWidth(1, 96);
-        // Deep trees, a remodel's above all, need their names more than their indent.
-        _tree.AddThemeConstantOverride("item_margin", 10);
         _tree.ItemSelected += Picked;
-        // The tree spans the card (its section is flush); what's picked is said under it, inset as a card's body is.
+        // The tree spans the card (its section is flush), its folds' arrows inset by the table's indent; what's picked is said under
+        // it, inset as a card's body is.
         _tree.ThemeTypeVariation = "FlushTree";
         AddChild(_tree);
         _about.ThemeTypeVariation = "DimLabel";
-        var inset = new MarginContainer();
         foreach (var (side, by) in new[] { ("left", 24), ("right", 24), ("top", 12), ("bottom", 18) })
-            inset.AddThemeConstantOverride($"margin_{side}", by);
-        inset.AddChild(_about);
-        AddChild(inset);
+            _aboutInset.AddThemeConstantOverride($"margin_{side}", by);
+        _aboutInset.AddChild(_about);
+        AddChild(_aboutInset);
         if (ctx.View.Content is { } content)
         {
             var root = _tree.CreateItem();
@@ -137,6 +140,7 @@ public partial class PartsSection : VBoxContainer
         Unmark();
         if (_tree.GetSelected() is not { } item || !_nodes.TryGetValue(item, out var node) || !IsInstanceValid(node))
             return;
+        _aboutInset.Visible = true;
         var name = node.Name.ToString();
         var meshes = node.GetChildren().OfType<MeshInstance3D>().Where(m => m.Mesh is not null).ToList();
         if (node is MeshInstance3D { Mesh: not null } self)

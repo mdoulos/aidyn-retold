@@ -24,7 +24,7 @@ public partial class ModelView : VBoxContainer
     private readonly Button _play = new() { Text = "Pause", CustomMinimumSize = new Vector2(64, 0), TooltipText = "Play or pause (space)" };
     /// <summary>The clip's ticks under the view, with what happens when, which scrubs (comma and full stop step).</summary>
     private readonly Timeline _time = new() { TooltipText = "Scrub by the tick (comma and full stop step)" };
-    private readonly Label _tick = new() { CustomMinimumSize = new Vector2(150, 0) };
+    private readonly Label _tick = new() { CustomMinimumSize = new Vector2(96, 0), VerticalAlignment = VerticalAlignment.Center };
     private readonly HBoxContainer _legend = EditorStyle.Row(10);
     private readonly HSplitContainer _body = new() { SizeFlagsVertical = SizeFlags.ExpandFill };
     private readonly ScrollContainer _inspectorScroll = new()
@@ -67,21 +67,12 @@ public partial class ModelView : VBoxContainer
         // Wireframes are drawn only for meshes made after this.
         RenderingServer.SetDebugGenerateWireframes(true);
 
-        // The left column: over the view, driving an actor and what the view shows; the view, framed; under it, playing the clip,
-        // then one row of the states' Table and Graph and the timeline, then the actor's states. The inspector beside it all, the
+        // The left column: the view, framed; under it, one bar of playing the clip, driving the actor and what the view shows, then
+        // one row of the states' Table and Graph and the timeline, then the actor's states. The inspector beside it all, the
         // page's height.
         AddThemeConstantOverride("separation", 0);
         var left = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         left.AddThemeConstantOverride("separation", 8);
-        var bar = EditorStyle.Row(6);
-        _actorPanel.Bar.Visible = false;
-        bar.AddChild(_actorPanel.Bar);
-        bar.AddChild(EditorStyle.Spacer());
-        bar.AddChild(_emitters);
-        bar.AddChild(_sceneCamera);
-        bar.AddChild(_wireframe);
-        left.AddChild(bar);
-
         var split = new VSplitContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
         _container.GuiInput += OnViewInput;
         _container.AddChild(_viewport);
@@ -97,10 +88,20 @@ public partial class ModelView : VBoxContainer
         // states, which take the rest of the height the split gives.
         var under = new VBoxContainer();
         under.AddThemeConstantOverride("separation", 8);
-        var playing = EditorStyle.Row(6);
+        // One bar of the clip's and the actor's controls: play, the clip and the tick; driving the actor; what the view shows. It
+        // wraps where the column's too narrow for it, rather than widening the page.
+        var playing = new HFlowContainer();
+        playing.AddThemeConstantOverride("h_separation", 6);
+        playing.AddThemeConstantOverride("v_separation", 6);
         playing.AddChild(_play);
         playing.AddChild(_animations);
         playing.AddChild(_tick);
+        _actorPanel.Bar.Visible = false;
+        playing.AddChild(_actorPanel.Bar);
+        playing.AddChild(new VSeparator());
+        playing.AddChild(_emitters);
+        playing.AddChild(_sceneCamera);
+        playing.AddChild(_wireframe);
         under.AddChild(playing);
         var row = EditorStyle.Row(8);
         _actorPanel.ViewButtons.Visible = false;

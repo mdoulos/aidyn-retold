@@ -98,14 +98,14 @@ public partial class Timeline : Control
         {
             var x = X(t);
             DrawLine(new Vector2(x, TrackTop + TrackHeight), new Vector2(x, TrackTop + TrackHeight + (t % 50 == 0 ? 4 : 2)), Ticks);
-            if (t % 50 == 0)
-                DrawString(font, new Vector2(x + 2, Size.Y - 1), t.ToString(CultureInfo.InvariantCulture), fontSize: (int)NumberSize, modulate: Ticks);
+            // A fifty's number, but where it would run into the length's at the end.
+            var number = t.ToString(CultureInfo.InvariantCulture);
+            if (t % 50 == 0 && (_length % 50 == 0 || x + 2 + font.GetStringSize(number, fontSize: (int)NumberSize).X < EndStart(font) - 6))
+                DrawString(font, new Vector2(x + 2, Size.Y - 1), number, fontSize: (int)NumberSize, modulate: Ticks);
         }
-        // The length at the end, for a clip too short to reach the first fifty.
-        var end = _length.ToString(CultureInfo.InvariantCulture);
-        var endWidth = font.GetStringSize(end, fontSize: (int)NumberSize).X;
+        // The length at the end, where it isn't a fifty already numbered.
         if (_length % 50 != 0)
-            DrawString(font, new Vector2(Size.X - Margin - endWidth, Size.Y - 1), end, fontSize: (int)NumberSize, modulate: Ticks);
+            DrawString(font, new Vector2(EndStart(font), Size.Y - 1), _length.ToString(CultureInfo.InvariantCulture), fontSize: (int)NumberSize, modulate: Ticks);
         // The marks point down onto the track, over it.
         foreach (var mark in _marks)
         {
@@ -116,6 +116,9 @@ public partial class Timeline : Control
         var head = X(_tick);
         DrawRect(new Rect2(head - 1.5f, TrackTop - 4, 3, TrackHeight + 8), Head);
     }
+
+    /// <summary>Where the length's number at the end starts, right-aligned to the track's end.</summary>
+    private float EndStart(Font font) => Size.X - Margin - font.GetStringSize(_length.ToString(CultureInfo.InvariantCulture), fontSize: (int)NumberSize).X;
 
     public static Color ColorOf(TimelineMarkKind kind) => kind switch
     {

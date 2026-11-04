@@ -36,6 +36,7 @@ public partial class ActorPanel : VBoxContainer
 
     public ActorPanel()
     {
+        Bar.AddChild(new VSeparator());
         Bar.AddChild(_drive);
         Bar.AddChild(_request);
         Bar.AddChild(_home);

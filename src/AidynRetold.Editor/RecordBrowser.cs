@@ -867,11 +867,12 @@ public partial class RecordBrowser : Control
             flush: true, first: true);
         if (json is not null)
         {
-            var fields = new RecordFieldsView { CustomMinimumSize = new Vector2(0, 320), ThemeTypeVariation = "FlushTree", ColumnTitlesVisible = false };
+            var fields = new RecordFieldsView { ThemeTypeVariation = "FlushTree", ColumnTitlesVisible = false };
             fields.Show(json, field => catalog.Plugins.Setters(id, field), other => catalog.Find(other) is not null || other.Type == RecordTypes.Voxel,
                 other => catalog.Find(other)?.Summary);
             fields.Opened += FollowLink;
-            inspector.AddSection("Fields", fields, $"{json.Count - 1} fields", flush: true);
+            // As high as the rows it shows, up to nine, growing as a branch opens.
+            inspector.AddSection("Fields", new FittedTable(fields, 9), $"{json.Count - 1} fields", flush: true);
         }
     }
 

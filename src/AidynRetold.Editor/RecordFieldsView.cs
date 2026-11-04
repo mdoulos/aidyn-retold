@@ -56,13 +56,14 @@ public partial class RecordFieldsView : Tree
         _exists = exists;
         _describe = describe ?? (_ => null);
         var root = CreateItem();
-        if (record is null)
-            return;
-        foreach (var (field, value) in record)
+        if (record is not null)
         {
-            // The record's own ID isn't a link.
-            var item = field == "id" ? Add(root, field, value?.ToString()) : Add(root, field, value);
-            item.SetText(2, string.Join(" → ", setBy(field).Select(EditorStyle.PluginName)));
+            foreach (var (field, value) in record)
+            {
+                // The record's own ID isn't a link.
+                var item = field == "id" ? Add(root, field, value?.ToString()) : Add(root, field, value);
+                item.SetText(2, string.Join(" → ", setBy(field).Select(EditorStyle.PluginName)));
+            }
         }
     }
 
@@ -134,10 +135,11 @@ public partial class RecordFieldsView : Tree
 
     private void OnItemCollapsed(TreeItem item)
     {
-        if (item.Collapsed || !_pending.Remove(item, out var fill))
-            return;
-        item.GetFirstChild()?.Free();
-        fill(item);
+        if (!item.Collapsed && _pending.Remove(item, out var fill))
+        {
+            item.GetFirstChild()?.Free();
+            fill(item);
+        }
     }
 
     /// <summary>Short lists of numbers, such as vectors and colours, go on one line.</summary>

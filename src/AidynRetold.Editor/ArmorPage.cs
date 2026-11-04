@@ -64,11 +64,11 @@ public partial class ArmorPage : HSplitContainer
         {
             Note = usedBy == 0 ? "" : $"{usedBy:N0} {(usedBy == 1 ? "record" : "records")}",
         });
-        var fields = new RecordFieldsView { CustomMinimumSize = new Vector2(0, 360), ThemeTypeVariation = "FlushTree", ColumnTitlesVisible = false };
+        var fields = new RecordFieldsView { ThemeTypeVariation = "FlushTree", ColumnTitlesVisible = false };
         fields.Show(json, field => catalog.Plugins.Setters(armor.Id, field), other => catalog.Find(other) is not null || other.Type == RecordTypes.Voxel,
             other => catalog.Find(other)?.Summary);
         fields.Opened += open;
-        column.AddChild(new Section("All fields", fields, flush: true) { Note = "as the plugins merge them", Open = false });
+        column.AddChild(new Section("All fields", new FittedTable(fields, 12), flush: true) { Note = "as the plugins merge them", Open = false });
     }
 
     /// <summary>

@@ -200,11 +200,7 @@ public partial class TexturesSection : VBoxContainer
     /// </summary>
     private Control Shared(IReadOnlyList<RecordId> models)
     {
-        var list = new Tree
-        {
-            Columns = 2, HideRoot = true, SelectMode = Tree.SelectModeEnum.Row,
-            CustomMinimumSize = new Vector2(0, Math.Min(models.Count, 5) * TableRow + 4), ScrollVerticalEnabled = models.Count > 5,
-        };
+        var list = new Tree { ThemeTypeVariation = "FlushTree", Columns = 2, HideRoot = true, SelectMode = Tree.SelectModeEnum.Row };
         list.SetColumnExpand(0, true);
         list.SetColumnClipContent(0, true);
         list.SetColumnExpand(1, false);
@@ -230,11 +226,11 @@ public partial class TexturesSection : VBoxContainer
             if (list.GetSelected()?.GetMetadata(0).AsString() is { } text && RecordId.TryParse(text, out var id))
                 _ctx.Open(id);
         };
-        return list;
+        // In a box of its own, as high as its rows, so the last ends on the box's border with no rule or space under it.
+        var box = new PanelContainer { ThemeTypeVariation = "ListBox" };
+        box.AddChild(new FittedTable(list, 5, inBox: true));
+        return box;
     }
-
-    /// <summary>A table's row, its text 13 high with the theme's 8 above and below.</summary>
-    private const int TableRow = 34;
 
     /// <summary>Export: this texture, or every texture the model draws.</summary>
     private void AskExport(Entry entry)

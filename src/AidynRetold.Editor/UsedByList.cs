@@ -22,13 +22,7 @@ public static class UsedByList
             inset.AddChild(EditorStyle.DimLabel("Nothing names it."));
             return inset;
         }
-        // A row is its text 13 high with the theme's 8 above and below; up to nine show, and only more scroll.
-        var tree = new Tree
-        {
-            ThemeTypeVariation = "FlushTree",
-            Columns = 2, HideRoot = true, SelectMode = Tree.SelectModeEnum.Row,
-            CustomMinimumSize = new Vector2(0, Math.Min(groups.Count * 34 + 4, 9 * 34 + 4)), ScrollVerticalEnabled = groups.Count > 9,
-        };
+        var tree = new Tree { ThemeTypeVariation = "FlushTree", Columns = 2, HideRoot = true, SelectMode = Tree.SelectModeEnum.Row };
         tree.SetColumnExpand(0, false);
         tree.SetColumnCustomMinimumWidth(0, 190);
         tree.SetColumnClipContent(1, true);
@@ -48,6 +42,7 @@ public static class UsedByList
             if (tree.GetSelected()?.GetMetadata(0).AsString() is { } text && RecordId.TryParse(text, out var id))
                 open(id);
         };
-        return tree;
+        // As high as its rows, up to nine, its last row on the card's border with no rule or space under it; only more scroll.
+        return new FittedTable(tree, 9);
     }
 }

@@ -299,6 +299,14 @@ public static class EditorTheme
         t.SetStylebox("focus", "FlushTree", Box(Colors.Transparent, null, 0, 0));
         // A fold's arrow ends at the indent, so the indent leaves it 12 in from the card's edge, as a row's text is.
         t.SetConstant("item_margin", "FlushTree", 20);
+        // A box a short list stands in inside a card, its border round a flush table, its corners a control's.
+        t.SetTypeVariation("ListBox", "PanelContainer");
+        t.SetStylebox("panel", "ListBox", Box(p.Field, p.Border, 4, 1, 1, 1));
+        // The shape a short table is cut to (FittedTable): at a card's foot, its corners inside the card's; in a list box, inside its.
+        t.SetTypeVariation("TableFoot", "Panel");
+        t.SetStylebox("panel", "TableFoot", Box(p.Field, bottomRadius: 7));
+        t.SetTypeVariation("TableInBox", "Panel");
+        t.SetStylebox("panel", "TableInBox", Box(p.Field, radius: 3));
         t.SetTypeVariation("Subhead", "PanelContainer");
         t.SetStylebox("panel", "Subhead", Box(p.Sunken, p.Border, 0, 0, 24, 14, top: 1, bottom: 1));
         // A row of a card: a label column and a field, 18 by 24 in, a rule above all but the first.

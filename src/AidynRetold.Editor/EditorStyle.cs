@@ -67,6 +67,16 @@ public static class EditorStyle
         return row;
     }
 
+    /// <summary>A table's row: the theme's 13 type, 18 high, with the tree's 8 above and below it, its rule on its last pixel.</summary>
+    public const int TableRow = 34;
+
+    /// <summary>How many rows a tree shows: its items under no folded parent, its hidden root not among them.</summary>
+    public static int VisibleRows(Tree tree)
+    {
+        static int Count(TreeItem item) => item.Collapsed ? 0 : item.GetChildren().Sum(c => (c.Visible ? 1 : 0) + (c.Visible ? Count(c) : 0));
+        return tree.GetRoot() is { } root ? Count(root) + (tree.HideRoot ? 0 : 1) : 0;
+    }
+
     /// <summary>Space that takes what's left of a row, pushing what follows to its end.</summary>
     public static Control Spacer() => new() { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore };
 }

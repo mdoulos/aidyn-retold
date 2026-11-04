@@ -61,7 +61,8 @@ Examples of some fixed bugs:
   original shows them when you load a save inside; this port hides them.
 
 The type of things not fixed:
-- Rain and splash density stays pretty low by default.
+- Spirit and Starlight Shield leave a level of protection behind each time
+  they end.
 - Debuffing an enemy's stats makes them immobile.
 
 ## Enhancements
@@ -69,14 +70,15 @@ The type of things not fixed:
 - High resolution, including rendering higher than screen resolution
 - High frame rate, no upper limit
 - Extended draw distance
-- Higher rain and snow density
+- Higher rain and snow density, four times the original's by default
 - Three size settings for the HUD and menus
-- Faster movement speed
+- A jump (Space) and a full run (Shift)
 - Status auras appear more often in battle
 - Rebindable controls
 
-Each of these is optional, except for the frame rate. You can limit it to 30,
-but there's no going back to the 15-20 from the console.
+Each setting here is optional, and the jump and the full run are only keys to
+press. The frame rate can be limited to 30, but there's no going back to the
+15-20 from the console.
 
 [docs/changes](docs/changes/README.md) lists everything Retold changes, by
 category, with the bugs it fixes and the ones it keeps.

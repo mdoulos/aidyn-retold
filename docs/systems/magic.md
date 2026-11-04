@@ -107,6 +107,18 @@ A potion is data (ADR 0021): an item of kind Potion whose record has its effects
 | Sleep Gas | blast of 15 from Stamina: no sleep and no duration |
 | Acid | and corrosion: a 2d6 radius, each within it −(radius ÷ squared distance) protection until the battle ends |
 
+The ACRE plugin's potions (`records/potions/`, the user's, Nov 4, 2026; [items](items.md#potions)), over the table:
+
+| Potion | Effects |
+| --- | --- |
+| Literacy (the original's Clarity) | Loremaster +3, drunk only outside a battle |
+| Charisma | Diplomat +2 and Merchant +1, drunk only outside a battle |
+| Intellect, Determination | Intelligence or Willpower's base +10, as Strength's and Dexterity's, in a battle as Brilliance's and the Endurance spell's look |
+| Ingenuity | Thief +1 and Mechanic +1, drunk only outside a battle |
+
+The potions drunk only outside a battle outlast one, as Stealth's does (`MagicRecord.KeptAfterBattle`), and a character has room for nine
+potions' effects, one for each that lasts, where the original's seven held its six (`MagicRecord.PotionEffects`).
+
 **The blast** (`FlaskExplosion`, `0x800652F8`): each living combatant at a squared distance d from the landing cell, **kept in a byte** (so it wraps at 256) and at least 1, within the damage takes the damage ÷ d, left at 1 at the least if it isn't the target; friendly fire happens. The target then takes its share again as the blow lands (`Combat.EndCast`), so twice, which the number and the line show once, as the user saw in 1.0 and 1.1. The port keeps the damage and the byte, the user's choice, and its line and number give both shares, Sleep Gas's Stamina included ([combat](combat.md#where-the-port-differs)). Acid's corrosion goes on those within its radius instead of the damage, stacking. **The throw** (`ThrowChance`, `0x80064EFC`), the last flask of a stack, which the original never bursts and the port does (the user's choice), and the rest of a flask's turn are [combat](combat.md#spells-potions-and-skills-in-a-turn)'s.
 
 In the port, the throw rolls the `blast` dice of every thrown potion's record, in the records' order, and keeps its own, as the original's `FlaskDamage` rolls all three, so the RNG stays in step. The flask then lands through `EffectLanding` on the one it hit (`Battle.FlaskExplosion`), and its blast and corrosion burst in `IMagicHost.Burst`, corrosion as a `protection` of −1 a level at the radius ÷ d.

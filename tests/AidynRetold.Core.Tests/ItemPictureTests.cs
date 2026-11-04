@@ -22,16 +22,29 @@ public class ItemPictureTests
     [InlineData(0x1002, "acre:image/potion_sleep_gas")]
     [InlineData(0x1004, "acre:image/potion_healing")]
     [InlineData(0x1010, "acre:image/potion_stealth")]
+    [InlineData(0x100D, "acre:image/potion_literacy")]
     public void APotionIsDrawnWithItsOwnPicture(int id, string picture)
     {
         Assert.Equal(RecordId.Parse(picture), MenuImages.ItemIcon(Potion(id, MenuImages.Potion), NoSpells));
     }
 
-    /// <summary>Fifteen have one: the cut A and J keep the flask.</summary>
+    /// <summary>The ACRE plugin's own potions, Intellect, Determination and Ingenuity, have theirs too.</summary>
+    [Theory]
+    [InlineData("acre:item/0x1011", "acre:image/potion_intellect")]
+    [InlineData("acre:item/0x1012", "acre:image/potion_determination")]
+    [InlineData("acre:item/0x1013", "acre:image/potion_ingenuity")]
+    public void TheRemadeGamesPotionsAreDrawnWithTheirOwn(string id, string picture)
+    {
+        var potion = Item.From(new ItemRecord(RecordId.Parse(id), "Potion", MenuImages.Potion, 0, ItemKind.Potion));
+        Assert.Equal(RecordId.Parse(picture), MenuImages.ItemIcon(potion, NoSpells));
+        Assert.Equal(MenuImages.Potion, MenuImages.Shared(RecordId.Parse(picture)));
+    }
+
+    /// <summary>Fifteen of the original's have one, and the ACRE plugin's three: the cut A and J keep the flask.</summary>
     [Fact]
     public void TheCutPotionsKeepTheFlask()
     {
-        Assert.Equal(15, MenuImages.PotionPictures.Count);
+        Assert.Equal(18, MenuImages.PotionPictures.Count);
         Assert.Equal(MenuImages.Potion, MenuImages.ItemIcon(Potion(0x100B, MenuImages.Potion), NoSpells));
         Assert.Equal(MenuImages.Potion, MenuImages.ItemIcon(Potion(0x100C, MenuImages.Potion), NoSpells));
     }

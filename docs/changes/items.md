@@ -6,6 +6,24 @@ files, and the item bugs Retold fixes in [bug fixes](bug-fixes.md#items).
 
 ## Potions
 
+The ACRE plugin's potions, the user's (Nov 4, 2026; [items](../systems/items.md#potions), [magic](../systems/magic.md#potions-and-flasks)):
+
+| Potion | The original | Retold |
+| --- | --- | --- |
+| Potion of Literacy | Clarity Potion: Loremaster +3, in or out of a battle | Renamed; Loremaster +3, outside a battle only |
+| Charisma Potion | Diplomat +3, in or out of a battle | Diplomat +2 and Merchant +1, outside a battle only |
+| Potion of Intellect | none | New: Intelligence +10, in or out of a battle, 500 gold |
+| Potion of Determination | none | New: Willpower +10, in or out of a battle, 500 gold |
+| Potion of Ingenuity | none | New: Thief +1 and Mechanic +1, outside a battle only, 300 gold |
+
+- **Each lasts the original's three hours**, the stat potions raising the stat's base as Strength's and Dexterity's do.
+- **The new ones are brewed and sold.** An Alchemist brews Intellect from 1 Herb, 2 Spices and 1 Gemstone at rank 2, Determination from
+  1 Herb and 3 Gemstones at rank 3, and Ingenuity from 2 Herbs and 1 Spice at rank 2. Intellect and Determination are sold where the
+  Dexterity Potion is, and Ingenuity where the Charisma Potion is.
+- **The potions drunk only outside a battle outlast one**, as the original's Stealth Potion does: Literacy, Charisma and Ingenuity with it.
+  The original's Clarity and Charisma come off as a battle ends.
+- **Nine potions can work at once**, one of each that lasts; the original has room for seven, which held its six.
+- **The Charisma Potion's description names its recipe right**: 2 Gemstones, as its recipe takes, where the original's says 1.
 - **A potion's effect lasts through a save and a load.** The original's save keeps the party's sheets without their effects, so a
   Strength or Clarity potion drunk before saving is gone after loading. Retold saves each working potion with its power and the time it has
   left, and puts it back on as the game loads, the user's choice ([saves](../systems/saves.md#the-format)).
@@ -30,4 +48,5 @@ files, and the item bugs Retold fixes in [bug fixes](bug-fixes.md#items).
 
 ## New items
 
-- **Squire Armor**, Alaron's starting armor ([armor](armor.md#squire-armor)). No other new item yet.
+- **The Potions of Intellect, Determination and Ingenuity** ([above](#potions)).
+- **Squire Armor**, Alaron's starting armor ([armor](armor.md#squire-armor)).

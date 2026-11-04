@@ -112,17 +112,20 @@ public static class MenuImages
     public const string OwnNamespace = AidynRetold.Plugins.AcrePlugin.Id;
 
     /// <summary>
-    /// Each potion's and flask's own picture, by its item, the user's art (Nov 2, 2026), where the original draws all of them with
-    /// <see cref="Potion"/>: in potion number order from 0x1000, the cut A and J having none.
+    /// Each potion's and flask's own picture, by its item, the user's art (Nov 2 and 4, 2026), where the original draws all of them with
+    /// <see cref="Potion"/>: the original's in potion number order from 0x1000, the cut A and J having none, Clarity's the Potion of
+    /// Literacy's as the ACRE plugin renames it; then the ACRE plugin's own potions, Intellect, Determination and Ingenuity, from 0x1011.
     /// </summary>
     public static readonly IReadOnlyDictionary<RecordId, RecordId> PotionPictures = new[]
         {
             "fire", "inferno", "sleep_gas", "acid", "healing", "stamina", "curing", "antidote", "restore", "strength", "dexterity", null,
-            null, "clarity", "charisma", "defense", "stealth",
+            null, "literacy", "charisma", "defense", "stealth",
         }
-        .Select((name, n) => (name, n))
-        .Where(p => p.name is not null)
-        .ToDictionary(p => RecordId.Hex(RecordTypes.Item, 0x1000 + p.n), p => RecordId.Parse($"{OwnNamespace}:image/potion_{p.name}"));
+        .Select((name, n) => (Item: RecordId.Hex(RecordTypes.Item, 0x1000 + n), Name: name))
+        .Where(p => p.Name is not null)
+        .Concat(new[] { "intellect", "determination", "ingenuity" }
+            .Select((name, n) => (Item: RecordId.Parse($"{OwnNamespace}:item/0x{0x1011 + n:X4}"), Name: (string?)name)))
+        .ToDictionary(p => p.Item, p => RecordId.Parse($"{OwnNamespace}:image/potion_{p.Name}"));
 
     /// <summary>
     /// A scroll's picture by its spell's school, the user's art (Nov 2, 2026), where the original draws every scroll with

@@ -52,7 +52,7 @@ are the remake's look ([options](options.md#graphic-quality)).
   at the original's size and sharper ([ADR 0034](../adr/0034-retold-and-rechronicled-collaborate.md), [ui](../systems/ui.md#the-ports-layout)).
 - **A picture for each potion and each scroll.** The original draws every potion as one flask and every scroll as one scroll. Retold has
   each potion's own bottle (conical flasks with a ribbon for the four flasks, a slanted bottle for Healing, a round one for Curing, square
-  ones for Stamina, Antidote and Restore, tubes for the rest), and each scroll rolled with a ribbon of its spell's school's colour: green
+  ones for Stamina, Antidote and Restore, tubes for the rest, the new Intellect, Determination and Ingenuity among them), and each scroll rolled with a ribbon of its spell's school's colour: green
   Elemental, purple Naming, red Necromancy, gold Star, white for the unschooled. Graphic Quality's Original draws the shared ones
   ([ui](../systems/ui.md#the-ports-layout)).
 - **The aspects' and schools' icons are redrawn**: a crescent with a star for Lunar, a sun for Solar, a flaming eye for Chaos, a leaf for

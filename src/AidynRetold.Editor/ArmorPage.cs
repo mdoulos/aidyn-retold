@@ -167,7 +167,7 @@ public partial class ArmorPage : ScrollContainer
         return spin;
     }
 
-    /// <summary>The picture, in a well, with Change picture… beside it and its image's ID under that.</summary>
+    /// <summary>The picture, in a well, with Change Picture beside it and its image's ID under that.</summary>
     private Control PictureField()
     {
         var row = EditorStyle.Row(16);
@@ -181,7 +181,7 @@ public partial class ArmorPage : ScrollContainer
         row.AddChild(well);
         var side = new VBoxContainer { SizeFlagsVertical = SizeFlags.ShrinkCenter };
         side.AddThemeConstantOverride("separation", 6);
-        var change = new Button { Text = "Change picture…", SizeFlagsHorizontal = SizeFlags.ShrinkBegin };
+        var change = new Button { Text = "Change Picture", SizeFlagsHorizontal = SizeFlags.ShrinkBegin };
         change.Pressed += PickPicture;
         side.AddChild(change);
         _pictureId = EditorStyle.DimLabel();
@@ -244,7 +244,7 @@ public partial class ArmorPage : ScrollContainer
             [.. EditorDialog.Paragraphs("Pick one of the pictures the game's weapons, armor and items have, or a PNG of your own, which saving puts in your mod.", 512), scroll],
             [
                 new DialogButton("Cancel", DialogButtonKind.Cancel),
-                new DialogButton("From a file…", DialogButtonKind.Secondary, () =>
+                new DialogButton("From a File", DialogButtonKind.Secondary, () =>
                 {
                     dialog!.Close();
                     PickFile();

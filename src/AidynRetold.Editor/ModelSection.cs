@@ -53,15 +53,15 @@ public partial class ModelSection : VBoxContainer
         }
 
         var buttons = new List<Button>();
-        var export = new Button { Text = "Export model…", TooltipText = "Save the model's .glb, to open in Blender" };
+        var export = new Button { Text = "Export Model", TooltipText = "Save the model's .glb, to open in Blender" };
         export.Pressed += Export;
         buttons.Add(export);
-        var replace = new Button { Text = "Replace model…", TooltipText = "Another .glb in its place, checked against the original, written into a plugin" };
+        var replace = new Button { Text = "Replace Model", TooltipText = "Another .glb in its place, checked against the original, written into your mod" };
         replace.Pressed += Replace;
         buttons.Add(replace);
         if (ctx.Replaced && ctx.File is { } replacing && plugins.PluginWith(replacing) is { } replacer && replacer != RecordId.RomNamespace)
         {
-            var back = new Button { Text = "Put back the original", TooltipText = $"Take {replacer}'s model out, so the original shows again" };
+            var back = new Button { Text = "Put Back Original", TooltipText = $"Take {replacer}'s model out, so the original shows again" };
             back.Pressed += () => PluginFiles.Remove(this, plugins, replacer, ctx.Scene, "glb", "the replacement model", ctx.Reload);
             buttons.Add(back);
         }

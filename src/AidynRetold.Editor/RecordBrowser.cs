@@ -39,6 +39,8 @@ public partial class RecordBrowser : Control
     private readonly Label _count = EditorStyle.DimLabel(size: 13);
     private readonly Tree _list = new();
     private readonly RecordHeader _header = new();
+    /// <summary>The page's column: the header, then the tabs' pages. An actor's or a model's page takes the header over its view.</summary>
+    private readonly VBoxContainer _right = new();
     private readonly TabContainer _tabs = new() { SizeFlagsVertical = SizeFlags.ExpandFill };
     private readonly Control _preview = new MarginContainer { Name = Preview };
     private readonly RecordFieldsView _fields = new() { Name = Fields };
@@ -338,11 +340,10 @@ public partial class RecordBrowser : Control
         side.AddChild(_count);
         split.AddChild(side);
 
-        var right = new VBoxContainer();
-        right.AddThemeConstantOverride("separation", 4);
-        right.AddChild(_header);
-        right.AddChild(_tabs);
-        split.AddChild(right);
+        _right.AddThemeConstantOverride("separation", 4);
+        _right.AddChild(_header);
+        _right.AddChild(_tabs);
+        split.AddChild(_right);
         _tabs.AddChild(_preview);
         _tabs.AddChild(_fields);
         _tabs.AddChild(_usedBy);
@@ -568,6 +569,7 @@ public partial class RecordBrowser : Control
         if (_catalog is not { } catalog)
             return;
         _current = id;
+        PlaceHeader(inModel: false);
         _header.Visible = true;
         // An actor's, a model's and an armor's page is one page: what the tabs would hold is in its cards, so it has no tabs.
         var onePage = OnePage(id);
@@ -614,6 +616,7 @@ public partial class RecordBrowser : Control
                 await _map.ShowAsync(catalog, models, _game, focus);
                 break;
             case (byte[] glb, string animation, string note):
+                PlaceHeader(inModel: OnePage(id));
                 SetPreview(_model);
                 var actor = id.Type != RecordTypes.Actor ? null
                     : _original && _originalPlugins?.TryGet<ActorRecord>(id) is { } originalActor ? originalActor : plugins.TryGet<ActorRecord>(id);
@@ -622,6 +625,22 @@ public partial class RecordBrowser : Control
                 ShowInspector(catalog, id, actor, plugins.GetJson(id), references);
                 break;
         }
+    }
+
+    /// <summary>
+    /// Puts the header over the model view's view, so the inspector beside it runs to the page's top, for an actor's or a model's
+    /// page; else back at the top of the page's column.
+    /// </summary>
+    private void PlaceHeader(bool inModel)
+    {
+        Node target = inModel ? _model.HeaderSlot : _right;
+        _model.HeaderSlot.Visible = inModel;
+        if (_header.GetParent() == target)
+            return;
+        _header.GetParent()?.RemoveChild(_header);
+        target.AddChild(_header);
+        if (!inModel)
+            _right.MoveChild(_header, 0);
     }
 
     /// <summary>Whether a record's page is one page, with what the tabs would hold in its cards: an actor's, a model's, an armor's.</summary>

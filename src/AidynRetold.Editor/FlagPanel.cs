@@ -38,9 +38,9 @@ public partial class FlagPanel : VBoxContainer
         AddThemeConstantOverride("separation", 8);
 
         var bar = new HBoxContainer();
-        var load = new Button { Text = "Load checkpoint…", TooltipText = "Load a checkpoint's game, and check the network against its flags." };
-        var loadSave = new Button { Text = "Load save…", TooltipText = "Load a save's game." };
-        var saveAs = new Button { Text = "Save game…", TooltipText = "Save the game as the editor has it, flags, party and all, for the runtime to start from." };
+        var load = new Button { Text = "Load Checkpoint", TooltipText = "Load a checkpoint's game, and check the network against its flags." };
+        var loadSave = new Button { Text = "Load Save", TooltipText = "Load a save's game." };
+        var saveAs = new Button { Text = "Save Game", TooltipText = "Save the game as the editor has it, flags, party and all, for the runtime to start from." };
         var newGame = new Button { Text = "New game", TooltipText = "Go back to a new game." };
         bar.AddChild(load);
         bar.AddChild(loadSave);

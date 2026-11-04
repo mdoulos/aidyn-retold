@@ -24,7 +24,7 @@ public partial class ActorPanel
     };
 
     /// <summary>The panel's height for the table, and the more the graph needs, which the view's split gives up.</summary>
-    private const float TableHeight = 220, GraphHeight = 440;
+    private const float TableHeight = 340, GraphHeight = 440;
     private readonly Button _tableButton = new() { Text = "Table", ToggleMode = true, ButtonPressed = true };
     private readonly Button _graphButton = new() { Text = "Graph", ToggleMode = true };
     private readonly Dictionary<int, GraphNode> _cards = [];

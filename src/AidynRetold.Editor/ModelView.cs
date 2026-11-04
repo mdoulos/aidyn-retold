@@ -29,7 +29,8 @@ public partial class ModelView : VBoxContainer
     private readonly HSplitContainer _body = new() { SizeFlagsVertical = SizeFlags.ExpandFill };
     private readonly ScrollContainer _inspectorScroll = new()
     {
-        CustomMinimumSize = new Vector2(360, 0), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, Visible = false,
+        // Wide enough for four textures across.
+        CustomMinimumSize = new Vector2(400, 0), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, Visible = false,
     };
     private readonly CheckBox _wireframe = new() { Text = "Wireframe" };
     private readonly CheckBox _sceneCamera = new() { Text = "Scene camera", TooltipText = "Look through the scene's own camera, at 4:3" };
@@ -39,7 +40,8 @@ public partial class ModelView : VBoxContainer
     private readonly SubViewport _viewport = new() { OwnWorld3D = true, Msaa3D = Viewport.Msaa.Msaa4X };
     private readonly Camera3D _camera = new() { Fov = 45 };
     private readonly DirectionalLight3D _headlight = new() { LightEnergy = 0.8f };
-    private readonly ActorPanel _actorPanel = new() { Visible = false, CustomMinimumSize = new Vector2(0, 220) };
+    // Tall enough for the header and eight states, 0 to 7.
+    private readonly ActorPanel _actorPanel = new() { Visible = false, CustomMinimumSize = new Vector2(0, 340) };
     private readonly List<(MeshInstance3D Marker, Node3D Node)> _markers = [];
     private Node3D? _content;
     private Camera3D? _ownCamera;
@@ -73,6 +75,9 @@ public partial class ModelView : VBoxContainer
         AddThemeConstantOverride("separation", 0);
         var left = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         left.AddThemeConstantOverride("separation", 8);
+        // A one-page record's header stands over the view alone, so the inspector beside it runs to the page's top.
+        HeaderSlot.Visible = false;
+        left.AddChild(HeaderSlot);
         var split = new VSplitContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
         _container.GuiInput += OnViewInput;
         _container.AddChild(_viewport);
@@ -209,6 +214,9 @@ public partial class ModelView : VBoxContainer
 
     /// <summary>The inspector beside the view, which the record browser fills with sections for what's shown.</summary>
     public VBoxContainer Inspector { get; } = new();
+
+    /// <summary>Where a one-page record's header stands, over the view and not over the inspector (<c>RecordBrowser</c> moves it here).</summary>
+    public VBoxContainer HeaderSlot { get; } = new();
 
     /// <summary>Shows or hides the inspector beside the view.</summary>
     public bool InspectorVisible

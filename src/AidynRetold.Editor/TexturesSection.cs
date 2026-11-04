@@ -48,9 +48,6 @@ public partial class TexturesSection : VBoxContainer
         }
         for (var i = 0; i < _entries.Count; i++)
             _tiles.AddChild(TileFor(i));
-        var all = new Button { Text = "Export all…", TooltipText = "Save every texture the model draws, as PNGs named for their numbers" };
-        all.Pressed += ExportAll;
-        AddChild(new ButtonRows(all));
         Pick(0);
         _ = BackgroundTask.Report(CountUsage());
     }
@@ -174,21 +171,19 @@ public partial class TexturesSection : VBoxContainer
                 _details.AddChild(Shared(others));
         }
 
+        // Two buttons, each asking which: export this texture or all the model's, replace it on this model or on every one.
         var buttons = new List<Button>();
-        var export = new Button { Text = "Export PNG…", TooltipText = "Save the texture as the model draws it" };
-        export.Pressed += () => Export(entry);
+        var export = new Button { Text = "Export Texture", TooltipText = "Save the texture, or all the model's, as PNGs" };
+        export.Pressed += () => AskExport(entry);
         buttons.Add(export);
         if (entry.Borg1 is { } texture && !_ctx.Original)
         {
-            var here = new Button { Text = "Replace on this model…", TooltipText = "A PNG of yours on this model alone, written into a plugin" };
-            here.Pressed += () => Replace(RecordId.ModelTexture(_ctx.Scene, texture), $"texture {entry.Label} on this model");
-            buttons.Add(here);
-            var everywhere = new Button { Text = "Replace everywhere…", TooltipText = "A PNG of yours on every model that uses this texture" };
-            everywhere.Pressed += () => Replace(RecordId.Hex(RecordTypes.Texture, texture), $"texture {entry.Label} for every model");
-            buttons.Add(everywhere);
+            var replace = new Button { Text = "Replace Texture", TooltipText = "A PNG of yours in its place, on this model or on every model that uses it" };
+            replace.Pressed += () => AskReplace(entry, texture);
+            buttons.Add(replace);
             if (entry.Override is { } put && put.Plugin != RecordId.RomNamespace)
             {
-                var back = new Button { Text = "Put back", TooltipText = $"Take {put.Plugin}'s PNG out, so the {(put.Reach == TextureReach.Model ? "texture everywhere, or the model's copy," : "model's copy")} shows again" };
+                var back = new Button { Text = "Put Back Texture", TooltipText = $"Take {put.Plugin}'s PNG out, so the {(put.Reach == TextureReach.Model ? "texture everywhere, or the model's copy," : "model's copy")} shows again" };
                 var id = put.Reach == TextureReach.Model ? RecordId.ModelTexture(_ctx.Scene, texture) : RecordId.Hex(RecordTypes.Texture, texture);
                 back.Pressed += () => PluginFiles.Remove(this, _ctx.Plugins, put.Plugin, id, "png", $"texture {entry.Label}'s PNG", _ctx.Reload);
                 buttons.Add(back);
@@ -225,6 +220,43 @@ public partial class TexturesSection : VBoxContainer
             flow.AddChild(more);
         }
         return flow;
+    }
+
+    /// <summary>Export: this texture, or every texture the model draws.</summary>
+    private void AskExport(Entry entry)
+    {
+        if (_entries.Count == 1)
+        {
+            Export(entry);
+            return;
+        }
+        new EditorDialog("Export textures",
+            EditorDialog.Paragraphs($"Export texture {entry.Label} alone, or all {_entries.Count} of the model's textures, as PNGs named for their numbers?"),
+            [
+                new DialogButton("Cancel", DialogButtonKind.Cancel),
+                new DialogButton("All Textures", DialogButtonKind.Secondary, ExportAll),
+                new DialogButton("This Texture", DialogButtonKind.Primary, () => Export(entry)),
+            ]).Open(this);
+    }
+
+    /// <summary>Replace: on this model alone, or on every model that uses the texture.</summary>
+    private void AskReplace(Entry entry, int texture)
+    {
+        var others = _usage?.ModelsUsing(texture).Count(m => m != _ctx.Scene);
+        var reach = others switch
+        {
+            null => "every model that uses it",
+            0 => "every model that uses it (no other model does now)",
+            1 => "every model that uses it (one other does)",
+            _ => $"every model that uses it ({others} others do)",
+        };
+        new EditorDialog("Replace the texture",
+            EditorDialog.Paragraphs($"Put a PNG of yours in the place of texture {entry.Label} on this model alone, or on {reach}? It's written into your mod."),
+            [
+                new DialogButton("Cancel", DialogButtonKind.Cancel),
+                new DialogButton("Every Model", DialogButtonKind.Secondary, () => Replace(RecordId.Hex(RecordTypes.Texture, texture), $"texture {entry.Label} for every model")),
+                new DialogButton("This Model", DialogButtonKind.Primary, () => Replace(RecordId.ModelTexture(_ctx.Scene, texture), $"texture {entry.Label} on this model")),
+            ]).Open(this);
     }
 
     private void Export(Entry entry) =>

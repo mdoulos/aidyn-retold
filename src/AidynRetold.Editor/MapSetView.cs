@@ -126,7 +126,7 @@ public partial class MapSetView : VBoxContainer
     private readonly Button _drop = new() { Text = "Drop to ground", TooltipText = "Put it on the collision under it" };
     private readonly Button _duplicate = new() { Text = "Duplicate", TooltipText = "A copy beside it, at the next free index (Ctrl+D)" };
     private readonly Button _delete = new() { Text = "Delete", TooltipText = "Take it out of the map (Delete)" };
-    private readonly Button _editFields = new() { Text = "Edit fields…", ToggleMode = true, TooltipText = "Its fields as JSON, to change and apply" };
+    private readonly Button _editFields = new() { Text = "Edit Fields", ToggleMode = true, TooltipText = "Its fields as JSON, to change and apply" };
     private readonly TextEdit _json = new() { Visible = false, CustomMinimumSize = new Vector2(0, 220), WrapMode = TextEdit.LineWrappingMode.Boundary };
     private readonly Button _apply = new() { Text = "Apply fields", Visible = false };
     private readonly Label _editStatus = new() { AutowrapMode = TextServer.AutowrapMode.WordSmart };

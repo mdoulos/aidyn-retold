@@ -1,0 +1,27 @@
+# Characters
+
+Stats, skills, levels, training and the party. Their portraits, figures and the Party tab are in [ui](ui.md#the-party-tab), Alaron's
+remodel in [graphics](graphics.md#models), his armor in [armor](armor.md), and the fixes in [bug fixes](bug-fixes.md#characters).
+
+## Alaron
+
+- **Alaron can be renamed from the options**, in a game: Options, Rename Character. The name is saved on his sheet, and every script's text
+  that names him names the party's first member ([saves](../systems/saves.md#the-format), [scripts](../systems/scripts.md#its-boundary),
+  [ui](../systems/ui.md#renaming-alaron)). Typing the name on a keyboard works, and the name entry's cheat codes aren't ported.
+- **He starts in Squire Armor** in place of Leather Armor ([armor](armor.md#squire-armor)).
+- **He looks and moves as his remodel** ([graphics](graphics.md#models), [mechanics](mechanics.md#moving)).
+
+## The party
+
+- **A True Name is kept per member**, as a mod's trigger can give anyone one; the original's comes from the record and, for Alaron, flag
+  590 ([saves](../systems/saves.md#the-format)).
+- **The sheets of members who left** are kept only for those the original keeps, Abrecan, Arturo, Becan, Godric and Keelin, and a kept sheet
+  goes when its member rejoins; the original's nine fixed slots are gone. What a player sees is the same
+  ([characters](../systems/characters.md#joining-and-leaving)).
+- **The party's leader is the player's body**: Retold gives the player the leader's actor, where the original names Alaron's, which only
+  cheats swap. For Alaron it's the same ([hardcoded content](../hardcoded-content.md#assets-engine-code-names)).
+
+## The rules
+
+Experience, the level and skill caps, training's prices, the skill checks and who can learn what are the original's. The Party tab now
+shows why a member can't use an item, and what's better than what they wear ([ui](ui.md#the-party-tab)).

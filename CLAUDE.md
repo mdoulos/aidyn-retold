@@ -16,12 +16,13 @@ Read what your task needs, not all of it.
 | How our code ports or runs a system | [docs/systems/](docs/systems/): `importer`, `plugins`, `runtime`, `movement`, `cameras`, `rendering`, `flags`, `scripts`, `characters`, `items`, `map-objects`, `wanderers`, `camping`, `combat`, `magic`, `saves`, `editor`, `ui`, `audio`, `weather`, `cinematics`, `events` |
 | How the packages are built and laid out, how the ACRE plugin goes in, and how the release workflow numbers and describes releases | [docs/systems/releases.md](docs/systems/releases.md) |
 | The user's notes from playing the runtime and timing the original | [docs/playtests.md](docs/playtests.md) |
+| What Retold changes from the original, by category (mechanics, combat, items, weapons, armor, graphics, UI, saves and the rest), the bugs it fixes and the ones it keeps on purpose, for players and contributors | [docs/changes/](docs/changes/README.md) |
 | How to replace the game's graphics with a mod, written for people making one rather than for changing the code: what works today and what doesn't | [docs/replacing-graphics.md](docs/replacing-graphics.md) |
 | How to edit the world with a mod, in Blender: a chunk out as one glTF and back in, written for people making one, with how the round trip works for whoever changes it | [docs/editing-the-world.md](docs/editing-the-world.md) |
 | What only the user can settle, in the emulator or the ROM, and how to set a check up with a save written into the Controller Pak | [docs/user-checks.md](docs/user-checks.md) |
 | The emulator, gdb, the pinned Godot, Ghidra, the ROMs, checkpoint save states, `tools/`, the code index and the symbol map, and finding the original's code in its machine code | [docs/reference-rig.md](docs/reference-rig.md) |
 
-When you learn something, write it in the doc for that format or system. Add a file only for a new format or subsystem, and add it to this table. The reference rig is only for the rig. A doc is for whoever changes that system next: what the original does, with the addresses that show it, which classes port it, where the port differs and that the user chose it, and what's left. How a session got there, the port's fixed bugs, and the measurements behind a settled choice aren't, unless they leave a trap.
+When you learn something, write it in the doc for that format or system. A change to what the game does, or a bug fixed or kept on purpose, also goes in its file in [docs/changes](docs/changes/README.md). Add a file only for a new format or subsystem, and add it to this table. The reference rig is only for the rig. A doc is for whoever changes that system next: what the original does, with the addresses that show it, which classes port it, where the port differs and that the user chose it, and what's left. How a session got there, the port's fixed bugs, and the measurements behind a settled choice aren't, unless they leave a trap.
 
 ## Glossary
 

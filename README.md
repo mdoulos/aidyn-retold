@@ -78,6 +78,9 @@ The type of things not fixed:
 Each of these is optional, except for the frame rate. You can limit it to 30,
 but there's no going back to the 15-20 from the console.
 
+[docs/changes](docs/changes/README.md) lists everything Retold changes, by
+category, with the bugs it fixes and the ones it keeps.
+
 ## Status
 
 Trek mode has been tested from a new game through defeating Pochanargarat. More

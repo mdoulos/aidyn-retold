@@ -33,8 +33,9 @@ public partial class ModelView : VBoxContainer
         CustomMinimumSize = new Vector2(400, 0), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, Visible = false,
     };
     private readonly CheckBox _wireframe = new() { Text = "Wireframe" };
-    private readonly CheckBox _sceneCamera = new() { Text = "Scene camera", TooltipText = "Look through the scene's own camera, at 4:3" };
-    private readonly CheckBox _emitters = new() { Text = "Emitters", ButtonPressed = true, TooltipText = "Mark particle emitters on the scene's locators, in their particles' brightest colour" };
+    // On screen a Borg5 is a model, as the editor's types call it, not a scene, which reads as a film's.
+    private readonly CheckBox _sceneCamera = new() { Text = "Model's camera", TooltipText = "Look through the model's own camera, at 4:3" };
+    private readonly CheckBox _emitters = new() { Text = "Emitters", ButtonPressed = true, TooltipText = "Mark particle emitters on the model's locators, in their particles' brightest colour" };
     private readonly Control _frame = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill, ClipContents = true };
     private readonly SubViewportContainer _container = new() { Stretch = true, MouseFilter = MouseFilterEnum.Stop, FocusMode = FocusModeEnum.All };
     private readonly SubViewport _viewport = new() { OwnWorld3D = true, Msaa3D = Viewport.Msaa.Msaa4X };

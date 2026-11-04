@@ -795,12 +795,12 @@ public partial class RecordBrowser : Control
                 json = originalJson;
             if ((string?)json["scene"] is not { } sceneText || !RecordId.TryParse(sceneText, out var scene)
                 || (_original ? plugins.FindOriginalAsset(scene, "glb") : plugins.FindAsset(scene, "glb")) is not { } path)
-                return Message("The actor's scene has no asset.");
+                return Message("The actor's model has no file.");
             var initial = (int?)json["initialState"] ?? 0;
             var animation = (string?)json["states"]?[initial]?["animation"] is { } a && RecordId.TryParse(a, out var animationId)
                 ? SceneNames.Animation(Convert.ToInt32(animationId.Key, 16))
                 : "";
-            var note = $"Scene {scene.Key}, in its initial state ({initial}).";
+            var note = $"Model {scene.Key}, in its initial state ({initial}).";
             return (await File.ReadAllBytesAsync(path), animation, note);
         }
         if (MapFocus(plugins, id) is { } focus)

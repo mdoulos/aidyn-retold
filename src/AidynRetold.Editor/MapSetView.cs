@@ -69,7 +69,7 @@ public partial class MapSetView : VBoxContainer
     private static readonly HashSet<Type> HiddenKinds = [typeof(SceneObject), typeof(ReferencePointObject)];
 
     private readonly Label _status = new() { ClipText = true, CustomMinimumSize = new Vector2(0, 20) };
-    private readonly CheckBox _terrain = new() { Text = "Terrain", ButtonPressed = true, TooltipText = "Each chunk's scenes" };
+    private readonly CheckBox _terrain = new() { Text = "Terrain", ButtonPressed = true, TooltipText = "Each chunk's terrain models" };
     private readonly CheckBox _scenery = new() { Text = "Scenery", ButtonPressed = true, TooltipText = "The models scene objects place, each at its nearest level of detail" };
     private readonly OptionButton _collision = new() { TooltipText = "Collision" };
     private readonly CheckBox _markers = new() { Text = "Objects", ButtonPressed = true, TooltipText = "A marker for each map object, by type. Click one to pick it." };

@@ -1,6 +1,6 @@
 # 0012. The editor holds the importer, and code flows from the runtime to the editor
 
-Status: Accepted · Oct 3, 2026 · Supersedes the last consequence of [0010](0010-editor-reads-plugins.md), that the editor's reference to `HBHT.Rom` goes when the Borg browser is deleted · Its first run amended by [0043](0043-the-rom-is-asked-for-once-and-fixes-are-base-plugins.md): the ROM is asked for in a dialog that quits on Cancel, and Import ROM… is gone
+Status: Accepted · Oct 3, 2026 · Supersedes the last consequence of [0010](0010-editor-reads-plugins.md), that the editor's reference to `HBHT.Rom` goes when the Borg browser is deleted · Its first run amended by [0043](0043-the-rom-is-asked-for-once-and-fixes-are-base-plugins.md): the ROM is asked for in a dialog that quits on Cancel, and Import ROM… is gone · Supersedes [0001](0001-importer-owns-the-rom.md)'s first-run screen in the game · The editor linking the runtime's files is superseded by [0022](0022-views-library.md): the two share a views library
 
 ## Context
 

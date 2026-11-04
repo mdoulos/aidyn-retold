@@ -1,6 +1,6 @@
 # 0001. The runtime never reads the ROM
 
-Status: Accepted · Sep 27, 2026 · Its names are amended by [0037](0037-the-rom-plugin-base-plugins-and-mods.md): the import is the ROM plugin, `aidyn.rom`
+Status: Accepted · Sep 27, 2026 · Its names are amended by [0037](0037-the-rom-plugin-base-plugins-and-mods.md): the import is the ROM plugin, `aidyn.rom` · Its first-run screen in the game is superseded by [0012](0012-editor-holds-the-importer.md): the editor holds the importer, and its import dialog is the first run
 
 ## Context
 

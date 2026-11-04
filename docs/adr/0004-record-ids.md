@@ -1,6 +1,6 @@
 # 0004. Record ID scheme
 
-Status: Accepted · Sep 27, 2026
+Status: Accepted · Sep 27, 2026 · Added to by [0044](0044-textures-on-models-come-from-a-plugins-pngs.md): a key kind, a model texture's model and texture
 
 ## Context
 

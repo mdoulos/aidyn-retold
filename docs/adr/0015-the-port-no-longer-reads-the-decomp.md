@@ -1,6 +1,6 @@
 # 0015. The port no longer reads the decomp
 
-Status: Accepted · Oct 4, 2026 · Supersedes part of [0003](0003-headless-rules-core.md) (porting close to the decomp's structure) and part of [0009](0009-code-organisation.md) (citing the decomp's names in new code)
+Status: Accepted · Oct 4, 2026 · Supersedes part of [0003](0003-headless-rules-core.md) (porting close to the decomp's structure) and part of [0009](0009-code-organisation.md) (citing the decomp's names in new code) · Amended by [0030](0030-the-project-is-aidyn-renewed.md): the citations it kept as credit are removed
 
 ## Context
 

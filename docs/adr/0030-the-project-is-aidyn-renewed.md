@@ -1,6 +1,6 @@
 # 0030. The project is Aidyn Renewed, a fork of HBHT, and cites no third-party decompilation's names
 
-Status: Accepted · Oct 27, 2026 · Supersedes [0028](0028-the-project-is-hbht.md) · Amends [0015](0015-the-port-no-longer-reads-the-decomp.md) (the citations it kept as credit are removed)
+Status: Accepted · Oct 27, 2026 · Supersedes [0028](0028-the-project-is-hbht.md) · Amends [0015](0015-the-port-no-longer-reads-the-decomp.md) (the citations it kept as credit are removed) · Its names are superseded by [0033](0033-the-project-is-aidyn-chronicles-enhanced.md): the fork, its provenance and its rule on citations stand
 
 ## Context
 
@@ -8,7 +8,9 @@ The project was forked from [HBHT](https://github.com/Aquatakat/hbht), Hoo Boy, 
 
 Where the work came from stays on record: the git history, the earlier ADRs in their own words, and the upstream copyright notice in `LICENSE`, which the MIT licence requires in every copy.
 
-[0028](0028-the-project-is-hbht.md) moved the project off the game's name because "Aidyn" is a trademark. The fork takes the name its repository already has, Aidyn Renewed, which the README disclaims as unaffiliated with the trademark's holders. That is the owner's choice.
+[0028](0028-the-project-is-hbht.md) moved the project off the game's name because "Aidyn" is a trademark. The fork takes the name its repository already had, Aidyn Renewed, the name of the folder it was cloned into and of its GitHub repository, `mdoulos/aidyn-renewed`, which the README disclaims as unaffiliated with the trademark's holders.
+
+*Corrected Nov 3, 2026:* this record first said the name was the owner's choice. It wasn't. The owner asked only for a clean break from the upstream's names and never called the project Aidyn Renewed; the name was taken from the folder and the repository. The owner named the project the next day, Aidyn Chronicles Enhanced ([0033](0033-the-project-is-aidyn-chronicles-enhanced.md)), and Aidyn Chronicles Retold on Nov 3 ([0040](0040-the-project-is-aidyn-chronicles-retold.md)).
 
 ## Decision
 

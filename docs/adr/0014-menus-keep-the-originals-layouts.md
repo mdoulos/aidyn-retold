@@ -1,6 +1,6 @@
 # 0014. The menus keep the original's layouts; new layouts are for mods
 
-Status: Accepted · Oct 4, 2026
+Status: Accepted · Oct 4, 2026 · Partly superseded by [0046](0046-the-project-is-a-remake-that-retells-the-game.md): new layouts and art are the remake's now, not mods' after 1.0; the original's layouts stand as Graphic Quality's Original
 
 ## Context
 

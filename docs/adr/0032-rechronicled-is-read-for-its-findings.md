@@ -1,6 +1,6 @@
 # 0032. Aidyn ReChronicled is read for its findings and designs, with credit
 
-Status: Accepted · Oct 27, 2026
+Status: Accepted · Oct 27, 2026 · Amended by [0034](0034-retold-and-rechronicled-collaborate.md): its wait for permission to use ReChronicled's assets is over; the rest of it stands
 
 ## Context
 

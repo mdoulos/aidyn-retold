@@ -1,0 +1,31 @@
+# 0046. The project is a remake that retells the game, not a reimplementation; Graphic Quality's Original shows the original
+
+Status: Accepted · Nov 3, 2026 · Partly supersedes [0014](0014-menus-keep-the-originals-layouts.md) (new layouts and art are the remake's now; the original's layouts stand as Graphic Quality's Original), [0018](0018-the-port-fixes-bugs-and-sets-enhancements.md) (what the remake changes isn't a setting, and the original's content isn't a limit), [0007](0007-rom-versions.md) (its support order: no other ROM version is to be added) and [0017](0017-the-core-steps-every-tick.md) (its faster pace as a setting) · Records the owner's choices of Oct 31, Nov 2 and Nov 3, 2026
+
+## Context
+
+The project began as a reimplementation. Its rules, formulas, timings and content were ported faithfully ([0003](0003-headless-rules-core.md), [0017](0017-the-core-steps-every-tick.md), [0018](0018-the-port-fixes-bugs-and-sets-enhancements.md)). The menus kept the original's layouts, because "a different layout needs new art, which is outside a reimplementation's scope", and new layouts were left to mods after 1.0 ([0014](0014-menus-keep-the-originals-layouts.md)). An enhancement was a setting, its default usually the original's ([0018](0018-the-port-fixes-bugs-and-sets-enhancements.md)).
+
+After the fork ([0030](0030-the-project-is-aidyn-renewed.md), Oct 27, 2026), the owner took the project somewhere else, in steps the records only partly kept:
+
+- **Oct 31.** "We're overwriting the old game. We're not making mods attach to it as supplemental." And: "assume I don't want to have a control that reverts anything we add." The Enhancements page's Menu Height, Party Layout and Text Font rows went, and the original Party tab's layout with them. The same day, the owner put the project's own content before ROM support: "We can not worry about ROM support. Leave what we have now, but don't make it a priority." Modding was put after the game is done.
+- **Nov 2.** The owner brought one control back: "If the 'Original' graphics is chosen, I want the game's ui to be the way it was in the original and the graphics to be the original graphics as well." Graphic Quality, on the Video page, became that control. The same day Menu Filter, Pace and Jump stopped being settings.
+- **Nov 3.** The project was renamed Aidyn Chronicles Retold, because it retells the story ([0040](0040-the-project-is-aidyn-chronicles-retold.md)), and the remade game became one plugin, the ACRE plugin ([0045](0045-the-remade-game-is-the-acre-plugin.md)).
+
+Each rename and each mechanism has its record. The change of purpose had none, so [0014](0014-menus-keep-the-originals-layouts.md) still read as binding while the menus were being redrawn in the remake's own art.
+
+## Decision
+
+- **Aidyn Chronicles Retold is a remake that retells the game.** The original story stays, with the owner's selective changes and additions, mostly additions, and with lore the original condensed expanded. Its mechanics, art, UI and menus are the remake's to redesign.
+- **The original is where the remake starts, not a limit.** The ROM plugin is the original game as NA 1.0 has it, never changed ([0037](0037-the-rom-plugin-base-plugins-and-mods.md), [0038](0038-only-the-unmodified-1.0-rom-imports.md)). Every change of the remake's is the ACRE plugin's or the code's ([0045](0045-the-remade-game-is-the-acre-plugin.md)). Rules, formulas and timings are still found in the original's machine code and ported from it ([0015](0015-the-port-no-longer-reads-the-decomp.md), [0017](0017-the-core-steps-every-tick.md)). Changing one is the owner's decision, one at a time, as a bug fix is ([0018](0018-the-port-fixes-bugs-and-sets-enhancements.md)).
+- **What the remake changes is its design, not a setting.** No setting reverts something the remake adds or changes. A setting is for what a player tunes to taste or to their machine: volumes, Graphic Quality and the Advanced Graphic Settings under it, Menu Size, Text Speed and the controls. This supersedes [0018](0018-the-port-fixes-bugs-and-sets-enhancements.md)'s rule that an enhancement is a setting whose default is usually the original's.
+- **One switch shows the original: Graphic Quality's Original.** With it, the UI is the original's: the fonts' own sheets, the original's boxes, the tabs at the original's height, the original's images and the original Party tab. The graphics are the original's too: the first plugin's assets and the original's detail ([ui](../systems/ui.md#the-original-look)). Medium and High are the remake's look. New features are built for them first, and Original keeps the original's UI working beside them. No other "Original" setting is added without the owner's word.
+- **The menus are the remake's** ([0014](0014-menus-keep-the-originals-layouts.md) in part): new layouts and new art are in scope now, in the ACRE plugin, not left to mods after 1.0. The original's layouts stand for Graphic Quality's Original, drawn in the original's frame at every screen size as [0014](0014-menus-keep-the-originals-layouts.md) draws them.
+- **The remake's own content comes before ROM support.** NA 1.0 is the one ROM that imports ([0038](0038-only-the-unmodified-1.0-rom-imports.md)). What reads other ROM versions and ROM hacks stays as it is, kept working but not widened.
+- **Modding comes after the game.** The plugin system and the editor stay friendly to mods ([0037](0037-the-rom-plugin-base-plugins-and-mods.md)), but today's work isn't shaped around mod authors.
+
+## Consequences
+
+- [0014](0014-menus-keep-the-originals-layouts.md) and [0018](0018-the-port-fixes-bugs-and-sets-enhancements.md) are partly superseded. A reader asking whether something may change looks here first: the original's content and look are what the remake starts from and what Graphic Quality's Original shows, not a rule that it keeps them.
+- A system's doc says what the original does, what the remake does instead, and what the original look draws, as [ui](../systems/ui.md#the-original-look) does.
+- The remake's art, UI and remodels are the game's own, not a mod's. They're the ACRE plugin's, kept in the private repository ([0041](0041-the-art-and-music-are-the-private-repositorys.md)).

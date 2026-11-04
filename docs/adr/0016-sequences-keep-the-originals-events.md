@@ -1,6 +1,6 @@
 # 0016. Sequences keep the original's event stream
 
-Status: Accepted · Oct 9, 2026
+Status: Accepted · Oct 9, 2026 · Supersedes part of [0005](0005-plugin-format.md): open formats for every asset, for sequences
 
 ## Context
 

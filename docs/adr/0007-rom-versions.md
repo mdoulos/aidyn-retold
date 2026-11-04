@@ -1,6 +1,6 @@
 # 0007. ROM version support
 
-Status: Accepted · Sep 27, 2026 · 1.1's fixes as fidelity toggles are superseded by [0018](0018-the-port-fixes-bugs-and-sets-enhancements.md)
+Status: Accepted · Sep 27, 2026 · 1.1's fixes as fidelity toggles are superseded by [0018](0018-the-port-fixes-bugs-and-sets-enhancements.md) · Refusing every ROM hack is superseded by [0031](0031-a-data-edit-of-1.0-imports.md), whose import of a data edit is superseded in turn by [0038](0038-only-the-unmodified-1.0-rom-imports.md) · Its support order is superseded by [0038](0038-only-the-unmodified-1.0-rom-imports.md) and [0046](0046-the-project-is-a-remake-that-retells-the-game.md): only the unmodified NA 1.0 ROM imports for players, 1.1 is the CLI's research import, and no other version is to be added
 
 ## Context
 

@@ -103,10 +103,11 @@ and that is true of the code here. The fork keeps HBHT's git history, its
 architecture decision records in their own words, and the upstream copyright
 notice in [LICENSE](LICENSE) as the record of where the work came from. Its
 name, packages, docs and the names its code cites are its own
-([ADR 0030](docs/adr/0030-the-project-is-aidyn-renewed.md)). It was called
-Aidyn Renewed until October 28, 2026
+([ADR 0030](docs/adr/0030-the-project-is-aidyn-renewed.md)). Its code was named
+Aidyn Renewed, after the fork's folder, until the project was first named, as
+Aidyn Chronicles Enhanced, on October 28, 2026
 ([ADR 0033](docs/adr/0033-the-project-is-aidyn-chronicles-enhanced.md)), and
-Aidyn Chronicles Enhanced until November 3, 2026
+renamed Aidyn Chronicles Retold on November 3, 2026
 ([ADR 0040](docs/adr/0040-the-project-is-aidyn-chronicles-retold.md)).
 
 ### Credits

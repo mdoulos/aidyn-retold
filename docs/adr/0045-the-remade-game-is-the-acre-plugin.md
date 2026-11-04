@@ -1,6 +1,6 @@
 # 0045. The remade game is one plugin, the ACRE plugin
 
-Status: Accepted · Nov 3, 2026 · Amends [0037](0037-the-rom-plugin-base-plugins-and-mods.md)'s and [0039](0039-base-plugins-ship-beside-the-apps.md)'s base plugins, [0040](0040-the-project-is-aidyn-chronicles-retold.md)'s base plugin IDs, [0041](0041-the-art-and-music-are-the-private-repositorys.md)'s `acre_*` plugins and [0043](0043-the-rom-is-asked-for-once-and-fixes-are-base-plugins.md)'s `acre_fixes`
+Status: Accepted · Nov 3, 2026 · Amends [0029](0029-content-fixes-wait-for-a-bugfix-mod.md)'s bugfix plugin, [0037](0037-the-rom-plugin-base-plugins-and-mods.md)'s and [0039](0039-base-plugins-ship-beside-the-apps.md)'s base plugins, [0040](0040-the-project-is-aidyn-chronicles-retold.md)'s base plugin IDs, [0041](0041-the-art-and-music-are-the-private-repositorys.md)'s `acre_*` plugins and [0043](0043-the-rom-is-asked-for-once-and-fixes-are-base-plugins.md)'s `acre_fixes`
 
 ## Context
 

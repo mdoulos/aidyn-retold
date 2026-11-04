@@ -1,6 +1,6 @@
 # 0028. The project is HBHT, and keeps "aidyn" only where it names the game or the data
 
-Status: Accepted · Oct 25, 2026
+Status: Superseded · Oct 25, 2026 · Superseded by [0030](0030-the-project-is-aidyn-renewed.md): the project is Aidyn Renewed, a fork of HBHT
 
 ## Context
 

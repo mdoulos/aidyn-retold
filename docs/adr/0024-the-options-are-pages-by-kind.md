@@ -1,6 +1,6 @@
 # 0024. The options are pages by kind, in Title Case
 
-Status: Accepted · Oct 24, 2026 · Supersedes [0013](0013-settings-in-the-options-menu.md)'s layout: one uncategorised Graphics page, in mixed case
+Status: Accepted · Oct 24, 2026 · Supersedes [0013](0013-settings-in-the-options-menu.md)'s layout: one uncategorised Graphics page, in mixed case · Its "Controls will join them" is filled in by [0026](0026-controls-are-bound-by-situation.md): the Controls page
 
 ## Context
 

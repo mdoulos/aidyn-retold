@@ -1,6 +1,6 @@
 # 0017. The core steps every tick, and per-frame behaviour is matched to a frame each system names
 
-Status: Accepted · Oct 17, 2026 · Supersedes the Time section of [0006](0006-tick-model-and-rng.md)
+Status: Accepted · Oct 17, 2026 · Supersedes the Time section of [0006](0006-tick-model-and-rng.md) · Its faster pace as a setting (`BriskPace`) is superseded by [0046](0046-the-project-is-a-remake-that-retells-the-game.md): Pace is no longer a setting
 
 ## Context
 

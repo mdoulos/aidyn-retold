@@ -1,6 +1,6 @@
 # Aidyn Chronicles Retold
 
-A PC reimplementation of Aidyn Chronicles: The First Mage (N64), forked from HBHT (ADR 0030), which retells the game: its story kept, with the owner's changes and additions, over mechanics and art that keep changing (ADR 0040). It runs on content imported from a user-supplied ROM, with the owner's ACRE plugin over it, and has a plugin-based mod system. M1, M2, M3 (Fight) and M4 (the prologue, played side by side with the emulator) are playable, and 2.10's events and triggers carry the cinematics. Next is Phase 4, content parity. The roadmap's [Where things stand](docs/roadmap.md#where-things-stand) has the rest.
+A PC remake of Aidyn Chronicles: The First Mage (N64), forked from HBHT (ADR 0030), which retells the game: its story kept, with the owner's changes and additions, over mechanics and art that keep changing (ADRs 0040, 0046). The original is where it starts, not a limit, and Graphic Quality's Original is the one switch that shows the original's look (ADR 0046). It runs on content imported from a user-supplied ROM, with the owner's ACRE plugin over it, and has a plugin-based mod system. M1, M2, M3 (Fight) and M4 (the prologue, played side by side with the emulator) are playable, and 2.10's events and triggers carry the cinematics. Next is Phase 4, content parity. The roadmap's [Where things stand](docs/roadmap.md#where-things-stand) has the rest.
 
 ## Where to look
 

@@ -1,6 +1,6 @@
 # 0002. Engine: Godot 4 with C#
 
-Status: Accepted · Sep 26, 2026
+Status: Accepted · Sep 26, 2026 · Added to by [0022](0022-views-library.md): a seventh project, the views library
 
 ## Context
 

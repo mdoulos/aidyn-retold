@@ -1,6 +1,6 @@
 # 0038. Only the unmodified NA 1.0 ROM imports; changes to the game's data are base plugins
 
-Status: Accepted · Nov 3, 2026 · Supersedes [0031](0031-a-data-edit-of-1.0-imports.md)'s import of a data edit (its identification stands)
+Status: Accepted · Nov 3, 2026 · Supersedes [0031](0031-a-data-edit-of-1.0-imports.md)'s import of a data edit and its name checks for 1.0 alone (its identification stands) · Supersedes [0007](0007-rom-versions.md)'s support order: only NA 1.0 imports for players, and 1.1 is the CLI's research import
 
 ## Context
 

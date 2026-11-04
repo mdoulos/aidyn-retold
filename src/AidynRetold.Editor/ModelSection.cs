@@ -37,37 +37,35 @@ public partial class ModelSection : VBoxContainer
 
         if (ctx.Replaced)
         {
-            var which = EditorStyle.Row(0);
+            var which = new List<Button>();
             var group = new ButtonGroup();
             foreach (var (text, isOriginal) in new[] { ("Replacement", false), ("Original", true) })
             {
-                var button = new Button { Text = text, ToggleMode = true, ButtonGroup = group, ButtonPressed = ctx.Original == isOriginal, CustomMinimumSize = new Vector2(110, 0) };
+                var button = new Button { Text = text, ToggleMode = true, ButtonGroup = group, ButtonPressed = ctx.Original == isOriginal };
                 button.Pressed += () =>
                 {
                     if (ctx.Original != isOriginal)
                         ctx.ShowOriginal(isOriginal);
                 };
-                which.AddChild(button);
+                which.Add(button);
             }
-            AddChild(which);
+            AddChild(new ButtonRows([.. which]));
         }
 
-        var buttons = new HFlowContainer();
-        buttons.AddThemeConstantOverride("h_separation", 6);
-        buttons.AddThemeConstantOverride("v_separation", 6);
+        var buttons = new List<Button>();
         var export = new Button { Text = "Export model…", TooltipText = "Save the model's .glb, to open in Blender" };
         export.Pressed += Export;
-        buttons.AddChild(export);
+        buttons.Add(export);
         var replace = new Button { Text = "Replace model…", TooltipText = "Another .glb in its place, checked against the original, written into a plugin" };
         replace.Pressed += Replace;
-        buttons.AddChild(replace);
+        buttons.Add(replace);
         if (ctx.Replaced && ctx.File is { } replacing && plugins.PluginWith(replacing) is { } replacer && replacer != RecordId.RomNamespace)
         {
             var back = new Button { Text = "Put back the original", TooltipText = $"Take {replacer}'s model out, so the original shows again" };
             back.Pressed += () => PluginFiles.Remove(this, plugins, replacer, ctx.Scene, "glb", "the replacement model", ctx.Reload);
-            buttons.AddChild(back);
+            buttons.Add(back);
         }
-        AddChild(buttons);
+        AddChild(new ButtonRows([.. buttons]));
 
         if (ctx.Replaced && ctx.OriginalFile is { } originalFile && ctx.File is { } replacementFile)
         {

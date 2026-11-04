@@ -24,16 +24,22 @@ public partial class PartsSection : VBoxContainer
     public PartsSection(ModelContext ctx)
     {
         _ctx = ctx;
-        AddThemeConstantOverride("separation", 6);
+        AddThemeConstantOverride("separation", 0);
         _tree.SetColumnExpand(0, true);
         _tree.SetColumnExpand(1, false);
         _tree.SetColumnCustomMinimumWidth(1, 96);
         // Deep trees, a remodel's above all, need their names more than their indent.
         _tree.AddThemeConstantOverride("item_margin", 10);
         _tree.ItemSelected += Picked;
+        // The tree spans the card (its section is flush); what's picked is said under it, inset as a card's body is.
+        _tree.ThemeTypeVariation = "FlushTree";
         AddChild(_tree);
         _about.ThemeTypeVariation = "DimLabel";
-        AddChild(_about);
+        var inset = new MarginContainer();
+        foreach (var (side, by) in new[] { ("left", 24), ("right", 24), ("top", 12), ("bottom", 18) })
+            inset.AddThemeConstantOverride($"margin_{side}", by);
+        inset.AddChild(_about);
+        AddChild(inset);
         if (ctx.View.Content is { } content)
         {
             var root = _tree.CreateItem();

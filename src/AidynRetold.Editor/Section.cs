@@ -20,7 +20,11 @@ public partial class Section : PanelContainer
     private readonly string _name;
 
     /// <param name="foldable">Whether the title folds it; a page's card that's always open says no.</param>
-    public Section(string name, Control content, bool foldable = true)
+    /// <param name="flush">
+    /// Whether the content fills the body to the card's edges, unpadded: a table, which reads better spanning the card than inset in
+    /// it, drawn as a <c>FlushTree</c>. What else such content holds pads itself.
+    /// </param>
+    public Section(string name, Control content, bool foldable = true, bool flush = false)
     {
         _name = name;
         Content = content;
@@ -33,6 +37,8 @@ public partial class Section : PanelContainer
         head.AddChild(_note);
         _head.AddChild(head);
         column.AddChild(_head);
+        if (flush)
+            _body.ThemeTypeVariation = "CardBodyFlush";
         _body.AddChild(content);
         column.AddChild(_body);
         AddChild(column);

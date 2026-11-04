@@ -50,15 +50,15 @@ public partial class ArmorPage : ScrollContainer
         preview.Visible = false;
         column.AddChild(preview);
         var usedBy = references.Select(r => r.From).Distinct().Count();
-        column.AddChild(new Section("Used by", UsedByList.Create(catalog, references, open), foldable: false)
+        column.AddChild(new Section("Used by", UsedByList.Create(catalog, references, open), foldable: false, flush: true)
         {
             Note = usedBy == 0 ? "" : $"{usedBy:N0} {(usedBy == 1 ? "record" : "records")}",
         });
-        var fields = new RecordFieldsView { CustomMinimumSize = new Vector2(0, 360) };
+        var fields = new RecordFieldsView { CustomMinimumSize = new Vector2(0, 360), ThemeTypeVariation = "FlushTree" };
         fields.Show(json, field => catalog.Plugins.Setters(armor.Id, field), other => catalog.Find(other) is not null || other.Type == RecordTypes.Voxel,
             other => catalog.Find(other)?.Summary);
         fields.Opened += open;
-        column.AddChild(new Section("All fields", fields) { Note = "as the plugins merge them", Open = false });
+        column.AddChild(new Section("All fields", fields, flush: true) { Note = "as the plugins merge them", Open = false });
     }
 
     /// <summary>The armor's card: its title with the changes and Save at its right, then a row for each value.</summary>

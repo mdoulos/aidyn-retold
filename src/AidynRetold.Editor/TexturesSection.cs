@@ -50,9 +50,7 @@ public partial class TexturesSection : VBoxContainer
             _tiles.AddChild(TileFor(i));
         var all = new Button { Text = "Export all…", TooltipText = "Save every texture the model draws, as PNGs named for their numbers" };
         all.Pressed += ExportAll;
-        var row = EditorStyle.Row();
-        row.AddChild(all);
-        AddChild(row);
+        AddChild(new ButtonRows(all));
         Pick(0);
         _ = BackgroundTask.Report(CountUsage());
     }
@@ -176,29 +174,27 @@ public partial class TexturesSection : VBoxContainer
                 _details.AddChild(Shared(others));
         }
 
-        var buttons = new HFlowContainer();
-        buttons.AddThemeConstantOverride("h_separation", 6);
-        buttons.AddThemeConstantOverride("v_separation", 6);
+        var buttons = new List<Button>();
         var export = new Button { Text = "Export PNG…", TooltipText = "Save the texture as the model draws it" };
         export.Pressed += () => Export(entry);
-        buttons.AddChild(export);
+        buttons.Add(export);
         if (entry.Borg1 is { } texture && !_ctx.Original)
         {
             var here = new Button { Text = "Replace on this model…", TooltipText = "A PNG of yours on this model alone, written into a plugin" };
             here.Pressed += () => Replace(RecordId.ModelTexture(_ctx.Scene, texture), $"texture {entry.Label} on this model");
-            buttons.AddChild(here);
+            buttons.Add(here);
             var everywhere = new Button { Text = "Replace everywhere…", TooltipText = "A PNG of yours on every model that uses this texture" };
             everywhere.Pressed += () => Replace(RecordId.Hex(RecordTypes.Texture, texture), $"texture {entry.Label} for every model");
-            buttons.AddChild(everywhere);
+            buttons.Add(everywhere);
             if (entry.Override is { } put && put.Plugin != RecordId.RomNamespace)
             {
                 var back = new Button { Text = "Put back", TooltipText = $"Take {put.Plugin}'s PNG out, so the {(put.Reach == TextureReach.Model ? "texture everywhere, or the model's copy," : "model's copy")} shows again" };
                 var id = put.Reach == TextureReach.Model ? RecordId.ModelTexture(_ctx.Scene, texture) : RecordId.Hex(RecordTypes.Texture, texture);
                 back.Pressed += () => PluginFiles.Remove(this, _ctx.Plugins, put.Plugin, id, "png", $"texture {entry.Label}'s PNG", _ctx.Reload);
-                buttons.AddChild(back);
+                buttons.Add(back);
             }
         }
-        _details.AddChild(buttons);
+        _details.AddChild(new ButtonRows([.. buttons]));
     }
 
     /// <summary>The other models that use a texture, by who they are, each a link, the first few and a menu of all.</summary>

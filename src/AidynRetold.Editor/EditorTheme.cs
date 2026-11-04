@@ -277,6 +277,12 @@ public static class EditorTheme
         t.SetStylebox("panel", "CardHeadFolded", Box(Colors.Transparent, null, 0, 0, 24, 16));
         t.SetTypeVariation("CardBody", "PanelContainer");
         t.SetStylebox("panel", "CardBody", Box(Colors.Transparent, null, 0, 0, 24, 18));
+        // A body a table fills to the card's edges, and the table in it, its own border the card's, its foot's corners the card's.
+        t.SetTypeVariation("CardBodyFlush", "PanelContainer");
+        t.SetStylebox("panel", "CardBodyFlush", Box(Colors.Transparent, null, 0, 0, 0, 0));
+        t.SetTypeVariation("FlushTree", "Tree");
+        t.SetStylebox("panel", "FlushTree", Box(p.Field, null, 0, 0, 1, 1, bottomRadius: 7));
+        t.SetStylebox("focus", "FlushTree", Box(Colors.Transparent, null, 0, 0));
         t.SetTypeVariation("Subhead", "PanelContainer");
         t.SetStylebox("panel", "Subhead", Box(p.Sunken, p.Border, 0, 0, 24, 14, top: 1, bottom: 1));
         // A row of a card: a label column and a field, 18 by 24 in, a rule above all but the first.

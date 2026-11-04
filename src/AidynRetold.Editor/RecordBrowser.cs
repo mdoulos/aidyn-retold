@@ -815,14 +815,15 @@ public partial class RecordBrowser : Control
         _model.Inspector.AddChild(inspector);
         if (json is not null)
         {
-            var fields = new RecordFieldsView { CustomMinimumSize = new Vector2(0, 320) };
+            var fields = new RecordFieldsView { CustomMinimumSize = new Vector2(0, 320), ThemeTypeVariation = "FlushTree" };
             fields.Show(json, field => catalog.Plugins.Setters(id, field), other => catalog.Find(other) is not null || other.Type == RecordTypes.Voxel,
                 other => catalog.Find(other)?.Summary);
             fields.Opened += FollowLink;
-            inspector.AddSection("Fields", fields, $"{json.Count - 1} fields");
+            inspector.AddSection("Fields", fields, $"{json.Count - 1} fields", flush: true);
         }
         var usedBy = references.Select(r => r.From).Distinct().Count();
-        inspector.AddSection("Used by", UsedByList.Create(catalog, references, FollowLink), usedBy == 0 ? "" : $"{usedBy:N0} {(usedBy == 1 ? "record" : "records")}");
+        inspector.AddSection("Used by", UsedByList.Create(catalog, references, FollowLink), usedBy == 0 ? "" : $"{usedBy:N0} {(usedBy == 1 ? "record" : "records")}",
+            flush: true);
     }
 
     /// <summary>The ROM plugin alone, for the original of a record a later plugin patches, loaded once when first asked.</summary>

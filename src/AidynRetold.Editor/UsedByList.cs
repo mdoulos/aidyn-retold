@@ -3,7 +3,10 @@ using Godot;
 
 namespace AidynRetold.Editor;
 
-/// <summary>What names a record, as a card on a one-page record shows it: a table of the records, double-clicked to open one.</summary>
+/// <summary>
+/// What names a record, as a card on a one-page record shows it, filling the card to its edges: a table of the records,
+/// double-clicked to open one.
+/// </summary>
 public static class UsedByList
 {
     /// <summary>The records naming it, one row each, with their summaries; a line saying so when nothing does.</summary>
@@ -11,9 +14,17 @@ public static class UsedByList
     {
         var groups = references.GroupBy(r => r.From).ToList();
         if (groups.Count == 0)
-            return EditorStyle.DimLabel("Nothing names it.");
+        {
+            // Inset as a card's body is, as the card it's in is flush.
+            var inset = new MarginContainer();
+            foreach (var (side, by) in new[] { ("left", 24), ("right", 24), ("top", 18), ("bottom", 18) })
+                inset.AddThemeConstantOverride($"margin_{side}", by);
+            inset.AddChild(EditorStyle.DimLabel("Nothing names it."));
+            return inset;
+        }
         var tree = new Tree
         {
+            ThemeTypeVariation = "FlushTree",
             Columns = 2, HideRoot = true, ColumnTitlesVisible = true, SelectMode = Tree.SelectModeEnum.Row,
             CustomMinimumSize = new Vector2(0, Math.Min(44 + groups.Count * 30, 320)),
         };

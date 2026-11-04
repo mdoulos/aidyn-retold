@@ -27,11 +27,11 @@ public sealed class UiImages
     private readonly Dictionary<RecordId, Texture2D?> _textures = [], _originals = [];
 
     /// <summary>
-    /// The game's own art in place of the original's images, the user's (Nov 2, 2026), by its key in the acre base plugin
+    /// The game's own art in place of the original's images, the user's (Nov 2, 2026), by its key in the ACRE plugin
     /// (<see cref="OwnArtPng"/>): the aspects' and the schools' icons, wherever they're drawn, laid out at the original's size as a
     /// larger replacement is; and the potions' and scrolls' pictures (<see cref="MenuImages.OwnPictures"/>), whose keys are their
     /// own, <c>potion_sleep_gas</c> for <c>acre:image/potion_sleep_gas</c>, laid out at the size of the image each stands in for.
-    /// Without the base plugin, the original's are drawn.
+    /// Without the ACRE plugin, the original's are drawn.
     /// </summary>
     private static readonly Dictionary<RecordId, string> OwnArt = new Dictionary<RecordId, string>
     {
@@ -142,7 +142,7 @@ public sealed class UiImages
     private readonly Dictionary<bool, Texture2D?> _onParchment = [];
 
     /// <summary>
-    /// The game's blank parchment, the user's (<c>acre:image/parchment</c>, the acre base plugin's), or a plugin's beside the scroll
+    /// The game's blank parchment, the user's (<c>acre:image/parchment</c>, the ACRE plugin's), or a plugin's beside the scroll
     /// in its place, laid across a tab's frame in place of the tab's own (<see cref="ParchmentSwap"/>): its torn edges where the
     /// full-height menu puts them, and mirrored as the tab's place on the scroll says (<see cref="ParchmentSwap.Mirrored"/>).
     /// Null only if the tab has no image to size it by or it can't be read. It's laid on another thread,
@@ -192,7 +192,7 @@ public sealed class UiImages
         return task;
     }
 
-    /// <summary>The game's own blank parchment's PNG, the acre base plugin's, or null without it.</summary>
+    /// <summary>The game's own blank parchment's PNG, the ACRE plugin's, or null without it.</summary>
     private static byte[]? GameParchment() => OwnArtPng("parchment");
 
     /// <summary>
@@ -214,16 +214,16 @@ public sealed class UiImages
     public static RecordId OwnArtId(string key) => RecordId.Parse($"{MenuImages.OwnNamespace}:image/{key}");
 
     /// <summary>
-    /// A piece of the game's own art's PNG by its key (<see cref="OwnArtId"/>): the acre base plugin's,
+    /// A piece of the game's own art's PNG by its key (<see cref="OwnArtId"/>): the ACRE plugin's,
     /// <c>assets/acre/image/&lt;key&gt;.png</c> (ADR 0041), or a later plugin's in its place. Null, with a warning, if no plugin has
-    /// it, as when the base plugins aren't installed: then the original's images are drawn where there are any.
+    /// it, as when the ACRE plugin isn't installed: then the original's images are drawn where there are any.
     /// </summary>
     private static byte[]? OwnArtPng(string key)
     {
         var id = OwnArtId(key);
         if (_artPlugins?.FindAsset(id, "png") is { } path)
             return File.ReadAllBytes(path);
-        GD.PushWarning($"No plugin has {id}, the game's own art: is the acre base plugin installed (ADR 0041)?");
+        GD.PushWarning($"No plugin has {id}, the game's own art: is the ACRE plugin installed ({DataPaths.AcrePluginVariable}, ADR 0045)?");
         return null;
     }
 

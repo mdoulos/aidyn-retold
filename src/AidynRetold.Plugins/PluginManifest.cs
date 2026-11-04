@@ -24,9 +24,20 @@ public sealed record PluginManifest(
 /// <param name="Rom">The ROM's SHA-1.</param>
 /// <remarks>
 /// Importers 60 and 61 also wrote the player's choice about the Roog Cave's mushroom (<c>options</c>), which reading ignores: the import
-/// takes no choices now, and the fix is the <c>acre</c> base plugin's (ADRs 0043, 0045).
+/// takes no choices now, and the fix is the ACRE plugin's (ADRs 0043, 0045).
 /// </remarks>
 public sealed record ImportInfo(int Importer, string Rom, string RomVersion);
+
+/// <summary>
+/// The remade game's plugin, ACRE's own (ADR 0045): the game's own art, the remodels, the redrawn art, the music and the fixes to the
+/// original's content, which the game, the editor and the CLI load after the ROM plugin and before the mods
+/// (<see cref="DataPaths.AcrePlugin"/>). Its own records are in its ID's namespace.
+/// </summary>
+public static class AcrePlugin
+{
+    /// <summary>Its ID, and so the namespace of its own records: <c>acre:image/logo</c>. No mod can have it.</summary>
+    public const string Id = "acre";
+}
 
 /// <summary>The original game's plugin, which the importer writes from the user's ROM.</summary>
 public static class RomPlugin
@@ -138,7 +149,7 @@ public static class RomPlugin
     /// 61 gives each title fly-through its animation's length (<c>length</c>), and names its coordinates' origin (<c>originRow</c>, <c>originColumn</c>).
     /// Its manifest later recorded the import's options (<c>import.options</c>), whose defaults left the records as 61 wrote them.
     /// 62 leaves the Roog Cave's mushroom where the ROM has it, and takes no options: the ROM plugin is the ROM's content as it is, and
-    /// the mushroom's fix is the <c>acre</c> base plugin's (ADRs 0043, 0045).
+    /// the mushroom's fix is the ACRE plugin's (ADRs 0043, 0045).
     /// </summary>
     public const int ImporterVersion = 62;
 
@@ -255,27 +266,28 @@ public static class DataPaths
     public static string RomPluginDirectory => Path.Combine(Plugins, RomPlugin.Folder);
 
     /// <summary>
-    /// The environment variable that names the base plugins' folder outright (ADR 0039): in development, the owner's own, in the
-    /// repository they keep them in.
+    /// The environment variable that names the ACRE plugin's folder outright (ADRs 0039, 0045): in development, the owner's own, in the
+    /// repository they keep it in.
     /// </summary>
-    public const string BasePluginsVariable = "ACRE_BASE_PLUGINS";
+    public const string AcrePluginVariable = "ACRE_PLUGIN";
 
-    private static string? _basePluginsFolder;
+    private static string? _acrePluginFolder;
 
     /// <summary>
-    /// Where an exported app's base plugins are, which the Godot apps hand in first thing (<c>AppLauncher.UseAppFolder</c>): <c>plugins</c>
+    /// Where an exported app's ACRE plugin is, which the Godot apps hand in first thing (<c>AppLauncher.UseAppFolder</c>): <c>acre</c>
     /// beside the executables, or in a macOS bundle's <c>Contents/Resources</c>. The CLI, the tests and the apps in development never set it.
     /// </summary>
-    public static void UseBasePluginsFolder(string? folder) => _basePluginsFolder = folder;
+    public static void UseAcrePluginFolder(string? folder) => _acrePluginFolder = folder;
 
     /// <summary>
-    /// The base plugins' folder (ADR 0039): <c>ACRE_BASE_PLUGINS</c> if set, else the exported app's, else null, for none.
-    /// <see cref="PluginSet.LoadInstalled"/> loads them after the ROM plugin and before the mods in <see cref="Plugins"/>.
+    /// The ACRE plugin's folder, the one with its <c>plugin.json</c> (ADRs 0039, 0045): <c>ACRE_PLUGIN</c> if set, else the exported
+    /// app's, else null, for none. <see cref="PluginSet.LoadInstalled"/> loads it after the ROM plugin and before the mods in
+    /// <see cref="Plugins"/>.
     /// </summary>
-    public static string? BasePlugins => ResolveBasePlugins(Environment.GetEnvironmentVariable(BasePluginsVariable), _basePluginsFolder);
+    public static string? AcrePlugin => ResolveAcrePlugin(Environment.GetEnvironmentVariable(AcrePluginVariable), _acrePluginFolder);
 
-    /// <summary><see cref="BasePlugins"/>'s rule over what it reads: the variable's value and the folder the app handed in.</summary>
-    public static string? ResolveBasePlugins(string? variable, string? appFolder) =>
+    /// <summary><see cref="AcrePlugin"/>'s rule over what it reads: the variable's value and the folder the app handed in.</summary>
+    public static string? ResolveAcrePlugin(string? variable, string? appFolder) =>
         variable is { Length: > 0 } ? variable : appFolder is { Length: > 0 } ? appFolder : null;
 
     /// <summary>Where saved games go (<see cref="Saves.SaveGame"/>).</summary>

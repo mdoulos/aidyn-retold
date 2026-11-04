@@ -49,7 +49,7 @@ public sealed class ModelContext
 
 /// <summary>
 /// The editor's ways to pick a file or folder, and to save into a mod: the person names the mod, which is made in the plugins folder
-/// if it isn't there and remembered for the next save (<see cref="ModFolder.OpenOrCreate"/>, which saves a base plugin's ID into its
+/// if it isn't there and remembered for the next save (<see cref="ModFolder.OpenOrCreate"/>, which saves the ACRE plugin's ID into its
 /// own folder).
 /// </summary>
 public static class PluginFiles
@@ -88,7 +88,7 @@ public static class PluginFiles
 
     /// <summary>
     /// Asks which mod to save <paramref name="what"/> to, saves it with <paramref name="write"/>, and then runs
-    /// <paramref name="after"/>, the plugins' reload. What goes wrong is said in a dialog. A base plugin's ID saves into that base
+    /// <paramref name="after"/>, the plugins' reload. What goes wrong is said in a dialog. The ACRE plugin's ID saves into the ACRE
     /// plugin's own folder, as the owner's own changes are kept (<see cref="ModFolder.OpenOrCreate"/>).
     /// </summary>
     public static void Write(Node parent, PluginSet plugins, string what, Action<ModFolder> write, Func<Task> after)
@@ -118,12 +118,12 @@ public static class PluginFiles
         var root = parent.GetTree().Root;
         try
         {
-            var folder = ModFolder.OpenOrCreate(PluginsDirectory(plugins), mod, basePluginsDirectory: DataPaths.BasePlugins);
+            var folder = ModFolder.OpenOrCreate(PluginsDirectory(plugins), mod, acrePlugin: DataPaths.AcrePlugin);
             folder.Journal = [];
             write(folder);
             var journal = folder.Journal;
             _ = BackgroundTask.Report(after());
-            Toast.Show(root, $"{char.ToUpperInvariant(what[0])}{what[1..]} {done} the {mod} mod.", () =>
+            Toast.Show(root, $"{char.ToUpperInvariant(what[0])}{what[1..]} {done} {EditorStyle.ModName(mod)}.", () =>
             {
                 try
                 {

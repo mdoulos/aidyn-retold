@@ -5,7 +5,7 @@ public sealed class PluginLoadOrderTests : IDisposable
 {
     private readonly TempPlugins _temp = new();
 
-    /// <summary>The base plugins' folder, beside the apps rather than in the data folder (ADR 0039).</summary>
+    /// <summary>Where the ACRE plugin is, beside the apps rather than in the data folder (ADRs 0039, 0045).</summary>
     private readonly TempPlugins _shipped = new();
 
     public void Dispose()
@@ -29,72 +29,70 @@ public sealed class PluginLoadOrderTests : IDisposable
     private void Mod(string id, string[]? dependencies = null, string[]? loadAfter = null) =>
         _temp.AddRaw(id, Manifest(id, dependencies, loadAfter));
 
-    private void Shipped(string id, string[]? dependencies = null, string[]? loadAfter = null) =>
-        _shipped.AddRaw(id, Manifest(id, dependencies, loadAfter));
+    /// <summary>The ACRE plugin, in a folder of its own, which <see cref="OrderWithAcre"/> loads.</summary>
+    private void Acre(string id = AcrePlugin.Id, string[]? dependencies = null) => _shipped.AddRaw("acre", Manifest(id, dependencies));
 
     private string[] Order() => [.. PluginSet.LoadInstalled(_temp.Root).Plugins.Select(p => p.Manifest.Id)];
 
-    private string[] OrderWithBase() => [.. PluginSet.LoadInstalled(_temp.Root, _shipped.Root).Plugins.Select(p => p.Manifest.Id)];
+    private string[] OrderWithAcre() => [.. PluginSet.LoadInstalled(_temp.Root, Path.Combine(_shipped.Root, "acre")).Plugins.Select(p => p.Manifest.Id)];
 
     [Fact]
-    public void BasePluginsLoadAfterTheRomPluginAndBeforeTheMods()
+    public void TheAcrePluginLoadsAfterTheRomPluginAndBeforeTheMods()
     {
         Rom();
         Mod("alpha");
-        Shipped("zeta");
-        Shipped("music");
+        Acre();
 
-        Assert.Equal(["aidyn", "music", "zeta", "alpha"], OrderWithBase());
+        Assert.Equal(["aidyn", "acre", "alpha"], OrderWithAcre());
     }
 
     [Fact]
-    public void AModCanDependOnABasePlugin()
+    public void AModCanDependOnTheAcrePlugin()
     {
         Rom();
-        Shipped("music", dependencies: ["aidyn"]);
-        Mod("alpha", dependencies: ["music"]);
+        Acre(dependencies: ["aidyn"]);
+        Mod("alpha", dependencies: ["acre"]);
 
-        Assert.Equal(["aidyn", "music", "alpha"], OrderWithBase());
+        Assert.Equal(["aidyn", "acre", "alpha"], OrderWithAcre());
     }
 
     [Fact]
-    public void ABasePluginCantDependOnAMod()
+    public void TheAcrePluginCantDependOnAMod()
     {
         Rom();
-        Shipped("music", dependencies: ["alpha"]);
+        Acre(dependencies: ["alpha"]);
         Mod("alpha");
 
-        Assert.Equal("Plugin music needs alpha to load before it.", Assert.Throws<InvalidDataException>(OrderWithBase).Message);
+        Assert.Equal("Plugin acre needs alpha to load before it.", Assert.Throws<InvalidDataException>(OrderWithAcre).Message);
     }
 
+    /// <summary>No mod can have the ACRE plugin's ID, whether or not the ACRE plugin is there.</summary>
     [Fact]
-    public void APluginIsABasePluginOrAModButNotBoth()
+    public void NoModCanHaveTheAcrePluginsId()
     {
         Rom();
-        Shipped("music");
-        Mod("music");
+        Mod("acre");
 
-        var e = Assert.Throws<InvalidDataException>(OrderWithBase);
-        Assert.StartsWith("The plugin music is both a base plugin, in ", e.Message, StringComparison.Ordinal);
-        Assert.EndsWith(". Remove the mod's folder.", e.Message, StringComparison.Ordinal);
+        Assert.StartsWith("The mod in ", Assert.Throws<InvalidDataException>(OrderWithAcre).Message, StringComparison.Ordinal);
+        Assert.Contains("has the ACRE plugin's ID, acre, which no mod can have", Assert.Throws<InvalidDataException>(Order).Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void ABasePluginsFolderMustBeNamedForItsId()
+    public void TheAcrePluginsIdIsAcre()
     {
         Rom();
-        _shipped.AddRaw("Music", Manifest("music"));
+        Acre(id: "music");
 
-        Assert.Contains("a plugin's folder must be named for its ID", Assert.Throws<InvalidDataException>(OrderWithBase).Message, StringComparison.Ordinal);
+        Assert.EndsWith("says its ID is \"music\"; the ACRE plugin's is \"acre\".", Assert.Throws<InvalidDataException>(OrderWithAcre).Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void ABasePluginsFolderThatIsntThereHoldsNone()
+    public void AnAcrePluginThatIsntThereIsNone()
     {
         Rom();
         Mod("alpha");
 
-        Assert.Equal(["aidyn", "alpha"], [.. PluginSet.LoadInstalled(_temp.Root, Path.Combine(_shipped.Root, "missing")).Plugins.Select(p => p.Manifest.Id)]);
+        Assert.Equal(["aidyn", "alpha"], OrderWithAcre());
     }
 
     [Fact]

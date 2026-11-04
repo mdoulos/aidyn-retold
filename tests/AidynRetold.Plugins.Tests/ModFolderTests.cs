@@ -51,24 +51,30 @@ public sealed class ModFolderTests
         Assert.Equal(before, File.ReadAllText(Path.Combine(mod.Directory, "records", "maps", "Overworld.json")));
     }
 
-    /// <summary>A tool writing to a base plugin's ID writes into the base plugin, not a mod of the same ID beside it (ADR 0039).</summary>
+    /// <summary>A tool writing to the ACRE plugin's ID writes into the ACRE plugin, never a mod of its ID (ADR 0045).</summary>
     [Fact]
-    public void Opens_a_base_plugin_of_the_id_where_it_is()
+    public void Opens_the_acre_plugin_where_it_is()
     {
         using var data = new TempPlugins();
         using var shipped = new TempPlugins();
-        shipped.AddRaw("music", TempPlugins.Manifest("music"));
+        shipped.AddRaw("acre", TempPlugins.Manifest(AcrePlugin.Id));
         Directory.CreateDirectory(data.Root);
+        var acre = Path.Combine(shipped.Root, "acre");
 
-        var opened = ModFolder.OpenOrCreate(data.Root, "music", basePluginsDirectory: shipped.Root);
-        Assert.Equal(Path.Combine(shipped.Root, "music"), opened.Directory);
+        var opened = ModFolder.OpenOrCreate(data.Root, AcrePlugin.Id, acrePlugin: acre);
+        Assert.Equal(acre, opened.Directory);
         Assert.False(opened.Made);
-        Assert.False(Directory.Exists(Path.Combine(data.Root, "music")));
+        Assert.False(Directory.Exists(Path.Combine(data.Root, AcrePlugin.Id)));
 
         // Any other ID is a mod in the data folder's plugins, made as it's opened.
-        var mod = ModFolder.OpenOrCreate(data.Root, "my_village", basePluginsDirectory: shipped.Root);
+        var mod = ModFolder.OpenOrCreate(data.Root, "my_village", acrePlugin: acre);
         Assert.Equal(Path.Combine(data.Root, "my_village"), mod.Directory);
         Assert.True(mod.Made);
+
+        // Without the ACRE plugin there's nothing of its ID to write to, and no mod is made in its place.
+        Assert.Contains("is the ACRE plugin's ID", Assert.Throws<InvalidDataException>(() => ModFolder.OpenOrCreate(data.Root, AcrePlugin.Id)).Message,
+            StringComparison.Ordinal);
+        Assert.False(Directory.Exists(Path.Combine(data.Root, AcrePlugin.Id)));
     }
 
     [Theory]

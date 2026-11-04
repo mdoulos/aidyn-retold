@@ -14,15 +14,15 @@ The plugins, the saves and `settings.json` live in the data folder (`DataPaths.R
 
 `AidynRetold.Plugins` doesn't know Godot, so the app folder is handed in: both Godot apps call `AppLauncher.UseAppFolder` (in `AidynRetold.Views`) from their main node's static constructor, before any field reads a path, and it calls `DataPaths.UseAppFolder` with the executable's folder only when exported (`OS.HasFeature("template")`) and not on macOS, whose app bundles have no portable mode. The CLI never calls it, nor do the apps run in development, so those go by steps 1 and 3. `DataPaths.Resolve` is the rule over its inputs, which `DataPathsTests` checks.
 
-### The base plugins
+### The ACRE plugin
 
-The base plugins, the owner's own that ship with the remake ([ADR 0039](../adr/0039-base-plugins-ship-beside-the-apps.md)), are part of the install, not the data folder (`DataPaths.BasePlugins`):
+The ACRE plugin, `acre`, the remade game, ships with the apps ([ADR 0039](../adr/0039-base-plugins-ship-beside-the-apps.md), [ADR 0045](../adr/0045-the-remade-game-is-the-acre-plugin.md)) and is part of the install, not the data folder. `DataPaths.AcrePlugin` is its own folder, or null for none (`DataPaths.ResolveAcrePlugin`):
 
-1. `ACRE_BASE_PLUGINS` if it's set. In development the owner points it at the base plugins in their private repository, `Aidyn Retold Private/plugins` ([ADR 0041](../adr/0041-the-art-and-music-are-the-private-repositorys.md)), and the game, the editor and the CLI load them from there. Without them the game runs without its own art ([ui](ui.md)).
-2. Else, exported, `plugins` beside the executables on Windows and Linux, and `Contents/Resources/plugins` in each app's bundle on macOS, which `AppLauncher.UseAppFolder` hands in (`DataPaths.UseBasePluginsFolder`), on macOS too.
+1. `ACRE_PLUGIN` if it's set (`DataPaths.AcrePluginVariable`). In development the owner points it at the plugin in their private repository, `Aidyn Retold Private/plugins/acre` ([ADR 0041](../adr/0041-the-art-and-music-are-the-private-repositorys.md)), and the game, the editor and the CLI load it from there. Without it the game runs without its own art ([ui](ui.md)).
+2. Else, exported, `acre` beside the executables on Windows and Linux, and `Contents/Resources/acre` in each app's bundle on macOS, which `AppLauncher.UseAppFolder` hands in (`DataPaths.UseAcrePluginFolder`), on macOS too.
 3. Else none: the CLI and the apps in development without the variable.
 
-`PluginSet.LoadInstalled` loads them after the ROM plugin and before the mods in the data folder's `plugins` ([plugins](plugins.md)). The packages put them there ([releases](releases.md#base-plugins)).
+`PluginSet.LoadInstalled` loads it after the ROM plugin and before the mods in the data folder's `plugins`, and refuses it if its ID isn't `acre` (`AcrePlugin.Id`; [plugins](plugins.md)). The packages put it where step 2 looks ([releases](releases.md#the-acre-plugin)).
 
 ## With no import
 

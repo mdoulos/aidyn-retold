@@ -1,6 +1,6 @@
 # 0037. The import is the ROM plugin; base plugins are the owner's, and mods are other people's
 
-Status: Accepted · Nov 3, 2026 · Amends the names in [0001](0001-importer-owns-the-rom.md), [0029](0029-content-fixes-wait-for-a-bugfix-mod.md) and [0033](0033-the-project-is-aidyn-chronicles-enhanced.md)
+Status: Accepted · Nov 3, 2026 · Amends the names in [0001](0001-importer-owns-the-rom.md), [0029](0029-content-fixes-wait-for-a-bugfix-mod.md) and [0033](0033-the-project-is-aidyn-chronicles-enhanced.md) · Amended by [0045](0045-the-remade-game-is-the-acre-plugin.md): the base plugins are one, the ACRE plugin
 
 ## Context
 

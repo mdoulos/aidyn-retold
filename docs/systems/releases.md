@@ -1,6 +1,6 @@
 # Releases and packages
 
-Aidyn Chronicles Retold ships as two programs, the game (`acre`, the Godot project `src/AidynRetold.Game`) and the editor (`acre-editor`, `src/AidynRetold.Editor`), with the owner's base plugins when the build is given them ([below](#base-plugins)) and no content of the original's: players import their own ROM on first run. `tools/package.ps1` builds the packages for the machine it runs on, and the release workflow (`.github/workflows/release.yml`) runs it on Windows, Linux and macOS and publishes the result as a numbered prerelease.
+Aidyn Chronicles Retold ships as two programs, the game (`acre`, the Godot project `src/AidynRetold.Game`) and the editor (`acre-editor`, `src/AidynRetold.Editor`), with the ACRE plugin, the remade game, when the build is given it ([below](#the-acre-plugin)), and no content of the original's: players import their own ROM on first run. `tools/package.ps1` builds the packages for the machine it runs on, and the release workflow (`.github/workflows/release.yml`) runs it on Windows, Linux and macOS and publishes the result as a numbered prerelease.
 
 ## The packages
 
@@ -17,41 +17,42 @@ On Windows and Linux both apps are in one folder, side by side, as Godot's .NET 
 acre(.exe)            acre-editor(.exe)
 acre.pck              acre-editor.pck
 data_AidynRetold.Game_<platform>_x86_64/     data_AidynRetold.Editor_<platform>_x86_64/
-plugins/   NOTICE.md    (with base plugins only)
+acre/   NOTICE.md       (with the ACRE plugin only)
 LICENSE   README.md   portable.txt (the portable zip only)
 ```
 
 `<platform>` is `windows` or `linuxbsd`. The two exports don't collide: each executable finds the PCK with its own name, and its .NET assemblies and runtime in the data folder named after its assembly. The Windows zip has the files at its root (Explorer's Extract All makes the folder); the Linux tarball has them in a folder `AidynRetold-alpha-N/`. The first-run code finds the other app, and `portable.txt`, by these names, so they don't change.
 
-On macOS the disk image holds `Aidyn Chronicles Retold.app` (executable `Contents/MacOS/acre`) and `Aidyn Chronicles Retold Editor.app` (`Contents/MacOS/acre-editor`), `LICENSE`, `README.md` and a link to Applications. Each bundle has its PCK and two data folders, `data_<assembly>_macos_arm64` and `_x86_64`, in `Contents/Resources`: the export is universal, and the .NET export publishes each architecture's runtime. With base plugins, each bundle has its own copy in `Contents/Resources/plugins`, as a player may move the two apps apart, and `NOTICE.md` is beside `LICENSE`.
+On macOS the disk image holds `Aidyn Chronicles Retold.app` (executable `Contents/MacOS/acre`) and `Aidyn Chronicles Retold Editor.app` (`Contents/MacOS/acre-editor`), `LICENSE`, `README.md` and a link to Applications. Each bundle has its PCK and two data folders, `data_<assembly>_macos_arm64` and `_x86_64`, in `Contents/Resources`: the export is universal, and the .NET export publishes each architecture's runtime. With the ACRE plugin, each bundle has its own copy in `Contents/Resources/acre`, as a player may move the two apps apart, and `NOTICE.md` is beside `LICENSE`.
 
-## Base plugins
+## The ACRE plugin
 
-The owner's base plugins ([ADR 0039](../adr/0039-base-plugins-ship-beside-the-apps.md)) live in the owner's private repository, `Aidyn Retold Private`, not this one: only art and music go there, with the patches that fix the original's content beside them in the one base plugin, `acre`, the remade game ([ADR 0045](../adr/0045-the-remade-game-is-one-base-plugin.md)), and none of it is committed here ([ADR 0041](../adr/0041-the-art-and-music-are-the-private-repositorys.md), [ADR 0043](../adr/0043-the-rom-is-asked-for-once-and-fixes-are-base-plugins.md)). A package carries them when the build is given their folder, the private repository's `plugins`:
+The ACRE plugin, `acre`, named Aidyn Chronicles Retold, is the remade game ([ADR 0039](../adr/0039-base-plugins-ship-beside-the-apps.md), [ADR 0045](../adr/0045-the-remade-game-is-the-acre-plugin.md)). It lives in the owner's private repository, `Aidyn Retold Private`, not this one: only art and music go there, with the patches that fix the original's content beside them in the plugin, and none of it is committed here ([ADR 0041](../adr/0041-the-art-and-music-are-the-private-repositorys.md), [ADR 0043](../adr/0043-the-rom-is-asked-for-once-and-fixes-are-base-plugins.md)). A package carries it when the build is given its folder, the private repository's `plugins/acre`:
 
 ```
 Aidyn Retold Private/
-  plugins/                  -BasePlugins, and ACRE_BASE_PLUGINS in development
-    NOTICE.md               whose the art and music are, on what terms, and any credit their licences ask for
-    acre/                   the remade game, the one base plugin, with its plugin.json (ADR 0045)
+  plugins/
+    acre/                   the ACRE plugin: -AcrePlugin, and ACRE_PLUGIN in development (ADR 0045)
+      plugin.json           its manifest: ID acre, named Aidyn Chronicles Retold
+      NOTICE.md             whose the art and music are, on what terms, and any credit their licences ask for
       assets/acre/          the game's own art, acre:image/<key>
       assets/aidyn/         what it puts in the original's place: the remodels, ReChronicled's art, the music
       records/              its patches: Alaron's remodel, and fixes/, which fix the original's content (ADR 0043)
-  branding/                 -Branding, found beside -BasePlugins (below)
+  branding/                 -Branding, found at ../../branding from -AcrePlugin (below)
   blender/                  the remodels' sources, which no package carries
 ```
 
-- **`NOTICE.md` is required.** The MIT [LICENSE](../../LICENSE) covers the code and docs, not the art and music, so a package with base plugins says what does. It goes beside `LICENSE`, and the MSI's license page shows it under the MIT text. Licensed work names its licence and credit there: a CC BY track, such as Kevin MacLeod's on incompetech.com, gives its title, its author and the licence, as the author's site words it.
-- **Each folder holding a `plugin.json` is a plugin**, copied whole into the package's `plugins`, beside the executables or in each macOS bundle's `Contents/Resources` (`Copy-BasePlugins`). Other folders, such as `.git`, are left out. The script doesn't check the plugins' records: load them once in the game with `ACRE_BASE_PLUGINS` pointing at the folder first ([runtime](runtime.md#the-base-plugins)).
-- **A local build** takes the folder: `tools/package.ps1 -Version 7 -BasePlugins "..\Aidyn Retold Private\plugins"`.
-- **The release workflow** checks the private repository out before packaging when the repository's Actions variable `BASE_PLUGINS_REPO` names it (`owner/name`). `BASE_PLUGINS_PATH` is the folder in it that holds the plugins and `NOTICE.md`, `plugins` if unset, and the secret `BASE_PLUGINS_TOKEN` reads it: a fine-grained personal access token with read-only Contents access to that one repository. The checkout fetches Git LFS files too. Without the variable, the packages carry no base plugins and have no branding, so packaging stops ([below](#branding)).
-- **A release is public,** wherever its files came from: anyone can download a package and take its plugins out. What goes in a base plugin is published by being in one.
+- **`NOTICE.md` is required,** in the plugin's folder. The MIT [LICENSE](../../LICENSE) covers the code and docs, not the art and music, so a package with the ACRE plugin says what does. It's in the package's `acre` with the rest of the plugin, and a copy goes beside `LICENSE`, which the MSI's license page shows under the MIT text. Licensed work names its licence and credit there: a CC BY track, such as Kevin MacLeod's on incompetech.com, gives its title, its author and the licence, as the author's site words it.
+- **The plugin is copied whole** into the package's `acre`, beside the executables or in each macOS bundle's `Contents/Resources`, where `AppLauncher.UseAppFolder` looks for it (`Copy-AcrePlugin`). The script refuses a plugin whose ID isn't `acre` (`AcrePlugin.Id`), as the game does, but doesn't check its records: load it once in the game with `ACRE_PLUGIN` pointing at its folder first ([runtime](runtime.md#the-acre-plugin)).
+- **A local build** takes the plugin's folder: `tools/package.ps1 -Version 7 -AcrePlugin "..\Aidyn Retold Private\plugins\acre"`.
+- **The release workflow** checks the private repository out before packaging when the repository's Actions variable `ACRE_PLUGIN_REPO` names it (`owner/name`). `ACRE_PLUGIN_PATH` is the ACRE plugin's folder in it, `plugins/acre` if unset, and the secret `ACRE_PLUGIN_TOKEN` reads it: a fine-grained personal access token with read-only Contents access to that one repository. The checkout fetches Git LFS files too. Without the variable, the packages carry no ACRE plugin and have no branding, so packaging stops ([below](#branding)).
+- **A release is public,** wherever its files came from: anyone can download a package and take the ACRE plugin out of it. What goes in the plugin is published by being in it.
 
 ## Branding
 
-The apps' icon and boot splash are art, so they're the private repository's too ([ADR 0041](../adr/0041-the-art-and-music-are-the-private-repositorys.md)): its `branding/` holds `acre-icon.png` and `acre-logo.png`, and its `make.py` makes `acre-icon-256.png`, `acre-splash.png`, `acre-icon.ico` and `acre-icon.icns` from them. Each Godot project here has gitignored copies, `icon.png` (its `config/icon`), `splash.png` (its boot splash), and `icon.ico` and `icon.icns`, which its export presets name; `make.py` writes them. The title screen's logo isn't one of them: it's the `acre` base plugin's `acre:image/logo`.
+The apps' icon and boot splash are art, so they're the private repository's too ([ADR 0041](../adr/0041-the-art-and-music-are-the-private-repositorys.md)): its `branding/` holds `acre-icon.png` and `acre-logo.png`, and its `make.py` makes `acre-icon-256.png`, `acre-splash.png`, `acre-icon.ico` and `acre-icon.icns` from them. Each Godot project here has gitignored copies, `icon.png` (its `config/icon`), `splash.png` (its boot splash), and `icon.ico` and `icon.icns`, which its export presets name; `make.py` writes them. The title screen's logo isn't one of them: it's the ACRE plugin's `acre:image/logo`.
 
-`tools/package.ps1 -Branding <folder>` refreshes the projects' copies from the folder before each export and takes away any it made after; without it, the script takes the `branding` folder beside `-BasePlugins`, which is the private repository's layout, so the release workflow needs nothing more. With neither, the projects' copies are used as they are, and a project without them stops the build.
+`tools/package.ps1 -Branding <folder>` refreshes the projects' copies from the folder before each export and takes away any it made after; without it, the script takes `../../branding` from `-AcrePlugin`, the private repository's `branding` in its layout, so the release workflow needs nothing more. With neither, the projects' copies are used as they are, and a project without them stops the build.
 
 Every package is built with Godot's **release** templates, so `OS.IsDebugBuild()` is false in it, which is what keeps the debug keys out of a player's hands. The exports don't embed the PCK and have no console wrapper.
 

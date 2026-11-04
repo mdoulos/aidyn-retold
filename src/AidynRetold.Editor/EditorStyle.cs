@@ -22,10 +22,21 @@ public static class EditorStyle
     public static Color Changed => EditorTheme.Current.Changed;
 
     /// <summary>
-    /// A plugin as the editor names it in its chips and notes: the ROM plugin, whose ID is <c>aidyn</c>, as Aidyn ROM, so it reads as the
-    /// imported original rather than a mod; any other by its ID.
+    /// A plugin as the editor names it in its chips and notes: the ROM plugin, <c>aidyn</c>, as AC ROM, the original game; the ACRE
+    /// plugin, <c>acre</c>, as AC Retold, the remade game (ADR 0045); and a mod by its ID in words, each capitalized, as Texture Test
+    /// for <c>texture_test</c>.
     /// </summary>
-    public static string PluginName(string id) => id == Plugins.RecordId.RomNamespace ? "Aidyn ROM" : id;
+    public static string PluginName(string id) => id switch
+    {
+        Plugins.RecordId.RomNamespace => "AC ROM",
+        Plugins.AcrePlugin.Id => "AC Retold",
+        _ when id.Split(['_', '-', ' '], StringSplitOptions.RemoveEmptyEntries) is { Length: > 0 } words =>
+            string.Join(' ', words.Select(w => char.ToUpperInvariant(w[0]) + w[1..])),
+        _ => id,
+    };
+
+    /// <summary>Where a save went, as a toast says it: the ACRE plugin, or a mod by its name, as the Texture Test mod.</summary>
+    public static string ModName(string id) => id == Plugins.AcrePlugin.Id ? "the ACRE plugin" : $"the {PluginName(id)} mod";
 
     /// <summary>A label in the theme's dim text, at <paramref name="size"/> if given.</summary>
     public static Label DimLabel(string text = "", int? size = null)

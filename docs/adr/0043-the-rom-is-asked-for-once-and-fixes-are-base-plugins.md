@@ -1,6 +1,6 @@
 # 0043. The ROM is asked for only when there's no import, in a dialog that quits on Cancel; the import corrects nothing, and the mushroom's fix is the `acre_fixes` base plugin's
 
-Status: Accepted · Nov 3, 2026 · Supersedes [0029](0029-content-fixes-wait-for-a-bugfix-mod.md)'s import options (its bugfix base plugin stands) · Amends [0012](0012-editor-holds-the-importer.md)'s first run and [0041](0041-the-art-and-music-are-the-private-repositorys.md)'s "only art and music" · Amended by [0045](0045-the-remade-game-is-one-base-plugin.md): `acre_fixes` is the `acre` base plugin's `records/fixes/`
+Status: Accepted · Nov 3, 2026 · Supersedes [0029](0029-content-fixes-wait-for-a-bugfix-mod.md)'s import options (its bugfix base plugin stands) · Amends [0012](0012-editor-holds-the-importer.md)'s first run and [0041](0041-the-art-and-music-are-the-private-repositorys.md)'s "only art and music" · Amended by [0045](0045-the-remade-game-is-the-acre-plugin.md): `acre_fixes` is the ACRE plugin's `records/fixes/`
 
 ## Context
 

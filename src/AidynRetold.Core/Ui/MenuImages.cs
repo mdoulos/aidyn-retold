@@ -106,10 +106,10 @@ public static class MenuImages
     public static readonly RecordId Scroll = Image(0x35E9);
 
     /// <summary>
-    /// The namespace of the game's own art, the acre base plugin's (ADR 0041): its pictures here, which the original look draws as
+    /// The namespace of the game's own art, the ACRE plugin's (ADRs 0041, 0045): its pictures here, which the original look draws as
     /// the image each stands in for (<see cref="Shared"/>), and the menus' art the views draw by its key (<c>UiImages.Art</c>).
     /// </summary>
-    public const string OwnNamespace = "acre";
+    public const string OwnNamespace = AidynRetold.Plugins.AcrePlugin.Id;
 
     /// <summary>
     /// Each potion's and flask's own picture, by its item, the user's art (Nov 2, 2026), where the original draws all of them with

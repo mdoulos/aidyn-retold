@@ -4,7 +4,7 @@ using System.Text.Json.Nodes;
 namespace AidynRetold.Plugins.World;
 
 /// <summary>
-/// A plugin's folder as a tool writes it (ADR 0005), a mod's or a base plugin's: its manifest, a record file of patches and new
+/// A plugin's folder as a tool writes it (ADR 0005), a mod's or the ACRE plugin's: its manifest, a record file of patches and new
 /// records that the tool keeps up to date an object at a time, and its assets. The folder is named for the plugin's ID, as
 /// <see cref="PluginSet.LoadInstalled"/> requires, and a folder that isn't there yet is made as a mod, with a manifest that depends
 /// on the ROM plugin.
@@ -28,19 +28,20 @@ public sealed class ModFolder
     public bool Made { get; }
 
     /// <summary>
-    /// Opens the plugin <paramref name="id"/>: the base plugin of that ID in <paramref name="basePluginsDirectory"/> if there's one
-    /// (ADR 0039), so a tool writes into it rather than making a mod of the same ID beside it, else the mod in
-    /// <paramref name="pluginsDirectory"/>, made if it isn't there. A plugin ID is <c>[a-z0-9_]+</c>, and can't be the ROM plugin's.
+    /// Opens the plugin <paramref name="id"/>: for <see cref="AcrePlugin.Id"/>, the ACRE plugin in <paramref name="acrePlugin"/>
+    /// (ADR 0045), which must be there; else the mod in <paramref name="pluginsDirectory"/>, made if it isn't there. A plugin ID is
+    /// <c>[a-z0-9_]+</c>, and can't be the ROM plugin's.
     /// </summary>
-    public static ModFolder OpenOrCreate(string pluginsDirectory, string id, string? name = null, string? basePluginsDirectory = null)
+    public static ModFolder OpenOrCreate(string pluginsDirectory, string id, string? name = null, string? acrePlugin = null)
     {
         if (id.Length == 0 || !id.All(c => c is >= 'a' and <= 'z' or >= '0' and <= '9' or '_'))
             throw new InvalidDataException($"\"{id}\" isn't a mod ID: use lower-case letters, digits and underscores, such as my_village.");
         if (id == "aidyn" || string.Equals(id, RomPlugin.Folder, StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("The ROM plugin isn't a mod to write to: name your own.");
-        var directory = basePluginsDirectory is not null && File.Exists(Path.Combine(basePluginsDirectory, id, PluginManifest.FileName))
-            ? Path.Combine(basePluginsDirectory, id)
-            : Path.Combine(pluginsDirectory, id);
+        var acre = id == AcrePlugin.Id;
+        if (acre && (acrePlugin is null || !File.Exists(Path.Combine(acrePlugin, PluginManifest.FileName))))
+            throw new InvalidDataException($"{AcrePlugin.Id} is the ACRE plugin's ID, and the ACRE plugin isn't here ({DataPaths.AcrePluginVariable}): name a mod of your own.");
+        var directory = acre ? acrePlugin! : Path.Combine(pluginsDirectory, id);
         var manifestPath = Path.Combine(directory, PluginManifest.FileName);
         PluginManifest manifest;
         var made = !System.IO.Directory.Exists(directory);
@@ -48,7 +49,8 @@ public sealed class ModFolder
         {
             manifest = PluginJson.ReadFile<PluginManifest>(manifestPath) ?? throw new InvalidDataException($"{manifestPath} is empty.");
             if (manifest.Id != id)
-                throw new InvalidDataException($"The plugin in {directory} says its ID is \"{manifest.Id}\"; a plugin's folder must be named for its ID.");
+                throw new InvalidDataException(acre ? $"The ACRE plugin in {directory} says its ID is \"{manifest.Id}\"; the ACRE plugin's is \"{id}\"."
+                    : $"The plugin in {directory} says its ID is \"{manifest.Id}\"; a plugin's folder must be named for its ID.");
         }
         else
         {

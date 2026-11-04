@@ -99,7 +99,10 @@ public static class ModSetup
             && string.Equals(Path.GetFullPath(a).TrimEnd('/', '\\'), Path.GetFullPath(b).TrimEnd('/', '\\'), StringComparison.OrdinalIgnoreCase);
         if (read.Import is not null || id == RecordId.RomNamespace)
             return "It's the original game's, which the editor never changes. Pick a mod, or create one.";
-        if (!Same(parent, pluginsDirectory) && !Same(parent, DataPaths.BasePlugins))
+        // The ACRE plugin's folder is the one ACRE_PLUGIN names, whatever it's called.
+        if (Same(folder, DataPaths.AcrePlugin))
+            return null;
+        if (!Same(parent, pluginsDirectory))
             return $"It's outside the plugins folder, so the editor wouldn't load what's saved to it. Move its folder into {pluginsDirectory}, and pick it there.";
         if (!string.Equals(Path.GetFileName(folder), id, StringComparison.Ordinal))
             return $"Its folder is {Path.GetFileName(folder)}, but it says its ID is {id}: a mod's folder is named for its ID.";
@@ -123,13 +126,15 @@ public static class ModSetup
             var id = Slug(name.Text);
             if (id.Length == 0)
                 Say("Give the mod a name.");
+            else if (id == AcrePlugin.Id)
+                Say($"{id} is the ACRE plugin's ID: give the mod another name.");
             else if (id == RecordId.RomNamespace || CurrentMod.Exists(pluginsDirectory, id))
                 Say($"There's a mod called {id} already: load it instead, or give this one another name.");
             else
             {
                 try
                 {
-                    ModFolder.OpenOrCreate(pluginsDirectory, id, name: name.Text.Trim(), basePluginsDirectory: DataPaths.BasePlugins);
+                    ModFolder.OpenOrCreate(pluginsDirectory, id, name: name.Text.Trim(), acrePlugin: DataPaths.AcrePlugin);
                 }
                 catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException)
                 {

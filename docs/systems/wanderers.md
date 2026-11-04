@@ -1,6 +1,6 @@
 # Wanderers: monster parties' bodies (M2)
 
-`AidynRetold.Core.Trek` (`Wanderers`, `Wanderer`) and `AidynRetold.Core.Movement` (`Body`, `Crowd`). Ported from `wander.cpp`, `PlayerMove.cpp` (`Actor::SetAiDest`, `SetFacing`, `MoveTo`, `Move`) and `PlayerData.cpp` (`Bodies.Process`, `PlayerShadowAlpha`, `renderPlayers`). What a monster party holds is in [maps](../formats/maps.md#map-objects-in-the-base-plugin-06).
+`AidynRetold.Core.Trek` (`Wanderers`, `Wanderer`) and `AidynRetold.Core.Movement` (`Body`, `Crowd`). Ported from `wander.cpp`, `PlayerMove.cpp` (`Actor::SetAiDest`, `SetFacing`, `MoveTo`, `Move`) and `PlayerData.cpp` (`Bodies.Process`, `PlayerShadowAlpha`, `renderPlayers`). What a monster party holds is in [maps](../formats/maps.md#map-objects-in-the-rom-plugin-06).
 
 A monster party is an NPC to talk to, if it has a dialogue, or a group of enemies the player sees as its leader. Either way it's one body in the world, which wanders between wander nodes.
 

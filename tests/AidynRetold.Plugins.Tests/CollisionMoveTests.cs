@@ -6,8 +6,8 @@ using AidynRetold.Plugins.Records;
 namespace AidynRetold.Plugins.Tests;
 
 /// <summary>
-/// A map's <see cref="MapRecord.CollisionMoves"/>, which a base plugin's patch slides a run of the original's collision triangles by
-/// (ADR 0043), as the <c>acre</c> base plugin moves the Roog Cave's mushroom's box: they move the ROM plugin's asset, and a later plugin's own
+/// A map's <see cref="MapRecord.CollisionMoves"/>, which a plugin's patch slides a run of the original's collision triangles by
+/// (ADR 0043), as the ACRE plugin moves the Roog Cave's mushroom's box: they move the ROM plugin's asset, and a later plugin's own
 /// asset is taken as it is.
 /// </summary>
 public sealed class CollisionMoveTests : IDisposable

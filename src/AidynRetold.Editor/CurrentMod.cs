@@ -41,10 +41,10 @@ public static class CurrentMod
         Changed?.Invoke();
     }
 
-    /// <summary>Whether a mod of <paramref name="id"/> is there: in the plugins folder, or a base plugin's own folder.</summary>
-    public static bool Exists(string pluginsDirectory, string id) =>
-        File.Exists(Path.Combine(pluginsDirectory, id, PluginManifest.FileName))
-        || DataPaths.BasePlugins is { } basePlugins && File.Exists(Path.Combine(basePlugins, id, PluginManifest.FileName));
+    /// <summary>Whether a mod of <paramref name="id"/> is there, in the plugins folder, or for <see cref="AcrePlugin.Id"/> the ACRE plugin.</summary>
+    public static bool Exists(string pluginsDirectory, string id) => id == AcrePlugin.Id
+        ? DataPaths.AcrePlugin is { } acre && File.Exists(Path.Combine(acre, PluginManifest.FileName))
+        : File.Exists(Path.Combine(pluginsDirectory, id, PluginManifest.FileName));
 
     /// <summary>A config key for a plugins folder: its full path, every character that isn't a letter or a digit an underscore.</summary>
     private static string Key(string pluginsDirectory) =>

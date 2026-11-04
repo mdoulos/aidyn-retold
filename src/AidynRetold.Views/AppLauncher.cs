@@ -28,7 +28,7 @@ public static class AppLauncher
 
     /// <summary>
     /// Hands <see cref="DataPaths"/> the folder the app runs from, when exported and not on macOS, so a portable install is found, and
-    /// where an exported app's base plugins are (ADR 0039): <c>plugins</c> beside the executable, or in the bundle's
+    /// where an exported app's ACRE plugin is (ADRs 0039, 0045): <c>acre</c> beside the executable, or in the bundle's
     /// <c>Contents/Resources</c> on macOS, beside the PCK. Both apps call it before anything reads a path.
     /// </summary>
     public static void UseAppFolder()
@@ -39,7 +39,7 @@ public static class AppLauncher
         if (!MacOS)
             DataPaths.UseAppFolder(folder);
         if (folder is not null)
-            DataPaths.UseBasePluginsFolder(MacOS ? Path.GetFullPath(Path.Combine(folder, "..", "Resources", "plugins")) : Path.Combine(folder, "plugins"));
+            DataPaths.UseAcrePluginFolder(MacOS ? Path.GetFullPath(Path.Combine(folder, "..", "Resources", AcrePlugin.Id)) : Path.Combine(folder, AcrePlugin.Id));
     }
 
     /// <summary>Whether the command line's user arguments hold <c>--from-game</c>, with a value or without.</summary>

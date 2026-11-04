@@ -54,16 +54,16 @@ public sealed class DataPathsTests : IDisposable
         Assert.Equal(Path.Combine(Local, "AidynRetold"), DataPaths.Resolve(null, App, Local));
     }
 
-    /// <summary>The base plugins' folder (ADR 0039): the variable, else the exported app's, else none.</summary>
+    /// <summary>The ACRE plugin's folder (ADRs 0039, 0045): the variable, else the exported app's, else none.</summary>
     [Fact]
-    public void TheBasePluginsAreTheVariablesElseTheAppsElseNone()
+    public void TheAcrePluginIsTheVariablesElseTheAppsElseNone()
     {
-        var app = Path.Combine(App, "plugins");
-        Assert.Equal(Path.Combine(_temp.Root, "mine"), DataPaths.ResolveBasePlugins(Path.Combine(_temp.Root, "mine"), app));
-        Assert.Equal(app, DataPaths.ResolveBasePlugins(null, app));
-        Assert.Equal(app, DataPaths.ResolveBasePlugins("", app));
+        var app = Path.Combine(App, "acre");
+        Assert.Equal(Path.Combine(_temp.Root, "mine"), DataPaths.ResolveAcrePlugin(Path.Combine(_temp.Root, "mine"), app));
+        Assert.Equal(app, DataPaths.ResolveAcrePlugin(null, app));
+        Assert.Equal(app, DataPaths.ResolveAcrePlugin("", app));
         // The CLI, the tests and the apps in development hand in none.
-        Assert.Null(DataPaths.ResolveBasePlugins(null, null));
+        Assert.Null(DataPaths.ResolveAcrePlugin(null, null));
     }
 
     [Fact]

@@ -1,6 +1,6 @@
 # 0039. Base plugins ship in the release, beside the apps, and load between the ROM plugin and the mods
 
-Status: Accepted · Nov 3, 2026 · Added to by [0041](0041-the-art-and-music-are-the-private-repositorys.md): the private repository holds only art and music, the branding among them
+Status: Accepted · Nov 3, 2026 · Added to by [0041](0041-the-art-and-music-are-the-private-repositorys.md): the private repository holds only art and music, the branding among them · Amended by [0045](0045-the-remade-game-is-the-acre-plugin.md): the base plugins are one, the ACRE plugin, shipped as `acre/` beside the apps
 
 ## Context
 
@@ -14,7 +14,7 @@ The owner keeps the art and music in a private repository of their own and the c
 - **In development,** `ACRE_BASE_PLUGINS` names the folder outright: the owner points it at the base plugins in their private repository, and the game, the editor and the CLI all load them. Without it, and outside an exported app, there are none.
 - **They load between the ROM plugin and the mods** (`PluginSet.LoadInstalled`): the ROM plugin, then the base plugins in their own load order, then the mods in theirs. So a mod can patch a base plugin's records, and depend on one. A base plugin can't depend on a mod. A plugin is a base plugin or a mod, not both: the same ID in both places is an error naming the two folders.
 - **The editor and the CLI write to a base plugin in its own folder.** Saving map objects or importing a chunk into a plugin whose ID is a base plugin's (`ModFolder.OpenOrCreate`) writes there, not into a new mod of the same ID.
-- **Packaging takes the base plugins as a folder** (`tools/package.ps1 -BasePlugins <folder>`), copies each plugin in it into the package, and requires a `NOTICE.md` beside them, which goes beside `LICENSE`: the [MIT licence](../../LICENSE) covers the code and docs, not the art and music, so the release says whose they are and on what terms, with any credit their licences ask for. The release workflow checks the private repository out when the repository variable `BASE_PLUGINS_REPO` names it, with the secret `BASE_PLUGINS_TOKEN` to read it ([releases](../systems/releases.md#base-plugins)). Without the variable, a release ships none, as before.
+- **Packaging takes the base plugins as a folder** (`tools/package.ps1 -BasePlugins <folder>`), copies each plugin in it into the package, and requires a `NOTICE.md` beside them, which goes beside `LICENSE`: the [MIT licence](../../LICENSE) covers the code and docs, not the art and music, so the release says whose they are and on what terms, with any credit their licences ask for. The release workflow checks the private repository out when the repository variable `BASE_PLUGINS_REPO` names it, with the secret `BASE_PLUGINS_TOKEN` to read it ([releases](../systems/releases.md#the-acre-plugin)). Without the variable, a release ships none, as before.
 
 ## Consequences
 

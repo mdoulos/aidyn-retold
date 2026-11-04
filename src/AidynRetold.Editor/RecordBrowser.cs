@@ -106,7 +106,7 @@ public partial class RecordBrowser : Control
     /// <summary>Shows the Preview, Fields or Used by tab.</summary>
     public void SelectTab(string tab) => _tabs.CurrentTab = tab.ToLowerInvariant() switch { "fields" => 1, "used-by" => 2, "atlas" => 3, _ => 0 };
 
-    /// <summary>Loads the plugins in a folder, as the runtime does: <c>aidyn.rom</c> first, then the base plugins (ADR 0039), then the rest in <see cref="PluginSet.LoadOrder"/>.</summary>
+    /// <summary>Loads the plugins in a folder, as the runtime does: <c>aidyn.rom</c> first, then the ACRE plugin (ADRs 0039, 0045), then the mods in <see cref="PluginSet.LoadOrder"/>.</summary>
     public async Task LoadAsync(string pluginsDirectory)
     {
         _pluginsDirectory = pluginsDirectory;
@@ -134,7 +134,7 @@ public partial class RecordBrowser : Control
         var generation = ++_generation;
         var (catalog, quests, game, rules, items, report) = await Task.Run(() =>
         {
-            var plugins = PluginSet.LoadInstalled(pluginsDirectory, DataPaths.BasePlugins);
+            var plugins = PluginSet.LoadInstalled(pluginsDirectory, DataPaths.AcrePlugin);
             // The game refuses a set with a record it can't read; the editor shows the report and loads anyway, to fix it by.
             var report = plugins.Validate();
             return (PluginCatalog.Build(plugins), Partly(() => QuestIndex.Build(plugins), "No quest index"), Partly(() => new EditorGame(plugins), "No game"),
@@ -276,7 +276,7 @@ public partial class RecordBrowser : Control
         bar.AddChild(new VSeparator());
         // The mod saves go to, which clicking changes (ModSetup).
         var mod = new Button { ThemeTypeVariation = "FlatButton", FocusMode = FocusModeEnum.None, TooltipText = "The mod your changes are saved to. Click to change it." };
-        void ShowMod() => mod.Text = CurrentMod.Id is { } id ? $"Saving to: {id}" : "Not saving to a mod";
+        void ShowMod() => mod.Text = CurrentMod.Id is { } id ? $"Saving to: {EditorStyle.PluginName(id)}" : "Not saving to a mod";
         ShowMod();
         CurrentMod.Changed += ShowMod;
         TreeExiting += () => CurrentMod.Changed -= ShowMod;

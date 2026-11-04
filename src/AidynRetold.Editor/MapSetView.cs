@@ -1152,7 +1152,7 @@ public partial class MapSetView : VBoxContainer
         var root = GetTree().Root;
         try
         {
-            var mod = ModFolder.OpenOrCreate(PluginFiles.PluginsDirectory(catalog.Plugins), modId, basePluginsDirectory: DataPaths.BasePlugins);
+            var mod = ModFolder.OpenOrCreate(PluginFiles.PluginsDirectory(catalog.Plugins), modId, acrePlugin: DataPaths.AcrePlugin);
             mod.Journal = [];
             var report = Edits.Save(catalog.Plugins, mod);
             var journal = mod.Journal;
@@ -1160,7 +1160,7 @@ public partial class MapSetView : VBoxContainer
             UpdateSaveButton();
             var saved = Saved;
             saved?.Invoke();
-            Toast.Show(root, $"{char.ToUpperInvariant(what[0])}{what[1..]} {(one ? "was" : "were")} saved to the {modId} mod.", () =>
+            Toast.Show(root, $"{char.ToUpperInvariant(what[0])}{what[1..]} {(one ? "was" : "were")} saved to {EditorStyle.ModName(modId)}.", () =>
             {
                 ModFolder.Restore(journal);
                 saved?.Invoke();

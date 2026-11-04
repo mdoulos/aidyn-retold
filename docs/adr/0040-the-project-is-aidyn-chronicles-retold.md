@@ -1,6 +1,6 @@
 # 0040. The project is Aidyn Chronicles Retold, its code `AidynRetold.*`, and ACRE its short name and its base
 
-Status: Accepted · Nov 3, 2026 · Supersedes [0033](0033-the-project-is-aidyn-chronicles-enhanced.md)'s names (its logo and icon are replaced, and where they're kept is [0041](0041-the-art-and-music-are-the-private-repositorys.md)'s) · Amended by [0045](0045-the-remade-game-is-one-base-plugin.md): its base plugins are one, `acre`
+Status: Accepted · Nov 3, 2026 · Supersedes [0033](0033-the-project-is-aidyn-chronicles-enhanced.md)'s names (its logo and icon are replaced, and where they're kept is [0041](0041-the-art-and-music-are-the-private-repositorys.md)'s) · Amended by [0045](0045-the-remade-game-is-the-acre-plugin.md): its base plugins are one, the ACRE plugin, `acre`
 
 ## Context
 

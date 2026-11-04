@@ -8,7 +8,7 @@ Ported from `objectJumpTables.cpp`, `voxObjects.cpp`, `voxObjects2.cpp` (`MapObj
 
 `LoadedMap` is a chunk's objects while it's loaded, as the original's `Borg9Data` is: which are active, its containers' and teleporters' locks and traps, and which model each container shows. Loading the chunk activates its objects by the flags (`LoadedMap.Activate`, `0x80017af8`), and what using them changes lasts until it's loaded again.
 
-- **Active** objects are those there by their flags ([maps](../formats/maps.md#map-objects-in-the-base-plugin-06)) and not only for a console without the Expansion Pak. Using a container, or a trap going off, makes it inactive.
+- **Active** objects are those there by their flags ([maps](../formats/maps.md#map-objects-in-the-rom-plugin-06)) and not only for a console without the Expansion Pak. Using a container, or a trap going off, makes it inactive.
 - **A chest, sack, crate or barrel** found opened, by its flag or because it's remembered as emptied ([saves](saves.md)), loads inactive with no lock, trap or gold, its model showing it opened; found destroyed, its model shows that. Its model is there either way. A herb, spice, gem or custom container's model is there only while the container is.
 - **A teleporter's** lock and trap are gone while their flags are set. A secret door that needs a skill to be there is there once found, or if the party's search reaches its level (`Party::SecretLock`): the best Intelligence × 3 + Ranger × 10 against d100. No base-game door needs one.
 - **The Ranger's share** of what sources give is rolled as the chunk loads.
@@ -23,7 +23,7 @@ Ported from `objectJumpTables.cpp`, `voxObjects.cpp`, `voxObjects2.cpp` (`MapObj
 
 | Type | In reach |
 | --- | --- |
-| Container | Within its reach plus the player's radius (0.5), from the player's centre in 3D: 2.5 for most. Its reach isn't its radius, which is 10 for most (see [maps](../formats/maps.md#map-objects-in-the-base-plugin-06)). Then a herb, spice, gem or custom container always; a chest, sack, crate or barrel only until opened, and only if it holds gold, a loot table or an item |
+| Container | Within its reach plus the player's radius (0.5), from the player's centre in 3D: 2.5 for most. Its reach isn't its radius, which is 10 for most (see [maps](../formats/maps.md#map-objects-in-the-rom-plugin-06)). Then a herb, spice, gem or custom container always; a chest, sack, crate or barrel only until opened, and only if it holds gold, a loot table or an item |
 | Teleporter, trigger, dialogue | Within its radius, while its Enabled holds |
 | Save point | Within its radius, and using it does nothing |
 | Monster party | Only the player's nearest body, if it's a wanderer's and its party isn't silent: within the two bodies' scaled radii plus 0.5 across the ground, and less than 2 apart in height. It's weighed by that distance and its body's position. See [wanderers](wanderers.md#talking) |

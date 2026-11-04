@@ -62,7 +62,7 @@ The System tab's Theater opens the Theatre's page (`OptionsMenu.ShowTheatre`, `0
 
 ## What starts them
 
-`Cinematic.Load(index, kind, return mode)` has four callers, and `EndCase` does what the kind says after each (its table at `0x800D20B0`). [Events](events.md#the-base-plugins) has each call site and ending with its addresses, and the ROM plugin's trigger that carries it in the port: the opening from the title's New Game (`game.started`), Roog's and the ending from their cut-scenes' ends (`script.ended`), and what follows each from `cinematic.ended`.
+`Cinematic.Load(index, kind, return mode)` has four callers, and `EndCase` does what the kind says after each (its table at `0x800D20B0`). [Events](events.md#the-rom-plugins) has each call site and ending with its addresses, and the ROM plugin's trigger that carries it in the port: the opening from the title's New Game (`game.started`), Roog's and the ending from their cut-scenes' ends (`script.ended`), and what follows each from `cinematic.ended`.
 
 - **Every kind sets the done flag first**, in `EndCase`'s common part, and from the Theatre (kind 0) nothing else happens.
 - **A cinematic started from a cut-scene's end** plays straight from it, the cut-scene's return mode 0xE: no trek is built or drawn between them.

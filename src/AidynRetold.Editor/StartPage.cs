@@ -178,17 +178,19 @@ public partial class StartPage : ScrollContainer
         return row;
     }
 
-    /// <summary>What each plugin is: the original game, the remade game (a base plugin), or a mod, and the one changes are saved to.</summary>
+    /// <summary>What each plugin is: the original game, the remade game (the ACRE plugin), or a user-generated mod, and the one changes are saved to.</summary>
     private void ShowRoles()
     {
-        var basePlugins = DataPaths.BasePlugins is { } folder ? Path.TrimEndingDirectorySeparator(Path.GetFullPath(folder)) + Path.DirectorySeparatorChar : null;
         foreach (var (id, label) in _roles)
         {
             if (!IsInstanceValid(label))
                 continue;
-            var directory = _catalog.Plugins.Plugins.First(p => p.Manifest.Id == id).Directory;
-            var role = id == RecordId.RomNamespace ? "The original game"
-                : basePlugins is not null && Path.GetFullPath(directory).StartsWith(basePlugins, StringComparison.OrdinalIgnoreCase) ? "The remade game" : "Mod";
+            var role = id switch
+            {
+                RecordId.RomNamespace => "The original game",
+                AcrePlugin.Id => "The remade game",
+                _ => "User-generated mod",
+            };
             var saving = CurrentMod.Id == id;
             label.Text = saving ? $"{role}, saving here" : role;
             label.ThemeTypeVariation = saving ? "ChangedLabel" : "DimLabel";

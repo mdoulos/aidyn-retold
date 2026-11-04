@@ -22,7 +22,7 @@ public static class RomImporter
     /// failed import leaves the old one in place, and deletes it on a failure; one killed partway is left for the next import to
     /// clear, and loading skips it (<see cref="RomPlugin.IsImportWork"/>). An import into <see cref="RomPlugin.Folder"/> replaces one
     /// left in <see cref="RomPlugin.OldFolder"/> beside it too. A data edit of 1.0 is refused (ADR 0038), and nothing is corrected
-    /// (ADR 0043): the ROM plugin is the original's content as 1.0 has it, and changes to it, fixes among them, are base plugins.
+    /// (ADR 0043): the ROM plugin is the original's content as 1.0 has it, and changes to it, fixes among them, are the ACRE plugin's.
     /// </summary>
     public static void Import(RomImage rom, string directory, IProgress<string>? progress = null)
     {

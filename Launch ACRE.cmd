@@ -1,6 +1,6 @@
 @echo off
-rem Builds Aidyn Chronicles Retold and starts it at the title screen, as a player would, with the installed plugins, the base plugins
-rem ACRE_BASE_PLUGINS names (the private repository's, ADR 0039) and the saved settings.
+rem Builds Aidyn Chronicles Retold and starts it at the title screen, as a player would, with the installed plugins, the ACRE plugin
+rem ACRE_PLUGIN names (the private repository's, ADRs 0039 and 0045) and the saved settings.
 rem A .cmd has no icon of its own, so the first run makes "Launch ACRE.lnk" beside it, a shortcut here with the ACRE icon, to pin or
 rem double-click instead. The icon is the one the private repository's branding/make.py puts in the game's project.
 cd /d "%~dp0"

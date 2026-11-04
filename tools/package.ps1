@@ -1,5 +1,5 @@
 # Build the release packages for the machine it runs on (docs/systems/releases.md).
-# Usage: tools/package.ps1 [-Version <n>] [-OutDir <folder>] [-BasePlugins <folder>] [-Branding <folder>]
+# Usage: tools/package.ps1 [-Version <n>] [-OutDir <folder>] [-AcrePlugin <folder>] [-Branding <folder>]
 #
 #   Windows: AidynRetold-alpha-<n>-windows.msi and AidynRetold-alpha-<n>-windows-portable.zip
 #   Linux:   AidynRetold-alpha-<n>-linux-x86_64.tar.gz
@@ -12,15 +12,15 @@
 # left as it was: the version written into project.godot and the files the export needs
 # beside each project are put back or removed afterwards.
 #
-# -BasePlugins is a folder of base plugins (ADR 0039), one plugin per folder, with a
-# NOTICE.md beside them saying whose the art and music are and on what terms. Each package
-# gets the plugins beside the apps (in each bundle's Contents/Resources on macOS) and the
-# notice beside LICENSE. Without it, a package has no base plugins.
+# -AcrePlugin is the ACRE plugin's folder (ADRs 0039, 0045), with its plugin.json and the
+# NOTICE.md saying whose its art and music are and on what terms. Each package gets it as
+# acre beside the apps (in each bundle's Contents/Resources on macOS) and the notice beside
+# LICENSE. Without it, a package has no ACRE plugin.
 #
 # -Branding is the private repository's branding folder (ADR 0041): acre-icon-256.png,
 # acre-splash.png, acre-icon.ico and acre-icon.icns, which become each project's icon,
-# boot splash and executable icons. It's the branding folder beside -BasePlugins when that
-# has one. Without either, the projects' own copies are used, as the private repository's
+# boot splash and executable icons. It's the private repository's branding folder, two up
+# from -AcrePlugin, when there's one there. Without either, the projects' own copies are used, as the private repository's
 # branding/make.py left them, and a project without them stops the build.
 #
 # PowerShell 7 on Windows, Linux or macOS. The workflow, .github/workflows/release.yml,
@@ -30,7 +30,7 @@ param(
     [ValidateRange(0, 255)] # an MSI's major version is at most 255
     [int]$Version = 0,
     [string]$OutDir,
-    [string]$BasePlugins,
+    [string]$AcrePlugin,
     [string]$Branding
 )
 $ErrorActionPreference = 'Stop'
@@ -44,26 +44,26 @@ $platform = Get-HostPlatform
 $name = "AidynRetold-alpha-$Version"
 $work = Join-Path $OutDir "work-$platform"
 
-# The base plugins, checked before anything is exported: each a folder with a plugin.json,
-# and the notice the release needs, as the MIT license covers only the code and docs.
-$basePluginFolders = @()
+# The ACRE plugin, checked before anything is exported: its plugin.json, with the ID acre, and
+# the notice the release needs, as the MIT license covers only the code and docs.
 $notice = $null
-if ($BasePlugins) {
-    $BasePlugins = (Resolve-Path -LiteralPath $BasePlugins).Path
-    $notice = Join-Path $BasePlugins 'NOTICE.md'
+if ($AcrePlugin) {
+    $AcrePlugin = (Resolve-Path -LiteralPath $AcrePlugin).Path
+    $manifest = Join-Path $AcrePlugin 'plugin.json'
+    if (-not (Test-Path -LiteralPath $manifest)) { throw "$AcrePlugin isn't a plugin: it has no plugin.json." }
+    $id = (Get-Content -Raw -LiteralPath $manifest | ConvertFrom-Json).id
+    if ($id -ne 'acre') { throw "$AcrePlugin says its ID is $id; the ACRE plugin's is acre (ADR 0045)." }
+    $notice = Join-Path $AcrePlugin 'NOTICE.md'
     if (-not (Test-Path -LiteralPath $notice)) {
-        throw "$BasePlugins has no NOTICE.md. A release with base plugins says whose their art and music are and on what terms, with any credit their licences ask for (ADR 0039)."
+        throw "$AcrePlugin has no NOTICE.md. A release with the ACRE plugin says whose its art and music are and on what terms, with any credit their licences ask for (ADR 0039)."
     }
-    $basePluginFolders = @(Get-ChildItem -LiteralPath $BasePlugins -Directory |
-        Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'plugin.json') } | Sort-Object Name)
-    if ($basePluginFolders.Count -eq 0) { throw "$BasePlugins holds no plugin: each is a folder with a plugin.json." }
-    Write-Host "Base plugins: $(($basePluginFolders | ForEach-Object Name) -join ', ')"
+    Write-Host "ACRE plugin: $AcrePlugin"
 }
 
-# The branding, art kept in the private repository beside the base plugins (ADR 0041).
+# The branding, art kept in the private repository beside the ACRE plugin's plugins folder (ADR 0041).
 $brandingFiles = @(@('acre-icon-256.png', 'icon.png'), @('acre-splash.png', 'splash.png'), @('acre-icon.ico', 'icon.ico'), @('acre-icon.icns', 'icon.icns'))
-if (-not $Branding -and $BasePlugins -and (Test-Path -LiteralPath (Join-Path $BasePlugins '../branding'))) {
-    $Branding = Join-Path $BasePlugins '../branding'
+if (-not $Branding -and $AcrePlugin -and (Test-Path -LiteralPath (Join-Path $AcrePlugin '../../branding'))) {
+    $Branding = Join-Path $AcrePlugin '../../branding'
 }
 if ($Branding) {
     $Branding = (Resolve-Path -LiteralPath $Branding).Path
@@ -73,15 +73,14 @@ if ($Branding) {
     Write-Host "Branding: $Branding"
 }
 
-# Puts the base plugins in <folder>/plugins, where the apps beside or above it look (AppLauncher.UseAppFolder).
-function Copy-BasePlugins([string]$folder) {
-    if ($basePluginFolders.Count -eq 0) { return }
-    $plugins = Join-Path $folder 'plugins'
-    New-Item -ItemType Directory -Force $plugins | Out-Null
-    foreach ($plugin in $basePluginFolders) { Copy-Item -LiteralPath $plugin.FullName -Destination $plugins -Recurse }
+# Puts the ACRE plugin in <folder>/acre, where the apps beside or above it look (AppLauncher.UseAppFolder).
+function Copy-AcrePlugin([string]$folder) {
+    if (-not $AcrePlugin) { return }
+    New-Item -ItemType Directory -Force $folder | Out-Null
+    Copy-Item -LiteralPath $AcrePlugin -Destination (Join-Path $folder 'acre') -Recurse
 }
 
-# LICENSE and README.md, and the base plugins' NOTICE.md when there are any.
+# LICENSE and README.md, and the ACRE plugin's NOTICE.md when there's one.
 function Copy-Papers([string]$folder) {
     Copy-Item (Join-Path $repo 'LICENSE'), (Join-Path $repo 'README.md') $folder
     if ($notice) { Copy-Item -LiteralPath $notice -Destination $folder }
@@ -239,7 +238,7 @@ function New-WindowsPackages {
             (Join-Path $stage "data_$($app.Project)_windows_x86_64"))
     }
     Copy-Papers $stage
-    Copy-BasePlugins $stage
+    Copy-AcrePlugin $stage
 
     # The portable zip: the same folder with portable.txt, which keeps the data beside it.
     $zip = Join-Path $OutDir "$name-windows-portable.zip"
@@ -260,7 +259,7 @@ function New-WindowsPackages {
     $wixDir = Join-Path $repo '.tools/wix'
     New-Item -ItemType Directory -Force $wixDir | Out-Null
     $rtf = Join-Path $work 'License.rtf'
-    # The license page shows the base plugins' notice under the MIT license, which covers only the code.
+    # The license page shows the ACRE plugin's notice under the MIT license, which covers only the code.
     $licenseText = Get-Content -Raw (Join-Path $repo 'LICENSE')
     if ($notice) { $licenseText += "`n`n" + (Get-Content -Raw -LiteralPath $notice) }
     [IO.File]::WriteAllText($rtf, (ConvertTo-Rtf $licenseText), [Text.Encoding]::ASCII)
@@ -297,7 +296,7 @@ function New-LinuxPackage {
         Invoke-Native chmod @('+x', (Join-Path $stage $app.Exe))
     }
     Copy-Papers $stage
-    Copy-BasePlugins $stage
+    Copy-AcrePlugin $stage
     $tar = Join-Path $OutDir "$name-linux-x86_64.tar.gz"
     Invoke-Native tar @('-czf', $tar, '-C', $work, $name)
     Write-Host "Wrote $tar"
@@ -334,8 +333,8 @@ function New-MacPackage {
             Move-Item -LiteralPath (Join-Path $contents "Resources/$($app.Exe).pck.tmp") -Destination (Join-Path $contents "Resources/$($app.Exe).pck")
             Invoke-Native plutil @('-replace', 'CFBundleExecutable', '-string', $app.Exe, (Join-Path $contents 'Info.plist'))
         }
-        # The base plugins beside the PCK, where AppLauncher.UseAppFolder looks, before the bundle is signed.
-        Copy-BasePlugins (Join-Path $contents 'Resources')
+        # The ACRE plugin beside the PCK, where AppLauncher.UseAppFolder looks, before the bundle is signed.
+        Copy-AcrePlugin (Join-Path $contents 'Resources')
         # Renaming broke Godot's ad-hoc signature. Sign again, ad hoc: arm64 Macs run
         # nothing unsigned. There's no Developer ID, so Gatekeeper still asks (releases.md).
         Invoke-Native codesign @('--force', '--deep', '--sign', '-', $bundle)

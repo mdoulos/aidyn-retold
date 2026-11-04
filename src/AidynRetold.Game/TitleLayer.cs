@@ -197,10 +197,10 @@ public partial class TitleLayer : CanvasLayer
     }
 
     /// <summary>
-    /// The port's logo, Aidyn Chronicles Retold's full logo (ADR 0040), the acre base plugin's <c>acre:image/logo</c> (ADR 0041), in
+    /// The port's logo, Aidyn Chronicles Retold's full logo (ADR 0040), the ACRE plugin's <c>acre:image/logo</c> (ADR 0041), in
     /// place of the original's and its shadow, at the logo's alpha: fitted to <see cref="TitleScreen.LogoBox"/> in the frame as the
     /// title's screen shows it, but drawn at the window's resolution rather than in the screen's pixels, so its detail shows at any
-    /// size, and filtered from its mipmaps. Without the base plugin there's none.
+    /// size, and filtered from its mipmaps. Without the ACRE plugin there's none.
     /// </summary>
     private sealed partial class LogoView(UiScreen screen, TitleView frame) : Control
     {

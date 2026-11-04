@@ -13,11 +13,11 @@ using Godot;
 namespace AidynRetold.Editor;
 
 /// <summary>
-/// A script's page: its nodes drawn as a graph, with their ops' records as links, and a player
-/// that runs it with the core's <see cref="ScriptRunner"/> against the editor's flags and a party
-/// of the core's characters: the loaded checkpoint's, or a new game's. Skill checks roll as the
-/// original's do, or can be fixed to explore a branch. Items are the party's: carried in its inventory,
-/// which starts as the checkpoint's, or equipped.
+/// A script's page: its nodes drawn as a graph, with their ops' records as links, and under it the conversation box as the game
+/// draws it, as wide as the graph and worked by the mouse as the game's is (<see cref="DialoguePreview"/>); beside them, the player,
+/// which runs it with the core's <see cref="ScriptRunner"/> against the editor's flags and a party of the core's characters: the
+/// loaded checkpoint's, or a new game's. Skill checks roll as the original's do, or can be fixed to explore a branch. Items are the
+/// party's: carried in its inventory, which starts as the checkpoint's, or equipped.
 /// </summary>
 public partial class ScriptPanel : VBoxContainer
 {
@@ -61,8 +61,10 @@ public partial class ScriptPanel : VBoxContainer
     private readonly Dictionary<RecordId, CheckBox> _members = [];
     private readonly Dictionary<RecordId, CheckBox> _held = [];
     private SpinBox? _gold;
-    private readonly UiScreen _screen = new() { CustomMinimumSize = new Vector2(UiScreen.Width, UiScreen.Height), Backdrop = new Color(0.22f, 0.25f, 0.3f) };
+    private readonly UiScreen _screen = new() { Backdrop = new Color(0.22f, 0.25f, 0.3f) };
     private readonly ConversationBoxView? _conversation;
+    // The box under the graph, where a click is A; none for plugins with no fonts to draw it in.
+    private readonly DialoguePreview? _preview;
     private ScriptPage? _shown;
     private UiScreenOptions? _screenOptions;
     private ScriptRunner? _runner;
@@ -80,8 +82,22 @@ public partial class ScriptPanel : VBoxContainer
 
         AddChild(Header());
         var split = new HSplitContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        split.AddChild(_graph);
+        // The graph, and the box under it as wide as it.
+        var main = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
+        main.AddThemeConstantOverride("separation", 8);
+        main.AddChild(_graph);
         GraphMenu.MoveToBottom(_graph);
+        if (_conversation is not null)
+        {
+            _preview = new DialoguePreview(_screen, _conversation, () => _screenOptions?.Wide == true);
+            _preview.Pressed += () =>
+            {
+                if (_runner is { Status: ScriptStatus.Showing } runner)
+                    Act(() => _conversation.Accept(runner));
+            };
+            main.AddChild(_preview);
+        }
+        split.AddChild(main);
         split.AddChild(Player());
         AddChild(split);
         BuildGraph();
@@ -431,11 +447,9 @@ public partial class ScriptPanel : VBoxContainer
         bar.AddChild(play);
         bar.AddChild(skip);
         box.AddChild(bar);
+        // How the box under the graph is drawn; it's as wide as the graph, so there's no zoom.
         if (_conversation is not null)
-        {
-            box.AddChild(_screenOptions = new UiScreenOptions(_screen, "on a wider one the box floats at the bottom centre."));
-            box.AddChild(_screen);
-        }
+            box.AddChild(_screenOptions = new UiScreenOptions(_screen, "on a wider one the box floats at the bottom centre.", zoom: false));
         box.AddChild(_status);
         box.AddChild(_page);
         box.AddChild(new HSeparator());
@@ -600,6 +614,7 @@ public partial class ScriptPanel : VBoxContainer
         if (_game is null || _world is null)
             return;
         _log.Clear();
+        _preview?.Clear();
         _runner = _game.Game.RunScript(_script, new Host(cue => Log(Describe(cue))), world: _world);
         Act(_runner.Start);
     }
@@ -631,6 +646,7 @@ public partial class ScriptPanel : VBoxContainer
             _page.RemoveChild(child);
             child.QueueFree();
         }
+        _status.Visible = true;
         if (_runner is not { } runner)
             return;
 
@@ -683,9 +699,15 @@ public partial class ScriptPanel : VBoxContainer
             _shown = page;
             _conversation?.Show(page);
         }
-        // A line from the speaker of the choices under it shows alone first, and A brings them up.
-        var lineFirst = _conversation?.Box.ShowsLineBeforeChoices == true;
         Focus(page.Line.Node);
+        // The box under the graph shows the page, its speaker, line and choices, and a click on it is A; the graph marks the node.
+        if (_conversation is not null)
+        {
+            _status.Visible = false;
+            return;
+        }
+        // With no fonts to draw the box in, the page is said here, its choices and A as buttons.
+        var lineFirst = false;
         _status.Text = runner.Wait == ScriptWait.Player ? "Waiting for A." : $"At node {page.Line.Node}.";
         _page.AddChild(Dimmed(page.Line.Speaker is { } speaker ? NameOf(speaker) : "No speaker"));
         _page.AddChild(new Label { Text = page.Line.Text, AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(360, 0) });

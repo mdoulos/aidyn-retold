@@ -17,8 +17,9 @@ public partial class BodySection : VBoxContainer
     private readonly ModelView _view;
     private readonly EntityBody _body;
     private readonly EntityBody? _alaron;
-    private readonly CheckBox _sphere = new() { Text = "Collision sphere", ButtonPressed = true };
-    private readonly CheckBox _height = new() { Text = "Height", ButtonPressed = true };
+    // Off to begin with, so the model shows unmarked; ticked, they're drawn on it.
+    private readonly CheckBox _sphere = new() { Text = "Collision sphere" };
+    private readonly CheckBox _height = new() { Text = "Height" };
     private readonly CheckBox _beside = new() { Text = "Alaron beside it", TooltipText = "A figure of Alaron's sphere and height, for size" };
     private readonly CheckBox _scale = new() { Text = "At the game's scale" };
     private Node3D? _marks;

@@ -36,6 +36,14 @@ public partial class ArmorPage : HSplitContainer
     private Label? _pictureId;
     // A picture from a file, which saving writes as the mod's own image and points the armor at.
     private byte[]? _png;
+    // What the panel beside the cards needs, to build it again as the slot or the model changes.
+    private readonly AidynRetold.Views.Models? _models;
+    private readonly Action<RecordId> _open;
+    private readonly Func<Task<TextureUsage>> _usage;
+    private Control? _side;
+    // The Model row, shown while the armor is a shield, and what it names.
+    private Control? _modelRow;
+    private Label? _modelName;
 
     /// <param name="models">The models to draw a shield's from, in the panel beside the cards; none, no panel.</param>
     /// <param name="usage">Which models use which textures, for the shield's textures, built once for the plugins.</param>
@@ -43,7 +51,7 @@ public partial class ArmorPage : HSplitContainer
         JsonObject json, IReadOnlyList<RecordReference> references, Action<RecordId> open, Func<Task> reload, AidynRetold.Views.Models? models,
         Func<Task<TextureUsage>> usage)
     {
-        (_catalog, _armor, _item, _reload) = (catalog, armor, item, reload);
+        (_catalog, _armor, _item, _reload, _models, _open, _usage) = (catalog, armor, item, reload, models, open, usage);
         var cards = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         column.AddThemeConstantOverride("separation", 16);
@@ -53,10 +61,9 @@ public partial class ArmorPage : HSplitContainer
         margin.AddChild(column);
         cards.AddChild(margin);
         AddChild(cards);
-        if (armor.Model is { } model && models is not null)
-            AddChild(ModelPanel(model, models, open, usage));
 
         column.AddChild(EditCard());
+        UpdateSide();
         column.AddChild(InGame(game, rules, items));
         var usedBy = references.Select(r => r.From).Distinct().Count();
         column.AddChild(new Section("Used by", UsedByList.Create(catalog, references, open), foldable: false, flush: true)
@@ -70,6 +77,78 @@ public partial class ArmorPage : HSplitContainer
         column.AddChild(new Section("All fields", new FittedTable(fields, 12), flush: true) { Note = "as the plugins merge them", Open = false });
     }
 
+    /// <summary>Whether it's a shield, as its Slot reads now, changed or not.</summary>
+    private bool IsShield => _changes.TryGetValue("slot", out var slot) ? (string?)slot == "Shield" : _armor.Slot == ArmorSlot.Shield;
+
+    /// <summary>The model the game hangs on the arm, as its Model reads now, changed or not; none for a shield with no model.</summary>
+    private RecordId? ShieldModel => _changes.TryGetValue("model", out var model)
+        ? (string?)model is { } text && RecordId.TryParse(text, out var id) ? id : null
+        : _armor.Model;
+
+    /// <summary>
+    /// The panel beside the cards, built again for the slot and the model as they read now: a shield's model and its textures, or for a
+    /// shield with none a card saying so, with <b>Choose Model</b>; nothing for body armor, which the game draws as the body's outfit.
+    /// The Model row shows while it's a shield.
+    /// </summary>
+    private void UpdateSide()
+    {
+        var model = ShieldModel;
+        _modelRow?.Visible = IsShield;
+        _modelName?.Text = model is { } m ? ModelName(m) : NoModel;
+        if (_side is not null)
+        {
+            RemoveChild(_side);
+            _side.QueueFree();
+            _side = null;
+        }
+        if (!IsShield || _models is null)
+            return;
+        _side = model is { } shown ? ModelPanel(shown, _models, _open, _usage) : NoModelPanel();
+        AddChild(_side);
+    }
+
+    private const string NoModel = "None: the game hangs nothing on the arm.";
+
+    /// <summary>A model by the other shields whose model it is, and its key.</summary>
+    private string ModelName(RecordId model)
+    {
+        var shields = _catalog.Plugins.All<ArmorRecord>(RecordTypes.Armor).Where(a => a.Model == model && a.Id != _armor.Id).Select(a => a.Name).ToList();
+        return shields.Count == 0 ? $"Model {model.Key}"
+            : $"Model {model.Key}, {string.Join(", ", shields.Take(3))}{(shields.Count > 3 ? $" and {shields.Count - 3} more" : "")}'s too";
+    }
+
+    /// <summary>A shield with no model: the panel's card says so, with <b>Choose Model</b>.</summary>
+    private Control NoModelPanel()
+    {
+        var body = new VBoxContainer();
+        body.AddThemeConstantOverride("separation", 12);
+        body.AddChild(new Label
+        {
+            Text = "No model. The game hangs nothing on the arm for a shield without one, so in battle it shows as no shield at all.",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(280, 0), ThemeTypeVariation = "DimLabel",
+        });
+        var choose = new Button { Text = "Choose Model", TooltipText = "One of the models the game's shields have" };
+        choose.Pressed += PickModel;
+        body.AddChild(new ButtonRows(choose));
+        return SidePanel(new Section("Model", body, foldable: false) { Note = "none" });
+    }
+
+    /// <summary>The panel's cards, in a column that scrolls when they're taller than the page, 6 in from its right and foot.</summary>
+    private static Control SidePanel(params Control[] cards)
+    {
+        var column = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+        column.AddThemeConstantOverride("separation", 16);
+        foreach (var card in cards)
+            column.AddChild(card);
+        var margin = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
+        margin.AddThemeConstantOverride("margin_right", 6);
+        margin.AddThemeConstantOverride("margin_bottom", 6);
+        margin.AddChild(column);
+        var panel = new ScrollContainer { CustomMinimumSize = new Vector2(400, 0), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        panel.AddChild(margin);
+        return panel;
+    }
+
     /// <summary>
     /// The shield's model (a scene, <c>aidyn:scene/0x…</c>, not an actor: it has no states), in a panel beside the cards: a card the
     /// panel's height, the view framed close to its edges, turned by dragging and zoomed by scrolling, with <b>Export Model</b>,
@@ -80,7 +159,6 @@ public partial class ArmorPage : HSplitContainer
     {
         var path = _catalog.Plugins.FindAsset(model, "glb");
         var glb = path is null ? null : ReadGlb(path);
-        TreeExiting += () => glb?.Dispose();
         var ctx = new ModelContext
         {
             Catalog = _catalog, Scene = model, Open = open, Reload = _reload, Usage = usage, Models = models, ShowOriginal = _ => { }, Glb = glb,
@@ -108,22 +186,17 @@ public partial class ArmorPage : HSplitContainer
             Note = provider is null ? model.Key : $"{model.Key} · {EditorStyle.PluginName(provider)}",
         };
 
-        var column = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        column.AddThemeConstantOverride("separation", 16);
-        column.AddChild(modelCard);
-        if (glb is not null)
-        {
-            var textures = new TexturesSection(ctx);
-            column.AddChild(new Section("Textures", textures) { Note = textures.Summary });
-        }
-        // The panel scrolls when its cards are taller than the page, and the model's card takes what height is left when they aren't.
-        var margin = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
-        margin.AddThemeConstantOverride("margin_right", 6);
-        margin.AddThemeConstantOverride("margin_bottom", 6);
-        margin.AddChild(column);
-        var panel = new ScrollContainer { CustomMinimumSize = new Vector2(400, 0), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
-        panel.AddChild(margin);
+        // The model's card takes what height its textures' card leaves.
+        var panel = glb is null ? SidePanel(modelCard) : SidePanel(modelCard, TexturesCard(ctx));
+        // The parsed file goes with the panel, which a change of model or slot builds again.
+        panel.TreeExiting += () => glb?.Dispose();
         return panel;
+    }
+
+    private static Section TexturesCard(ModelContext ctx)
+    {
+        var textures = new TexturesSection(ctx);
+        return new Section("Textures", textures) { Note = textures.Summary };
     }
 
     /// <summary>A model's glTF, parsed, or none where it can't be read.</summary>
@@ -273,6 +346,8 @@ public partial class ArmorPage : HSplitContainer
         slot.Select(a.Slot == ArmorSlot.Shield ? 1 : 0);
         slot.ItemSelected += i => Change("slot", i == 1 ? "Shield" : "Body", a.Slot == ArmorSlot.Shield ? "Shield" : "Body");
         AddRow("Slot", slot, "Where it's worn: on the body, or on the arm as a shield.");
+        _modelRow = AddRow("Model", ModelField(), "What the game hangs on the arm in battle, which the panel beside shows. Only a shield has one.");
+        _modelRow.Visible = IsShield;
         AddRow("Price", Number("price", a.Price, 0, 65535, " gold"), "What a shop asks for it, before the barter.");
         AddRow("Protection", Number("protection", a.Protection, 0, 255), "What wearing it adds to protection from damage.");
         AddRow("Defense", Number("defense", a.Defense, 0, 255), "A shield's defense, which combat reads; 0 on body armor.");
@@ -307,7 +382,7 @@ public partial class ArmorPage : HSplitContainer
             yield return $"takes {resistance.Damage.ToString(System.Globalization.CultureInfo.InvariantCulture)} × {resistance.Element} damage";
     }
 
-    private void AddRow(string label, Control field, string help)
+    private Control AddRow(string label, Control field, string help)
     {
         var box = new PanelContainer { ThemeTypeVariation = _rows.GetChildCount() == 0 ? "CardRowFirst" : "CardRow" };
         var row = EditorStyle.Row(24);
@@ -325,6 +400,106 @@ public partial class ArmorPage : HSplitContainer
         row.AddChild(stack);
         box.AddChild(row);
         _rows.AddChild(box);
+        return box;
+    }
+
+    /// <summary>The model a shield hangs on the arm, by the other shields that share it, with <b>Change Model</b> beside it.</summary>
+    private Control ModelField()
+    {
+        var row = EditorStyle.Row(16);
+        _modelName = new Label
+        {
+            Text = ShieldModel is { } model ? ModelName(model) : NoModel, SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(160, 0),
+        };
+        row.AddChild(_modelName);
+        var change = new Button { Text = "Change Model", SizeFlagsHorizontal = SizeFlags.ShrinkEnd, TooltipText = "One of the models the game's shields have, or none" };
+        change.Pressed += PickModel;
+        row.AddChild(change);
+        return row;
+    }
+
+    /// <summary>
+    /// The models to pick from for the arm: every model the game's shields have, each by the shields that have it, and none; the one
+    /// picked shows beside the list, and <b>Use Model</b> holds it as the armor's model until <b>Save</b>, as a double click does
+    /// (<c>--armor-model 1</c> opens it).
+    /// </summary>
+    public void PickModel()
+    {
+        var plugins = _catalog.Plugins;
+        var models = plugins.All<ArmorRecord>(RecordTypes.Armor).Where(a => a.Model is not null).GroupBy(a => a.Model!.Value)
+            .OrderBy(g => g.Min(a => a.Name), StringComparer.Ordinal).ToList();
+        var list = new Tree { ThemeTypeVariation = "FlushTree", Columns = 2, HideRoot = true, SelectMode = Tree.SelectModeEnum.Row };
+        list.SetColumnExpand(1, false);
+        list.SetColumnCustomMinimumWidth(1, 90);
+        list.SetColumnClipContent(0, true);
+        var root = list.CreateItem();
+        var none = list.CreateItem(root);
+        none.SetText(0, "None");
+        none.SetCustomColor(0, EditorStyle.Dim);
+        none.SetMetadata(0, "");
+        var current = ShieldModel;
+        TreeItem? selected = current is null ? none : null;
+        foreach (var group in models)
+        {
+            var row = list.CreateItem(root);
+            row.SetText(0, string.Join(", ", group.Select(a => a.Name)));
+            row.SetTooltipText(0, $"{string.Join(", ", group.Select(a => a.Name))}: {group.Key}");
+            row.SetText(1, group.Key.Key);
+            row.SetCustomColor(1, EditorStyle.Dim);
+            row.SetTextAlignment(1, HorizontalAlignment.Right);
+            row.SetMetadata(0, group.Key.ToString());
+            if (group.Key == current)
+                selected = row;
+        }
+        var box = new PanelContainer { ThemeTypeVariation = "ListBox", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        box.AddChild(new FittedTable(list, 9, inBox: true));
+        var thumb = new ModelThumb { CustomMinimumSize = new Vector2(240, 240), SizeFlagsHorizontal = SizeFlags.ShrinkEnd, TooltipText = "Drag to turn it, scroll to zoom" };
+        var framed = new PanelContainer { ThemeTypeVariation = "Frame", SizeFlagsVertical = SizeFlags.ShrinkBegin };
+        framed.AddChild(thumb);
+        var pick = EditorStyle.Row(12);
+        pick.AddChild(box);
+        pick.AddChild(framed);
+        RecordId? Picked() => list.GetSelected()?.GetMetadata(0).AsString() is { Length: > 0 } text && RecordId.TryParse(text, out var id) ? id : null;
+        void Preview()
+        {
+            if (_models is null || !thumb.IsInsideTree())
+                return;
+            if (Picked() is { } model)
+            {
+                thumb.Show(plugins, _models, model);
+            }
+            else
+            {
+                // An empty view for none, its frame kept.
+                thumb.Clear();
+                thumb.Visible = true;
+            }
+        }
+        list.ItemSelected += Preview;
+        thumb.Ready += () =>
+        {
+            if (selected is not null)
+            {
+                selected.Select(0);
+                list.ScrollToItem(selected);
+            }
+            Preview();
+        };
+        EditorDialog? dialog = null;
+        void Use()
+        {
+            Change("model", Picked()?.ToString(), _armor.Model?.ToString());
+            dialog?.Close();
+        }
+        list.ItemActivated += Use;
+        dialog = new EditorDialog("Change the model",
+            [.. EditorDialog.Paragraphs("The model the game hangs on the arm in battle: one of the models the game's shields have, or none. Saving puts it in your mod.", PictureGrid), pick],
+            [
+                new DialogButton("Cancel", DialogButtonKind.Cancel),
+                new DialogButton("Use Model", DialogButtonKind.Primary, Use, Closes: false),
+            ], width: PictureGrid + 2 * EditorDialog.Inset);
+        dialog.Open(this);
     }
 
     private SpinBox Number(string field, int value, int min, int max, string suffix = "")
@@ -465,6 +640,8 @@ public partial class ArmorPage : HSplitContainer
         else
             _changes[field] = value;
         UpdateCount();
+        if (field is "slot" or "model")
+            UpdateSide();
     }
 
     private void UpdateCount()
@@ -494,6 +671,7 @@ public partial class ArmorPage : HSplitContainer
         _changes.Clear();
         _png = null;
         BuildRows();
+        UpdateSide();
     }
 
     /// <summary>

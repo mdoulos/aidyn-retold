@@ -345,7 +345,10 @@ public partial class ModelView : VBoxContainer
         }
     }
 
-    /// <summary>Plays the selected animation from its first tick.</summary>
+    /// <summary>
+    /// Plays the selected animation from its first tick, or for one that moves nothing, such as a still actor's resting pose, holds it
+    /// there paused, which Play plays.
+    /// </summary>
     public void PlaySelected()
     {
         if (_player is null || Selected() is not { } name)
@@ -356,9 +359,40 @@ public partial class ModelView : VBoxContainer
         _markedState = -1;
         RefreshMarks();
         UseShotPlanes(name);
-        SetPlaying(true);
+        SetPlaying(Moves(_player.GetAnimation(name)));
         ShowFrame();
     }
+
+    /// <summary>
+    /// Whether an animation moves anything: a key on one of its tracks that isn't the track's first. An animation with no tracks at all
+    /// isn't in the file (the importer lists it as still); one whose keys all hold the pose is, as the slab's on the cliff in Overworld
+    /// T27 rests, and it moves nothing.
+    /// </summary>
+    private static bool Moves(Animation animation)
+    {
+        for (var track = 0; track < animation.GetTrackCount(); track++)
+        {
+            var count = animation.TrackGetKeyCount(track);
+            if (count < 2)
+                continue;
+            var first = animation.TrackGetKeyValue(track, 0);
+            for (var key = 1; key < count; key++)
+            {
+                if (!Same(first, animation.TrackGetKeyValue(track, key)))
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>Two keys' values the same, near enough: a rotation and its negation are one.</summary>
+    private static bool Same(Variant a, Variant b) => (a.VariantType, b.VariantType) switch
+    {
+        (Variant.Type.Vector3, Variant.Type.Vector3) => a.AsVector3().IsEqualApprox(b.AsVector3()),
+        (Variant.Type.Quaternion, Variant.Type.Quaternion) => a.AsQuaternion().IsEqualApprox(b.AsQuaternion()) || a.AsQuaternion().IsEqualApprox(-b.AsQuaternion()),
+        (Variant.Type.Float, Variant.Type.Float) => Mathf.IsEqualApprox(a.AsDouble(), b.AsDouble()),
+        _ => Equals(a.Obj, b.Obj),
+    };
 
     private string? Selected() => _animations.Selected < 0 ? null : _animations.GetItemMetadata(_animations.Selected).AsString();
 

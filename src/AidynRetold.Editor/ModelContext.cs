@@ -6,11 +6,29 @@ using Godot;
 
 namespace AidynRetold.Editor;
 
-/// <summary>What a model's inspector sections are given: the plugins, the view, the model and its actor, and the browser's hands.</summary>
+/// <summary>
+/// What a model's inspector sections are given: the plugins, the view, the model and its actor, and the browser's hands. An armor's
+/// page gives its shield's model with no view, its file parsed (<see cref="Glb"/>), for the sections that need only the file: the
+/// model's buttons and its textures.
+/// </summary>
 public sealed class ModelContext
 {
     public required PluginCatalog Catalog { get; init; }
-    public required ModelView View { get; init; }
+
+    /// <summary>The model view, on a model's page; none on an armor's, whose sections read the file alone.</summary>
+    public ModelView? View { get; init; }
+
+    /// <summary>The model's glTF as parsed: the view's, or one of its own where there's no view.</summary>
+    public GlbScene? Glb
+    {
+        get => _glb ?? View?.File;
+        init => _glb = value;
+    }
+
+    private readonly GlbScene? _glb;
+
+    /// <summary>The view, for the sections only a model's page has: parts, what's held, the body.</summary>
+    public ModelView ViewOrThrow => View ?? throw new InvalidOperationException("This section needs the model view.");
 
     /// <summary>The model: an actor's scene, or a scene of its own.</summary>
     public required RecordId Scene { get; init; }

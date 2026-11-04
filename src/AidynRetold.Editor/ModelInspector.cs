@@ -101,11 +101,11 @@ public partial class ModelInspector : VBoxContainer
             child.QueueFree();
         }
         // The timeline's marks are the character's: its footsteps, its sounds and its strike.
-        if (_ctx.View.Actor is { } actor)
+        if (_ctx.ViewOrThrow.Actor is { } actor)
         {
             var shown = Shown;
-            _ctx.View.Marks = (clip, length) => TimelineMarks.For(_ctx.Plugins, actor, _ctx.Scene, shown, clip, length);
-            _ctx.View.RefreshMarks();
+            _ctx.ViewOrThrow.Marks = (clip, length) => TimelineMarks.For(_ctx.Plugins, actor, _ctx.Scene, shown, clip, length);
+            _ctx.ViewOrThrow.RefreshMarks();
         }
         var model = new ModelSection(_ctx);
         Add("Model", model, model.Summary);
@@ -116,7 +116,7 @@ public partial class ModelInspector : VBoxContainer
         var parts = new PartsSection(_ctx);
         if (!isActor)
             Add("Parts", parts, parts.Summary, flush: true);
-        if (_ctx.View.Actor is { } dressed)
+        if (_ctx.ViewOrThrow.Actor is { } dressed)
         {
             var held = new HeldSection(_ctx, dressed, Shown?.Entity);
             Add("Outfits and held", held, held.Summary);
@@ -124,7 +124,7 @@ public partial class ModelInspector : VBoxContainer
         if (Shown is { } wearer)
         {
             var alaron = wearer.Id == GameState.Alaron ? null : _ctx.Plugins.TryGet<EntityRecord>(GameState.Alaron)?.Body;
-            Add("Body", new BodySection(_ctx.View, wearer.Body, alaron), wearer.Name, last: true);
+            Add("Body", new BodySection(_ctx.ViewOrThrow, wearer.Body, alaron), wearer.Name, last: true);
         }
         if (isActor)
             Add("Parts", parts, parts.Summary, flush: true, last: true, fill: true);

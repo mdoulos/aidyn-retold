@@ -52,7 +52,7 @@ public partial class HeldSection : VBoxContainer
                 AddChild(button);
             }
             // The editor dresses the model itself, so the game's switch, which dresses it by a character's gear, goes.
-            if (ctx.View.Content is { } content)
+            if (ctx.ViewOrThrow.Content is { } content)
                 OutfitSwitch.Of(content)?.QueueFree();
             Dress(worn);
         }
@@ -120,7 +120,7 @@ public partial class HeldSection : VBoxContainer
     /// <summary>Shows outfit <paramref name="index"/>'s meshes, and hides those the others name.</summary>
     private void Dress(int index)
     {
-        if (_ctx.View.Content is not { } content || _actor.Outfits is not { } outfits)
+        if (_ctx.ViewOrThrow.Content is not { } content || _actor.Outfits is not { } outfits)
             return;
         var names = outfits.SelectMany(o => o.Meshes).ToHashSet();
         var worn = outfits[index].Meshes;
@@ -136,7 +136,7 @@ public partial class HeldSection : VBoxContainer
     private void Hold()
     {
         Clear();
-        if (_ctx.View.Content is not { } content || _ctx.Models is not { } models)
+        if (_ctx.ViewOrThrow.Content is not { } content || _ctx.Models is not { } models)
             return;
         var weapon = _weapon.Selected > 0 ? _weapons[_weapon.Selected - 1] : null;
         var shield = _shield.Selected > 0 && _entity?.ShieldSkill is not null ? _shields[_shield.Selected - 1].Model : null;
@@ -162,7 +162,7 @@ public partial class HeldSection : VBoxContainer
     /// <summary>The actor's head on its locator's node, as <c>Models.InstantiateActor</c> hangs it.</summary>
     private void PutHead(ActorHead head)
     {
-        if (_ctx.View.Content is not { } content || _ctx.Models is not { } models)
+        if (_ctx.ViewOrThrow.Content is not { } content || _ctx.Models is not { } models)
             return;
         var locator = AidynRetold.Plugins.Assets.SceneNames.Locator(head.Locator);
         if (Nodes.FindAll<Node3D>(content).FirstOrDefault(n => n.Name == locator) is not { } on || models.Instantiate(head.Scene) is not { } node)

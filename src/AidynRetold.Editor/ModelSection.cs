@@ -12,11 +12,8 @@ namespace AidynRetold.Editor;
 /// </summary>
 public partial class ModelSection : VBoxContainer
 {
-    private readonly ModelContext _ctx;
-
     public ModelSection(ModelContext ctx)
     {
-        _ctx = ctx;
         // The file's line, then the buttons, set apart from it.
         AddThemeConstantOverride("separation", 12);
         var plugins = ctx.Plugins;
@@ -42,13 +39,7 @@ public partial class ModelSection : VBoxContainer
             AddChild(new ButtonRows([.. which]));
         }
 
-        var buttons = new List<Button>();
-        var export = new Button { Text = "Export Model", TooltipText = "Save the model's .glb, to open in Blender" };
-        export.Pressed += Export;
-        buttons.Add(export);
-        var replace = new Button { Text = "Replace Model", TooltipText = "Another .glb in its place, checked against the original, written into your mod" };
-        replace.Pressed += Replace;
-        buttons.Add(replace);
+        var buttons = new List<Button>(FileButtons(this, ctx));
         if (ctx.Replaced && ctx.File is { } replacing && plugins.PluginWith(replacing) is { } replacer && replacer != RecordId.RomNamespace)
         {
             var back = new Button { Text = "Put Back Original", TooltipText = $"Take {replacer}'s model out, so the original shows again" };
@@ -59,7 +50,7 @@ public partial class ModelSection : VBoxContainer
 
         if (ctx.Replaced && ctx.OriginalFile is { } originalFile && ctx.File is { } replacementFile)
         {
-            var results = Check(originalFile, replacementFile);
+            var results = Check(ctx, originalFile, replacementFile);
             var check = new VBoxContainer();
             check.AddThemeConstantOverride("separation", 6);
             check.AddChild(EditorStyle.DimLabel("Remodel check, against the original", 13));
@@ -79,16 +70,29 @@ public partial class ModelSection : VBoxContainer
     /// </summary>
     public string Summary { get; }
 
-    /// <summary>The root transform the check looks for: the actor's, for an actor's model.</summary>
-    private int? Root => _ctx.ActorId is { } a ? _ctx.Plugins.TryGet<AidynRetold.Plugins.Records.ActorRecord>(a)?.RootTransform : null;
+    /// <summary>
+    /// <b>Export Model</b> and <b>Replace Model</b> for a model, which a model's card and an armor's model panel both stand: the one
+    /// saves its .glb, the other picks another, shows the remodel check of it and writes it into the mod.
+    /// </summary>
+    public static Button[] FileButtons(Node parent, ModelContext ctx)
+    {
+        var export = new Button { Text = "Export Model", TooltipText = "Save the model's .glb, to open in Blender" };
+        export.Pressed += () => Export(parent, ctx);
+        var replace = new Button { Text = "Replace Model", TooltipText = "Another .glb in its place, checked against the original, written into your mod" };
+        replace.Pressed += () => Replace(parent, ctx);
+        return [export, replace];
+    }
 
-    private IReadOnlyList<CheckResult> Check(string original, string replacement)
+    /// <summary>The root transform the check looks for: the actor's, for an actor's model.</summary>
+    private static int? Root(ModelContext ctx) => ctx.ActorId is { } a ? ctx.Plugins.TryGet<AidynRetold.Plugins.Records.ActorRecord>(a)?.RootTransform : null;
+
+    private static IReadOnlyList<CheckResult> Check(ModelContext ctx, string original, string replacement)
     {
         try
         {
             using var before = GlbReader.ReadJson(original);
             using var after = GlbReader.ReadJson(replacement);
-            return RemodelCheck.Compare(before.RootElement, after.RootElement, Root);
+            return RemodelCheck.Compare(before.RootElement, after.RootElement, Root(ctx));
         }
         catch (Exception e) when (e is IOException or InvalidDataException or System.Text.Json.JsonException)
         {
@@ -142,11 +146,11 @@ public partial class ModelSection : VBoxContainer
         }
     }
 
-    private void Export()
+    private static void Export(Node parent, ModelContext ctx)
     {
-        if ((_ctx.Original ? _ctx.OriginalFile : _ctx.File) is not { } path)
+        if ((ctx.Original ? ctx.OriginalFile : ctx.File) is not { } path)
             return;
-        PluginFiles.Save(this, "Save the model's glTF", $"{_ctx.Scene.Key}.glb", "*.glb ; glTF binaries", to =>
+        PluginFiles.Save(parent, "Save the model's glTF", $"{ctx.Scene.Key}.glb", "*.glb ; glTF binaries", to =>
         {
             try
             {
@@ -154,18 +158,18 @@ public partial class ModelSection : VBoxContainer
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
-                PluginFiles.Tell(this, "Couldn't save it", e.Message);
+                PluginFiles.Tell(parent, "Couldn't save it", e.Message);
             }
         });
     }
 
     /// <summary>Picks a .glb, shows the remodel check of it against the original, and writes it into a plugin if asked to.</summary>
-    private void Replace() =>
-        PluginFiles.Open(this, "A model to put in this one's place", "*.glb ; glTF binaries", path =>
+    private static void Replace(Node parent, ModelContext ctx) =>
+        PluginFiles.Open(parent, "A model to put in this one's place", "*.glb ; glTF binaries", path =>
         {
-            var results = _ctx.OriginalFile is { } original ? Check(original, path) : [];
+            var results = ctx.OriginalFile is { } original ? Check(ctx, original, path) : [];
             var fails = results.Count(r => r.Level == CheckLevel.Fail);
-            EditorDialog.Confirm(this, "Replace the model",
+            EditorDialog.Confirm(parent, "Replace the model",
                 $"{Path.GetFileName(path)}, checked against the original. " + (fails > 0 ? "Where it failed, the game can't play it as the original." : "It keeps what the game needs."),
                 fails > 0 ? "Replace anyway" : "Replace", () =>
                 {
@@ -176,10 +180,10 @@ public partial class ModelSection : VBoxContainer
                     }
                     catch (Exception e) when (e is IOException or UnauthorizedAccessException)
                     {
-                        PluginFiles.Tell(this, "Couldn't read it", e.Message);
+                        PluginFiles.Tell(parent, "Couldn't read it", e.Message);
                         return;
                     }
-                    PluginFiles.Write(this, _ctx.Plugins, $"the new model for {_ctx.Scene.Key}", folder => folder.WriteAsset(_ctx.Scene, "glb", bytes), _ctx.Reload);
+                    PluginFiles.Write(parent, ctx.Plugins, $"the new model for {ctx.Scene.Key}", folder => folder.WriteAsset(ctx.Scene, "glb", bytes), ctx.Reload);
                 }, extra: Results(results), width: 580);
         });
 }

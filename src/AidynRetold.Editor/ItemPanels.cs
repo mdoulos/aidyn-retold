@@ -99,16 +99,14 @@ public partial class ItemPanel : PagePanel
     private readonly Item _item;
 
     /// <param name="header">Whether it starts with the item's icon, name and kind: not where a card of another page stands for them.</param>
-    /// <param name="party">Whether it ends with what equipping it would do for each of the editor's party: not on an armor's page.</param>
-    public ItemPanel(PluginCatalog catalog, EditorGame? game, CharacterRules? rules, ItemCatalog items, Item item, Action<RecordId> open, bool header = true,
-        bool party = true)
+    public ItemPanel(PluginCatalog catalog, EditorGame? game, CharacterRules? rules, ItemCatalog items, Item item, Action<RecordId> open, bool header = true)
         : base(catalog, open)
     {
         (_game, _rules, _items, _item) = (game, rules, items, item);
-        Build(header, party);
+        Build(header);
     }
 
-    private void Build(bool withHeader, bool withParty)
+    private void Build(bool withHeader)
     {
         var item = _item;
         var header = new HBoxContainer { Visible = withHeader };
@@ -172,7 +170,7 @@ public partial class ItemPanel : PagePanel
             }
         }
 
-        if (withParty && _rules is not null && (item.Kind is ItemKind.Weapon or ItemKind.Armor or ItemKind.Shield || item.IsGear))
+        if (_rules is not null && (item.Kind is ItemKind.Weapon or ItemKind.Armor or ItemKind.Shield || item.IsGear))
             ShowOnParty(_rules);
     }
 

@@ -1,7 +1,9 @@
 using System.Text.Json.Nodes;
 using AidynRetold.Core.Characters;
 using AidynRetold.Core.Items;
+using AidynRetold.Core.Ui;
 using AidynRetold.Plugins;
+using AidynRetold.Plugins.Assets;
 using AidynRetold.Plugins.Records;
 using Godot;
 
@@ -9,9 +11,9 @@ namespace AidynRetold.Editor;
 
 /// <summary>
 /// An armor's or a shield's page, all of it on one page as cards, with no tabs (editor.md#an-armors-page): the armor itself, its
-/// picture and values to change, held until <b>Save</b> writes them to the mod as one change (<see cref="PluginFiles.Write"/>); what
-/// wearing it does; what names it; and every field as the plugins merge it. Beside them, a shield's model, the scene the game hangs on
-/// a body's arm, in a panel of its own the page's height.
+/// picture and values to change, held until <b>Save</b> writes them to the mod as one change (<see cref="PluginFiles.Write"/>); its
+/// details as the game shows them; what names it; and every field as the plugins merge it. Beside them, a shield's model, the scene
+/// the game hangs on a body's arm, in a panel of its own the page's height, with its textures under it.
 /// </summary>
 public partial class ArmorPage : HSplitContainer
 {
@@ -36,8 +38,10 @@ public partial class ArmorPage : HSplitContainer
     private byte[]? _png;
 
     /// <param name="models">The models to draw a shield's from, in the panel beside the cards; none, no panel.</param>
+    /// <param name="usage">Which models use which textures, for the shield's textures, built once for the plugins.</param>
     public ArmorPage(PluginCatalog catalog, EditorGame? game, CharacterRules? rules, ItemCatalog items, Item item, ArmorRecord armor,
-        JsonObject json, IReadOnlyList<RecordReference> references, Action<RecordId> open, Func<Task> reload, AidynRetold.Views.Models? models)
+        JsonObject json, IReadOnlyList<RecordReference> references, Action<RecordId> open, Func<Task> reload, AidynRetold.Views.Models? models,
+        Func<Task<TextureUsage>> usage)
     {
         (_catalog, _armor, _item, _reload) = (catalog, armor, item, reload);
         var cards = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, SizeFlagsHorizontal = SizeFlags.ExpandFill };
@@ -50,15 +54,10 @@ public partial class ArmorPage : HSplitContainer
         cards.AddChild(margin);
         AddChild(cards);
         if (armor.Model is { } model && models is not null)
-            AddChild(ModelPanel(model, models, open));
+            AddChild(ModelPanel(model, models, open, usage));
 
         column.AddChild(EditCard());
-        // What wearing it does, the item page's own, without its header, which the card above stands for, or what equipping it would
-        // do for the party.
-        var preview = new ItemPanel(catalog, game, rules, items, item, open, header: false, party: false);
-        column.AddChild(new Section("In the game", preview.TakeBody(), foldable: false));
-        preview.Visible = false;
-        column.AddChild(preview);
+        column.AddChild(InGame(game, rules, items));
         var usedBy = references.Select(r => r.From).Distinct().Count();
         column.AddChild(new Section("Used by", UsedByList.Create(catalog, references, open), foldable: false, flush: true)
         {
@@ -72,29 +71,165 @@ public partial class ArmorPage : HSplitContainer
     }
 
     /// <summary>
-    /// The shield's model (a scene, <c>aidyn:scene/0x…</c>, not an actor: it has no states), in a card the panel's height, framed,
-    /// turned by dragging and zoomed by scrolling, with <b>Open Model</b> for its own page, its textures and parts.
+    /// The shield's model (a scene, <c>aidyn:scene/0x…</c>, not an actor: it has no states), in a panel beside the cards: a card the
+    /// panel's height, the view framed close to its edges, turned by dragging and zoomed by scrolling, with <b>Export Model</b>,
+    /// <b>Replace Model</b> and <b>Open Model</b> in a row under it; and under that the model's textures, which export and replace as
+    /// a model's page's do (<see cref="TexturesSection"/>, reading the model's file with no view).
     /// </summary>
-    private Control ModelPanel(RecordId model, AidynRetold.Views.Models models, Action<RecordId> open)
+    private Control ModelPanel(RecordId model, AidynRetold.Views.Models models, Action<RecordId> open, Func<Task<TextureUsage>> usage)
     {
-        var thumb = new ModelThumb { SizeFlagsVertical = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(0, 320), TooltipText = "Drag to turn it, scroll to zoom" };
+        var path = _catalog.Plugins.FindAsset(model, "glb");
+        var glb = path is null ? null : ReadGlb(path);
+        TreeExiting += () => glb?.Dispose();
+        var ctx = new ModelContext
+        {
+            Catalog = _catalog, Scene = model, Open = open, Reload = _reload, Usage = usage, Models = models, ShowOriginal = _ => { }, Glb = glb,
+        };
+
+        var thumb = new ModelThumb { SizeFlagsVertical = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(0, 280), TooltipText = "Drag to turn it, scroll to zoom" };
         // Framed once it's in the tree, where its bounds can be measured.
         thumb.Ready += () => thumb.Show(_catalog.Plugins, models, model);
         var framed = new PanelContainer { ThemeTypeVariation = "Frame", SizeFlagsVertical = SizeFlags.ExpandFill };
         framed.AddChild(thumb);
         var body = new VBoxContainer();
-        body.AddThemeConstantOverride("separation", 12);
+        body.AddThemeConstantOverride("separation", 8);
         body.AddChild(framed);
-        var go = new Button { Text = "Open Model", TooltipText = $"Open {model}: its textures and parts, to export or replace" };
+        var go = new Button { Text = "Open Model", TooltipText = $"Open {model}: its parts, and its original where a mod replaces it" };
         go.Pressed += () => open(model);
-        body.AddChild(new ButtonRows(go));
-        var provider = _catalog.Plugins.FindAsset(model, "glb") is { } file ? _catalog.Plugins.PluginWith(file) : null;
-        var card = new Section("Model", body, foldable: false, fill: true) { Note = provider is null ? model.Key : $"{model.Key} · {EditorStyle.PluginName(provider)}" };
-        var panel = new MarginContainer { CustomMinimumSize = new Vector2(400, 0) };
-        panel.AddThemeConstantOverride("margin_right", 6);
-        panel.AddThemeConstantOverride("margin_bottom", 6);
-        panel.AddChild(card);
+        body.AddChild(new ButtonRows(3, [.. ModelSection.FileButtons(this, ctx), go]));
+        // The view stands 8 in from the card's edges, closer than a card's body pads.
+        var inset = new MarginContainer();
+        foreach (var side in new[] { "left", "top", "right", "bottom" })
+            inset.AddThemeConstantOverride($"margin_{side}", 8);
+        inset.AddChild(body);
+        var provider = path is null ? null : _catalog.Plugins.PluginWith(path);
+        var modelCard = new Section("Model", inset, foldable: false, flush: true, fill: true)
+        {
+            Note = provider is null ? model.Key : $"{model.Key} · {EditorStyle.PluginName(provider)}",
+        };
+
+        var column = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+        column.AddThemeConstantOverride("separation", 16);
+        column.AddChild(modelCard);
+        if (glb is not null)
+        {
+            var textures = new TexturesSection(ctx);
+            column.AddChild(new Section("Textures", textures) { Note = textures.Summary });
+        }
+        // The panel scrolls when its cards are taller than the page, and the model's card takes what height is left when they aren't.
+        var margin = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
+        margin.AddThemeConstantOverride("margin_right", 6);
+        margin.AddThemeConstantOverride("margin_bottom", 6);
+        margin.AddChild(column);
+        var panel = new ScrollContainer { CustomMinimumSize = new Vector2(400, 0), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        panel.AddChild(margin);
         return panel;
+    }
+
+    /// <summary>A model's glTF, parsed, or none where it can't be read.</summary>
+    private static AidynRetold.Views.GlbScene? ReadGlb(string path)
+    {
+        try
+        {
+            return AidynRetold.Views.GlbScene.Parse(File.ReadAllBytes(path));
+        }
+        catch (Exception e) when (e is IOException or InvalidDataException or System.Text.Json.JsonException)
+        {
+            GD.PrintErr($"Couldn't read {path}: {e.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// The armor's details exactly as the game shows them when C-down is held on it (<see cref="MenuDetailsBuilder.Item"/>, the
+    /// menus' own): its icon and name, then the game's own words and numbers, and its totals for the editor's first party member,
+    /// now and with it on. Armor and weapons have no description in the game; their details are these lines.
+    /// </summary>
+    private Section InGame(EditorGame? game, CharacterRules? rules, ItemCatalog items)
+    {
+        var plugins = _catalog.Plugins;
+        var wearer = rules is null ? null : EditorCharacters.CopyParty(plugins, rules, game, items).Members.FirstOrDefault();
+        var details = MenuDetailsBuilder.Item(new ItemInstance(_item), wearer, MenuText.From(plugins), plugins.TryGet<SpellRecord>, items);
+        var box = new VBoxContainer { CustomMinimumSize = new Vector2(320, 0), SizeFlagsHorizontal = SizeFlags.ShrinkBegin };
+        box.AddThemeConstantOverride("separation", 6);
+        if (details is null)
+        {
+            box.AddChild(EditorStyle.DimLabel("The game shows no details for it."));
+        }
+        else
+        {
+            if (details.Title is { } title)
+            {
+                var head = EditorStyle.Row(10);
+                if (details.Icon is { } icon && Texture(icon) is { } texture)
+                {
+                    head.AddChild(new TextureRect
+                    {
+                        Texture = texture, CustomMinimumSize = new Vector2(32, 32), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                        StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, TextureFilter = texture.GetWidth() <= 32 ? TextureFilterEnum.Nearest : TextureFilterEnum.LinearWithMipmaps,
+                    });
+                }
+                head.AddChild(new Label { Text = title, ThemeTypeVariation = "FieldLabel" });
+                box.AddChild(head);
+            }
+            foreach (var line in details.Lines)
+                box.AddChild(DetailRow(line));
+            if (details.Footer.Count > 0)
+            {
+                box.AddChild(new Control { CustomMinimumSize = new Vector2(0, 6) });
+                foreach (var line in details.Footer)
+                    box.AddChild(DetailRow(line));
+            }
+        }
+        // The totals are the member's the details are shown for: the editor's first, in its game.
+        var who = wearer is null ? null : game is { IsNewGame: false } ? wearer.Name : $"{wearer.Name}, new game";
+        return new Section("In the game", box, foldable: false) { Note = who is null || details?.Footer.Count is null or 0 ? "" : $"totals for {who}" };
+    }
+
+    /// <summary>A line of the details: its pieces from the left, indented where the game indents it, and its pieces at the right.</summary>
+    private Control DetailRow(DetailLine line)
+    {
+        var row = EditorStyle.Row(4);
+        if (line.Indent)
+            row.AddChild(new Control { CustomMinimumSize = new Vector2(16, 0) });
+        foreach (var piece in line.Left)
+            row.AddChild(DetailPieceControl(piece, line.Wrap));
+        if (line.Right.Count > 0)
+        {
+            row.AddChild(EditorStyle.Spacer());
+            foreach (var piece in line.Right)
+                row.AddChild(DetailPieceControl(piece, false));
+        }
+        return row;
+    }
+
+    /// <summary>A piece of a line: its text in the theme's ink, a gain green and a loss red, or its image at the game's size.</summary>
+    private Control DetailPieceControl(DetailPiece piece, bool wrap)
+    {
+        switch (piece)
+        {
+            case DetailText text:
+                var label = new Label { Text = text.Text };
+                if (text.Color == MenuDetailsBuilder.Gain)
+                    label.ThemeTypeVariation = "GoodLabel";
+                else if (text.Color == MenuDetailsBuilder.Loss)
+                    label.ThemeTypeVariation = "ProblemLabel";
+                if (wrap)
+                {
+                    label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+                    label.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                }
+                return label;
+            case DetailImage image:
+                var size = image.Size ?? 16;
+                return new TextureRect
+                {
+                    Texture = Texture(image.Image), CustomMinimumSize = new Vector2(size, size), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                    StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, SizeFlagsVertical = SizeFlags.ShrinkCenter, TooltipText = image.Image.ToString(),
+                };
+            default:
+                return new Control();
+        }
     }
 
     /// <summary>The armor's card: its title with the changes and Save at its right, then a row for each value.</summary>

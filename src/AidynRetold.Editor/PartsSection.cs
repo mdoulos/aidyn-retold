@@ -43,7 +43,7 @@ public partial class PartsSection : VBoxContainer
             _aboutInset.AddThemeConstantOverride($"margin_{side}", by);
         _aboutInset.AddChild(_about);
         AddChild(_aboutInset);
-        if (ctx.View.Content is { } content)
+        if (ctx.ViewOrThrow.Content is { } content)
         {
             var root = _tree.CreateItem();
             foreach (var child in content.GetChildren().OfType<Node3D>())
@@ -55,7 +55,7 @@ public partial class PartsSection : VBoxContainer
     /// <summary>What to say after the section's title: how many parts and locators.</summary>
     public string Summary => $"{_parts} {(_parts == 1 ? "part" : "parts")}, {_locators} {(_locators == 1 ? "locator" : "locators")}";
 
-    private int? Root => _ctx.View.Actor?.RootTransform;
+    private int? Root => _ctx.ViewOrThrow.Actor?.RootTransform;
 
     /// <summary>Picks the node named <paramref name="name"/>, as clicking it does (<c>--part</c>).</summary>
     public void Select(string name)
@@ -159,7 +159,7 @@ public partial class PartsSection : VBoxContainer
         }
         else
         {
-            var size = (_ctx.View.Content is { } c ? Frame(c) : 1) * 0.12f;
+            var size = (_ctx.ViewOrThrow.Content is { } c ? Frame(c) : 1) * 0.12f;
             _mark = Lines([Vector3.Zero, Vector3.Right * size, Vector3.Zero, Vector3.Up * size, Vector3.Zero, Vector3.Back * size], [AxisX, AxisX, AxisY, AxisY, AxisZ, AxisZ]);
             _about.Text = $"{name}: no mesh of its own; its axes are drawn, X red, Y green, Z blue.";
         }

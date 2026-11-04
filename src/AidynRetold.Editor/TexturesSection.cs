@@ -59,7 +59,7 @@ public partial class TexturesSection : VBoxContainer
     /// <summary>The model's images from its file, each with the plugin PNG drawn in its place.</summary>
     private void Read()
     {
-        if (_ctx.View.File is not { } file || !file.Reader.Root.TryGetProperty("images", out var images))
+        if (_ctx.Glb is not { } file || !file.Reader.Root.TryGetProperty("images", out var images))
             return;
         var i = 0;
         foreach (var image in images.EnumerateArray())

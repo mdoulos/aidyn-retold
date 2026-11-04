@@ -673,8 +673,11 @@ public partial class RecordBrowser : Control
             _right.MoveChild(_header, 0);
     }
 
-    /// <summary>Whether a record's page is one page, with what the tabs would hold in its cards: an actor's, a model's, an armor's.</summary>
-    private static bool OnePage(RecordId id) => id.Type is RecordTypes.Actor or RecordTypes.Scene or RecordTypes.Armor;
+    /// <summary>
+    /// Whether a record's page is one page, with what the tabs would hold in its cards: an actor's, a model's, an armor's, a weapon's
+    /// or an item's.
+    /// </summary>
+    private static bool OnePage(RecordId id) => id.Type is RecordTypes.Actor or RecordTypes.Scene or RecordTypes.Armor or RecordTypes.Weapon or RecordTypes.Item;
 
     /// <summary>Loads the plugins again, then opens the record afresh: after a save, or its undoing.</summary>
     private async Task ReloadAt(RecordId id)
@@ -775,9 +778,14 @@ public partial class RecordBrowser : Control
             return new CharacterPanel(catalog, _game, entity, rules, _items, FollowLink);
         if (_items is { } items)
         {
+            // An armor's, a weapon's and an item's page is one of cards that edit it (ItemEditPage).
+            Func<Task<AidynRetold.Plugins.Assets.TextureUsage>> usage = () => _usage ??= Task.Run(() => AidynRetold.Plugins.Assets.TextureUsage.Build(catalog.Plugins));
             if (id.Type == RecordTypes.Armor && items.TryGet(id) is { } armorItem && plugins.TryGet<ArmorRecord>(id) is { } armor && json is not null)
-                return new ArmorPage(catalog, _game, _rules, items, armorItem, armor, json, catalog.ReferencesTo(id), FollowLink, () => ReloadAt(id), _models,
-                    () => _usage ??= Task.Run(() => AidynRetold.Plugins.Assets.TextureUsage.Build(catalog.Plugins)));
+                return new ArmorPage(catalog, _game, _rules, items, armorItem, armor, json, catalog.ReferencesTo(id), FollowLink, () => ReloadAt(id), _models, usage);
+            if (id.Type == RecordTypes.Weapon && items.TryGet(id) is { } weaponItem && plugins.TryGet<WeaponRecord>(id) is { } weapon && json is not null)
+                return new WeaponPage(catalog, _game, _rules, items, weaponItem, weapon, json, catalog.ReferencesTo(id), FollowLink, () => ReloadAt(id), _models, usage);
+            if (id.Type == RecordTypes.Item && items.TryGet(id) is { } itemItem && plugins.TryGet<ItemRecord>(id) is { } itemRecord && json is not null)
+                return new ItemPage(catalog, _game, _rules, items, itemItem, itemRecord, json, catalog.ReferencesTo(id), FollowLink, () => ReloadAt(id), _models, usage);
             if (id.Type is RecordTypes.Weapon or RecordTypes.Armor or RecordTypes.Item && items.TryGet(id) is { } item)
                 return new ItemPanel(catalog, _game, _rules, items, item, FollowLink);
             if (id.Type == RecordTypes.Shop && plugins.TryGet<ShopRecord>(id) is { } shop)
@@ -830,8 +838,8 @@ public partial class RecordBrowser : Control
         return fields;
     }
 
-    /// <summary>The armor's page, if one is showing, for scripts.</summary>
-    public ArmorPage? Armor => _preview.GetChildren().OfType<ArmorPage>().FirstOrDefault();
+    /// <summary>The armor's, weapon's or item's page, if one is showing, for scripts.</summary>
+    public ItemEditPage? EditPage => _preview.GetChildren().OfType<ItemEditPage>().FirstOrDefault();
 
     /// <summary>The model page's inspector, if a model's page is showing.</summary>
     public ModelInspector? Inspector => _model.Inspector.GetChildren().OfType<ModelInspector>().FirstOrDefault();

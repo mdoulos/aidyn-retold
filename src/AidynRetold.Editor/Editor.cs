@@ -113,16 +113,18 @@ public partial class Editor : Control
             args.TryGetValue("details", out var details) ? details == "1" : null);
         if (args.TryGetValue("press", out var presses))
             _records.PressPartyTab(presses.Split(','));
-        // An armor's page: --armor-change name=…,price=… holds values as if typed, --armor-save 1 saves them, --armor-picture 1 opens
-        // the picture's dialog and --armor-model 1 the model's.
-        if (args.TryGetValue("armor-change", out var changes))
-            _records.Armor?.ChangeFor(changes.Split(',').Select(c => c.Split('=', 2)).Where(c => c.Length == 2).Select(c => (c[0], c[1])));
-        if (args.GetValueOrDefault("armor-save") == "1")
-            _records.Armor?.SaveChanges();
-        if (args.GetValueOrDefault("armor-picture") == "1")
-            _records.Armor?.PickPicture();
-        if (args.GetValueOrDefault("armor-model") == "1")
-            _records.Armor?.PickModel();
+        // An armor's, a weapon's or an item's page: --item-change name=…,price=… holds values as if typed, --item-save 1 saves them,
+        // --item-picture 1 opens the picture's dialog and --item-model 1 the model's. The --armor- spellings, from before weapons and
+        // items had pages of their own, do the same.
+        string? Option(string name) => args.GetValueOrDefault($"item-{name}") ?? args.GetValueOrDefault($"armor-{name}");
+        if (Option("change") is { } changes)
+            _records.EditPage?.ChangeFor(changes.Split(',').Select(c => c.Split('=', 2)).Where(c => c.Length == 2).Select(c => (c[0], c[1])));
+        if (Option("save") == "1")
+            _records.EditPage?.SaveChanges();
+        if (Option("picture") == "1")
+            _records.EditPage?.PickPicture();
+        if (Option("model") == "1")
+            _records.EditPage?.PickModel();
         if (args.TryGetValue("drive", out var request))
             _records.Model.Drive(int.Parse(request, CultureInfo.InvariantCulture));
         // --mod-dialog toolbar opens the toolbar's mod dialog, which closes by its cross.

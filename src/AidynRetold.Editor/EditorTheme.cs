@@ -115,6 +115,9 @@ public static class EditorTheme
         t.SetTypeVariation("FlatButton", "Button");
         foreach (var state in new[] { "normal", "hover", "pressed", "focus", "disabled" })
             t.SetStylebox(state, "FlatButton", Box(state == "hover" ? p.Hover : Colors.Transparent, null, 3, 0, 4, 2));
+        // A progress bar: a field's track, filled with the accent; an indeterminate one's band slides along it.
+        t.SetStylebox("background", "ProgressBar", Box(p.Field, p.Border, 3, 1));
+        t.SetStylebox("fill", "ProgressBar", Box(p.Accent, null, 3));
         t.SetColor("font_color", "LinkButton", p.Accent);
         t.SetColor("font_hover_color", "LinkButton", p.Accent.Lightened(0.2f));
         t.SetColor("font_pressed_color", "LinkButton", p.Accent.Darkened(0.2f));
@@ -376,6 +379,10 @@ public static class EditorTheme
         var color = Over(Colors.Transparent, on ? p.Accent : p.Border, Cover(track));
         return Over(color, on ? p.OnAccent : p.Raised, Cover(knob));
     });
+
+    /// <summary>A cross, 12 square, for closing a dialog.</summary>
+    public static ImageTexture CloseIcon(Color color) => Draw(12, 12, at =>
+        Over(Colors.Transparent, color, Cover(Math.Min(Segment(at, new Vector2(2.5f, 2.5f), new Vector2(9.5f, 9.5f)), Segment(at, new Vector2(9.5f, 2.5f), new Vector2(2.5f, 9.5f))) - 0.75f)));
 
     /// <summary>A chevron, 12 square, pointing down or right.</summary>
     private static ImageTexture Chevron(Color color, bool down) => Draw(12, 12, at =>

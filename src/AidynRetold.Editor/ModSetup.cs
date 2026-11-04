@@ -7,8 +7,9 @@ namespace AidynRetold.Editor;
 /// <summary>
 /// Which mod the editor saves to (<see cref="CurrentMod"/>), asked when it opens with none known, as the import dialog asks for the
 /// ROM, before anything loads, and from the toolbar to change it: <b>Load Existing Mod</b> picks a mod's <c>plugin.json</c> in the
-/// plugins folder, <b>Create New Mod</b> names a new one and makes its folder, and <b>Just looking around</b> goes on with none, so
-/// the first save asks (<see cref="PluginFiles.Write"/>).
+/// plugins folder, <b>Create New Mod</b> names a new one and makes its folder. The first asking has <b>Just looking around</b>,
+/// which goes on with none, so the first save asks (<see cref="PluginFiles.Write"/>); the toolbar's closes by its cross, keeping
+/// the mod there was.
 /// </summary>
 public static class ModSetup
 {
@@ -28,13 +29,18 @@ public static class ModSetup
     private static void Choose(Node root, string pluginsDirectory, bool blocking, TaskCompletionSource<string?> done)
     {
         EditorDialog? dialog = null;
-        var later = new Button { Text = blocking ? "Just looking around" : "Keep the mod there is", ThemeTypeVariation = "FlatButton" };
-        later.AddThemeColorOverride("font_color", EditorTheme.Current.Accent);
-        later.Pressed += () =>
+        // The first asking goes on without a mod by Just looking around; the toolbar's by its cross, keeping the mod there was.
+        Button? later = null;
+        if (blocking)
         {
-            dialog?.Close();
-            done.TrySetResult(blocking ? null : CurrentMod.Id);
-        };
+            later = new Button { Text = "Just looking around", ThemeTypeVariation = "FlatButton" };
+            later.AddThemeColorOverride("font_color", EditorTheme.Current.Accent);
+            later.Pressed += () =>
+            {
+                dialog?.Close();
+                done.TrySetResult(null);
+            };
+        }
         dialog = new EditorDialog("Choose a mod to save to",
             EditorDialog.Paragraphs("Which mod would you like to save your changes to?\n\nEverything you change in the editor is saved to it, and each " +
                 "save can be undone. You can change it from the toolbar.", Width - 28),
@@ -46,6 +52,7 @@ public static class ModSetup
                     Create(root, pluginsDirectory, blocking, done);
                 }, Closes: false),
             ], Width, dismissable: !blocking, under: later);
+        dialog.Dismissed += () => done.TrySetResult(CurrentMod.Id);
         dialog.Open(root);
     }
 

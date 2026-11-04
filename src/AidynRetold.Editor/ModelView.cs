@@ -94,11 +94,16 @@ public partial class ModelView : VBoxContainer
         _frame.AddChild(_note);
         _frame.Resized += Layout;
         split.AddChild(_frame);
-        // Under the view: the timeline and its legend, then the actor's states.
+        // Under the view: one row of the states' Table and Graph, the timeline and its legend, then the actor's states, which take
+        // the rest of the height the split gives.
         var under = new VBoxContainer();
-        under.AddThemeConstantOverride("separation", 2);
-        under.AddChild(_time);
-        foreach (var (kind, what) in new[] { (TimelineMarkKind.Footstep, "footstep"), (TimelineMarkKind.Sound, "sound"), (TimelineMarkKind.Emitter, "emitter starts"),
+        under.AddThemeConstantOverride("separation", 4);
+        var row = EditorStyle.Row(8);
+        _actorPanel.ViewButtons.Visible = false;
+        row.AddChild(_actorPanel.ViewButtons);
+        _time.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        row.AddChild(_time);
+        foreach (var (kind, what) in new[] { (TimelineMarkKind.Footstep, "footstep"), (TimelineMarkKind.Sound, "sound"), (TimelineMarkKind.Emitter, "emitter"),
                      (TimelineMarkKind.Strike, "blow lands") })
         {
             var key = EditorStyle.DimLabel($"▼ {what}", 12);
@@ -106,7 +111,8 @@ public partial class ModelView : VBoxContainer
             _legend.AddChild(key);
         }
         _legend.Visible = false;
-        under.AddChild(_legend);
+        row.AddChild(_legend);
+        under.AddChild(row);
         under.AddChild(_actorPanel);
         split.AddChild(under);
         _body.AddChild(split);
@@ -236,7 +242,7 @@ public partial class ModelView : VBoxContainer
         _markedState = -1;
         Marks = null;
         _emitters.Visible = _sceneCamera.Visible = false;
-        _actorPanel.Visible = _actorPanel.Bar.Visible = _actorSeparator.Visible = false;
+        _actorPanel.Visible = _actorPanel.Bar.Visible = _actorPanel.ViewButtons.Visible = _actorSeparator.Visible = false;
         _note.Text = "";
     }
 
@@ -316,7 +322,7 @@ public partial class ModelView : VBoxContainer
             _motion = Vector3.Zero;
             var clips = file.Clips(actor.RootTransform);
             _actorPanel.Show(actor, n => clips.Clip(actor.States[n].Animation)?.Length ?? 0);
-            _actorPanel.Visible = _actorPanel.Bar.Visible = _actorSeparator.Visible = true;
+            _actorPanel.Visible = _actorPanel.Bar.Visible = _actorPanel.ViewButtons.Visible = _actorSeparator.Visible = true;
             _ground = Ground(radius);
             _viewport.AddChild(_ground);
             ShowFrame();

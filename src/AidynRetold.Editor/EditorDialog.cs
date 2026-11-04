@@ -18,8 +18,8 @@ public sealed record DialogButton(string Label, DialogButtonKind Kind, Action? P
 /// <summary>
 /// The editor's dialog, over everything: a dimmed backdrop, and a box of a fixed width, its title in a band of its own with a line
 /// under it, its message in paragraphs, and its buttons at its foot's right, the way out first and the way forward last, filled,
-/// red where it takes something away. Focus starts on the way out; Escape and a click on the backdrop take it, where the dialog
-/// allows. It's a control of the editor's window, so it takes the editor's theme, dark or light.
+/// red where it takes something away. Focus starts on the way out; the cross at the title's right, Escape and a click on the
+/// backdrop take it, where the dialog allows. It's a control of the editor's window, so it takes the editor's theme, dark or light.
 /// </summary>
 public partial class EditorDialog : Control
 {
@@ -29,7 +29,7 @@ public partial class EditorDialog : Control
     private Action? _cancel;
     private Control? _focus;
 
-    /// <param name="dismissable">Whether Escape and the backdrop cancel: not for a dialog the editor can't go on without.</param>
+    /// <param name="dismissable">Whether the cross, Escape and the backdrop cancel: not for a dialog the editor can't go on without.</param>
     /// <param name="under">What stands under the buttons, at the foot's right: a quieter way on, such as Just looking around.</param>
     public EditorDialog(string title, IEnumerable<Control> body, IReadOnlyList<DialogButton> buttons, float width = 460, bool dismissable = true,
         Control? under = null)
@@ -57,7 +57,19 @@ public partial class EditorDialog : Control
         box.AddChild(column);
 
         var band = new PanelContainer { ThemeTypeVariation = "DialogTitle" };
-        band.AddChild(new Label { Text = title, ThemeTypeVariation = "DialogTitleLabel" });
+        var titleRow = EditorStyle.Row(8);
+        titleRow.AddChild(new Label { Text = title, ThemeTypeVariation = "DialogTitleLabel", SizeFlagsHorizontal = SizeFlags.ExpandFill });
+        if (dismissable)
+        {
+            var close = new Button
+            {
+                Icon = EditorTheme.CloseIcon(EditorTheme.Current.Dim), ThemeTypeVariation = "FlatButton", FocusMode = FocusModeEnum.None,
+                TooltipText = "Close (Escape)", SizeFlagsVertical = SizeFlags.ShrinkCenter,
+            };
+            close.Pressed += Cancel;
+            titleRow.AddChild(close);
+        }
+        band.AddChild(titleRow);
         column.AddChild(band);
 
         var margin = new MarginContainer();
@@ -150,12 +162,18 @@ public partial class EditorDialog : Control
         }
     }
 
+    /// <summary>The dialog was closed without a button: by its cross, Escape or the backdrop, where it has no Cancel to press.</summary>
+    public event Action? Dismissed;
+
     private void Cancel()
     {
         if (_cancel is not null)
+        {
             _cancel();
-        else
-            Close();
+            return;
+        }
+        Dismissed?.Invoke();
+        Close();
     }
 
     public void Close() => QueueFree();

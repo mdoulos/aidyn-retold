@@ -6,8 +6,9 @@ using Godot;
 namespace AidynRetold.Editor;
 
 /// <summary>
-/// An actor's states and branches, with the controls to drive its state machine by a request, which sit in the model view's toolbar
-/// (<see cref="Bar"/>). <see cref="ModelView"/> does the playing; this only shows and asks.
+/// An actor's states and branches, filling the height under the view, with the controls to drive its state machine by a request,
+/// which sit in the model view's toolbar (<see cref="Bar"/>), and Table and Graph, in the timeline's row (<see cref="ViewButtons"/>).
+/// <see cref="ModelView"/> does the playing; this only shows and asks.
 /// </summary>
 public partial class ActorPanel : VBoxContainer
 {
@@ -58,7 +59,8 @@ public partial class ActorPanel : VBoxContainer
             if (!_selecting && _states.GetSelected() is { } row)
                 StateClicked?.Invoke(row.GetMetadata(0).AsInt32());
         };
-        AddChild(ViewBar());
+        SizeFlagsVertical = SizeFlags.ExpandFill;
+        BuildViewButtons();
         AddChild(_states);
         AddChild(_graph);
 
@@ -70,6 +72,9 @@ public partial class ActorPanel : VBoxContainer
 
     /// <summary>Drive, the request, home and Root in place, for the model view's toolbar.</summary>
     public HBoxContainer Bar { get; } = EditorStyle.Row(6);
+
+    /// <summary>Table and Graph, for the timeline's row.</summary>
+    public HBoxContainer ViewButtons { get; } = EditorStyle.Row(4);
 
     public event Action<int>? StateClicked;
     public event Action<bool>? DriveChanged;

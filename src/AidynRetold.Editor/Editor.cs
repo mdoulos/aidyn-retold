@@ -65,7 +65,14 @@ public partial class Editor : Control
             return;
         if (!await PickModFirstAsync(plugins, args, png))
             return;
-        await _records.LoadAsync(plugins);
+        var loading = _records.LoadAsync(plugins);
+        // --loading 1 saves the loading card, while the plugins load.
+        if (png is not null && args.GetValueOrDefault("loading") == "1")
+        {
+            await Screenshot(png);
+            return;
+        }
+        await loading;
         // A bad checkpoint or save shouldn't stop the record opening, or a script waits for the watchdog.
         if (args.TryGetValue("checkpoint", out var checkpoint))
         {
@@ -107,6 +114,9 @@ public partial class Editor : Control
             _records.PressPartyTab(presses.Split(','));
         if (args.TryGetValue("drive", out var request))
             _records.Model.Drive(int.Parse(request, CultureInfo.InvariantCulture));
+        // --mod-dialog toolbar opens the toolbar's mod dialog, which closes by its cross.
+        if (args.GetValueOrDefault("mod-dialog") == "toolbar")
+            _ = ModSetup.AskAsync(this, plugins, blocking: false);
         if (args.TryGetValue("toast", out var toast))
             Toast.Show(this, toast, () => { }, seconds: 30);
         if (args.GetValueOrDefault("states") == "graph")

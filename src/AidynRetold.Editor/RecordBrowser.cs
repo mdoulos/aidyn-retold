@@ -13,9 +13,9 @@ using Godot;
 namespace AidynRetold.Editor;
 
 /// <summary>
-/// The editor's view of the installed plugins (ADR 0010): every record and asset by type, with a
-/// preview, the merged fields and what names it. Record IDs are links, with back and forward
-/// (the buttons, Alt+Left and Alt+Right, or the mouse's side buttons).
+/// The editor's view of the installed plugins (ADR 0010): every record and asset by type, in a side panel with the type and the
+/// search over it, and a record's preview, merged fields and what names it beside. Record IDs are links, with back and forward
+/// (Alt+Left and Alt+Right, or the mouse's side buttons).
 /// </summary>
 /// <remarks>
 /// It reads plugins only. The ROM is the import dialog's (<see cref="ImportDialog"/>), which the editor shows before the browser
@@ -25,17 +25,18 @@ public partial class RecordBrowser : Control
 {
     private const string Preview = "Preview", Fields = "Fields", UsedBy = "Used by", Atlas = "Atlas";
 
-    private readonly Button _back = new() { Text = "◀", TooltipText = "Back (Alt+Left)", Disabled = true };
-    private readonly Button _forward = new() { Text = "▶", TooltipText = "Forward (Alt+Right)", Disabled = true };
-    private readonly OptionButton _types = new() { TooltipText = "Type" };
+    private readonly OptionButton _types = new() { TooltipText = "Type", CustomMinimumSize = new Vector2(150, 0) };
     private readonly LineEdit _search = new()
     {
         PlaceholderText = "Search records (Ctrl+F)",
-        CustomMinimumSize = new Vector2(280, 0),
+        SizeFlagsHorizontal = SizeFlags.ExpandFill,
         ClearButtonEnabled = true,
         TooltipText = "Filters the list (Ctrl+F). Enter opens a record ID, or the only match; Escape clears it.",
     };
-    private readonly Label _status = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, HorizontalAlignment = HorizontalAlignment.Right };
+    /// <summary>What's gone wrong, in the toolbar.</summary>
+    private readonly Label _status = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true, ThemeTypeVariation = "ProblemLabel" };
+    /// <summary>How many records the list shows, under it.</summary>
+    private readonly Label _count = EditorStyle.DimLabel(size: 13);
     private readonly Tree _list = new();
     private readonly RecordHeader _header = new();
     private readonly TabContainer _tabs = new() { SizeFlagsVertical = SizeFlags.ExpandFill };
@@ -119,7 +120,7 @@ public partial class RecordBrowser : Control
         _current = null;
         _history.Clear();
         _position = -1;
-        UpdateHistoryButtons();
+        _status.Text = "";
         Populate();
         ShowNothing("");
         // The editor imports before it loads (ADR 0043), so this is only a ROM plugin gone or replaced while it ran: the game would
@@ -130,7 +131,7 @@ public partial class RecordBrowser : Control
             return;
         }
 
-        _status.Text = $"Loading {pluginsDirectory}…";
+        ShowLoading();
         var generation = ++_generation;
         var (catalog, quests, game, rules, items, report) = await Task.Run(() =>
         {
@@ -267,11 +268,6 @@ public partial class RecordBrowser : Control
         AddChild(root);
 
         var bar = EditorStyle.Row(6);
-        bar.AddChild(_back);
-        bar.AddChild(_forward);
-        bar.AddChild(new VSeparator());
-        bar.AddChild(_types);
-        bar.AddChild(_search);
         bar.AddChild(_status);
         bar.AddChild(new VSeparator());
         // The mod saves go to, which clicking changes (ModSetup).
@@ -299,8 +295,13 @@ public partial class RecordBrowser : Control
         toolbar.AddChild(bar);
         root.AddChild(toolbar);
 
-        var split = new HSplitContainer { SizeFlagsVertical = SizeFlags.ExpandFill, SplitOffsets = [520] };
-        root.AddChild(split);
+        // The page under the toolbar, inset from the window's edges.
+        var page = new MarginContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+        foreach (var edge in new[] { "left", "right", "bottom" })
+            page.AddThemeConstantOverride($"margin_{edge}", 6);
+        root.AddChild(page);
+        var split = new HSplitContainer { SplitOffsets = [520] };
+        page.AddChild(split);
 
         _list.Columns = 3;
         _list.HideRoot = true;
@@ -320,7 +321,17 @@ public partial class RecordBrowser : Control
             if (!_selecting && _list.GetSelected()?.GetMetadata(0).AsString() is { } text && RecordId.TryParse(text, out var id))
                 Navigate(id);
         };
-        split.AddChild(_list);
+        // The side panel: the type and the search over the list, and the list's count under it.
+        var side = new VBoxContainer();
+        side.AddThemeConstantOverride("separation", 6);
+        var filters = EditorStyle.Row(6);
+        filters.AddChild(_types);
+        filters.AddChild(_search);
+        side.AddChild(filters);
+        _list.SizeFlagsVertical = SizeFlags.ExpandFill;
+        side.AddChild(_list);
+        side.AddChild(_count);
+        split.AddChild(side);
 
         var right = new VBoxContainer();
         right.AddThemeConstantOverride("separation", 4);
@@ -359,8 +370,6 @@ public partial class RecordBrowser : Control
         _map.Opened += FollowLink;
         _map.Saved += () => _ = Report(LoadAsync(_pluginsDirectory));
 
-        _back.Pressed += () => Step(-1);
-        _forward.Pressed += () => Step(1);
         _types.ItemSelected += _ => Populate();
         _search.TextChanged += _ => Populate();
         _search.TextSubmitted += Submit;
@@ -408,6 +417,7 @@ public partial class RecordBrowser : Control
     {
         _list.Clear();
         _rows.Clear();
+        _count.Text = "";
         if (_catalog is null)
             return;
         var type = _types.GetSelectedId() is > 0 and var t ? _typeNames[t - 1] : null;
@@ -443,7 +453,7 @@ public partial class RecordBrowser : Control
         }
         if (_current is { } current && _rows.TryGetValue(current, out var selected))
             SelectRow(selected);
-        _status.Text = $"{_rows.Count:N0} of {_catalog.Entries.Count:N0} records and assets";
+        _count.Text = $"{_rows.Count:N0} of {_catalog.Entries.Count:N0} records and assets";
     }
 
     private static bool Matches(CatalogEntry entry, string search) =>
@@ -504,18 +514,11 @@ public partial class RecordBrowser : Control
     {
         // Another page shows the plugins' own, whatever the last one showed.
         _original = false;
-        UpdateHistoryButtons();
         if (_rows.TryGetValue(id, out var row))
             SelectRow(row);
         else
             _list.DeselectAll();
         _showing = Report(ShowAsync(id));
-    }
-
-    private void UpdateHistoryButtons()
-    {
-        _back.Disabled = _position <= 0;
-        _forward.Disabled = _position >= _history.Count - 1;
     }
 
     // ---- Showing a record -----------------------------------------------------------------------
@@ -535,6 +538,14 @@ public partial class RecordBrowser : Control
     {
         _tabs.SetTabTitle(tab, title);
         _header.Tabs.SetTabTitle(tab, title);
+    }
+
+    /// <summary>The loading card (<see cref="LoadingPage"/>), while the plugins load.</summary>
+    private void ShowLoading()
+    {
+        _header.Visible = false;
+        _tabs.CurrentTab = 0;
+        SetPreview(new LoadingPage());
     }
 
     /// <summary>The start page (<see cref="StartPage"/>), before a record is picked, with the validation report's problems if any.</summary>

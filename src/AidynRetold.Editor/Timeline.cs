@@ -20,9 +20,9 @@ public enum TimelineMarkKind
 }
 
 /// <summary>
-/// A clip's ticks across the view's width, under it: the playhead, a tick mark every ten and a number every fifty, and the clip's
-/// marks (<see cref="TimelineMark"/>) over the track, coloured by kind, each with its tooltip. Clicking or dragging on it scrubs,
-/// as the model view's slider did.
+/// A clip's ticks in a row as high as a button, under the view beside the states' Table and Graph: the track, the playhead across
+/// it, a tick mark every ten and a number every fifty under it, and the clip's marks (<see cref="TimelineMark"/>) over it, coloured
+/// by kind, each with its tooltip. Clicking or dragging on it scrubs, as the model view's slider did.
 /// </summary>
 public partial class Timeline : Control
 {
@@ -39,7 +39,7 @@ public partial class Timeline : Control
 
     public Timeline()
     {
-        CustomMinimumSize = new Vector2(0, 44);
+        CustomMinimumSize = new Vector2(0, 30);
         MouseFilter = MouseFilterEnum.Stop;
         TooltipText = " ";
     }
@@ -84,7 +84,7 @@ public partial class Timeline : Control
         }
     }
 
-    private const float Margin = 10, TrackTop = 22, TrackHeight = 10;
+    private const float Margin = 10, TrackTop = 9, TrackHeight = 6, NumberSize = 10;
 
     private float X(int tick) => Margin + (Size.X - 2 * Margin) * tick / _length;
 
@@ -97,25 +97,24 @@ public partial class Timeline : Control
         for (var t = 0; t <= _length; t += 10)
         {
             var x = X(t);
-            DrawLine(new Vector2(x, TrackTop + TrackHeight), new Vector2(x, TrackTop + TrackHeight + (t % 50 == 0 ? 6 : 3)), Ticks);
+            DrawLine(new Vector2(x, TrackTop + TrackHeight), new Vector2(x, TrackTop + TrackHeight + (t % 50 == 0 ? 4 : 2)), Ticks);
             if (t % 50 == 0)
-                DrawString(font, new Vector2(x + 2, Size.Y - 1), t.ToString(CultureInfo.InvariantCulture), fontSize: 11, modulate: Ticks);
+                DrawString(font, new Vector2(x + 2, Size.Y - 1), t.ToString(CultureInfo.InvariantCulture), fontSize: (int)NumberSize, modulate: Ticks);
         }
         // The length at the end, for a clip too short to reach the first fifty.
         var end = _length.ToString(CultureInfo.InvariantCulture);
-        var endWidth = font.GetStringSize(end, fontSize: 11).X;
+        var endWidth = font.GetStringSize(end, fontSize: (int)NumberSize).X;
         if (_length % 50 != 0)
-            DrawString(font, new Vector2(Size.X - Margin - endWidth, Size.Y - 1), end, fontSize: 11, modulate: Ticks);
+            DrawString(font, new Vector2(Size.X - Margin - endWidth, Size.Y - 1), end, fontSize: (int)NumberSize, modulate: Ticks);
+        // The marks point down onto the track, over it.
         foreach (var mark in _marks)
         {
             var x = X(mark.Tick);
-            var color = ColorOf(mark.Kind);
-            var top = 2 + (int)mark.Kind % 2 * 9;
-            DrawColoredPolygon([new Vector2(x - 5, top), new Vector2(x + 5, top), new Vector2(x, top + 9)], color);
-            DrawLine(new Vector2(x, top + 9), new Vector2(x, TrackTop + TrackHeight), color with { A = 0.6f });
+            DrawColoredPolygon([new Vector2(x - 4, 1), new Vector2(x + 4, 1), new Vector2(x, TrackTop)], ColorOf(mark.Kind));
         }
+        // The playhead: a short bar across the track, no taller than the marks and the ticks around it.
         var head = X(_tick);
-        DrawLine(new Vector2(head, 0), new Vector2(head, TrackTop + TrackHeight + 2), Head, 2);
+        DrawRect(new Rect2(head - 1.5f, TrackTop - 4, 3, TrackHeight + 8), Head);
     }
 
     public static Color ColorOf(TimelineMarkKind kind) => kind switch

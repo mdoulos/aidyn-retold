@@ -8,15 +8,13 @@ namespace AidynRetold.Editor;
 /// <summary>
 /// The actor's states as a graph (<see cref="GraphEdit"/>): a card per state, its animation and length in its title and a row per
 /// branch, each row's port joined to the state it leads to, orange where it interrupts. The cards stand in columns by how many
-/// branches from the initial state reach them, the states it never reaches in the last. <c>Show</c> keeps one request's branches
-/// joined, so a walk's or an attack's path stands out; picking a card picks its state, as a row of the table does.
+/// branches from the initial state reach them, the states it never reaches in the last. Picking a card picks its state, as a row
+/// of the table does.
 /// </summary>
 public partial class ActorPanel
 {
     private const float ColumnWidth = 300, RowGap = 24;
     private static Color Plain => EditorTheme.Current.Dim;
-
-    private static Color Faded => EditorTheme.Current.Dim with { A = 0.35f };
 
     private readonly GraphEdit _graph = new()
     {
@@ -27,7 +25,6 @@ public partial class ActorPanel
 
     /// <summary>The panel's height for the table, and the more the graph needs, which the view's split gives up.</summary>
     private const float TableHeight = 220, GraphHeight = 440;
-    private readonly OptionButton _only = new() { TooltipText = "The branches to join: every request's, or one's" };
     private readonly Button _tableButton = new() { Text = "Table", ToggleMode = true, ButtonPressed = true };
     private readonly Button _graphButton = new() { Text = "Graph", ToggleMode = true };
     private readonly Dictionary<int, GraphNode> _cards = [];
@@ -35,38 +32,26 @@ public partial class ActorPanel
     private Func<int, int>? _length;
     private bool _graphBuilt;
 
-    /// <summary>The row over the states: the table or the graph, and which request's branches the graph joins.</summary>
-    private Control ViewBar()
+    /// <summary>Table and Graph, which the model view puts in the timeline's row (<see cref="ViewButtons"/>).</summary>
+    private void BuildViewButtons()
     {
-        var bar = EditorStyle.Row(6);
         var group = new ButtonGroup();
         _tableButton.ButtonGroup = _graphButton.ButtonGroup = group;
         _tableButton.Pressed += () => ShowGraph(false);
         _graphButton.Pressed += () => ShowGraph(true);
-        bar.AddChild(_tableButton);
-        bar.AddChild(_graphButton);
-        bar.AddChild(new VSeparator());
-        bar.AddChild(EditorStyle.DimLabel("Show"));
-        _only.ItemSelected += _ => Join();
-        bar.AddChild(_only);
-        _only.Disabled = true;
+        ViewButtons.AddChild(_tableButton);
+        ViewButtons.AddChild(_graphButton);
         _graph.NodeSelected += node =>
         {
             if (!_selecting && node is GraphNode card && card.HasMeta("state"))
                 StateClicked?.Invoke(card.GetMeta("state").AsInt32());
         };
-        return bar;
     }
 
     /// <summary>Keeps the actor for the graph, which is built when first shown.</summary>
     private void KeepForGraph(ActorRecord actor, Func<int, int> length)
     {
         (_actor, _length, _graphBuilt) = (actor, length, false);
-        _only.Clear();
-        _only.AddItem("every request", -1);
-        foreach (var r in actor.States.SelectMany(s => s.Branches).Select(b => b.Request).Distinct().Order())
-            _only.AddItem(RequestName(r), r);
-        _only.Select(0);
         if (_graph.Visible)
             BuildGraph();
     }
@@ -75,7 +60,6 @@ public partial class ActorPanel
     {
         _graph.Visible = on;
         _states.Visible = !on;
-        _only.Disabled = !on;
         CustomMinimumSize = new Vector2(0, on ? GraphHeight : TableHeight);
         if (on && !_graphBuilt)
             BuildGraph();
@@ -137,23 +121,18 @@ public partial class ActorPanel
         Join();
     }
 
-    /// <summary>Joins each branch's port to its state's, of every request or the one picked, the rest's rows faded.</summary>
+    /// <summary>Joins each branch's port to its state's.</summary>
     private void Join()
     {
         if (_actor is not { } actor || !_graphBuilt)
             return;
         _graph.ClearConnections();
-        var only = _only.Selected <= 0 ? (int?)null : _only.GetItemId(_only.Selected);
         for (var n = 0; n < actor.States.Count; n++)
         {
             var branches = actor.States[n].Branches;
             for (var i = 0; i < branches.Count; i++)
             {
-                var b = branches[i];
-                var shown = only is null || b.Request == only;
-                if (_cards[n].GetChild(i + 1) is Label row)
-                    row.Modulate = shown ? Colors.White : Faded;
-                if (shown && _cards.TryGetValue(b.State, out var to))
+                if (_cards.TryGetValue(branches[i].State, out var to))
                     _graph.ConnectNode(_cards[n].Name, i, to.Name, 0);
             }
         }

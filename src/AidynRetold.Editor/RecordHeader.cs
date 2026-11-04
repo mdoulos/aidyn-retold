@@ -58,7 +58,10 @@ public partial class RecordHeader : HBoxContainer
         _copied = id.Split(" · ")[0];
         _id.TooltipText = _copied.Length == 0 ? "" : $"{_copied}: click to copy it.";
         foreach (var child in _sources.GetChildren())
+        {
+            _sources.RemoveChild(child);
             child.QueueFree();
+        }
         for (var i = 0; i < sources.Count; i++)
         {
             if (i > 0)

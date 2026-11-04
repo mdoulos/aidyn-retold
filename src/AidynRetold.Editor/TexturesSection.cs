@@ -149,8 +149,12 @@ public partial class TexturesSection : VBoxContainer
         _picked = index;
         for (var i = 0; i < _frames.Count; i++)
             _frames[i].AddThemeStyleboxOverride("panel", i == index ? Picked : Plain);
+        // Out at once, not at the frame's end, so the old details don't stand a frame beside the new and the card doesn't jump.
         foreach (var child in _details.GetChildren())
+        {
+            _details.RemoveChild(child);
             child.QueueFree();
+        }
 
         var entry = _entries[index];
         var size = entry.Override is { } o && PngHeader.Size(o.Path) is var (ow, oh) ? $"{ow}×{oh}"

@@ -595,7 +595,10 @@ public partial class MapSetView : VBoxContainer
     private void RebuildLegend()
     {
         foreach (var child in _legend.GetChildren())
+        {
+            _legend.RemoveChild(child);
             child.QueueFree();
+        }
         var counts = _objects.Where(m => Shown(m.Object)).GroupBy(m => m.Object.GetType()).ToDictionary(g => g.Key, g => g.Count());
         foreach (var (type, kind) in MapObjects.Kinds)
         {

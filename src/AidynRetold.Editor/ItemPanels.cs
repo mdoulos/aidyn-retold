@@ -344,7 +344,10 @@ public partial class ShopPanel : PagePanel
         if (_game is null || _shopkeeper is null)
             return;
         foreach (var child in _window.GetChildren())
+        {
+            _window.RemoveChild(child);
             child.QueueFree();
+        }
         var party = _game.Game.Party;
         var shop = Shop.Open(_record, _shopkeeper, party, party.Inventory.Catalog, _game.Game.Flags);
         _window.AddChild(BarterWindowPanel.ForShop(Plugins, _game, shop));
@@ -423,7 +426,10 @@ public partial class LootPanel : PagePanel
         var roll = Containers.Roll(_loot, _items.Rules, _random);
         Show(roll);
         foreach (var child in _window.GetChildren())
+        {
+            _window.RemoveChild(child);
             child.QueueFree();
+        }
         var pile = new ItemPile(_items);
         foreach (var (item, count) in roll.Items)
             pile.Add(item, count);

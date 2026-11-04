@@ -13,7 +13,13 @@ namespace AidynRetold.Editor;
 /// </summary>
 public partial class TexturesSection : VBoxContainer
 {
-    private const int Tile = 64;
+    private const int Tile = 64, TileMargin = 4, TileGap = 6;
+
+    /// <summary>
+    /// How wide a card holding the textures four across is: four tiles, each the texture and its frame's margins, three gaps, and the
+    /// card's body padding and border each side. The model inspector is this wide to begin with (<see cref="ModelInspector.Width"/>).
+    /// </summary>
+    public const int FourAcrossCard = 4 * (Tile + 2 * TileMargin) + 3 * TileGap + 2 * (24 + 1);
     // The mode's, made as the section is, which a change of mode makes again.
     private readonly StyleBoxFlat Plain = Frame(EditorTheme.Current.Border), Picked = Frame(EditorTheme.Current.Accent);
 
@@ -35,7 +41,7 @@ public partial class TexturesSection : VBoxContainer
     {
         _ctx = ctx;
         AddThemeConstantOverride("separation", 8);
-        _tiles.AddThemeConstantOverride("h_separation", 6);
+        _tiles.AddThemeConstantOverride("h_separation", TileGap);
         _tiles.AddThemeConstantOverride("v_separation", 6);
         AddChild(_tiles);
         _details.AddThemeConstantOverride("separation", 6);
@@ -328,6 +334,6 @@ public partial class TexturesSection : VBoxContainer
     {
         BgColor = EditorTheme.Current.Field, BorderColor = edge, BorderWidthBottom = 2, BorderWidthTop = 2, BorderWidthLeft = 2, BorderWidthRight = 2,
         CornerRadiusBottomLeft = 3, CornerRadiusBottomRight = 3, CornerRadiusTopLeft = 3, CornerRadiusTopRight = 3,
-        ContentMarginLeft = 4, ContentMarginRight = 4, ContentMarginTop = 4, ContentMarginBottom = 2,
+        ContentMarginLeft = TileMargin, ContentMarginRight = TileMargin, ContentMarginTop = 4, ContentMarginBottom = 2,
     };
 }

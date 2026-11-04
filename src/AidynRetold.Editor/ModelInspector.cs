@@ -16,7 +16,15 @@ public partial class ModelInspector : VBoxContainer
 {
     private readonly ModelContext _ctx;
     private readonly List<Wearer> _wearers;
-    private readonly OptionButton _shownAs = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, TooltipText = "The character whose body, held items and strike the sections show" };
+    /// <summary>How wide the inspector is to begin with: just wide enough for a model's textures four across (it widens as it's dragged).</summary>
+    public const int Width = TexturesSection.FourAcrossCard;
+
+    // As wide as the row leaves it, a long name trimmed, so it never widens the inspector.
+    private readonly OptionButton _shownAs = new()
+    {
+        SizeFlagsHorizontal = SizeFlags.ExpandFill, FitToLongestItem = false, ClipText = true, TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+        TooltipText = "The character whose body, held items and strike the sections show",
+    };
     // What names the record, over the model's cards.
     private readonly VBoxContainer _first = new();
     private readonly VBoxContainer _sections = new();

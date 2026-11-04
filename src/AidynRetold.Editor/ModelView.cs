@@ -29,8 +29,8 @@ public partial class ModelView : VBoxContainer
     private readonly HSplitContainer _body = new() { SizeFlagsVertical = SizeFlags.ExpandFill };
     private readonly ScrollContainer _inspectorScroll = new()
     {
-        // Wide enough for four textures across.
-        CustomMinimumSize = new Vector2(400, 0), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, Visible = false,
+        // As wide as the inspector in it, which is just wide enough for four textures across, and its scroll bar when it shows.
+        HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, Visible = false,
     };
     private readonly CheckBox _wireframe = new() { Text = "Wireframe" };
     // On screen a Borg5 is a model, as the editor's types call it, not a scene, which reads as a film's.
@@ -130,6 +130,7 @@ public partial class ModelView : VBoxContainer
         _body.AddChild(left);
         Inspector.AddThemeConstantOverride("separation", 16);
         Inspector.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        Inspector.CustomMinimumSize = new Vector2(ModelInspector.Width, 0);
         // The inspector takes the width its side of the split is given, however wide that's dragged.
         var inset = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
         inset.AddThemeConstantOverride("margin_right", 6);

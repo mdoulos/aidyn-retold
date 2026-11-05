@@ -16,9 +16,14 @@ public sealed class MagicRules
     {
         Record = record;
         _spells = spells.ToDictionary(s => s.Id);
-        _potions = potions.Where(p => p.Kind == ItemKind.Potion).ToDictionary(p => p.Id);
+        var items = potions.ToList();
+        _potions = items.Where(p => p.Kind == ItemKind.Potion).ToDictionary(p => p.Id);
+        HasFood = items.Any(p => p.Kind == ItemKind.Food);
         Inventory = inventory;
     }
+
+    /// <summary>Whether the plugins have food, the remade game's (<see cref="ItemKind.Food"/>), which members' hunger needs.</summary>
+    public bool HasFood { get; }
 
     public MagicRecord Record { get; }
 

@@ -34,8 +34,11 @@ public static class Potions
     /// </summary>
     public const int Margin = 255;
 
-    /// <summary>How a potion is used, by its record; nothing for an item that isn't a potion.</summary>
-    public static PotionUse Use(Item item) => item.Kind == ItemKind.Potion ? item.Gear?.Use ?? PotionUse.None : PotionUse.None;
+    /// <summary>How a potion or food is used, by its record; nothing for an item that's neither.</summary>
+    public static PotionUse Use(Item item) => item.Kind is ItemKind.Potion or ItemKind.Food ? item.Gear?.Use ?? PotionUse.None : PotionUse.None;
+
+    /// <summary>Whether it's food, which is eaten rather than drunk, and feeds the eater.</summary>
+    public static bool IsFood(Item item) => item.Kind == ItemKind.Food;
 
     /// <summary>Whether the item is a flask, thrown in a battle rather than drunk, which the crafting messages call so.</summary>
     public static bool IsFlask(Item item) => Use(item).HasFlag(PotionUse.Throw);
@@ -55,6 +58,9 @@ public static class Potions
         var drunkHere = inBattle ? PotionUse.DrinkInBattle : PotionUse.DrinkInTrek;
         if (potion.Gear is not { Effects: [_, ..] effects } record || IsFlask(potion) || !Use(potion).HasFlag(drunkHere))
             return DrinkResult.NotInTrek;
+        // Food can always be eaten where its record allows: it feeds the eater, whatever else it does.
+        if (IsFood(potion))
+            return DrinkResult.Drunk;
         if (record.Duration is not null && effects.Any(EffectRules.Lasting))
             return member.HasEffect(record.Id) ? DrinkResult.NotNow : DrinkResult.Drunk;
         return effects.Any(e => WouldDo(member, e)) ? DrinkResult.Drunk : DrinkResult.NotNow;
@@ -80,7 +86,7 @@ public static class Potions
     /// <param name="on">The member's combatant, drinking in a battle.</param>
     public static DrinkResult Drink(Party party, Character member, Item item, IRandom random, Combatant? on = null, IMagicHost? host = null)
     {
-        if (item.Kind != ItemKind.Potion || !party.Inventory.Has(item.Id))
+        if (item.Kind is not (ItemKind.Potion or ItemKind.Food) || !party.Inventory.Has(item.Id))
             return DrinkResult.NotInTrek;
         var can = CanDrink(member, item, inBattle: on is not null);
         if (can != DrinkResult.Drunk)
@@ -91,6 +97,8 @@ public static class Potions
         var result = EffectLanding.Land(record.Effects!, record.Duration, landing);
         if (result.Dice is { } dice)
             member.TakeDamage(random.RollD(dice & 0xFF, 6), on);
+        if (IsFood(item))
+            member.Eat();
         party.Inventory.Take(item.Id);
         return DrinkResult.Drunk;
     }

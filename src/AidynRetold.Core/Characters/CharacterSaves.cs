@@ -77,6 +77,7 @@ public sealed class CharacterSaves(PluginSet plugins, CharacterRules rules, Item
             Gear = [.. worn.Gear.OfType<ItemInstance>().Select(g => Item(g)!)],
             Spells = [.. member.Spells.Select(s => new KnownSpell(s.Spell.Id, s.Level))],
             Potions = [.. member.PotionEffects.Select(p => new SavePotion(p.Source, p.Timer) { Power = p.Power })],
+            SinceMeal = member.SinceMeal,
         };
 
         static SaveItem? Item(ItemInstance? item) => item is null ? null : new SaveItem(item.Id) { Battery = item.Battery, Charges = item.Charges };
@@ -106,6 +107,8 @@ public sealed class CharacterSaves(PluginSet plugins, CharacterRules rules, Item
 
         var recorded = Character.SkillLevels(entity);
         var levels = SkillSlots.ToArray(saved.Skills, saved.WeaponSkills, saved.ShieldSkill);
+        // Cook only rises, and a save from before it reads 0, so a member has at least the record's.
+        levels[SkillSlots.Cook] = Math.Max(levels[SkillSlots.Cook] ?? 0, recorded[SkillSlots.Cook] ?? 0);
         // CharSkills::LoadOne: a skill the record can't learn stays unlearnable. The modified level starts at the
         // base, or at 0 for one that can't be learnt, as the checkpoints hold it.
         var skills = new CharacterSkills(rules, [.. levels.Select((level, i) => recorded[i] is null ? null : (int?)(sbyte)(level ?? 0))]);
@@ -142,6 +145,7 @@ public sealed class CharacterSaves(PluginSet plugins, CharacterRules rules, Item
             else
                 problems.Add($"{entity.Name} has {potion.Potion} working, which isn't a potion.");
         }
+        character.SetSinceMeal(saved.SinceMeal);
         return character;
 
         void Wear(SaveItem? item, Func<ItemInstance, EquipRefusal> equip)

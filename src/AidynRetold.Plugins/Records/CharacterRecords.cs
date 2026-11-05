@@ -158,7 +158,10 @@ public sealed record Resistance(Element Element, float Damage);
 /// <summary>The six attributes, as the original numbers them (stats 0–5).</summary>
 public sealed record Attributes(int Intelligence, int Willpower, int Dexterity, int Endurance, int Strength, int Stamina);
 
-/// <summary>Skill levels, as the original numbers them (skills 0–11). Null is a skill that can't be learnt.</summary>
+/// <summary>
+/// Skill levels, as the original numbers them (skills 0–11), and the remade game's Cook, which anyone can learn, so it's 0 unless a
+/// record says otherwise. Null is a skill that can't be learnt.
+/// </summary>
 public sealed record SkillLevels(
     int? Alchemist = null,
     int? Diplomat = null,
@@ -171,7 +174,8 @@ public sealed record SkillLevels(
     int? Thief = null,
     int? Troubadour = null,
     int? Warrior = null,
-    int? Wizard = null);
+    int? Wizard = null,
+    int? Cook = 0);
 
 /// <summary>
 /// Weapon skill levels, by weapon class (weapon skills 0–10). Party members use Hafted to Thrown;
@@ -191,12 +195,18 @@ public sealed record WeaponSkillLevels(
     int? Tusk = null);
 
 /// <summary>
-/// The 24 skill levels as a character holds them in a row (<c>CharSkills</c>): the 12 skills, the 11 weapon
-/// skills, then the shield. Null is one that can't be learnt.
+/// The skill levels as a character holds them in a row (<c>CharSkills</c>): the original's 24, the 12 skills, the 11 weapon skills
+/// and the shield, then the remade game's Cook. Null is one that can't be learnt.
 /// </summary>
 public static class SkillSlots
 {
-    public const int Count = 24;
+    public const int Count = 25;
+
+    /// <summary>The original's: what its saves, checkpoints and ROM hold.</summary>
+    public const int OriginalCount = 24;
+
+    /// <summary>Cook's slot, after the shield.</summary>
+    public const int Cook = 24;
 
     /// <summary>The row of levels for a record's, save's or checkpoint's three parts.</summary>
     public static int?[] ToArray(SkillLevels skills, WeaponSkillLevels weapons, int? shield) =>
@@ -204,15 +214,18 @@ public static class SkillSlots
             skills.Stealth, skills.Thief, skills.Troubadour, skills.Warrior, skills.Wizard,
             weapons.Bite, weapons.Breath, weapons.Claw, weapons.Hafted, weapons.Missile, weapons.Pole, weapons.Spit, weapons.Sting,
             weapons.Sword, weapons.Thrown, weapons.Tusk,
-            shield];
+            shield, skills.Cook];
 
-    /// <summary>The three parts a row of <see cref="Count"/> levels is made of.</summary>
+    /// <summary>
+    /// The three parts a row of <see cref="Count"/> levels is made of, or of the original's <see cref="OriginalCount"/>, as its ROM,
+    /// saves and checkpoints hold them, Cook then 0.
+    /// </summary>
     public static (SkillLevels Skills, WeaponSkillLevels WeaponSkills, int? ShieldSkill) Split(IReadOnlyList<int?> levels)
     {
-        if (levels.Count != Count)
-            throw new ArgumentException($"There are {Count} skills, weapon skills and the shield.", nameof(levels));
+        if (levels.Count is not (Count or OriginalCount))
+            throw new ArgumentException($"There are {Count} skills, weapon skills, the shield and Cook.", nameof(levels));
         return (new SkillLevels(levels[0], levels[1], levels[2], levels[3], levels[4], levels[5], levels[6], levels[7], levels[8],
-                levels[9], levels[10], levels[11]),
+                levels[9], levels[10], levels[11], levels.Count == Count ? levels[Cook] : 0),
             new WeaponSkillLevels(levels[12], levels[13], levels[14], levels[15], levels[16], levels[17], levels[18], levels[19],
                 levels[20], levels[21], levels[22]),
             levels[23]);

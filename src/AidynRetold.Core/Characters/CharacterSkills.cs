@@ -1,3 +1,4 @@
+using AidynRetold.Plugins.Records;
 namespace AidynRetold.Core.Characters;
 
 /// <summary>
@@ -21,11 +22,13 @@ public sealed class CharacterSkills
     /// <summary>
     /// Starts at <paramref name="levels"/>, with the modified levels at least 0 (<c>CharSkills::Init</c>).
     /// </summary>
-    /// <param name="levels">By <see cref="SkillId.Slot"/>, null for one that can't be learnt.</param>
+    /// <param name="levels">By <see cref="SkillId.Slot"/>, null for one that can't be learnt; the original's 24 with Cook at 0.</param>
     public CharacterSkills(CharacterRules rules, IReadOnlyList<int?> levels)
     {
+        if (levels.Count == SkillSlots.OriginalCount)
+            levels = [.. levels, 0];
         if (levels.Count != SkillId.Count)
-            throw new ArgumentException($"There are {SkillId.Count} skills, weapon skills and the shield.", nameof(levels));
+            throw new ArgumentException($"There are {SkillId.Count} skills, weapon skills, the shield and Cook.", nameof(levels));
         _rules = rules;
         for (var i = 0; i < SkillId.Count; i++)
         {
@@ -34,11 +37,11 @@ public sealed class CharacterSkills
         }
     }
 
-    /// <summary>The levels as the original holds them, such as from the checkpoints' RAM.</summary>
+    /// <summary>The levels as the original holds them, such as from the checkpoints' RAM: its 24, Cook at 0.</summary>
     public CharacterSkills(CharacterRules rules, IReadOnlyList<int> @base, IReadOnlyList<int> modified)
         : this(rules, [.. @base.Select(b => (int?)b)])
     {
-        for (var i = 0; i < SkillId.Count; i++)
+        for (var i = 0; i < modified.Count && i < SkillId.Count; i++)
             _modified[i] = (sbyte)modified[i];
     }
 
@@ -60,7 +63,7 @@ public sealed class CharacterSkills
     public bool CanLearn(SkillId skill) => _base[skill.Slot] != CantLearn;
 
     /// <summary>The skills, weapon skills and shield it's above level 0 in, in the skill screen's order.</summary>
-    public IEnumerable<SkillId> Learnt => SkillId.All.Where(s => Base(s) > 0);
+    public IEnumerable<SkillId> Learnt => SkillId.Shown.Where(s => Base(s) > 0);
 
     /// <summary>Whether training can't raise it further (<c>CharSkills::isSkillCapped</c>).</summary>
     public bool IsCapped(SkillId skill) => _rules[skill].BaseCap <= _base[skill.Slot];

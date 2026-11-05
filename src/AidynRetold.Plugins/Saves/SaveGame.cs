@@ -148,6 +148,9 @@ public sealed record SaveCharacter(RecordId Entity)
 
     /// <summary>The potions working on the character, which loading applies again (<c>SaveParty::SavePotionEffect</c>).</summary>
     public IReadOnlyList<SavePotion> Potions { get; init; } = [];
+
+    /// <summary>The game's time since the character last ate, in the clock's units: the remade game's hunger. 0 in an older save.</summary>
+    public ulong SinceMeal { get; init; }
 }
 
 /// <summary>A potion working on a character.</summary>

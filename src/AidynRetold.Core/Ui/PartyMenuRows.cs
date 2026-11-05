@@ -75,7 +75,7 @@ public static class PartyMenuRows
     /// </summary>
     public static IReadOnlyList<SkillRow> Skills(Character character) =>
     [
-        .. SkillId.All.Where(s => character.Skills.Base(s) > 0).Select(s => new SkillRow(s, character.Rules[s].Name,
+        .. SkillId.Shown.Where(s => character.Skills.Base(s) > 0).Select(s => new SkillRow(s, character.Rules[s].Name,
             s.IsSkill ? character.Rules[s].Icon : null, character.Skills.Base(s), character.Skills.Modified(s) - character.Skills.Base(s))),
     ];
 

@@ -358,7 +358,7 @@ public sealed class PakSaves
 
     private SaveCharacter Character(PakSheet sheet, PakSave? alaron, ICollection<string> problems)
     {
-        var (skills, weaponSkills, shieldSkill) = SkillSlots.Split([.. Enumerable.Range(0, SkillSlots.Count).Select(slot =>
+        var (skills, weaponSkills, shieldSkill) = SkillSlots.Split([.. Enumerable.Range(0, SkillSlots.OriginalCount).Select(slot =>
             Array.IndexOf([.. PakSheet.SavedSkills], slot) is var i and >= 0 && sheet.Skills[i] != 0xF ? sheet.Skills[i] : (int?)null)]);
         var spells = new List<KnownSpell>();
         void Known(MagicSchool school, IReadOnlyList<int> levels)

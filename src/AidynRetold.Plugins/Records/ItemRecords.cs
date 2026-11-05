@@ -165,6 +165,12 @@ public enum ItemKind
     Scroll = 17,
     Key = 18,
     Amulet = 19,
+    /// <summary>
+    /// The remade game's food (ADR 0021's potions' way): eaten as a potion is drunk, from the pause menu or C-up's, by its record's
+    /// <see cref="ItemRecord.Use"/> and effects, and eating anything feeds the eater (<c>Character.Hunger</c>). Most is cooked from
+    /// ingredients by the Cook skill. No ID of the original's has this kind.
+    /// </summary>
+    Food = 32,
 }
 
 /// <summary>Where a piece of armor is worn.</summary>

@@ -262,7 +262,13 @@ public static class EditorTheme
         t.SetTypeVariation("ChangedChip", "PanelContainer");
         t.SetStylebox("panel", "ChangedChip", Box(p.Raised, p.Changed, 99, 1, 10, 2));
         t.SetTypeVariation("Toolbar", "PanelContainer");
-        t.SetStylebox("panel", "Toolbar", Box(p.Band, p.Border, 0, 0, 16, 8, top: 0, bottom: 1));
+        // Its padding is 3 above and below, the quick buttons' pictures filling the rest of its height (RecordBrowser); the row's other
+        // controls stand centred in it.
+        t.SetStylebox("panel", "Toolbar", Box(p.Band, p.Border, 0, 0, 16, 3, top: 0, bottom: 1));
+        // A picture button, as the toolbar's quick buttons: flat, its picture 2 in from its sides and 1 from its top and bottom.
+        t.SetTypeVariation("IconButton", "Button");
+        foreach (var state in new[] { "normal", "hover", "pressed", "focus", "disabled" })
+            t.SetStylebox(state, "IconButton", Box(state is "hover" or "pressed" ? p.Hover : Colors.Transparent, null, 4, 0, 2, 1));
         // The toolbar's back and forward, each in a box, outlined as a button is and tighter, to sit in its row, its arrow its icon.
         foreach (var (name, back) in new[] { ("BackButton", true), ("ForwardButton", false) })
         {

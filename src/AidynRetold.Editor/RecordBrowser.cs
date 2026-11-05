@@ -29,12 +29,12 @@ public partial class RecordBrowser : Control
     private readonly Button _back = new()
     {
         ThemeTypeVariation = "BackButton", TooltipText = "Back (Alt+Left)", Disabled = true, FocusMode = FocusModeEnum.None,
-        IconAlignment = HorizontalAlignment.Center, CustomMinimumSize = new Vector2(30, 26),
+        IconAlignment = HorizontalAlignment.Center, CustomMinimumSize = new Vector2(30, 26), SizeFlagsVertical = SizeFlags.ShrinkCenter,
     };
     private readonly Button _forward = new()
     {
         ThemeTypeVariation = "ForwardButton", TooltipText = "Forward (Alt+Right)", Disabled = true, FocusMode = FocusModeEnum.None,
-        IconAlignment = HorizontalAlignment.Center, CustomMinimumSize = new Vector2(30, 26),
+        IconAlignment = HorizontalAlignment.Center, CustomMinimumSize = new Vector2(30, 26), SizeFlagsVertical = SizeFlags.ShrinkCenter,
     };
     private readonly OptionButton _types = new() { TooltipText = "Type", CustomMinimumSize = new Vector2(150, 0) };
     private readonly LineEdit _search = new()
@@ -45,7 +45,10 @@ public partial class RecordBrowser : Control
         TooltipText = "Filters the list (Ctrl+F). Enter opens a record ID, or the only match; Escape clears it.",
     };
     /// <summary>What's gone wrong, in the toolbar.</summary>
-    private readonly Label _status = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true, ThemeTypeVariation = "ProblemLabel" };
+    private readonly Label _status = new()
+    {
+        SizeFlagsHorizontal = SizeFlags.ExpandFill, VerticalAlignment = VerticalAlignment.Center, ClipText = true, ThemeTypeVariation = "ProblemLabel",
+    };
     /// <summary>How many records the list shows, under it.</summary>
     private readonly Label _count = EditorStyle.DimLabel(size: 13);
     private readonly Tree _list = new();
@@ -390,10 +393,11 @@ public partial class RecordBrowser : Control
             ("editor_shield", "Shield", "The shields", () => ShowList(RecordTypes.Shield, null, null)),
         })
         {
+            // As tall as the toolbar less its 3 of padding above and below, the picture filling it but for the style's 1 and 2.
             var button = new Button
             {
-                Text = text, TooltipText = tip, ThemeTypeVariation = "FlatButton", FocusMode = FocusModeEnum.None, ExpandIcon = true,
-                IconAlignment = HorizontalAlignment.Center, CustomMinimumSize = new Vector2(34, 26), Visible = false,
+                Text = text, TooltipText = tip, ThemeTypeVariation = "IconButton", FocusMode = FocusModeEnum.None, ExpandIcon = true,
+                IconAlignment = HorizontalAlignment.Center, CustomMinimumSize = new Vector2(39, 37), Visible = false,
                 TextureFilter = TextureFilterEnum.LinearWithMipmaps,
             };
             button.Pressed += go;
@@ -406,7 +410,11 @@ public partial class RecordBrowser : Control
         bar.AddChild(_status);
         bar.AddChild(new VSeparator());
         // The mod saves go to, which clicking changes (ModSetup).
-        var mod = new Button { ThemeTypeVariation = "FlatButton", FocusMode = FocusModeEnum.None, TooltipText = "The mod your changes are saved to. Click to change it." };
+        var mod = new Button
+        {
+            ThemeTypeVariation = "FlatButton", FocusMode = FocusModeEnum.None, TooltipText = "The mod your changes are saved to. Click to change it.",
+            SizeFlagsVertical = SizeFlags.ShrinkCenter,
+        };
         void ShowMod() => mod.Text = CurrentMod.Id is { } id ? $"Saving to: {EditorStyle.PluginName(id)}" : "Not saving to a mod";
         ShowMod();
         CurrentMod.Changed += ShowMod;
@@ -417,6 +425,7 @@ public partial class RecordBrowser : Control
         var light = new CheckButton
         {
             Text = "Light mode", ButtonPressed = EditorTheme.IsLight, FocusMode = FocusModeEnum.None, TooltipText = "Light or dark, kept for next time",
+            SizeFlagsVertical = SizeFlags.ShrinkCenter,
         };
         light.Toggled += on =>
         {

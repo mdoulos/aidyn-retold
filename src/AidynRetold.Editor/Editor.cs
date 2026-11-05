@@ -148,6 +148,8 @@ public partial class Editor : Control
             _records.EditPage?.PickPicture();
         if (Option("model") == "1")
             _records.EditPage?.PickModel();
+        if (args.TryGetValue("page-tab", out var pageTab))
+            _records.EditPage?.ShowTab(pageTab);
         if (args.TryGetValue("page-scroll", out var pageScroll))
             _records.EditPage?.ScrollTo(int.Parse(pageScroll, CultureInfo.InvariantCulture));
         if (args.TryGetValue("drive", out var request))

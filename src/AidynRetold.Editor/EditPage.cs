@@ -16,7 +16,8 @@ namespace AidynRetold.Editor;
 /// <remarks>A page builds itself once its own fields are set (<see cref="Build"/>), as its rows read them.</remarks>
 public abstract partial class EditPage : HSplitContainer
 {
-    private const float LabelWidth = 260;
+    /// <summary>How wide the rows' label column is: narrower on a page whose rows need the room, as an entity's columns do.</summary>
+    protected virtual float LabelWidth => 260;
     // The picture dialog's tiles, nine across, 6 apart, as wide as its words, its edges as far from the first and the last.
     protected const int PictureTile = 56, PictureColumns = 9, PictureGap = 6, PictureGrid = PictureColumns * PictureTile + (PictureColumns - 1) * PictureGap;
     // How far the grid's scroll reaches into the dialog's right margin, for its bar, which is about 4 wide.
@@ -34,7 +35,7 @@ public abstract partial class EditPage : HSplitContainer
     // A picture from a file, which saving writes as the mod's own image and points the record at, and what the page says of it.
     private byte[]? _png;
     private string? _pngText;
-    private Label? _title;
+    private TabBar? _tabs;
     // What the panel beside the cards needs, to build it again as the model, or what decides whether there's one, changes.
     private readonly AidynRetold.Views.Models? _models;
     private readonly Action<RecordId> _open;
@@ -84,7 +85,7 @@ public abstract partial class EditPage : HSplitContainer
                 _changes[field] = value?.DeepClone();
         }
         (_png, _pngText) = _changes.ContainsKey(PictureFieldName) ? (held.Png, held.PngText) : (null, null);
-        _title?.Text = CardTitle;
+        _tabs?.SetTabTitle(0, CardTitle);
         BuildRows();
         UpdateSide();
     }
@@ -138,6 +139,12 @@ public abstract partial class EditPage : HSplitContainer
 
     /// <summary>Whether the card has a Name row: not for a kind the game doesn't name, such as a shop, which its shopkeeper names.</summary>
     protected virtual bool ShowsName => true;
+
+    /// <summary>Whether the name and the picture share the card's first row, the name first: an entity's do.</summary>
+    protected virtual bool NameBesidePicture => false;
+
+    /// <summary>The card's other tabs, after its own: each a page shown in the card's body in place of the rows.</summary>
+    protected virtual IEnumerable<(string Title, Control Page)> ExtraTabs => [];
 
     /// <summary>
     /// A held value as the patch writes it: as it is, unless the kind has to say more, as a keyed list says which elements it removes.
@@ -422,8 +429,16 @@ public abstract partial class EditPage : HSplitContainer
         column.AddThemeConstantOverride("separation", 0);
         var head = new PanelContainer { ThemeTypeVariation = "CardHead" };
         var row = EditorStyle.Row(8);
-        _title = new Label { Text = CardTitle, ThemeTypeVariation = "CardTitleLabel", SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        row.AddChild(_title);
+        var tabs = _tabs = new TabBar { ClipTabs = false, SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ShrinkCenter };
+        tabs.AddTab(CardTitle);
+        var pages = new List<Control>();
+        foreach (var (title, page) in ExtraTabs)
+        {
+            tabs.AddTab(title);
+            page.Visible = false;
+            pages.Add(page);
+        }
+        row.AddChild(tabs);
         row.AddChild(_count);
         row.AddChild(_discard);
         row.AddChild(_save);
@@ -431,6 +446,21 @@ public abstract partial class EditPage : HSplitContainer
         column.AddChild(head);
         _rows.AddThemeConstantOverride("separation", 0);
         column.AddChild(_rows);
+        foreach (var page in pages)
+        {
+            var inset = new MarginContainer { Visible = false };
+            foreach (var side in new[] { "margin_left", "margin_right", "margin_top", "margin_bottom" })
+                inset.AddThemeConstantOverride(side, 16);
+            page.Visible = true;
+            inset.AddChild(page);
+            column.AddChild(inset);
+        }
+        tabs.TabChanged += tab =>
+        {
+            _rows.Visible = tab == 0;
+            for (var i = 0; i < pages.Count; i++)
+                pages[i].GetParent<Control>().Visible = tab == i + 1;
+        };
         card.AddChild(column);
         _discard.Pressed += Discard;
         _save.Pressed += Save;
@@ -448,13 +478,22 @@ public abstract partial class EditPage : HSplitContainer
         }
         _modelRow = null;
         _modelName = null;
-        if (ShowsPicture)
-            AddRow("Picture", PictureField(), PictureHelp);
-        if (ShowsName)
+        const string nameHelp = "What the menus, the shops and the conversations call it.";
+        if (ShowsPicture && ShowsName && NameBesidePicture)
         {
-            var name = new LineEdit { Text = CurrentName, CustomMinimumSize = new Vector2(300, 0), SizeFlagsHorizontal = SizeFlags.ShrinkBegin };
-            name.TextChanged += text => Change("name", text, RecordName);
-            AddRow("Name", name, "What the menus, the shops and the conversations call it.");
+            var both = EditorStyle.Row(16);
+            var name = NameField();
+            (name.CustomMinimumSize, name.SizeFlagsHorizontal) = (new Vector2(160, 0), SizeFlags.ExpandFill);
+            both.AddChild(name);
+            both.AddChild(PictureField(controlsFirst: true));
+            AddRow("Name", both, nameHelp);
+        }
+        else
+        {
+            if (ShowsPicture)
+                AddRow("Picture", PictureField(controlsFirst: false), PictureHelp);
+            if (ShowsName)
+                AddRow("Name", NameField(), nameHelp);
         }
         AddValueRows();
         AddLastRows();
@@ -644,26 +683,43 @@ public abstract partial class EditPage : HSplitContainer
 
     // ---- The picture -------------------------------------------------------------------------------------------------------------
 
-    /// <summary>The picture, in a well, with Change Picture beside it and its image's ID under that.</summary>
-    private Control PictureField()
+    /// <summary>The Name box, held as <c>name</c>.</summary>
+    private LineEdit NameField()
+    {
+        var name = new LineEdit { Text = CurrentName, CustomMinimumSize = new Vector2(300, 0), SizeFlagsHorizontal = SizeFlags.ShrinkBegin, SizeFlagsVertical = SizeFlags.ShrinkBegin };
+        name.TextChanged += text => Change("name", text, RecordName);
+        return name;
+    }
+
+    /// <summary>The picture, in a well, with Change Picture beside it and its image's ID under that: after the picture, or before it.</summary>
+    private Control PictureField(bool controlsFirst)
     {
         var row = EditorStyle.Row(16);
-        var well = new PanelContainer { ThemeTypeVariation = "Well", SizeFlagsVertical = SizeFlags.ShrinkBegin };
+        var well = new PanelContainer { ThemeTypeVariation = "Well", SizeFlagsVertical = SizeFlags.ShrinkBegin, TooltipText = controlsFirst ? PictureHelp : "" };
         _picture = new TextureRect
         {
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
             CustomMinimumSize = new Vector2(PictureSize, PictureSize), TextureFilter = TextureFilterEnum.LinearWithMipmaps,
         };
         well.AddChild(_picture);
-        row.AddChild(well);
         var side = new VBoxContainer { SizeFlagsVertical = SizeFlags.ShrinkCenter };
         side.AddThemeConstantOverride("separation", 6);
-        var change = new Button { Text = "Change Picture", SizeFlagsHorizontal = SizeFlags.ShrinkBegin };
+        var change = new Button { Text = "Change Picture", SizeFlagsHorizontal = controlsFirst ? SizeFlags.ShrinkEnd : SizeFlags.ShrinkBegin };
         change.Pressed += PickPicture;
         side.AddChild(change);
         _pictureId = EditorStyle.DimLabel();
+        _pictureId.HorizontalAlignment = controlsFirst ? HorizontalAlignment.Right : HorizontalAlignment.Left;
         side.AddChild(_pictureId);
-        row.AddChild(side);
+        if (controlsFirst)
+        {
+            row.AddChild(side);
+            row.AddChild(well);
+        }
+        else
+        {
+            row.AddChild(well);
+            row.AddChild(side);
+        }
         // The picture held, if there's one: a file's, or another of the game's.
         var held = Text(Shown(PictureFieldName, null));
         if (held is not null && held.StartsWith("file:", StringComparison.Ordinal) && _png is not null && FromPng(_png) is { } file)
@@ -810,7 +866,7 @@ public abstract partial class EditPage : HSplitContainer
         else
             _changes[field] = value;
         UpdateCount();
-        _title?.Text = CardTitle;
+        _tabs?.SetTabTitle(0, CardTitle);
         if (field == "model" || ChangesModelPanel(field))
             UpdateSide();
     }
@@ -837,6 +893,18 @@ public abstract partial class EditPage : HSplitContainer
         BuildRows();
     }
 
+    /// <summary>Shows the card's tab with a title, such as As Trainer, for a screenshot (<c>--page-tab</c>); a title it hasn't leaves the card as it is.</summary>
+    public void ShowTab(string title)
+    {
+        if (_tabs is null)
+            return;
+        for (var i = 0; i < _tabs.TabCount; i++)
+        {
+            if (string.Equals(_tabs.GetTabTitle(i), title, StringComparison.OrdinalIgnoreCase))
+                _tabs.CurrentTab = i;
+        }
+    }
+
     /// <summary>Scrolls the cards down by <paramref name="pixels"/>, for a screenshot (<c>--page-scroll</c>), once they're laid out.</summary>
     public void ScrollTo(int pixels) => GetTree().CreateTimer(0.1).Timeout += () => _cards?.ScrollVertical = pixels;
 
@@ -851,7 +919,7 @@ public abstract partial class EditPage : HSplitContainer
     {
         _changes.Clear();
         (_png, _pngText) = (null, null);
-        _title?.Text = CardTitle;
+        _tabs?.SetTabTitle(0, CardTitle);
         BuildRows();
         UpdateSide();
     }

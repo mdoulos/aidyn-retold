@@ -70,7 +70,7 @@ public partial class BarterWindowPanel : MenuWindowPanel
             Leave(Closed("The party left the rest."));
     }
 
-    private void Back()
+    protected override void Back()
     {
         if (!_barter.Back())
             Leave(Closed("The window closed."));

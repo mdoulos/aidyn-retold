@@ -17,7 +17,7 @@ public partial class TrainingWindowPanel : MenuWindowPanel
     {
     }
 
-    private TrainingWindowPanel(PluginSet plugins, EditorGame game, TrainingMenu training) : base(plugins, training)
+    private TrainingWindowPanel(PluginSet plugins, EditorGame game, TrainingMenu training) : base(plugins, training, bare: true)
     {
         _training = training;
         Describe($"The training window against {(game.IsNewGame ? "a new game" : game.Name)}: what's trained stays in the game. The stick's up "
@@ -37,7 +37,7 @@ public partial class TrainingWindowPanel : MenuWindowPanel
         Finish("with room, the trainer's list goes right of the member's.", closes: true);
     }
 
-    private void Back()
+    protected override void Back()
     {
         if (!_training.Back())
             Leave("The window closed. In the game, the menu closes and trek goes on.");

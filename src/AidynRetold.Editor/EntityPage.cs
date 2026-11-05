@@ -38,10 +38,7 @@ public partial class EntityPage : EditPage
         // Someone who teaches has the game's training window, on the editor's game, as a script's Train opens it.
         var teaches = Trainer.From(entity, rules, catalog.Plugins.Get<SpellRecord>);
         if (game is not null && items is not null && (teaches.SkillsOffered.Any() || teaches.Spells.Count > 0))
-        {
             _window = new TrainingWindowPanel(catalog.Plugins, game, teaches);
-            cards.Add(new Section("As a trainer", _window, foldable: false) { Note = "the game's training window" });
-        }
         // The atlas only where the quest index has something on it.
         if (quests is not null && QuestIndex.Covers(entity.Id))
         {
@@ -57,6 +54,14 @@ public partial class EntityPage : EditPage
 
     /// <summary>The training window, if the entity teaches anything.</summary>
     public TrainingWindowPanel? Window => _window;
+
+    /// <summary>As Trainer: the game's training window at it, as wide as the card, for one who teaches.</summary>
+    protected override IEnumerable<(string Title, Control Page)> ExtraTabs => _window is null ? [] : [("As Trainer", _window)];
+
+    protected override bool NameBesidePicture => true;
+
+    // The attributes and skills stand in three columns, which need the room the labels would take.
+    protected override float LabelWidth => 190;
 
     protected override RecordId Id => _entity.Id;
 
@@ -102,7 +107,7 @@ public partial class EntityPage : EditPage
 
     protected override string CardTitle => _entity.Kind switch
     {
-        EntityKind.Party => "Party member",
+        EntityKind.Party => "Party Member",
         EntityKind.Enemy => "Enemy",
         EntityKind.Character => "Character",
         _ => "Entity",
@@ -129,20 +134,29 @@ public partial class EntityPage : EditPage
             "The sheet the game builds from the record: its hit points are its Endurance, Stamina and Level, and its experience its level's.");
         AddRow("Kind", Choice("category", e.Category, Enum.GetValues<EntityCategory>()),
             "The entity DB's group. Party is the party; Chaos and Natural are enemies, and so is a Humanoid worth experience; Named and Generic are the characters. Charming fails on Chaos.");
-        AddRow("School", Choice("school", e.School, Enum.GetValues<MagicSchool>(), s => s switch
+        var school = EditorStyle.Row(16);
+        var choice = Choice("school", e.School, Enum.GetValues<MagicSchool>(), s => s switch
         {
-            MagicSchool.None => "Unschooled: only unschooled spells",
-            MagicSchool.Chaos => "Chaos: every school",
+            MagicSchool.None => "Unschooled",
+            MagicSchool.Chaos => "Chaos (every school)",
             _ => s.ToString(),
-        }), "Which spells it can learn.");
+        });
+        choice.SizeFlagsVertical = SizeFlags.ShrinkBegin;
+        school.AddChild(choice);
+        var spells = SpellList();
+        spells.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        school.AddChild(spells);
+        AddRow("School and spells", school, "Which spells it can learn (unschooled, only unschooled spells; Chaos, every school), and the spells it knows, at their levels.");
         // The True Name is the story's: a script gives it, and the page never offers it. Heavy matters to the enemies' and characters' foes alone.
         if (Kind != EntityKind.Party)
             AddRow("Heavy", Switch("heavy", e.Heavy, "Heavy"), "Spells that need a heavy target work on it.");
         AddRow("Level", Number("level", e.Level, Math.Min(1, e.Level), Math.Max(_rules.Progression.Levels.Count - 1, e.Level)), "Its level as it starts, which its experience and hit points follow.");
-        AddRow("Attributes", StatButtons(), "Its base attributes. Click one to change it, up to the attribute's base cap.");
-        AddRow("Skills", SkillButtons(SkillId.All.Where(s => s.IsSkill)), "Its base skill levels. Click one to change it; a greyed skill is one it can never learn, which a click can allow.");
-        AddRow("Weapon skills", SkillButtons(SkillId.All.Where(s => s.IsWeapon || s.IsShield)), "Its weapon skills and the shield skill, which say what it can wield and bear.");
-        AddRow("Spells", SpellList(), "The spells it knows, at their levels.");
+        var columns = EditorStyle.Row(16);
+        columns.AddChild(Column("Attributes", StatButtons()));
+        columns.AddChild(Column("Skills", SkillButtons(SkillId.All.Where(s => s.IsSkill))));
+        columns.AddChild(Column("Weapon skills", SkillButtons(SkillId.All.Where(s => s.IsWeapon || s.IsShield))));
+        AddRow("Attributes and skills", columns,
+            "Its base attributes and skill levels. Click one to change it, up to its base cap; a greyed skill is one it can never learn, which a click can allow. The weapon skills and the shield skill say what it can wield and bear.");
         AddRow("Equipment", Slots(), SlotsHelp());
         // What a party member never uses is left out: its morale, and what beating it is worth; a character's loot and perception too.
         if (Kind != EntityKind.Party)
@@ -223,21 +237,33 @@ public partial class EntityPage : EditPage
         };
     }
 
-    private Control StatButtons()
+    /// <summary>A column of the attributes and skills row: its heading over its buttons, one under another.</summary>
+    private static Control Column(string heading, IEnumerable<Button> buttons)
     {
-        var flow = new HFlowContainer();
-        flow.AddThemeConstantOverride("h_separation", 6);
-        flow.AddThemeConstantOverride("v_separation", 6);
+        var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        column.AddThemeConstantOverride("separation", 6);
+        column.AddChild(new Label { Text = heading, ThemeTypeVariation = "SubheadLabel" });
+        foreach (var button in buttons)
+        {
+            // Narrow enough that three columns fit beside the model, the text cut where they can't.
+            (button.Alignment, button.SizeFlagsHorizontal, button.CustomMinimumSize) = (HorizontalAlignment.Left, SizeFlags.ExpandFill, new Vector2(110, 0));
+            (button.ClipText, button.TextOverrunBehavior) = (true, TextServer.OverrunBehavior.TrimEllipsis);
+            column.AddChild(button);
+        }
+        return column;
+    }
+
+    private IEnumerable<Button> StatButtons()
+    {
         foreach (var stat in Attributes)
         {
             var record = _rules[stat];
             var value = StatValue(stat);
-            var button = new Button { Text = $"{record.Name}  {value}", TooltipText = $"{record.Name}, 1 to {record.BaseCap}. Click to change it." };
+            var button = new Button { Text = $"{record.Name}: {value}", TooltipText = $"{record.Name}, 1 to {record.BaseCap}. Click to change it." };
             // An enemy's may stand past the party's cap, and stays there until it's changed.
             button.Pressed += () => AskNumber(record.Name, value, Math.Min(1, value), Math.Max(record.BaseCap, value), n => SetStat(stat, n));
-            flow.AddChild(button);
+            yield return button;
         }
-        return flow;
     }
 
     private void SetStat(Stat stat, int value)
@@ -268,18 +294,15 @@ public partial class EntityPage : EditPage
         return Character.SkillLevels(_entity)[skill.Slot];
     }
 
-    private Control SkillButtons(IEnumerable<SkillId> skills)
+    private IEnumerable<Button> SkillButtons(IEnumerable<SkillId> skills)
     {
-        var flow = new HFlowContainer();
-        flow.AddThemeConstantOverride("h_separation", 6);
-        flow.AddThemeConstantOverride("v_separation", 6);
         foreach (var skill in skills)
         {
             var record = _rules[skill];
             var level = SkillLevel(skill);
             var button = new Button
             {
-                Text = $"{record.Name}  {(level is { } l ? l.ToString(CultureInfo.InvariantCulture) : "—")}",
+                Text = $"{record.Name}: {(level is { } l ? l.ToString(CultureInfo.InvariantCulture) : "—")}",
                 TooltipText = level is null ? $"{record.Name}: it can never learn it. Click to allow it." : $"{record.Name}, 0 to {record.BaseCap}. Click to change it.",
             };
             if (level is null)
@@ -299,9 +322,8 @@ public partial class EntityPage : EditPage
                     ]).Open(this);
                 }
             };
-            flow.AddChild(button);
+            yield return button;
         }
-        return flow;
     }
 
     /// <summary>

@@ -167,7 +167,7 @@ public sealed partial class Combatant
     {
         var stats = Sheet.Stats;
         var able = stats.Modified(Stat.Intelligence) != 0 && stats.Modified(Stat.Willpower) != 0
-            && stats.Modified(Stat.Dexterity) != 0 && stats.Modified(Stat.Strength) != 0 && !IsImmobilised;
+            && stats.Modified(Stat.Dexterity) != 0 && stats.Modified(Stat.Strength) != 0 && !IsImmobilised && !KeptDown;
         Flags = able ? Flags | CombatantFlags.Active : Flags & ~CombatantFlags.Active;
     }
 

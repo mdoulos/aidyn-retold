@@ -24,7 +24,8 @@ public sealed partial class Battle
     /// before the death is found, for an attack, a flask thrown or a spell's first target alike): in a battle whose rules have one
     /// (<see cref="EncounterRule.KeelOver"/>, the Goblin Ambush's), a blow that would hurt its member takes 1 hit point instead,
     /// which replaces the queued line; and the last of its hits takes the member's Strength to 0, so it can't act, and at the next
-    /// turn's change the party has fallen, though the member lives. Returns the damage.
+    /// turn's change the party has fallen, though the member lives. The port keeps it down by <see cref="Combatant.KeptDown"/>, as
+    /// Strength reads at least 1 there. Returns the damage.
     /// </summary>
     internal int KeelOver(Combatant t, int damage)
     {
@@ -36,6 +37,7 @@ public sealed partial class Battle
         if (KeelOverHits == 0)
         {
             t.Sheet.Stats.ChangeCurrent(Stat.Strength, -t.Sheet.Stats.Modified(Stat.Strength));
+            t.KeptDown = true;
             t.UpdateActive(this);
         }
         return 1;

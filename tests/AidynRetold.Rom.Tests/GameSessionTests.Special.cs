@@ -123,9 +123,11 @@ public sealed partial class GameSessionTests
         Assert.Equal("Alaron loses 1 hit point", battle.Lines.Queued);
         Assert.True(alaron.Active);
 
-        // The second takes his Strength to 0: he can't act, and at the next turn's change the party has fallen, though he lives.
+        // The second takes his Strength to 0, which reads as 1 in the port, so he's kept down: he can't act, and at the next turn's
+        // change the party has fallen, though he lives.
         Assert.Equal(1, battle.KeelOver(alaron, 3));
-        Assert.Equal(0, leader.Stats.Modified(Stat.Strength));
+        Assert.Equal(0, leader.Stats.RawModified(Stat.Strength));
+        Assert.True(alaron.KeptDown);
         Assert.False(alaron.Active);
         battle.EndTurn(battle.Current!);
         Assert.Equal(CombatState.DefeatWait, battle.State);

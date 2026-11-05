@@ -183,6 +183,13 @@ public sealed partial class Combatant
     }
 
     /// <summary>
+    /// Kept from acting for the rest of the battle by its own rules: the Goblin Ambush's last hit on Alaron
+    /// (<see cref="Battle.KeelOver"/>), which in the original takes his Strength to 0. In the port Strength reads at least 1, the
+    /// user's choice, so a spell can't do the same; this does it for the battle alone.
+    /// </summary>
+    public bool KeptDown { get; set; }
+
+    /// <summary>
     /// Whether an effect holds it (<c>Combatant.IsImmobilised</c>, <c>0x80062250</c>): Wall of Bones, Frozen Doom, Web of Starlight.
     /// A held target's Dexterity and shield don't count against an attack.
     /// </summary>

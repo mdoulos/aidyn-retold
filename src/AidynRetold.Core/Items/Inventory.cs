@@ -3,14 +3,69 @@ using AidynRetold.Plugins;
 
 namespace AidynRetold.Core.Items;
 
-/// <summary>A stack of one item in an inventory: one instance, which the whole stack shares, and how many.</summary>
-public sealed class ItemStack(ItemInstance instance, int quantity)
+/// <summary>
+/// A stack of one item in an inventory: one instance, which the whole stack shares, and how many. For a food that spoils (the remade
+/// game's, <see cref="Spoilage"/>), how long each unit has been held, oldest first: taking from the stack takes the oldest, so the one
+/// about to spoil is eaten first.
+/// </summary>
+public sealed class ItemStack
 {
-    public ItemInstance Instance { get; } = instance;
+    private readonly List<ulong> _ages = [];
 
-    public int Quantity { get; internal set; } = quantity;
+    public ItemStack(ItemInstance instance, int quantity)
+    {
+        Instance = instance;
+        SetQuantity(quantity);
+    }
+
+    public ItemInstance Instance { get; }
+
+    public int Quantity { get; private set; }
 
     public Item Item => Instance.Item;
+
+    /// <summary>For a food that spoils, the game's time each unit has been held, oldest first, as many as the quantity; else none.</summary>
+    public IReadOnlyList<ulong> Ages => _ages;
+
+    /// <summary>How long the oldest unit has before it spoils, or null for an item that keeps.</summary>
+    public ulong? Left => Item.Spoils && _ages.Count > 0 ? Item.KeepsFor - Math.Min(_ages[0], Item.KeepsFor) : null;
+
+    /// <summary>How close the oldest unit is to spoiling, or null for an item that keeps.</summary>
+    public Freshness? Freshness => Left is { } left ? Spoilage.Of(left, Item.KeepsFor) : null;
+
+    /// <summary>Sets the ages as a save holds them, oldest first whatever their order, padded fresh or cut to the quantity.</summary>
+    public void SetAges(IEnumerable<ulong> ages)
+    {
+        if (!Item.Spoils)
+            return;
+        _ages.Clear();
+        _ages.AddRange(ages.OrderByDescending(a => a).Take(Quantity));
+        while (_ages.Count < Quantity)
+            _ages.Add(0);
+    }
+
+    // More units come fresh; fewer takes the oldest.
+    internal void SetQuantity(int quantity)
+    {
+        if (Item.Spoils)
+        {
+            if (quantity > Quantity)
+                _ages.AddRange(Enumerable.Repeat(0UL, quantity - Quantity));
+            else if (quantity < Quantity)
+                _ages.RemoveRange(0, Math.Min(Quantity - quantity, _ages.Count));
+        }
+        Quantity = quantity;
+    }
+
+    // Time passing for every unit: how many are now past their time, which are the first that many.
+    internal int Age(ulong units)
+    {
+        if (!Item.Spoils)
+            return 0;
+        for (var i = 0; i < _ages.Count; i++)
+            _ages[i] += units;
+        return _ages.Count(a => a >= Item.KeepsFor);
+    }
 
     public override string ToString() => $"{Item.Name} × {Quantity}";
 }
@@ -88,15 +143,30 @@ public sealed class PartyInventory(ItemCatalog catalog, FlagNetwork? flags = nul
     /// <summary>Empties the inventory, as the debug menu does. Key items' flags stay as they are (<c>ClearInventory</c>).</summary>
     public void Clear() => _stacks.Clear();
 
+    /// <summary>
+    /// The game's time passing for the food that spoils, the remade game's (<see cref="Spoilage"/>), as it passes for the members'
+    /// effects: every unit ages, and those past their time leave, the oldest of a stack first. What left, for the player to be told.
+    /// </summary>
+    public IReadOnlyList<Tossed> Age(ulong units)
+    {
+        if (units == 0)
+            return [];
+        List<Tossed>? tossed = null;
+        foreach (var stack in _stacks.ToList())
+        {
+            var gone = stack.Age(units);
+            if (gone == 0)
+                continue;
+            (tossed ??= []).Add(new Tossed(stack.Item, gone));
+            Change(stack, -gone);
+        }
+        return tossed ?? [];
+    }
+
     // PartyInventory::IncItemQuantity: up to the limit, and gone at 0, when a key item's flag clears.
     private void Change(ItemStack stack, int quantity)
     {
-        stack.Quantity += quantity;
-        if (stack.Quantity >= Catalog.Rules.StackLimit)
-        {
-            stack.Quantity = Catalog.Rules.StackLimit;
-            return;
-        }
+        stack.SetQuantity(Math.Min(stack.Quantity + quantity, Catalog.Rules.StackLimit));
         if (stack.Quantity > 0)
             return;
         _stacks.Remove(stack);
@@ -157,10 +227,8 @@ public sealed class ItemPile(ItemCatalog catalog)
 
     private void Change(ItemStack stack, int quantity)
     {
-        stack.Quantity += quantity;
-        if (stack.Quantity >= catalog.Rules.StackLimit)
-            stack.Quantity = catalog.Rules.StackLimit;
-        else if (stack.Quantity <= 0)
+        stack.SetQuantity(Math.Min(stack.Quantity + quantity, catalog.Rules.StackLimit));
+        if (stack.Quantity <= 0)
             _stacks.Remove(stack);
     }
 }

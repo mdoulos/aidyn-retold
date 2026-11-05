@@ -1,3 +1,4 @@
+using AidynRetold.Core.Items;
 using AidynRetold.Core.Ui;
 using AidynRetold.Plugins;
 using AidynRetold.Plugins.Records;
@@ -1745,6 +1746,9 @@ public partial class PartyTabView : Control
 
     private const float MarkSize = 3.2f, MarkLine = 0.55f;
 
+    /// <summary>The food clock's size in a cell (<see cref="FoodClock"/>).</summary>
+    private const float ClockSize = 4.2f;
+
     /// <summary>A cell's mark from its top left: a red cross for what can't be used, a green arrow up for what would be better.</summary>
     private void MarkArt(ItemMark mark, float x, float y)
     {
@@ -1801,11 +1805,16 @@ public partial class PartyTabView : Control
                 _canvas.DrawRect(new Rect2(x + 1.5f, wearerY - 0.5f, WearerSize + 1, WearerSize + 1), _ui.Tint(UiPainter.Ink));
                 _ui.Image(_canvas, portrait, x + 2, wearerY, new Vector2I(WearerSize, WearerSize));
             }
+            // A food that spoils has its clock in the bottom right, in the port's look, and the count stands before it.
+            Freshness? clock = OriginalLook ? null : row.Freshness;
+            if (clock is { } band)
+                _ui.Image(_canvas, FoodClock.Icon, new Rect2(x + grid.Cell - CellInset - ClockSize, y + grid.Cell - CellInset - ClockSize, ClockSize, ClockSize),
+                    FoodClock.Tint(band));
             if (row.Quantity > 1)
             {
                 var text = Num(row.Quantity);
                 var foot = y + grid.Cell - CellInset;
-                Small(text, x + grid.Cell - CellInset - count.ExactWidth(text), foot - count.Capitals / 2 - count.Middle, BarText,
+                Small(text, x + grid.Cell - CellInset - (clock is null ? 0 : ClockSize + 1) - count.ExactWidth(text), foot - count.Capitals / 2 - count.Middle, BarText,
                     BarShadow, count);
             }
             if (i == list.Cursor && Menu.Focus == PartyFocus.List && Menu.CursorShows)

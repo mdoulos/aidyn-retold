@@ -284,9 +284,26 @@ public sealed class GameState : IScriptWorld
         var frame = _effectFrame.Tick(ticks) > 0;
         foreach (var member in Party.Members)
             member.AgeEffects(ticks, frame, Clock.Date.PartOfDay, Random.Combat);
+        NoteTossed(Party.Inventory.Age((ulong)Math.Max(ticks, 0) * GameClock.DaySpeed));
         for (var i = 0; i < ticks; i++)
             Weather.Tick(Clock.Date.PartOfDay, Clock.Date.Season, Terrain(Weather.Terrain), Random.World, Random.Cosmetic);
         WriteStateFlags();
+    }
+
+    // The food that spoiled and left the inventory, the remade game's, which trek tells the player of when it's next shown.
+    private readonly List<Items.Tossed> _tossed = [];
+
+    /// <summary>Food that spoiled and left (<see cref="PartyInventory.Age"/>), kept until trek can say so.</summary>
+    public void NoteTossed(IReadOnlyList<Items.Tossed> tossed) => _tossed.AddRange(tossed);
+
+    /// <summary>What spoiled since trek last said so, by item, and nothing until more does.</summary>
+    public IReadOnlyList<Items.Tossed> TakeTossed()
+    {
+        if (_tossed.Count == 0)
+            return [];
+        var tossed = _tossed.GroupBy(t => t.Item).Select(g => new Items.Tossed(g.Key, g.Sum(t => t.Quantity))).ToList();
+        _tossed.Clear();
+        return tossed;
     }
 
     /// <summary>
@@ -524,7 +541,7 @@ public sealed class GameState : IScriptWorld
         return true;
     }
 
-    void IScriptWorld.CampHeal() => Party.CampHeal(1f, Camping.EffectTicks, Random.Combat);
+    void IScriptWorld.CampHeal() => NoteTossed(Party.CampHeal(1f, Camping.EffectTicks, Random.Combat));
 
     bool IScriptWorld.TryRecall(Memory memory, out int value) => Memory.TryRecall(memory, out value);
 

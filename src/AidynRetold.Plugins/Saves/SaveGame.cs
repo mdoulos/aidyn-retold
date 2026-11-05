@@ -191,6 +191,12 @@ public sealed record SaveStack(RecordId Item, int Quantity)
     public int? Battery { get; init; }
 
     public int? Charges { get; init; }
+
+    /// <summary>
+    /// For a food that spoils, the game's time each unit has been held, oldest first (<c>ItemStack.Ages</c>); none for one that keeps,
+    /// or in a save from before spoilage (Nov 5, 2026), which loads fresh.
+    /// </summary>
+    public IReadOnlyList<ulong>? Ages { get; init; }
 }
 
 /// <summary>A memory a map object holds (<c>VoxelChartEntry</c>).</summary>

@@ -20,7 +20,7 @@ public sealed class CharacterSaves(PluginSet plugins, CharacterRules rules, Item
         Members = [.. party.Members.Select(Save)],
         Kept = [.. party.Kept.Values],
         Inventory = [.. party.Inventory.Stacks.Select(s =>
-            new SaveStack(s.Item.Id, s.Quantity) { Battery = s.Instance.Battery, Charges = s.Instance.Charges })],
+            new SaveStack(s.Item.Id, s.Quantity) { Battery = s.Instance.Battery, Charges = s.Instance.Charges, Ages = s.Item.Spoils ? s.Ages : null })],
     };
 
     /// <summary>
@@ -50,6 +50,8 @@ public sealed class CharacterSaves(PluginSet plugins, CharacterRules rules, Item
                 continue;
             if (!party.Inventory.Add(held.Item, stack.Quantity, held))
                 problems.Add($"{held.Item.Name} doesn't fit in the inventory.");
+            else if (stack.Ages is { } ages)
+                party.Inventory.Find(held.Id)?.SetAges(ages);
         }
     }
 

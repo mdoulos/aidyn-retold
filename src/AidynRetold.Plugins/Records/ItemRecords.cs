@@ -120,6 +120,11 @@ public sealed record ShieldRecord(
 /// How a potion is used (ADR 0021): drunk from the pause menu in trek, drunk from C-up's menu in a battle, or thrown in a battle as a
 /// flask, its effects landing where it does. With none, it can't be. Its effects decide whether drinking it does anything now.
 /// </param>
+/// <param name="Satiety">The remade game's: what eating it adds to the eater's satiety, a snack 1, a dish 2 or 3 (<c>Character.Satiety</c>).</param>
+/// <param name="Keeps">
+/// The remade game's: how many game days it keeps once gained before it spoils and leaves the inventory, the oldest of a stack first
+/// (<c>ItemStack.Age</c>); 0 keeps for good.
+/// </param>
 public sealed record ItemRecord(
     RecordId Id,
     string Name,
@@ -140,7 +145,8 @@ public sealed record ItemRecord(
     EffectDuration? Duration = null,
     MagicVisuals? Visuals = null,
     PotionUse? Use = null,
-    int Satiety = 0);
+    int Satiety = 0,
+    int Keeps = 0);
 
 /// <summary>
 /// How a potion is used (ADR 0021). The original game's potions are drunk anywhere but Stealth, which C-up's menu leaves out

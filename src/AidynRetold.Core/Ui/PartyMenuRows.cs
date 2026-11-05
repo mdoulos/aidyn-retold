@@ -8,9 +8,13 @@ namespace AidynRetold.Core.Ui;
 /// <summary>An item in the inventory list (<c>SMIItem</c>).</summary>
 /// <param name="Quantity">The count shown before the name: 1 for what's worn, the stack's for what's carried.</param>
 /// <param name="Wearer">The party slot of the member wearing it, whose portrait shows first, or null if it's carried.</param>
-public sealed record InventoryRow(ItemInstance Instance, int Quantity, int? Wearer)
+/// <param name="Stack">The party's stack it stands for, which a carried food's spoilage reads; none for what's worn or a pile's.</param>
+public sealed record InventoryRow(ItemInstance Instance, int Quantity, int? Wearer, ItemStack? Stack = null)
 {
     public Item Item => Instance.Item;
+
+    /// <summary>How close the stack's oldest unit is to spoiling, or null for what keeps (<see cref="FoodClock"/>).</summary>
+    public Freshness? Freshness => Stack?.Freshness;
 }
 
 /// <summary>An attribute in the stats list (<c>SMStatItem</c>).</summary>
@@ -50,7 +54,7 @@ public static class PartyMenuRows
             if (member is not null)
                 worn.AddRange(member.Equipment.All.Select(item => new InventoryRow(item, 1, slot)));
         }
-        var carried = party.Inventory.Stacks.Select(s => new InventoryRow(s.Instance, s.Quantity, null));
+        var carried = party.Inventory.Stacks.Select(s => new InventoryRow(s.Instance, s.Quantity, null, s));
         return
         [
             .. worn.OrderBy(r => (r.Wearer!.Value - shown + Party.MaxSize) % Party.MaxSize).ThenBy(r => r.Item, ItemComparer.Instance),

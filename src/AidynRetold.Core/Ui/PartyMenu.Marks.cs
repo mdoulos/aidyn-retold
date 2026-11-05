@@ -146,6 +146,8 @@ public sealed partial class PartyMenu
         }
         if (item.Bonuses.Stat is { } bonus && bonus.Stat != Item.StaminaStat)
             about.Add($"{(bonus.Amount > 0 ? "+" : "")}{Num(bonus.Amount)} {member.Rules[StatId.FromRecord(bonus.Stat)].Name}");
+        if (row.Stack?.Left is { } left)
+            about.Add(Spoilage.Describe(left));
         if (row.Wearer is not null)
             return new ItemCard(item.Name, about.Count > 0 ? string.Join(", ", about) : null);
         var warning = Refusal(member, item);

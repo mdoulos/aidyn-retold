@@ -26,6 +26,7 @@ The maps, the map objects, the wanderers, camping and the weather as it plays. W
   table's data as enemies, says "The party is ambushed, but no one comes." and goes back to trek, with no battle, no heal and no time
   passing. It stands in until what the original does is settled ([camping](../systems/camping.md#the-ambushs-enemies)).
 - **Camping's rules are data** (`aidyn:camping/0`), for mods ([camping](../systems/camping.md#in-the-port)).
+- **Food spoils through the camp's hours**, and when trek shows again a toast says what was tossed ([camping](../systems/camping.md#in-the-port), [items](items.md)).
 
 ## Weather
 

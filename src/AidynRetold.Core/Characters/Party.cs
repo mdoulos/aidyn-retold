@@ -1,3 +1,4 @@
+using AidynRetold.Core.Calendar;
 using AidynRetold.Core.Rng;
 using AidynRetold.Plugins;
 using AidynRetold.Plugins.Records;
@@ -119,9 +120,10 @@ public sealed partial class Party
     /// Camping heals the living members by <paramref name="fraction"/> (<c>Party::CampHeal</c>): hit
     /// points and their worn batteries, and <paramref name="effectTicks"/> of play pass for their effects. Then every
     /// battery in the inventory refills by the same fraction, the last stack included, as the machine code's loop
-    /// has it. Camping heals by half, and a script's camp heal fully.
+    /// has it. Camping heals by half, and a script's camp heal fully. The same hours pass for the food that spoils, the remade game's
+    /// (<see cref="PartyInventory.Age"/>): what spoiled and left is returned, for the player to be told.
     /// </summary>
-    public void CampHeal(float fraction, int effectTicks, IRandom random)
+    public IReadOnlyList<Items.Tossed> CampHeal(float fraction, int effectTicks, IRandom random)
     {
         foreach (var member in Members.Where(m => !m.IsDead))
         {
@@ -130,6 +132,7 @@ public sealed partial class Party
         }
         foreach (var stack in Inventory.Stacks)
             Items.Equipment.Recharge(stack.Instance, fraction);
+        return Inventory.Age((ulong)Math.Max(effectTicks, 0) * GameClock.DaySpeed);
     }
 
     /// <summary>

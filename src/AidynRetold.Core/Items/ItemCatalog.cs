@@ -77,6 +77,15 @@ public sealed class Item
     /// </summary>
     public int? BatteryCapacity => Bonuses.Stat is { } stat && stat.Stat == StaminaStat ? stat.Amount : null;
 
+    /// <summary>
+    /// How long it keeps once gained before it spoils, in the clock's units, the remade game's (<see cref="ItemRecord.Keeps"/> in game
+    /// days; <see cref="Spoilage"/>), or 0 for anything that keeps for good.
+    /// </summary>
+    public ulong KeepsFor => Gear?.Keeps is > 0 and var days ? (ulong)days * Calendar.GameClock.Day : 0;
+
+    /// <summary>Whether it spoils.</summary>
+    public bool Spoils => KeepsFor > 0;
+
     /// <summary>Whether it's worn in the gear slots rather than as the weapon, armor or shield.</summary>
     public bool IsGear => Kind is ItemKind.Helmet or ItemKind.Cloak or ItemKind.Gloves or ItemKind.Ring or ItemKind.Wand
         or ItemKind.Belt or ItemKind.Boots or ItemKind.Amulet or ItemKind.Scroll;

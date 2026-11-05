@@ -73,6 +73,7 @@ Redesigned, the user's design. Original brings back the original's layout ([ui](
   binding.
 - **An action menu** on a right click, or the controller's Appraise: what A does, and Details.
 - **Hunger shows**: an amber or red fork and spoon before the school's icon, a green one for Well Fed, its hover saying what it costs, and a soft pulse over the member's portrait, amber every 3 seconds while Hungry, red every 1.5 while Starving, on the HUD and the battle screen too; the HUD's portraits come up as someone grows hungrier ([ui](../systems/ui.md#the-ports-layout)).
+- **Food's clock**: a stack of food that spoils has a little clock in the bottom right of its cell, green, yellow or red by how close its oldest unit is to spoiling, and its slip says how long it keeps; a toast in trek says what spoiled and was tossed ([ui](../systems/ui.md#the-ports-layout), [items](items.md)).
 - **Food and cooking**: a Food filter, Eat, and the Cook skill's Cooking popup ([items](items.md#food-and-cooking)).
 - **No waiting.** The original ignores the next member or list for about a quarter of a second after a potion or an equip; Retold takes the
   press at once, finishing what moves. The header changes in 10 frames, not 15. Original waits as the original does

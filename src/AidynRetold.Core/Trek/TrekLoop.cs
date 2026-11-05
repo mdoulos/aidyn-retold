@@ -316,7 +316,12 @@ public sealed partial class TrekLoop : IMapObjectHost
         if (Standing is { } standing)
             Breadcrumbs.Tick(standing);
         if (Use.Popup is null && !talking)
+        {
             Game.PassTime(1);
+            // Food that spoiled, in trek or through a camp's hours, is told of once trek shows again, the remade game's (Spoilage).
+            if (!fading && Game.TakeTossed() is { Count: > 0 } tossed)
+                _host.Transition(new Transition.Say(Spoilage.Notice(tossed)));
+        }
         if (frozen)
             return TrekStep.Frozen;
 
@@ -758,7 +763,7 @@ public sealed partial class TrekLoop : IMapObjectHost
             CueBattle(BattleSetup.CampAmbush(place, terrainIndex, Game.Plugins, Game.Party));
             return CampOutcome.Ambushed;
         }
-        Game.Party.CampHeal(rules.Heal, rules.EffectTicks, Game.Random.Combat);
+        Game.NoteTossed(Game.Party.CampHeal(rules.Heal, rules.EffectTicks, Game.Random.Combat));
 
         Game.Flags.TrySet(rules.Checking, true);
         var map = Chunks.MapAt(at);

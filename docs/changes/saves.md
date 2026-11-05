@@ -23,6 +23,7 @@ As the original's, and also ([saves](../systems/saves.md#the-format)):
 - **the journal's order** ([mechanics](mechanics.md#flags-and-the-journal));
 - **Alaron's name**, and each member's True Name ([characters](characters.md));
 - **each member's satiety** and the time toward its next fall ([characters](characters.md#hunger));
+- **each unit of food's age**, toward its spoiling ([items](items.md));
 - **every random stream** and the minimaps' pieces seen.
 
 The volumes and the resolution aren't saved: they're the player's settings ([options](options.md)).

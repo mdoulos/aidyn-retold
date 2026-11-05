@@ -468,7 +468,7 @@ public sealed class CutScene
     private RecordId? ItemModel(RecordId item) => item.Type switch
     {
         RecordTypes.Weapon => _game.Plugins.TryGet<WeaponRecord>(item)?.Model,
-        RecordTypes.Armor => _game.Plugins.TryGet<ArmorRecord>(item)?.Model,
+        RecordTypes.Shield => _game.Plugins.TryGet<ShieldRecord>(item)?.Model,
         RecordTypes.Item => _game.Plugins.TryGet<ItemRecord>(item)?.Model,
         _ => null,
     };

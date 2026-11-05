@@ -194,11 +194,15 @@ public sealed class ItemImportTests(Na10Import fixture)
 
     private IReadOnlyList<ArmorRecord> Armor => [.. Set.All<ArmorRecord>(RecordTypes.Armor)];
 
+    private IReadOnlyList<ShieldRecord> Shields => [.. Set.All<ShieldRecord>(RecordTypes.Shield)];
+
     private IReadOnlyList<ItemRecord> Items => [.. Set.All<ItemRecord>(RecordTypes.Item)];
 
     private ItemRecord Item(int id) => Set.Get<ItemRecord>(RecordId.Hex(RecordTypes.Item, id));
 
     private ArmorRecord ArmorPiece(int id) => Set.Get<ArmorRecord>(RecordId.Hex(RecordTypes.Armor, id));
+
+    private ShieldRecord ShieldPiece(int id) => Set.Get<ShieldRecord>(RecordId.Hex(RecordTypes.Shield, id));
 
     private WeaponRecord Weapon(int id) => Set.Get<WeaponRecord>(RecordId.Hex(RecordTypes.Weapon, id));
 
@@ -223,7 +227,9 @@ public sealed class ItemImportTests(Na10Import fixture)
         Assert.Equal(68, db.Armor.Count);
         Assert.Equal(197, db.Gear.Count);
         Assert.Equal(105, Weapons.Count);
-        Assert.Equal(68, Armor.Count);
+        Assert.Equal(68, Armor.Count + Shields.Count);
+        Assert.All(Armor, a => Assert.StartsWith("0x05", a.Id.Key, StringComparison.Ordinal));
+        Assert.All(Shields, s => Assert.StartsWith("0x06", s.Id.Key, StringComparison.Ordinal));
         Assert.Equal(214, Items.Count);
         Assert.Equal(17, Items.Count(i => i.Kind == ItemKind.Potion));
         Assert.Equal(db.Weapons.Select(w => w.Name).Order(), Weapons.Select(w => w.Name).Order());
@@ -233,9 +239,9 @@ public sealed class ItemImportTests(Na10Import fixture)
     public void TheListsAreUniqueAndSortedByKey()
     {
         var rom = Rom;
-        var (weapons, armor, items) = ItemImporter.BuildItems(GameDb.Read(rom), ItemTables.Read(rom), EngineTables.Read(rom));
+        var (weapons, armor, shields, items) = ItemImporter.BuildItems(GameDb.Read(rom), ItemTables.Read(rom), EngineTables.Read(rom));
 
-        foreach (var ids in new[] { weapons.Select(w => w.Id), armor.Select(a => a.Id), items.Select(i => i.Id) })
+        foreach (var ids in new[] { weapons.Select(w => w.Id), armor.Select(a => a.Id), shields.Select(s => s.Id), items.Select(i => i.Id) })
         {
             var list = ids.ToList();
             Assert.Equal(list.Count, list.Distinct().Count());
@@ -333,7 +339,7 @@ public sealed class ItemImportTests(Na10Import fixture)
         var chainmail = ArmorPiece(0x0503);
 
         Assert.Equal("Chainmail", chainmail.Name);
-        Assert.Equal((ArmorSlot.Body, 5, -2, -5), (chainmail.Slot, chainmail.Protection, chainmail.Dexterity, chainmail.Stealth));
+        Assert.Equal((5, -2, -5), (chainmail.Protection, chainmail.Dexterity, chainmail.Stealth));
     }
 
     [Fact]
@@ -350,13 +356,11 @@ public sealed class ItemImportTests(Na10Import fixture)
     [Fact]
     public void ShieldsAndSixItemsCarryTheirModelsAndBodyArmorHasNone()
     {
-        Assert.Equal("0x351B", ArmorPiece(0x063E).Model!.Value.Key);
-        Assert.Equal("0x3523", ArmorPiece(0x061B).Model!.Value.Key);
-        Assert.Equal(17, Armor.Count(a => a.Model is not null));
-        Assert.Null(ArmorPiece(0x0503).Model);
-        Assert.Equal("0x353A", ArmorPiece(0x0615).Model!.Value.Key);
-        Assert.Null(ArmorPiece(0x063C).Model);
-        Assert.All(Armor.Where(a => a.Slot == ArmorSlot.Body), a => Assert.Null(a.Model));
+        Assert.Equal("0x351B", ShieldPiece(0x063E).Model!.Value.Key);
+        Assert.Equal("0x3523", ShieldPiece(0x061B).Model!.Value.Key);
+        Assert.Equal(17, Shields.Count(s => s.Model is not null));
+        Assert.Equal("0x353A", ShieldPiece(0x0615).Model!.Value.Key);
+        Assert.Null(ShieldPiece(0x063C).Model);
 
         Assert.Equal(
             ["0x0CCE", "0x09D0", "0x34FB", "0x3502", "0x3553", "0x3517"],
@@ -367,12 +371,10 @@ public sealed class ItemImportTests(Na10Import fixture)
     [Fact]
     public void AShieldHasADefense()
     {
-        var shield = ArmorPiece(0x0615);
+        var shield = ShieldPiece(0x0615);
 
         Assert.Equal("Tower Shield", shield.Name);
-        Assert.Equal((ArmorSlot.Shield, 6, 5, -6), (shield.Slot, shield.Defense, shield.Protection, shield.Dexterity));
-        Assert.All(Armor.Where(a => a.Slot == ArmorSlot.Body), a => Assert.Equal(0, a.Defense));
-        Assert.All(Armor, a => Assert.Equal(a.Id.Key.StartsWith("0x06", StringComparison.Ordinal) ? ArmorSlot.Shield : ArmorSlot.Body, a.Slot));
+        Assert.Equal((6, 5, -6), (shield.Defense, shield.Protection, shield.Dexterity));
     }
 
     [Fact]
@@ -439,7 +441,7 @@ public sealed class ItemImportTests(Na10Import fixture)
             .Where(existing.Contains).Select(i => DbRecordIds.For(i)!.Value).Distinct().OrderBy(i => i.Key, StringComparer.Ordinal).ToList();
         var mustTake = tables.MustTakeItems.Select(i => DbRecordIds.For(i)!.Value).OrderBy(i => i.Key, StringComparer.Ordinal).ToList();
 
-        var traits = Weapons.Select(w => (w.Id, w.Traits)).Concat(Armor.Select(a => (a.Id, a.Traits))).Concat(Items.Select(i => (i.Id, i.Traits))).ToList();
+        var traits = Weapons.Select(w => (w.Id, w.Traits)).Concat(Armor.Select(a => (a.Id, a.Traits))).Concat(Shields.Select(s => (s.Id, s.Traits))).Concat(Items.Select(i => (i.Id, i.Traits))).ToList();
         Assert.Equal(ownSlot, traits.Where(t => t.Traits?.OwnSlot == true).Select(t => t.Id).OrderBy(i => i.Key, StringComparer.Ordinal));
         Assert.Equal(mustTake, traits.Where(t => t.Traits?.MustTake == true).Select(t => t.Id).OrderBy(i => i.Key, StringComparer.Ordinal));
         Assert.Contains(Weapons, w => w.Traits?.OwnSlot == true);
@@ -520,7 +522,7 @@ public sealed class ItemImportTests(Na10Import fixture)
         Assert.All(stock, s =>
         {
             Assert.True(Set.Contains(s.Item));
-            Assert.Contains(s.Item.Type, new[] { RecordTypes.Weapon, RecordTypes.Armor, RecordTypes.Item });
+            Assert.Contains(s.Item.Type, new[] { RecordTypes.Weapon, RecordTypes.Armor, RecordTypes.Shield, RecordTypes.Item });
             Assert.Contains(s.PriceMultiplier, new[] { 0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f, 3f, 5f });
         });
     }
@@ -545,7 +547,8 @@ public sealed class ItemImportTests(Na10Import fixture)
         Assert.Equal(20, recipes.Count);
         Assert.Equal(Enumerable.Range(0, 20).Select(i => RecordId.Decimal(RecordTypes.Recipe, i)), recipes.Select(r => r.Id));
         Assert.All(recipes.Take(15), r => Assert.Equal((SkillId(0), RecordTypes.Item), (r.Skill, r.Product.Type)));
-        Assert.All(recipes.Skip(15), r => Assert.Equal((SkillId(4), RecordTypes.Armor), (r.Skill, r.Product.Type)));
+        Assert.All(recipes.Skip(15), r => Assert.Equal(SkillId(4), r.Skill));
+        Assert.All(recipes.Skip(15), r => Assert.Contains(r.Product.Type, new[] { RecordTypes.Armor, RecordTypes.Shield }));
     }
 
     [Fact]
@@ -588,7 +591,7 @@ public sealed class ItemImportTests(Na10Import fixture)
         Assert.Equal([new Ingredient(ItemRecordId(0x0121), 1)], hellhound.Ingredients);
         Assert.Equal((5, 7, (int?)null), (hellhound.Level, hellhound.Step, hellhound.Unk5));
 
-        Assert.Equal(RecordId.Hex(RecordTypes.Armor, 0x061D), scorpion.Product);
+        Assert.Equal(RecordId.Hex(RecordTypes.Shield, 0x061D), scorpion.Product);
         Assert.Equal([new Ingredient(ItemRecordId(0x0124), 1)], scorpion.Ingredients);
         Assert.Equal((3, 4), (scorpion.Level, scorpion.Step));
     }
@@ -657,6 +660,11 @@ public sealed class ItemImportTests(Na10Import fixture)
         {
             Image($"{a.Id}", a.Icon);
             Bonuses($"{a.Id}", a.Bonuses);
+        }
+        foreach (var s in Shields)
+        {
+            Image($"{s.Id}", s.Icon);
+            Bonuses($"{s.Id}", s.Bonuses);
         }
         foreach (var i in Items)
         {

@@ -67,11 +67,12 @@ public static class TestRoms
     /// <summary>A line as the user reads it: without the button glyphs, and trimmed.</summary>
     public static string Plain(string line) => new string([.. line.Where(c => c is < '\u0080' or > '\u009F')]).Trim();
 
-    /// <summary>The record of the item a checkpoint's 16-bit item ID names: a weapon, armor or other item, by its high byte.</summary>
+    /// <summary>The record of the item a checkpoint's 16-bit item ID names: a weapon, armor, a shield or another item, by its high byte.</summary>
     public static RecordId ItemId(ushort id) => (id >> 8) switch
     {
         7 => RecordId.Hex(RecordTypes.Weapon, id),
-        5 or 6 => RecordId.Hex(RecordTypes.Armor, id),
+        5 => RecordId.Hex(RecordTypes.Armor, id),
+        6 => RecordId.Hex(RecordTypes.Shield, id),
         _ => RecordId.Hex(RecordTypes.Item, id),
     };
 

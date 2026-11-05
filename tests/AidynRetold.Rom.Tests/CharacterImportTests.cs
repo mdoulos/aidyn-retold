@@ -173,7 +173,7 @@ public sealed class CharacterImportTests(Na10Import fixture)
 
         Assert.Equal([RecordId.Hex(RecordTypes.Weapon, 0x072C), RecordId.Hex(RecordTypes.Weapon, 0x0711), null], alaron.Weapons);
         Assert.Equal(RecordId.Hex(RecordTypes.Armor, 0x0501), alaron.Armor);
-        Assert.Equal(RecordId.Hex(RecordTypes.Armor, 0x0612), alaron.Shield);
+        Assert.Equal(RecordId.Hex(RecordTypes.Shield, 0x0612), alaron.Shield);
     }
 
     [Fact]
@@ -352,7 +352,7 @@ public sealed class CharacterImportTests(Na10Import fixture)
         Assert.Contains("41 levels", catalog.Find(RecordId.Decimal(RecordTypes.Progression, 0))!.Summary);
 
         Assert.Contains(catalog.ReferencesTo(RecordId.Hex(RecordTypes.Weapon, 0x072C)), r => r.From == Alaron && r.Path == "weapons[0]");
-        Assert.Contains(catalog.ReferencesTo(RecordId.Hex(RecordTypes.Armor, 0x0612)), r => r.From == Alaron && r.Path == "shield");
+        Assert.Contains(catalog.ReferencesTo(RecordId.Hex(RecordTypes.Shield, 0x0612)), r => r.From == Alaron && r.Path == "shield");
         Assert.Contains(catalog.ReferencesTo(RecordId.Decimal(RecordTypes.Flag, 590)), r => r.From == Alaron && r.Path == "trueNameFlag");
         Assert.Contains(catalog.ReferencesTo(RecordId.Hex(RecordTypes.Entity, 0x0236)), r => r.From == RecordId.Decimal(RecordTypes.Progression, 0));
     }

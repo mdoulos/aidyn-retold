@@ -73,7 +73,7 @@ public sealed partial class Combatant
         Drawn = Action == CombatAction.Flask
             ? Potion is { } potion && Items.Potions.IsFlask(potion)
             : Sheet.Equipment.Weapon?.Item.Weapon is { } held && rules?.Missiles?.Any(m => m.Weapon == held.Id) == true;
-        var shield = Sheet.Record.ShieldSkill is null ? null : Sheet.Equipment.Shield?.Item.Armor?.Model;
+        var shield = Sheet.Record.ShieldSkill is null ? null : Sheet.Equipment.Shield?.Item.Shield?.Model;
         var weapon = Action is CombatAction.None or CombatAction.Flask ? null : Sheet.Equipment.Weapon?.Item.Weapon;
         var (hand, arm, handLocator) = Holding(Entity, weapon, shield, rules, Action == CombatAction.Flask ? Battle.FlaskScene : null);
         _held[HandSlot] = hand;

@@ -40,25 +40,46 @@ public sealed record WeaponRecord(
     IReadOnlyList<RecordId>? Sounds = null);
 
 /// <summary>
-/// Body armor or a shield (<c>aidyn:armor/0x05…</c> and <c>0x06…</c>), from the armor DB
-/// (<c>ArmorDB::Load</c>).
+/// Body armor (<c>aidyn:armor/0x05…</c>), the armor DB's body group (<c>ArmorDB::Load</c>). The game draws it as the body's outfit, so
+/// it has no model of its own. Shields, the DB's other group, are <see cref="ShieldRecord"/>, their own type since Nov 5, 2026.
 /// </summary>
-/// <param name="Defense">A shield's defense, which combat reads (2.5). 0 on body armor.</param>
 /// <param name="Protection">What wearing it adds to protection from damage (<c>Entity::GetArmorProtect</c>).</param>
 /// <param name="Dexterity">What wearing it adds to modified Dexterity: a penalty, or 0.</param>
 /// <param name="Stealth">What wearing it adds to modified Stealth.</param>
 /// <param name="Unk1D">Read into RAM with the rest, but nothing reads it there.</param>
 /// <param name="ExpBonus">Read into RAM; what reads it isn't known.</param>
-/// <param name="Model">
-/// The Borg5 scene (<c>aidyn:scene/0x…</c>) the original draws for it in a body's hand or on its arm,
-/// or null when it has none.
-/// </param>
 public sealed record ArmorRecord(
     RecordId Id,
     string Name,
     RecordId Icon,
     int Price,
-    ArmorSlot Slot,
+    int Protection,
+    int Dexterity,
+    int Stealth,
+    int Unk1D,
+    int ExpBonus,
+    GearBonuses Bonuses,
+    ItemTraits? Traits = null);
+
+/// <summary>
+/// A shield (<c>aidyn:shield/0x06…</c>), the armor DB's shield group (<c>ArmorDB::Load</c>), borne on the arm by a character with the
+/// shield skill. It was an <see cref="ArmorRecord"/> with a shield slot until Nov 5, 2026; a save or a mod from before names one as
+/// <c>aidyn:armor/0x06…</c>, which the rules still find (<c>ItemCatalog.TryGet</c>).
+/// </summary>
+/// <param name="Defense">Its defense, which combat reads (2.5).</param>
+/// <param name="Protection">What bearing it adds to protection from damage (<c>Entity::GetArmorProtect</c>).</param>
+/// <param name="Dexterity">What bearing it adds to modified Dexterity: a penalty, or 0.</param>
+/// <param name="Stealth">What bearing it adds to modified Stealth.</param>
+/// <param name="Unk1D">Read into RAM with the rest, but nothing reads it there.</param>
+/// <param name="ExpBonus">Read into RAM; what reads it isn't known.</param>
+/// <param name="Model">
+/// The Borg5 scene (<c>aidyn:scene/0x…</c>) the original hangs on a body's arm for it in battle, or null when it has none.
+/// </param>
+public sealed record ShieldRecord(
+    RecordId Id,
+    string Name,
+    RecordId Icon,
+    int Price,
     int Defense,
     int Protection,
     int Dexterity,
@@ -171,13 +192,6 @@ public enum ItemKind
     /// ingredients by the Cook skill. No ID of the original's has this kind.
     /// </summary>
     Food = 32,
-}
-
-/// <summary>Where a piece of armor is worn.</summary>
-public enum ArmorSlot
-{
-    Body,
-    Shield,
 }
 
 /// <summary>Weapon classes, which are also the weapon skills (<c>aidyn:weaponskill/0</c>–<c>10</c>).</summary>

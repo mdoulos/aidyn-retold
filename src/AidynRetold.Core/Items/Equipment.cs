@@ -85,10 +85,10 @@ public sealed class Equipment
         new[] { Weapon, Armor, Shield }.Concat(_gear).OfType<ItemInstance>();
 
     /// <summary>Body armor's and the shield's protection (<c>Entity::GetArmorProtect</c>). Gear's is in <see cref="Character.Protection"/>.</summary>
-    public int ArmorProtection => (Armor?.Item.Armor?.Protection ?? 0) + (Shield?.Item.Armor?.Protection ?? 0);
+    public int ArmorProtection => (Armor?.Item.Protection ?? 0) + (Shield?.Item.Protection ?? 0);
 
     /// <summary>The shield's defense (<c>Entity::GetShieldDefence</c>), which combat reads (2.5).</summary>
-    public int ShieldDefense => Shield?.Item.Armor?.Defense ?? 0;
+    public int ShieldDefense => Shield?.Item.Defense ?? 0;
 
     /// <summary>The spells on the character while armor and gear are worn (<c>Entity::ApplyEquipEffect</c>).</summary>
     public IEnumerable<ItemEnchantment> Enchantments =>
@@ -106,10 +106,11 @@ public sealed class Equipment
         var slot = id.Type switch
         {
             RecordTypes.Weapon => Weapon,
-            RecordTypes.Armor => Armor?.Id == id ? Armor : Shield,
+            RecordTypes.Armor => Armor,
+            RecordTypes.Shield => Shield,
             _ => null,
         };
-        if (id.Type is RecordTypes.Weapon or RecordTypes.Armor)
+        if (id.Type is RecordTypes.Weapon or RecordTypes.Armor or RecordTypes.Shield)
             return slot?.Id == id ? slot : null;
         return _gear.Take(GearCount).FirstOrDefault(g => g?.Id == id);
     }
@@ -387,9 +388,8 @@ public sealed class Equipment
     private void ApplyArmor(ItemInstance armor, int sign)
     {
         Bonus(armor, sign);
-        var record = armor.Item.Armor!;
-        _owner.Stats.ChangeModified(Stat.Dexterity, sign * record.Dexterity);
-        _owner.Skills.Modify(Skill.Stealth, sign * record.Stealth);
+        _owner.Stats.ChangeModified(Stat.Dexterity, sign * armor.Item.Dexterity);
+        _owner.Skills.Modify(Skill.Stealth, sign * armor.Item.Stealth);
     }
 
     /// <summary>

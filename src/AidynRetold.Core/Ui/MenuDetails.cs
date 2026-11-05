@@ -59,8 +59,8 @@ public static class MenuDetailsBuilder
         var item = instance.Item;
         if (item.Weapon is { } weapon)
             return Weapon(instance, weapon, text, spells, wearer);
-        if (item.Armor is { } armor)
-            return Armor(instance, armor, text, spells, wearer);
+        if (item.Armor is not null || item.Shield is not null)
+            return Armor(instance, text, spells, wearer);
         if (item.Kind is ItemKind.Key)
             return null;
         if (item.Kind is ItemKind.Potion or ItemKind.Scroll or ItemKind.Misc or ItemKind.Food)
@@ -115,16 +115,18 @@ public static class MenuDetailsBuilder
         return new MenuDetails(instance.Item.Icon, instance.Item.Name, lines, []);
     }
 
-    private static MenuDetails Armor(ItemInstance instance, ArmorRecord armor, MenuText text, Func<RecordId, SpellRecord?> spells,
-        Character? wearer)
+    /// <summary>Body armor's or a shield's details, the shield's with its defense.</summary>
+    private static MenuDetails Armor(ItemInstance instance, MenuText text, Func<RecordId, SpellRecord?> spells, Character? wearer)
     {
+        var item = instance.Item;
+        var shield = item.Shield is not null;
         var lines = new List<DetailLine>();
-        AspectLine(lines, armor.Bonuses.Aspect, text);
-        lines.Add(Pair(text[MenuText.Protection], Num(armor.Protection)));
-        if (armor.Slot == ArmorSlot.Shield)
-            lines.Add(Pair(text[MenuText.Defense], Num(armor.Defense)));
-        lines.Add(Pair(text[MenuText.Dexterity], Plus(armor.Dexterity)));
-        lines.Add(Pair(text[MenuText.Stealth], Plus(armor.Stealth)));
+        AspectLine(lines, item.Bonuses.Aspect, text);
+        lines.Add(Pair(text[MenuText.Protection], Num(item.Protection)));
+        if (shield)
+            lines.Add(Pair(text[MenuText.Defense], Num(item.Defense)));
+        lines.Add(Pair(text[MenuText.Dexterity], Plus(item.Dexterity)));
+        lines.Add(Pair(text[MenuText.Stealth], Plus(item.Stealth)));
         Bonuses(lines, instance, text, spells, wearer);
 
         var footer = new List<DetailLine>();
@@ -133,13 +135,13 @@ public static class MenuDetailsBuilder
             var equipment = wearer.Equipment;
             var protection = equipment.ArmorProtection;
             var withIt = protection;
-            if (armor.Slot == ArmorSlot.Body || equipment.CanCarryShield)
+            if (!shield || equipment.CanCarryShield)
             {
-                var replaced = armor.Slot == ArmorSlot.Body ? equipment.Armor : equipment.Shield;
-                withIt = protection - (replaced?.Item.Armor?.Protection ?? 0) + armor.Protection;
+                var replaced = shield ? equipment.Shield : equipment.Armor;
+                withIt = protection - (replaced?.Item.Protection ?? 0) + item.Protection;
             }
             var defense = equipment.ShieldDefense;
-            var defenseWithIt = armor.Slot == ArmorSlot.Shield && equipment.CanCarryShield ? armor.Defense : defense;
+            var defenseWithIt = shield && equipment.CanCarryShield ? item.Defense : defense;
             footer.Add(Total(text[MenuText.TotalProtection], protection, withIt));
             footer.Add(Total(text[MenuText.TotalDefense], defense, defenseWithIt));
         }

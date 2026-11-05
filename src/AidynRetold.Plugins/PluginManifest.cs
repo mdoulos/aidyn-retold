@@ -149,9 +149,10 @@ public static class RomPlugin
     /// 61 gives each title fly-through its animation's length (<c>length</c>), and names its coordinates' origin (<c>originRow</c>, <c>originColumn</c>).
     /// Its manifest later recorded the import's options (<c>import.options</c>), whose defaults left the records as 61 wrote them.
     /// 62 leaves the Roog Cave's mushroom where the ROM has it, and takes no options: the ROM plugin is the ROM's content as it is, and
-    /// the mushroom's fix is the ACRE plugin's (ADRs 0043, 0045).
+    /// the mushroom's fix is the ACRE plugin's (ADRs 0043, 0045). 63 writes the shields as their own type, <c>aidyn:shield</c>, in
+    /// <c>shields.json</c>, apart from body armor (Nov 5, 2026).
     /// </summary>
-    public const int ImporterVersion = 62;
+    public const int ImporterVersion = 63;
 
     /// <summary>
     /// What's wrong with the imported ROM plugin under <paramref name="pluginsDirectory"/>, worded for the player, or null if

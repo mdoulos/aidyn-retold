@@ -31,7 +31,7 @@ public static class TypeGroups
         ]),
         new("Items",
         [
-            new(RecordTypes.Weapon, "Weapons"), new(RecordTypes.Armor, "Armor"), new(RecordTypes.Item, "Items"),
+            new(RecordTypes.Weapon, "Weapons"), new(RecordTypes.Armor, "Armor"), new(RecordTypes.Shield, "Shields"), new(RecordTypes.Item, "Items"),
             new(RecordTypes.Loot, "Loot tables"), new(RecordTypes.Shop, "Shops"), new(RecordTypes.Recipe, "Recipes"),
             new(RecordTypes.Inventory, "Inventory rules"),
         ]),

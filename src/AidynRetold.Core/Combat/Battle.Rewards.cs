@@ -142,13 +142,14 @@ public sealed partial class Battle
     }
 
     /// <summary>
-    /// What an item adds to the experience pool as it's looted: a weapon's <see cref="WeaponRecord.ExpModifier"/>, armor's
+    /// What an item adds to the experience pool as it's looted: a weapon's <see cref="WeaponRecord.ExpModifier"/>, armor's and a shield's
     /// <see cref="ArmorRecord.ExpBonus"/>, and another item's <see cref="ItemRecord.ExpMultiplier"/>; a potion's nothing.
     /// </summary>
     public int ExperienceValue(RecordId item) => item.Type switch
     {
         RecordTypes.Weapon => Game.Plugins.TryGet<WeaponRecord>(item)?.ExpModifier ?? 0,
         RecordTypes.Armor => Game.Plugins.TryGet<ArmorRecord>(item)?.ExpBonus ?? 0,
+        RecordTypes.Shield => Game.Plugins.TryGet<ShieldRecord>(item)?.ExpBonus ?? 0,
         RecordTypes.Item => Game.Plugins.TryGet<ItemRecord>(item) is { Kind: not ItemKind.Potion } other ? other.ExpMultiplier : 0,
         _ => 0,
     };

@@ -7,6 +7,10 @@ bearing none. What changed is around them.
   grid, and a member who can't bear it sees why on its card ([ui](ui.md#the-party-tab)).
 - **The combat pause's Party tab refuses armor and shields** with "You cannot equip that item!", as the original appears to: its equip
   table there has no row for them ([combat](../systems/combat.md#where-the-port-differs)).
+- **Shields are their own record type**, `aidyn:shield/0x06…` (`ShieldRecord`, in a plugin's `shields.json`), apart from body armor's
+  `aidyn:armor/0x05…`, since Nov 5, 2026, so the editor lists and edits them apart ([items](../systems/items.md#the-records)). A save
+  or a mod from before names a shield as armor, which the rules still find (`ItemCatalog.TryGet`); a mod's patch of one must name the
+  shield type.
 - **New shields**: none yet. A fix to the Buckler's texture coordinates, projected across the shield as Aidyn ReChronicled does, is still to
   be added to the ACRE plugin ([roadmap](../roadmap.md#phase-5-mod-system-and-tools)).
 

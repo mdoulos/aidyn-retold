@@ -53,7 +53,7 @@ A save made from the "Before final encounter" checkpoint, cut short:
    "shieldSkill": 3,
    "weapon": { "item": "aidyn:weapon/0x0734", "charges": 3 },
    "armor": { "item": "aidyn:armor/0x0507" },
-   "shield": { "item": "aidyn:armor/0x0612" },
+   "shield": { "item": "aidyn:shield/0x0612" },
    "gear": [],
    "spells": [{ "spell": "aidyn:spell/0x031D", "level": 10 }, …]
   }, …],

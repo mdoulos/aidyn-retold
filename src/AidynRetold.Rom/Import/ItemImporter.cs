@@ -59,9 +59,10 @@ internal static class ItemImporter
     {
         var db = ctx.Db;
         ctx.Report("Items");
-        var (weapons, armor, items) = BuildItems(db, ctx.Items, ctx.Engine, ctx.Menus);
+        var (weapons, armor, shields, items) = BuildItems(db, ctx.Items, ctx.Engine, ctx.Menus);
         ctx.WriteRecords("weapons.json", BodySoundImporter.WithSounds(db, ctx.BodySounds, weapons));
         ctx.WriteRecords("armor.json", armor);
+        ctx.WriteRecords("shields.json", shields);
         ctx.WriteRecords("items.json", MagicImporter.WithPotionVisuals(items, ctx.SpellVisuals, ctx.Archive));
         ctx.WriteRecords("loot.json", BuildLoot(db));
         ctx.WriteRecords("shops.json", BuildShops(db));
@@ -77,7 +78,7 @@ internal static class ItemImporter
         lines.TryGetValue(id, out var line) ? DialogueText.Unescape(db.Strings[table][line]) : null;
 
     /// <param name="menu">Where items' and potions' descriptions come from. Without it, none have one.</param>
-    public static (List<WeaponRecord> Weapons, List<ArmorRecord> Armor, List<ItemRecord> Items) BuildItems(
+    public static (List<WeaponRecord> Weapons, List<ArmorRecord> Armor, List<ShieldRecord> Shields, List<ItemRecord> Items) BuildItems(
         GameDb db, ItemTables tables, EngineTables engine, MenuTables? menu = null)
     {
         var reserved = tables.ReservedItems.Concat(tables.KeyEquipment).Concat(engine.KeyItems.Select(k => k.Item)).ToHashSet();
@@ -98,10 +99,16 @@ internal static class ItemImporter
             Bonuses(w.Bonuses, w.SpellLevel), Traits(w.Id), Fixed: w.Id == staff,
             Model: Model(tables.WeaponModels, i)));
 
-        var armor = db.Armor.Select((a, i) => new ArmorRecord(
-            DbRecordIds.Required(a.Id), a.Name, Icon(a.Id), a.Price, a.Slot == 0 ? ArmorSlot.Body : ArmorSlot.Shield, a.Defense, a.Protection,
-            a.Dexterity, a.Stealth, a.Unk1D, a.ExpBonus, Bonuses(a.Bonuses, a.Bonuses.SpellLevel), Traits(a.Id),
-            Model(ItemTables.ShieldModels, i)));
+        // The armor DB's two groups: body armor, then the shields, whose models are by their positions in the whole table.
+        var armor = db.Armor.Where(a => a.Slot == 0).Select(a => new ArmorRecord(
+            DbRecordIds.Required(a.Id), a.Name, Icon(a.Id), a.Price, a.Protection, a.Dexterity, a.Stealth, a.Unk1D, a.ExpBonus,
+            Bonuses(a.Bonuses, a.Bonuses.SpellLevel), Traits(a.Id)));
+        var shields = db.Armor.Select((a, i) => (Record: a, Position: i)).Where(s => s.Record.Slot != 0).Select(s => s.Record switch
+        {
+            var a => new ShieldRecord(
+                DbRecordIds.Required(a.Id), a.Name, Icon(a.Id), a.Price, a.Defense, a.Protection, a.Dexterity, a.Stealth, a.Unk1D, a.ExpBonus,
+                Bonuses(a.Bonuses, a.Bonuses.SpellLevel), Traits(a.Id), Model(ItemTables.ShieldModels, s.Position)),
+        });
 
         var gear = db.Gear.Select((g, i) =>
         {
@@ -127,7 +134,7 @@ internal static class ItemImporter
                 Effects: effects, Duration: duration, Use: MagicImporter.PotionUse(i));
         });
 
-        return (Sorted(weapons, w => w.Id), Sorted(armor, a => a.Id), Sorted(gear.Concat(potions), i => i.Id));
+        return (Sorted(weapons, w => w.Id), Sorted(armor, a => a.Id), Sorted(shields, s => s.Id), Sorted(gear.Concat(potions), i => i.Id));
     }
 
     /// <summary>Niesen can equip only the Archmage Staff (<c>Entity::canEquipWeapon</c>).</summary>

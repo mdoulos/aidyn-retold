@@ -347,7 +347,7 @@ public abstract partial class ItemEditPage : HSplitContainer
         }
         // Armor's totals are the member's the details are shown for: the editor's first, in its game.
         var who = wearer is null ? null : game is { IsNewGame: false } ? wearer.Name : $"{wearer.Name}, new game";
-        var totals = Item.Armor is not null && details?.Footer.Count > 0;
+        var totals = (Item.Armor is not null || Item.Shield is not null) && details?.Footer.Count > 0;
         return new Section("In the game", box, foldable: false) { Note = who is null || !totals ? "" : $"totals for {who}" };
     }
 
@@ -704,7 +704,7 @@ public abstract partial class ItemEditPage : HSplitContainer
     /// </summary>
     public void PickPicture()
     {
-        var icons = Catalog.Plugins.Ids.Where(i => i.Type is RecordTypes.Armor or RecordTypes.Weapon or RecordTypes.Item)
+        var icons = Catalog.Plugins.Ids.Where(i => i.Type is RecordTypes.Armor or RecordTypes.Shield or RecordTypes.Weapon or RecordTypes.Item)
             .Select(i => (string?)Catalog.Plugins.GetJson(i)?["icon"]).OfType<string>().Distinct()
             .Select(t => RecordId.TryParse(t, out var r) ? r : (RecordId?)null).OfType<RecordId>().OrderBy(r => r.ToString(), StringComparer.Ordinal).ToList();
         var grid = new GridContainer { Columns = PictureColumns };
@@ -816,7 +816,7 @@ public abstract partial class ItemEditPage : HSplitContainer
             UpdateSide();
     }
 
-    /// <summary>Whether a change to a field decides whether the panel shows a model: armor's slot.</summary>
+    /// <summary>Whether a change to a field decides whether the panel shows a model. None does now that shields are their own type.</summary>
     protected virtual bool ChangesModelPanel(string field) => false;
 
     private void UpdateCount()

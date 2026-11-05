@@ -66,6 +66,10 @@ public partial class RecordBrowser : Control
     private Control? _kindButtons;
     private readonly Dictionary<EntityKind, Button> _kindButtonOf = [];
     private EntityKind? _kind;
+    /// <summary>The quick buttons at the toolbar's left, each with the key of its picture and its word for when there's none.</summary>
+    private readonly List<(Button Button, string Art, string Text)> _quick = [];
+    /// <summary>The first row the list shows, which a quick button opens when the page it would open isn't in the plugins.</summary>
+    private RecordId? _first;
     /// <summary>Each entity's kind, looked up once from its record.</summary>
     private readonly Dictionary<RecordId, EntityKind> _entityKinds = [];
 
@@ -210,6 +214,7 @@ public partial class RecordBrowser : Control
         if (listed is not null && _typeNames.IndexOf(listed) is >= 0 and var at)
             _types.Select(_types.GetItemIndex(at + 1));
         Populate();
+        ShowQuickButtons(catalog);
         ShowStart(catalog, report.IsClean ? null : report.Describe(limit: 12));
     }
 
@@ -225,9 +230,53 @@ public partial class RecordBrowser : Control
     public void SelectKind(EntityKind kind)
     {
         SelectType(RecordTypes.Entity);
-        _kindButtonOf[kind].ButtonPressed = true;
+        if (_kindButtonOf.TryGetValue(kind, out var button))
+            button.ButtonPressed = true;
         _kind = kind;
         Populate();
+    }
+
+    /// <summary>Presses a quick button by its word (<c>--go map</c>), for scripts.</summary>
+    public void PressQuick(string word)
+    {
+        if (_quick.FirstOrDefault(q => q.Text.Equals(word, StringComparison.OrdinalIgnoreCase)) is { Button: { } button })
+            button.EmitSignal(BaseButton.SignalName.Pressed);
+    }
+
+    /// <summary>
+    /// A quick button's listing: the type, or the kind of entity, and the page opened: the one asked for if the plugins have it, else
+    /// the first listed.
+    /// </summary>
+    private void ShowList(string type, EntityKind? kind, RecordId? open)
+    {
+        if (kind is { } k)
+            SelectKind(k);
+        else
+            SelectType(type);
+        var id = open is { } o && _catalog?.Entries.Any(e => e.Id == o) == true ? o : _first;
+        if (id is { } go)
+            Navigate(go);
+    }
+
+    /// <summary>
+    /// Shows the quick buttons with the ACRE plugin's pictures (<c>acre:image/editor_map</c> and the rest, ADR 0041), or their words
+    /// where no plugin has one.
+    /// </summary>
+    private void ShowQuickButtons(PluginCatalog catalog)
+    {
+        foreach (var (button, art, text) in _quick)
+        {
+            Texture2D? icon = null;
+            if (catalog.Plugins.FindAsset(AidynRetold.Views.UiImages.OwnArtId(art), "png") is { } path)
+            {
+                var image = new Image();
+                if (image.LoadPngFromBuffer(File.ReadAllBytes(path)) == Error.Ok)
+                    icon = ImageTexture.CreateFromImage(AidynRetold.Views.Png.Mipmapped(image));
+            }
+            button.Icon = icon;
+            button.Text = icon is null ? text : "";
+            button.Visible = true;
+        }
     }
 
     /// <summary>
@@ -326,6 +375,32 @@ public partial class RecordBrowser : Control
         AddChild(root);
 
         var bar = EditorStyle.Row(6);
+        // The quick buttons: each lists a type, or a kind of entity, and opens a page, with the ACRE plugin's picture once the plugins
+        // are loaded (ShowQuickButtons), or its word without it.
+        foreach (var (art, text, tip, go) in new (string, string, string, Action)[]
+        {
+            ("editor_map", "Map", "The map chunks, and the Overworld's map", () => ShowList(RecordTypes.Map, null, RecordId.Decimal(RecordTypes.MapSet, 0))),
+            ("editor_party", "Party", "The party members, and Alaron", () => ShowList(RecordTypes.Entity, EntityKind.Party, AidynRetold.Core.GameState.Alaron)),
+            ("editor_characters", "Characters", "Story characters, NPCs, trainers and shopkeepers", () => ShowList(RecordTypes.Entity, EntityKind.Character, RecordId.Hex(RecordTypes.Entity, 0x0204))),
+            ("editor_enemies", "Enemies", "Monsters and enemies", () => ShowList(RecordTypes.Entity, EntityKind.Enemy, RecordId.Hex(RecordTypes.Entity, 0x0215))),
+            ("editor_items", "Items", "The items, and the inventory's rules", () => ShowList(RecordTypes.Item, null, RecordTypes.Info(RecordTypes.Inventory).SingletonId)),
+            ("editor_shop", "Shop", "The shops", () => ShowList(RecordTypes.Shop, null, null)),
+            ("editor_weapons", "Weapons", "The weapons", () => ShowList(RecordTypes.Weapon, null, null)),
+            ("editor_armor", "Armor", "Body armor", () => ShowList(RecordTypes.Armor, null, null)),
+            ("editor_shield", "Shield", "The shields", () => ShowList(RecordTypes.Shield, null, null)),
+        })
+        {
+            var button = new Button
+            {
+                Text = text, TooltipText = tip, ThemeTypeVariation = "FlatButton", FocusMode = FocusModeEnum.None, ExpandIcon = true,
+                IconAlignment = HorizontalAlignment.Center, CustomMinimumSize = new Vector2(34, 26), Visible = false,
+                TextureFilter = TextureFilterEnum.LinearWithMipmaps,
+            };
+            button.Pressed += go;
+            _quick.Add((button, art, text));
+            bar.AddChild(button);
+        }
+        bar.AddChild(new VSeparator());
         bar.AddChild(_back);
         bar.AddChild(_forward);
         bar.AddChild(_status);
@@ -392,8 +467,8 @@ public partial class RecordBrowser : Control
         filters.AddChild(_types);
         filters.AddChild(_search);
         side.AddChild(filters);
-        // Under them, while entities are listed, the four kinds of entity, each an equal share of the row: the one pressed lists its
-        // kind alone, and pressed again lists them all.
+        // Under them, while entities are listed, the three kinds of entity, the party, the characters and the enemies, each an equal
+        // share of the row: the one pressed lists its kind alone, and pressed again lists them all.
         var kinds = new List<Button>();
         var group = new ButtonGroup { AllowUnpress = true };
         foreach (var (kind, text, tip) in new[]
@@ -401,7 +476,6 @@ public partial class RecordBrowser : Control
             (EntityKind.Party, "Party", "The party members: the recruitable ones, and Alaron"),
             (EntityKind.Character, "Characters", "Story characters, NPCs, trainers and shopkeepers"),
             (EntityKind.Enemy, "Enemies", "Monsters and enemies"),
-            (EntityKind.Other, "Other", "Entities that are none of those"),
         })
         {
             var button = new Button { Text = text, TooltipText = tip, ToggleMode = true, ButtonGroup = group, FocusMode = FocusModeEnum.None };
@@ -413,7 +487,7 @@ public partial class RecordBrowser : Control
             kinds.Add(button);
             _kindButtonOf[kind] = button;
         }
-        _kindButtons = new ButtonRows(4, [.. kinds]) { Visible = false };
+        _kindButtons = new ButtonRows(3, [.. kinds]) { Visible = false };
         side.AddChild(_kindButtons);
         _list.SizeFlagsVertical = SizeFlags.ExpandFill;
         side.AddChild(_list);
@@ -517,6 +591,7 @@ public partial class RecordBrowser : Control
     {
         _list.Clear();
         _rows.Clear();
+        _first = null;
         _count.Text = "";
         if (_catalog is null)
             return;
@@ -554,6 +629,7 @@ public partial class RecordBrowser : Control
             row.SetTooltipText(2, line ?? entry.Summary);
             row.SetMetadata(0, id);
             _rows[entry.Id] = row;
+            _first ??= entry.Id;
         }
         if (_current is { } current && _rows.TryGetValue(current, out var selected))
             SelectRow(selected);
@@ -813,7 +889,7 @@ public partial class RecordBrowser : Control
     /// Whether a record's page is one page, with what the tabs would hold in its cards: an actor's, a model's, an armor's, a weapon's
     /// or an item's.
     /// </summary>
-    private static bool OnePage(RecordId id) => id.Type is RecordTypes.Actor or RecordTypes.Scene or RecordTypes.Armor or RecordTypes.Weapon or RecordTypes.Item;
+    private static bool OnePage(RecordId id) => id.Type is RecordTypes.Actor or RecordTypes.Scene or RecordTypes.Armor or RecordTypes.Shield or RecordTypes.Weapon or RecordTypes.Item;
 
     /// <summary>
     /// Loads the plugins again, then opens the record afresh, the history kept, and an edit page's held changes with it: after a save,
@@ -950,11 +1026,13 @@ public partial class RecordBrowser : Control
             Func<Task<AidynRetold.Plugins.Assets.TextureUsage>> usage = () => _usage ??= Task.Run(() => AidynRetold.Plugins.Assets.TextureUsage.Build(catalog.Plugins));
             if (id.Type == RecordTypes.Armor && items.TryGet(id) is { } armorItem && plugins.TryGet<ArmorRecord>(id) is { } armor && json is not null)
                 return new ArmorPage(catalog, _game, _rules, items, armorItem, armor, json, catalog.ReferencesTo(id), FollowLink, () => ReloadAt(id), _models, usage);
+            if (id.Type == RecordTypes.Shield && items.TryGet(id) is { } shieldItem && plugins.TryGet<ShieldRecord>(id) is { } shield && json is not null)
+                return new ShieldPage(catalog, _game, _rules, items, shieldItem, shield, json, catalog.ReferencesTo(id), FollowLink, () => ReloadAt(id), _models, usage);
             if (id.Type == RecordTypes.Weapon && items.TryGet(id) is { } weaponItem && plugins.TryGet<WeaponRecord>(id) is { } weapon && json is not null)
                 return new WeaponPage(catalog, _game, _rules, items, weaponItem, weapon, json, catalog.ReferencesTo(id), FollowLink, () => ReloadAt(id), _models, usage);
             if (id.Type == RecordTypes.Item && items.TryGet(id) is { } itemItem && plugins.TryGet<ItemRecord>(id) is { } itemRecord && json is not null)
                 return new ItemPage(catalog, _game, _rules, items, itemItem, itemRecord, json, catalog.ReferencesTo(id), FollowLink, () => ReloadAt(id), _models, usage);
-            if (id.Type is RecordTypes.Weapon or RecordTypes.Armor or RecordTypes.Item && items.TryGet(id) is { } item)
+            if (id.Type is RecordTypes.Weapon or RecordTypes.Armor or RecordTypes.Shield or RecordTypes.Item && items.TryGet(id) is { } item)
                 return new ItemPanel(catalog, _game, _rules, items, item, FollowLink);
             if (id.Type == RecordTypes.Shop && plugins.TryGet<ShopRecord>(id) is { } shop)
                 return new ShopPanel(catalog, _game, _rules, items, shop, FollowLink);

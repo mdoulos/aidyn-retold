@@ -92,7 +92,7 @@ public sealed partial class PartyMenu
         {
             ItemKind.Weapon => (what.Weapon!.Damage, what.Weapon.Hit),
             ItemKind.Armor => (what.Armor!.Protection, 0),
-            ItemKind.Shield => (what.Armor!.Defense + what.Armor.Protection, 0),
+            ItemKind.Shield => (what.Shield!.Defense + what.Shield.Protection, 0),
             ItemKind.Helmet or ItemKind.Cloak or ItemKind.Gloves or ItemKind.Boots or ItemKind.Belt => (what.Protection + what.Damage, 0),
             _ => null,
         };
@@ -124,7 +124,7 @@ public sealed partial class PartyMenu
             case ItemKind.Armor when item.Armor is { } armor:
                 about.Add($"Protection {Num(armor.Protection)}");
                 break;
-            case ItemKind.Shield when item.Armor is { } shield:
+            case ItemKind.Shield when item.Shield is { } shield:
                 about.Add($"Defense {Num(shield.Defense)}");
                 about.Add($"Protection {Num(shield.Protection)}");
                 break;

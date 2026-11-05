@@ -78,7 +78,7 @@ public class DialogueImportTests
                 Assert.True(op.Target is not null ^ op.Value is not null, op.ToString());
                 if (op.Target is { } target)
                 {
-                    Assert.Contains(target.Type, new[] { RecordTypes.Entity, RecordTypes.DialogEntity, RecordTypes.Item, RecordTypes.Weapon, RecordTypes.Armor, RecordTypes.Spell });
+                    Assert.Contains(target.Type, new[] { RecordTypes.Entity, RecordTypes.DialogEntity, RecordTypes.Item, RecordTypes.Weapon, RecordTypes.Armor, RecordTypes.Shield, RecordTypes.Spell });
                 }
                 else
                 {
@@ -235,7 +235,7 @@ public class DialogueImportTests
     {
         Assert.Equal(RecordId.Parse("aidyn:entity/0x023F"), DbRecordIds.For(new ItemId(0x023F)));
         Assert.Equal(RecordTypes.DialogEntity, DbRecordIds.For(ItemId.Of(DbType.DialogEntity, 3))!.Value.Type);
-        Assert.Equal(RecordTypes.Armor, DbRecordIds.For(ItemId.Of(DbType.Shield, 1))!.Value.Type);
+        Assert.Equal(RecordTypes.Shield, DbRecordIds.For(ItemId.Of(DbType.Shield, 1))!.Value.Type);
         Assert.Equal(RecordTypes.Item, DbRecordIds.For(ItemId.Of(DbType.KeyItem, 1))!.Value.Type);
         Assert.Equal(RecordTypes.Weapon, DbRecordIds.For(ItemId.Of(DbType.Weapon, 9))!.Value.Type);
         Assert.Equal(RecordTypes.Spell, DbRecordIds.For(ItemId.Of(DbType.Spell, 2))!.Value.Type);
@@ -272,8 +272,9 @@ public class DialogueImportTests
             names.Add(entity.Id, entity.Name);
         foreach (var spell in CharacterImporter.BuildSpells(db))
             names.Add(spell.Id, spell.Name);
-        var (weapons, armor, items) = ItemImporter.BuildItems(db, ItemTables.Read(rom), Quests.EngineTables.Read(rom));
-        foreach (var (id, name) in weapons.Select(w => (w.Id, w.Name)).Concat(armor.Select(a => (a.Id, a.Name))).Concat(items.Select(i => (i.Id, i.Name))))
+        var (weapons, armor, shields, items) = ItemImporter.BuildItems(db, ItemTables.Read(rom), Quests.EngineTables.Read(rom));
+        foreach (var (id, name) in weapons.Select(w => (w.Id, w.Name)).Concat(armor.Select(a => (a.Id, a.Name))).Concat(shields.Select(s => (s.Id, s.Name)))
+            .Concat(items.Select(i => (i.Id, i.Name))))
             names.Add(id, name);
         Assert.Equal("Alaron", names[RecordId.Hex(RecordTypes.Entity, 0x023F)]);
         Assert.Equal("Trahern", names[RecordId.Hex(RecordTypes.Entity, 0x0239)]);

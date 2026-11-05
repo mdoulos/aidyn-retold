@@ -106,7 +106,7 @@ public sealed partial class Battle
     {
         var total = c.Protection + (c.Equipment.Armor?.Item.Armor?.Protection ?? 0) + c.Skills.Modified(Skill.Warrior) / 5;
         total = total < 1 ? 0 : total & 0xFF;
-        if (!behind && c.Equipment.Shield?.Item.Armor is { } shield)
+        if (!behind && c.Equipment.Shield?.Item.Shield is { } shield)
             total += shield.Protection;
         return total & 0xFF;
     }

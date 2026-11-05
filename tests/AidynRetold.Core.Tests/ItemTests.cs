@@ -18,15 +18,19 @@ internal static class ItemData
 
     public static RecordId ArmorId(int n) => RecordId.Hex(RecordTypes.Armor, 0x0500 + n);
 
+    public static RecordId ShieldId(int n) => RecordId.Hex(RecordTypes.Shield, 0x0600 + n);
+
     public static RecordId ThingId(int n) => RecordId.Hex(RecordTypes.Item, 0x0900 + n);
 
     public static WeaponRecord NewWeapon(int n, WeaponClass weaponClass = WeaponClass.Sword, int strength = 0, GearBonuses? bonuses = null,
         bool isFixed = false) => new(WeaponId(n), $"Weapon {n}", Icon, 100, weaponClass, strength, 0, 5, 10, 0, 0, Element.None,
         bonuses ?? new GearBonuses(), null, isFixed);
 
-    public static ArmorRecord NewArmor(int n, ArmorSlot slot = ArmorSlot.Body, int protection = 0, int defense = 0, int dexterity = 0,
-        int stealth = 0, GearBonuses? bonuses = null) => new(ArmorId(n), $"Armor {n}", Icon, 100, slot, defense, protection, dexterity,
-        stealth, 0, 0, bonuses ?? new GearBonuses());
+    public static ArmorRecord NewArmor(int n, int protection = 0, int dexterity = 0, int stealth = 0, GearBonuses? bonuses = null) =>
+        new(ArmorId(n), $"Armor {n}", Icon, 100, protection, dexterity, stealth, 0, 0, bonuses ?? new GearBonuses());
+
+    public static ShieldRecord NewShield(int n, int protection = 0, int defense = 0, int dexterity = 0, int stealth = 0, GearBonuses? bonuses = null) =>
+        new(ShieldId(n), $"Shield {n}", Icon, 100, defense, protection, dexterity, stealth, 0, 0, bonuses ?? new GearBonuses());
 
     public static ItemRecord NewItem(int n, ItemKind kind = ItemKind.Misc, int protection = 0, int damage = 0, int strength = 0,
         int intelligence = 0, GearBonuses? bonuses = null, ItemTraits? traits = null, KeyItemFlags? key = null) => new(ThingId(n), $"Item {n}",
@@ -48,7 +52,7 @@ internal static class ItemData
         refused ?? [], replaced ?? [], Flag(0));
 
     public static ItemCatalog CatalogWith(InventoryRecord rules, params object[] records) =>
-        new(records.OfType<WeaponRecord>(), records.OfType<ArmorRecord>(), records.OfType<ItemRecord>(), rules);
+        new(records.OfType<WeaponRecord>(), records.OfType<ArmorRecord>(), records.OfType<ShieldRecord>(), records.OfType<ItemRecord>(), rules);
 
     public static ItemCatalog Catalog(params object[] records) => CatalogWith(Rules(), records);
 
@@ -60,6 +64,8 @@ internal static class ItemData
     public static ItemInstance Inst(WeaponRecord record) => new(Item.From(record));
 
     public static ItemInstance Inst(ArmorRecord record) => new(Item.From(record));
+
+    public static ItemInstance Inst(ShieldRecord record) => new(Item.From(record));
 
     public static ItemInstance Inst(ItemRecord record) => new(Item.From(record));
 
@@ -75,11 +81,11 @@ public class ItemCatalogTests
     [Fact]
     public void ItemsAreWeaponsArmorAndOtherItemsByTheirIds()
     {
-        var catalog = ItemData.Catalog(ItemData.NewWeapon(1), ItemData.NewArmor(1), ItemData.NewArmor(2, ArmorSlot.Shield), ItemData.NewItem(1, ItemKind.Ring));
+        var catalog = ItemData.Catalog(ItemData.NewWeapon(1), ItemData.NewArmor(1), ItemData.NewShield(2), ItemData.NewItem(1, ItemKind.Ring));
 
         Assert.Equal(ItemKind.Weapon, catalog[ItemData.WeaponId(1)].Kind);
         Assert.Equal(ItemKind.Armor, catalog[ItemData.ArmorId(1)].Kind);
-        Assert.Equal(ItemKind.Shield, catalog[ItemData.ArmorId(2)].Kind);
+        Assert.Equal(ItemKind.Shield, catalog[ItemData.ShieldId(2)].Kind);
         Assert.Equal(ItemKind.Ring, catalog[ItemData.ThingId(1)].Kind);
         Assert.Equal(4, catalog.All.Count());
     }
@@ -279,7 +285,7 @@ public class EquipmentTests
         var equipment = alaron.Equipment;
 
         equipment.EquipArmor(ItemData.Inst(ItemData.NewArmor(1, dexterity: -2, stealth: -1)));
-        Assert.Equal(EquipRefusal.None, equipment.EquipShield(ItemData.Inst(ItemData.NewArmor(2, ArmorSlot.Shield, dexterity: -1, stealth: -2))));
+        Assert.Equal(EquipRefusal.None, equipment.EquipShield(ItemData.Inst(ItemData.NewShield(2, dexterity: -1, stealth: -2))));
 
         Assert.Equal(12, alaron.Stats.RawModified(Stat.Dexterity));
         Assert.Equal(15, alaron.Stats.RawBase(Stat.Dexterity));
@@ -315,7 +321,7 @@ public class EquipmentTests
         Assert.Equal(5, equipment.ArmorProtection);
         Assert.Equal(0, equipment.ShieldDefense);
 
-        equipment.EquipShield(ItemData.Inst(ItemData.NewArmor(2, ArmorSlot.Shield, protection: 2, defense: 3)));
+        equipment.EquipShield(ItemData.Inst(ItemData.NewShield(2, protection: 2, defense: 3)));
         Assert.Equal(7, equipment.ArmorProtection);
         Assert.Equal(3, equipment.ShieldDefense);
 
@@ -394,7 +400,7 @@ public class EquipmentTests
         var skilled = ItemData.Alaron().Equipment;
         var unskilled = ItemData.Alaron(e => e with { ShieldSkill = 0 }).Equipment;
         var unable = ItemData.Alaron(e => e with { ShieldSkill = null }).Equipment;
-        var shield = ItemData.NewArmor(1, ArmorSlot.Shield);
+        var shield = ItemData.NewShield(1);
 
         Assert.True(skilled.CanCarryShield);
         Assert.False(unskilled.CanCarryShield);
@@ -470,7 +476,7 @@ public class EquipmentTests
         var equipment = ItemData.Alaron().Equipment;
         var sword = ItemData.NewWeapon(1);
         var armor = ItemData.NewArmor(1);
-        var shield = ItemData.NewArmor(2, ArmorSlot.Shield);
+        var shield = ItemData.NewShield(2);
         equipment.EquipWeapon(ItemData.Inst(sword));
         equipment.EquipArmor(ItemData.Inst(armor));
         equipment.EquipShield(ItemData.Inst(shield));
@@ -487,7 +493,7 @@ public class EquipmentTests
         var alaron = ItemData.Alaron();
         weapon = ItemData.Inst(ItemData.NewWeapon(1, bonuses: ItemData.Raises(Stat.Stamina, 5)));
         armor = ItemData.Inst(ItemData.NewArmor(1, bonuses: ItemData.Raises(Stat.Stamina, 3)));
-        shield = ItemData.Inst(ItemData.NewArmor(2, ArmorSlot.Shield, bonuses: ItemData.Raises(Stat.Stamina, 2)));
+        shield = ItemData.Inst(ItemData.NewShield(2, bonuses: ItemData.Raises(Stat.Stamina, 2)));
         gear = ItemData.Inst(Helmet(1, ItemData.Raises(Stat.Stamina, 4)));
         alaron.Equipment.EquipWeapon(weapon);
         alaron.Equipment.EquipArmor(armor);
@@ -588,7 +594,7 @@ public class EquipmentTests
         var spells = Enumerable.Range(0, 4).Select(i => RecordId.Hex(RecordTypes.Spell, 0x0300 + i)).ToArray();
         equipment.EquipWeapon(ItemData.Inst(ItemData.NewWeapon(1, bonuses: ItemData.Enchants(spells[0]))));
         equipment.EquipArmor(ItemData.Inst(ItemData.NewArmor(1, bonuses: ItemData.Enchants(spells[1]))));
-        equipment.EquipShield(ItemData.Inst(ItemData.NewArmor(2, ArmorSlot.Shield, bonuses: ItemData.Enchants(spells[2]))));
+        equipment.EquipShield(ItemData.Inst(ItemData.NewShield(2, bonuses: ItemData.Enchants(spells[2]))));
         equipment.EquipGear(ItemData.Inst(Helmet(1, ItemData.Enchants(spells[3]))));
 
         Assert.Equal(spells[1..], equipment.Enchantments.Select(e => e.Spell));
@@ -670,7 +676,7 @@ public class CharacterItemTests
     private static readonly WeaponRecord Axe = ItemData.NewWeapon(2, WeaponClass.Hafted, strength: 10);
     private static readonly WeaponRecord Pole = ItemData.NewWeapon(3, WeaponClass.Pole);
     private static readonly ArmorRecord Mail = ItemData.NewArmor(1, protection: 5);
-    private static readonly ArmorRecord Buckler = ItemData.NewArmor(2, ArmorSlot.Shield);
+    private static readonly ShieldRecord Buckler = ItemData.NewShield(2);
     private static readonly ItemCatalog Catalog = ItemData.Catalog(Sword, Axe, Pole, Mail, Buckler);
 
     private static Character Create(Func<EntityRecord, EntityRecord> edit) =>
@@ -961,8 +967,8 @@ public class PartyItemTests
     private static readonly WeaponRecord Staff = ItemData.NewWeapon(3, WeaponClass.Hafted, isFixed: true);
     private static readonly ArmorRecord Mail = ItemData.NewArmor(1, protection: 5, dexterity: -2);
     private static readonly ArmorRecord Plate = ItemData.NewArmor(2, protection: 9);
-    private static readonly ArmorRecord Buckler = ItemData.NewArmor(3, ArmorSlot.Shield, defense: 2);
-    private static readonly ArmorRecord Tower = ItemData.NewArmor(4, ArmorSlot.Shield, defense: 6);
+    private static readonly ShieldRecord Buckler = ItemData.NewShield(3, defense: 2);
+    private static readonly ShieldRecord Tower = ItemData.NewShield(4, defense: 6);
     private static readonly ItemRecord Cap = ItemData.NewItem(1, ItemKind.Helmet, protection: 1, bonuses: ItemData.Raises(Stat.Strength, 2));
     private static readonly ItemRecord Helm = ItemData.NewItem(2, ItemKind.Helmet, protection: 3);
     private static readonly ItemRecord Ring1 = ItemData.NewItem(3, ItemKind.Ring);

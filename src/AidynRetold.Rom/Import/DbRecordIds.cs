@@ -20,7 +20,8 @@ internal static class DbRecordIds
             DbType.Spell => RecordTypes.Spell,
             DbType.Loot => RecordTypes.Loot,
             DbType.Weapon => RecordTypes.Weapon,
-            DbType.Armor or DbType.Shield => RecordTypes.Armor,
+            DbType.Armor => RecordTypes.Armor,
+            DbType.Shield => RecordTypes.Shield,
             DbType.Misc or DbType.Helmet or DbType.Cloak or DbType.Glove or DbType.Ring or DbType.Wand
                 or DbType.Belt or DbType.Boots or DbType.Potion or DbType.Scroll or DbType.KeyItem or DbType.Amulet => RecordTypes.Item,
             _ => null,

@@ -279,6 +279,7 @@ public sealed class PakSaves
     {
         RecordTypes.Weapon => _plugins.TryGet<WeaponRecord>(item)?.Bonuses,
         RecordTypes.Armor => _plugins.TryGet<ArmorRecord>(item)?.Bonuses,
+        RecordTypes.Shield => _plugins.TryGet<ShieldRecord>(item)?.Bonuses,
         _ => _plugins.TryGet<ItemRecord>(item)?.Bonuses,
     };
 

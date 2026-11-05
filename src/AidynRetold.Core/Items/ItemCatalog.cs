@@ -38,8 +38,11 @@ public sealed class Item
 
     public WeaponRecord? Weapon { get; private init; }
 
-    /// <summary>Body armor or a shield.</summary>
+    /// <summary>Body armor.</summary>
     public ArmorRecord? Armor { get; private init; }
+
+    /// <summary>A shield.</summary>
+    public ShieldRecord? Shield { get; private init; }
 
     /// <summary>Any other item.</summary>
     public ItemRecord? Gear { get; private init; }
@@ -47,8 +50,17 @@ public sealed class Item
     /// <summary>The flags a key item sets.</summary>
     public KeyItemFlags? KeyItem => Gear?.KeyItem;
 
-    /// <summary>What wearing it adds to the wearer's protection: armor's, or a worn item's.</summary>
-    public int Protection => Armor?.Protection ?? Gear?.Protection ?? 0;
+    /// <summary>What wearing it adds to the wearer's protection: armor's, a shield's, or a worn item's.</summary>
+    public int Protection => Armor?.Protection ?? Shield?.Protection ?? Gear?.Protection ?? 0;
+
+    /// <summary>What wearing armor or bearing a shield adds to modified Dexterity: a penalty, or 0.</summary>
+    public int Dexterity => Armor?.Dexterity ?? Shield?.Dexterity ?? 0;
+
+    /// <summary>What wearing armor or bearing a shield adds to modified Stealth.</summary>
+    public int Stealth => Armor?.Stealth ?? Shield?.Stealth ?? 0;
+
+    /// <summary>A shield's defense, which combat reads; 0 for anything else.</summary>
+    public int Defense => Shield?.Defense ?? 0;
 
     /// <summary>What a worn item adds to the wearer's damage. A weapon's own damage is combat's (2.5).</summary>
     public int Damage => Gear?.Damage ?? 0;
@@ -74,8 +86,9 @@ public sealed class Item
     public static Item From(WeaponRecord w) =>
         new(w.Id, w.Name, w.Icon, w.Price, ItemKind.Weapon, w.Bonuses, w.Traits) { Weapon = w };
 
-    public static Item From(ArmorRecord a) =>
-        new(a.Id, a.Name, a.Icon, a.Price, a.Slot == ArmorSlot.Shield ? ItemKind.Shield : ItemKind.Armor, a.Bonuses, a.Traits) { Armor = a };
+    public static Item From(ArmorRecord a) => new(a.Id, a.Name, a.Icon, a.Price, ItemKind.Armor, a.Bonuses, a.Traits) { Armor = a };
+
+    public static Item From(ShieldRecord s) => new(s.Id, s.Name, s.Icon, s.Price, ItemKind.Shield, s.Bonuses, s.Traits) { Shield = s };
 
     public static Item From(ItemRecord i) => new(i.Id, i.Name, i.Icon, i.Price, i.Kind, i.Bonuses, i.Traits) { Gear = i };
 
@@ -87,9 +100,11 @@ public sealed class ItemCatalog
 {
     private readonly Dictionary<RecordId, Item> _items;
 
-    public ItemCatalog(IEnumerable<WeaponRecord> weapons, IEnumerable<ArmorRecord> armor, IEnumerable<ItemRecord> items, InventoryRecord rules)
+    public ItemCatalog(IEnumerable<WeaponRecord> weapons, IEnumerable<ArmorRecord> armor, IEnumerable<ShieldRecord> shields, IEnumerable<ItemRecord> items,
+        InventoryRecord rules)
     {
-        _items = weapons.Select(Item.From).Concat(armor.Select(Item.From)).Concat(items.Select(Item.From)).ToDictionary(i => i.Id);
+        _items = weapons.Select(Item.From).Concat(armor.Select(Item.From)).Concat(shields.Select(Item.From)).Concat(items.Select(Item.From))
+            .ToDictionary(i => i.Id);
         Rules = rules;
     }
 
@@ -97,12 +112,17 @@ public sealed class ItemCatalog
 
     public IEnumerable<Item> All => _items.Values;
 
-    public Item this[RecordId id] => _items.TryGetValue(id, out var item) ? item : throw new KeyNotFoundException($"No item {id}.");
+    public Item this[RecordId id] => TryGet(id) ?? throw new KeyNotFoundException($"No item {id}.");
 
-    public Item? TryGet(RecordId id) => _items.GetValueOrDefault(id);
+    /// <summary>
+    /// The item with this ID, or null. A shield named as armor, <c>aidyn:armor/0x06…</c>, as saves and mods from before shields were
+    /// their own type (Nov 5, 2026) name them, finds the shield.
+    /// </summary>
+    public Item? TryGet(RecordId id) =>
+        _items.GetValueOrDefault(id) ?? (id.Type == RecordTypes.Armor ? _items.GetValueOrDefault(RecordId.Parse($"{id.Namespace}:{RecordTypes.Shield}/{id.Key}")) : null);
 
     /// <summary>The installed plugins' items.</summary>
     public static ItemCatalog From(PluginSet plugins) => new(
-        plugins.All<WeaponRecord>(RecordTypes.Weapon), plugins.All<ArmorRecord>(RecordTypes.Armor), plugins.All<ItemRecord>(RecordTypes.Item),
-        plugins.Singleton<InventoryRecord>());
+        plugins.All<WeaponRecord>(RecordTypes.Weapon), plugins.All<ArmorRecord>(RecordTypes.Armor), plugins.All<ShieldRecord>(RecordTypes.Shield),
+        plugins.All<ItemRecord>(RecordTypes.Item), plugins.Singleton<InventoryRecord>());
 }

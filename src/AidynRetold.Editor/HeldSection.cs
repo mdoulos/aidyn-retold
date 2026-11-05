@@ -21,7 +21,7 @@ public partial class HeldSection : VBoxContainer
     private readonly OptionButton _weapon = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, TooltipText = "The weapon drawn, as in battle" };
     private readonly OptionButton _shield = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, TooltipText = "The shield on the arm, as in battle" };
     private readonly List<WeaponRecord> _weapons;
-    private readonly List<ArmorRecord> _shields;
+    private readonly List<ShieldRecord> _shields;
     private readonly List<Node3D> _held = [];
     private Node3D? _head;
 
@@ -58,7 +58,7 @@ public partial class HeldSection : VBoxContainer
         }
 
         _weapons = [.. plugins.All<WeaponRecord>(RecordTypes.Weapon).Where(w => w.Model is not null).OrderBy(w => w.Name, StringComparer.Ordinal)];
-        _shields = [.. plugins.All<ArmorRecord>(RecordTypes.Armor).Where(a => a.Model is not null).OrderBy(a => a.Name, StringComparer.Ordinal)];
+        _shields = [.. plugins.All<ShieldRecord>(RecordTypes.Shield).Where(a => a.Model is not null).OrderBy(a => a.Name, StringComparer.Ordinal)];
         _weapon.AddItem("No weapon drawn", 0);
         for (var i = 0; i < _weapons.Count; i++)
             _weapon.AddItem(_weapons[i].Name, i + 1);

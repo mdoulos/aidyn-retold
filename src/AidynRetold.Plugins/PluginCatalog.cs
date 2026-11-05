@@ -123,7 +123,7 @@ public sealed class PluginCatalog
                 case RecordTypes.Entity or RecordTypes.DialogEntity:
                     Add(wearers, Id(json["body"]?["actor"]), (string?)json["name"]);
                     break;
-                case RecordTypes.Weapon or RecordTypes.Armor or RecordTypes.Item:
+                case RecordTypes.Weapon or RecordTypes.Armor or RecordTypes.Shield or RecordTypes.Item:
                     Add(models, Id(json["model"]), (string?)json["name"]);
                     break;
             }
@@ -240,7 +240,7 @@ public sealed class PluginCatalog
                 var first = nodes.OfType<JsonObject>().Select(n => (string?)n["text"]).FirstOrDefault(t => !string.IsNullOrWhiteSpace(t));
                 parts.Add($"{(string?)json["mode"]}, {Count(nodes, "node")}" + (first is null ? "" : $": {Truncate(first.Replace("\n", " ", StringComparison.Ordinal), 60)}"));
                 break;
-            case RecordTypes.Entity or RecordTypes.DialogEntity or RecordTypes.Weapon or RecordTypes.Armor or RecordTypes.Spell
+            case RecordTypes.Entity or RecordTypes.DialogEntity or RecordTypes.Weapon or RecordTypes.Armor or RecordTypes.Shield or RecordTypes.Spell
                 or RecordTypes.Item or RecordTypes.Loot when json is not null:
                 parts.Add((string?)json["name"] ?? "");
                 break;

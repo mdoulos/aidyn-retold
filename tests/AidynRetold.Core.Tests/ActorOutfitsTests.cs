@@ -39,7 +39,7 @@ public sealed class ActorOutfitsTests
 
         // A shield protects, but isn't body armour.
         alaron.Equipment.EquipArmor(ItemData.Inst(ItemData.NewArmor(0)));
-        alaron.Equipment.EquipShield(ItemData.Inst(ItemData.NewArmor(2, ArmorSlot.Shield, protection: 3, defense: 2)));
+        alaron.Equipment.EquipShield(ItemData.Inst(ItemData.NewShield(2, protection: 3, defense: 2)));
         Assert.Same(Plain, ActorOutfits.Worn(Actor, alaron));
     }
 

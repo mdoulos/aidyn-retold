@@ -11,7 +11,7 @@ The original's files these port: `item.cpp`, `generic.cpp`, `armor.cpp`, `weapon
 
 ## The records
 
-- **Weapons** (`aidyn:weapon/0x07…`), **armor** (`aidyn:armor/0x05…`, shields `0x06…`) and **items** (`aidyn:item/…`, everything else, potions among them) carry their DB fields, an icon and what they do for whoever wears them (`GearBonuses`): an aspect only that aspect can wear, a stat and a skill they raise or lower, a spell the wearer can cast from them (level and charges), an enchantment that's on while they're worn, and a resistance.
+- **Weapons** (`aidyn:weapon/0x07…`), **armor** (`aidyn:armor/0x05…`), **shields** (`aidyn:shield/0x06…`, their own type since Nov 5, 2026, so the editor lists them apart; a save or a mod from before that names one as armor still finds it, `ItemCatalog.TryGet`) and **items** (`aidyn:item/…`, everything else, potions among them) carry their DB fields, an icon and what they do for whoever wears them (`GearBonuses`): an aspect only that aspect can wear, a stat and a skill they raise or lower, a spell the wearer can cast from them (level and charges), an enchantment that's on while they're worn, and a resistance.
   - A weapon's spell level is its own field (the ROM's byte at `0x1D`); armor's and gear's is in the bonuses. The bonuses' first spell byte is the charges for all three.
   - Range is the ROM's byte × 5 / 3, up to 255 (`WeaponDB::Load`).
   - Armor's Dexterity and Stealth are signed: penalties, or Stealth bonuses on leathers. Gear's stat byte is tested against `0xFF`, not for nonzero (`ItemInstance::InitGear`). The spell bytes are in [db](../formats/db.md).

@@ -133,7 +133,7 @@ public partial class ItemPanel : PagePanel
             Body.AddChild(LinkButton(RecordId.Decimal(RecordTypes.WeaponSkill, (int)weapon.Class), $"{weapon.Class} skill, which must be above 0"));
             Line($"Damage {weapon.Damage}, hit {weapon.Hit}, range {weapon.Range}" + (weapon.DamageType != Element.None ? $", {weapon.DamageType} damage" : "") + ".");
         }
-        if (item.Armor is { Slot: ArmorSlot.Shield } shield)
+        if (item.Shield is { } shield)
             Line($"Defense {shield.Defense}. Carrying it needs the shield skill.");
         var needs = new List<string>();
         if (item.RequiredStrength > 0)

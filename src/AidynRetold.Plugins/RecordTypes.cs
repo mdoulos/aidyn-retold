@@ -47,6 +47,8 @@ public static class RecordTypes
     public const string Entity = "entity";
     public const string Weapon = "weapon";
     public const string Armor = "armor";
+    /// <summary>A shield (<c>aidyn:shield/0x06…</c>), the armor DB's shield group, its own type since Nov 5, 2026.</summary>
+    public const string Shield = "shield";
     public const string Spell = "spell";
     public const string Item = "item";
     /// <summary>A <c>DialogEntity</c>: a sign, animal or other simple speaker.</summary>
@@ -170,6 +172,7 @@ public static class RecordTypes
         new(Entity, typeof(EntityRecord), KeyKind.Db, Views: DbViews),
         new(Weapon, typeof(WeaponRecord), KeyKind.Db, Views: DbViews),
         new(Armor, typeof(ArmorRecord), KeyKind.Db, Views: DbViews),
+        new(Shield, typeof(ShieldRecord), KeyKind.Db, Views: DbViews),
         new(Spell, typeof(SpellRecord), KeyKind.Db, Views: DbViews),
         new(Item, typeof(ItemRecord), KeyKind.Db, Views: DbViews),
         new(DialogEntity, typeof(DbRecord), KeyKind.Db),

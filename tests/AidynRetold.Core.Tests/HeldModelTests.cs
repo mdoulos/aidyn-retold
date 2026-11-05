@@ -17,13 +17,13 @@ public sealed class HeldModelTests
     private static readonly WeaponRecord Sword = ItemData.NewWeapon(1) with { Model = Scene(0x34DF) };
     private static readonly WeaponRecord Bite = ItemData.NewWeapon(2, WeaponClass.Bite);
     private static readonly WeaponRecord Bow = ItemData.NewWeapon(3, WeaponClass.Missile) with { Range = 10, Model = Scene(0x34D2) };
-    private static readonly ArmorRecord Shield = ItemData.NewArmor(4, ArmorSlot.Shield, defense: 2) with { Model = Scene(0x3534) };
+    private static readonly ShieldRecord Shield = ItemData.NewShield(4, defense: 2) with { Model = Scene(0x3534) };
 
     private static CombatRecord Rules(IReadOnlyList<RecordId>? undrawn = null, IReadOnlyList<RecordId>? otherHand = null) =>
         new(RecordId.Decimal(RecordTypes.Combat, 0), Ids.Entity(1), [], Ids.Entity(2), [], [], [],
             Missiles: [new Missile(Bow.Id, Arrow, 8)], UndrawnWeapons: undrawn ?? [], OtherHand: otherHand ?? []);
 
-    private static Combatant Holding(WeaponRecord? weapon, ArmorRecord? shield = null, bool shieldSkill = true)
+    private static Combatant Holding(WeaponRecord? weapon, ShieldRecord? shield = null, bool shieldSkill = true)
     {
         var fighter = BattleFixtures.Fighter(0, 20);
         if (!shieldSkill)

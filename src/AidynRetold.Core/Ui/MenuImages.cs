@@ -113,8 +113,8 @@ public static class MenuImages
 
     /// <summary>
     /// Each potion's and flask's own picture, by its item, the user's art (Nov 2 and 4, 2026), where the original draws all of them with
-    /// <see cref="Potion"/>: the original's in potion number order from 0x1000, the cut A and J having none, Clarity's the Potion of
-    /// Literacy's as the ACRE plugin renames it; then the ACRE plugin's own potions, Intellect, Determination and Ingenuity, from 0x1011.
+    /// <see cref="Potion"/>: the original's in potion number order from 0x1000, the cut A and J having none, Clarity's the Literacy
+    /// Potion's as the ACRE plugin renames it; then the ACRE plugin's own potions, Intellect, Determination and Ingenuity, from 0x1011.
     /// </summary>
     public static readonly IReadOnlyDictionary<RecordId, RecordId> PotionPictures = new[]
         {

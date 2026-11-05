@@ -10,11 +10,11 @@ The ACRE plugin's potions, the user's (Nov 4, 2026; [items](../systems/items.md#
 
 | Potion | The original | Retold |
 | --- | --- | --- |
-| Potion of Literacy | Clarity Potion: Loremaster +3, in or out of a battle | Renamed; Loremaster +3, outside a battle only |
+| Literacy Potion | Clarity Potion: Loremaster +3, in or out of a battle | Renamed; Loremaster +3, outside a battle only |
 | Charisma Potion | Diplomat +3, in or out of a battle | Diplomat +2 and Merchant +1, outside a battle only |
-| Potion of Intellect | none | New: Intelligence +10, in or out of a battle, 500 gold |
-| Potion of Determination | none | New: Willpower +10, in or out of a battle, 500 gold |
-| Potion of Ingenuity | none | New: Thief +1 and Mechanic +1, outside a battle only, 300 gold |
+| Intellect Potion | none | New: Intelligence +10, in or out of a battle, 500 gold |
+| Determination Potion | none | New: Willpower +10, in or out of a battle, 500 gold |
+| Ingenuity Potion | none | New: Thief +1 and Mechanic +1, outside a battle only, 300 gold |
 
 - **Each lasts the original's three hours**, the stat potions raising the stat's base as Strength's and Dexterity's do.
 - **The new ones are brewed and sold.** An Alchemist brews Intellect from 1 Herb, 2 Spices and 1 Gemstone at rank 2, Determination from
@@ -48,5 +48,5 @@ The ACRE plugin's potions, the user's (Nov 4, 2026; [items](../systems/items.md#
 
 ## New items
 
-- **The Potions of Intellect, Determination and Ingenuity** ([above](#potions)).
+- **The Intellect, Determination and Ingenuity Potions** ([above](#potions)).
 - **Squire Armor**, Alaron's starting armor ([armor](armor.md#squire-armor)).

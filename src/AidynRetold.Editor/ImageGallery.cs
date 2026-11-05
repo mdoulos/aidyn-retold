@@ -14,6 +14,14 @@ public static class ImageGallery
     /// </summary>
     public static ScrollContainer Create(IEnumerable<Item> items)
     {
+        var scroll = new ScrollContainer();
+        scroll.AddChild(Flow(items));
+        return scroll;
+    }
+
+    /// <summary>The gallery as a flow of its images, for a card that holds it without a scroll of its own.</summary>
+    public static HFlowContainer Flow(IEnumerable<Item> items)
+    {
         var list = items.ToList();
         var flow = new HFlowContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         flow.AddThemeConstantOverride("h_separation", 16);
@@ -47,8 +55,6 @@ public static class ImageGallery
             box.AddChild(backdrop);
             flow.AddChild(box);
         }
-        var scroll = new ScrollContainer();
-        scroll.AddChild(flow);
-        return scroll;
+        return flow;
     }
 }

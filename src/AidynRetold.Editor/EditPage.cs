@@ -133,6 +133,15 @@ public abstract partial class EditPage : HSplitContainer
     /// <summary>Whether the panel beside the cards shows its model now, as its values read: a shield's, a weapon's, an item's that has one.</summary>
     protected virtual bool ShowsModel => false;
 
+    /// <summary>Whether the card starts with a Picture row: not for a kind with no picture, such as a loot table.</summary>
+    protected virtual bool ShowsPicture => true;
+
+    /// <summary>Whether the card has a Name row: not for a kind the game doesn't name, such as a shop, which its shopkeeper names.</summary>
+    protected virtual bool ShowsName => true;
+
+    /// <summary>A held value as the patch writes it: as it is, unless the kind has to say more, as a keyed list says which elements it removes.</summary>
+    protected virtual JsonNode? Patched(string field, JsonNode? value) => value;
+
     /// <summary>Whether its Model row shows now, where the model can be changed.</summary>
     protected virtual bool ShowsModelRow => ShowsModel;
 
@@ -436,10 +445,14 @@ public abstract partial class EditPage : HSplitContainer
         }
         _modelRow = null;
         _modelName = null;
-        AddRow("Picture", PictureField(), PictureHelp);
-        var name = new LineEdit { Text = CurrentName, CustomMinimumSize = new Vector2(300, 0), SizeFlagsHorizontal = SizeFlags.ShrinkBegin };
-        name.TextChanged += text => Change("name", text, RecordName);
-        AddRow("Name", name, "What the menus, the shops and the conversations call it.");
+        if (ShowsPicture)
+            AddRow("Picture", PictureField(), PictureHelp);
+        if (ShowsName)
+        {
+            var name = new LineEdit { Text = CurrentName, CustomMinimumSize = new Vector2(300, 0), SizeFlagsHorizontal = SizeFlags.ShrinkBegin };
+            name.TextChanged += text => Change("name", text, RecordName);
+            AddRow("Name", name, "What the menus, the shops and the conversations call it.");
+        }
         AddValueRows();
         AddLastRows();
         UpdateCount();
@@ -457,10 +470,13 @@ public abstract partial class EditPage : HSplitContainer
         var stack = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         stack.AddThemeConstantOverride("separation", 6);
         stack.AddChild(field);
-        stack.AddChild(new Label
+        if (help.Length > 0)
         {
-            Text = help, ThemeTypeVariation = "DimLabel", AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(240, 0),
-        });
+            stack.AddChild(new Label
+            {
+                Text = help, ThemeTypeVariation = "DimLabel", AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(240, 0),
+            });
+        }
         row.AddChild(stack);
         box.AddChild(row);
         _rows.AddChild(box);
@@ -860,7 +876,7 @@ public abstract partial class EditPage : HSplitContainer
             var file = folder.FileDefining(id) ?? folder.FilePatching(id) ?? RecordsFile;
             var record = folder.Record(file, id) ?? new JsonObject { ["patch"] = id.ToString() };
             foreach (var (field, value) in changes)
-                record[field] = value?.DeepClone();
+                record[field] = Patched(field, value)?.DeepClone();
             folder.WriteRecord(file, record);
             // Saved: nothing's held any more, so the reload after doesn't carry it over.
             _changes.Clear();

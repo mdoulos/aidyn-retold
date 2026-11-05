@@ -330,21 +330,11 @@ public partial class RecordBrowser : Control
     /// <summary>The training window on the preview: a trainer's.</summary>
     private TrainingWindowPanel? TrainingWindow => _preview.GetChildren().OfType<EntityPage>().FirstOrDefault()?.Window;
 
-    /// <summary>The barter window open on the preview: a loot table's roll, a shop's, or a container's on the map.</summary>
-    private BarterWindowPanel? LootWindow => _preview.GetChildren().OfType<LootPanel>().FirstOrDefault()?.Window
-        ?? _preview.GetChildren().OfType<ShopPanel>().FirstOrDefault()?.Window ?? _map.LootWindow;
+    /// <summary>The barter window open on the preview: a shop's, or a container's on the map.</summary>
+    private BarterWindowPanel? LootWindow => _preview.GetChildren().OfType<RecordPage>().FirstOrDefault()?.Window as BarterWindowPanel ?? _map.LootWindow;
 
-    /// <summary>
-    /// Rolls the loot table, or opens the container picked on the map, in the loot window, if the preview
-    /// shows one (<c>--roll</c>).
-    /// </summary>
-    public void Roll()
-    {
-        if (_preview.GetChildren().OfType<LootPanel>().FirstOrDefault() is { } loot)
-            loot.Roll();
-        else
-            _map.Roll();
-    }
+    /// <summary>Opens the container picked on the map in the loot window, if the map shows one (<c>--roll</c>).</summary>
+    public void Roll() => _map.Roll();
 
     /// <summary>Shows a member, list, row and the details on the Party tab, if it's showing (<c>--member</c>, <c>--list</c>, <c>--row</c>, <c>--details</c>).</summary>
     public void ShowPartyTab(int? member, AidynRetold.Core.Ui.PartyList? list, int? row, bool? details)
@@ -898,7 +888,13 @@ public partial class RecordBrowser : Control
     /// Whether a record's page is one page, with what the tabs would hold in its cards: an actor's, a model's, an armor's, a weapon's
     /// or an item's.
     /// </summary>
-    private static bool OnePage(RecordId id) => id.Type is RecordTypes.Actor or RecordTypes.Scene or RecordTypes.Entity or RecordTypes.Armor or RecordTypes.Shield or RecordTypes.Weapon or RecordTypes.Item;
+    private static bool OnePage(RecordId id) => id.Type is RecordTypes.Actor or RecordTypes.Scene or RecordTypes.Entity or RecordTypes.Armor or RecordTypes.Shield or RecordTypes.Weapon or RecordTypes.Item
+        || RecordPaged(id.Type);
+
+    /// <summary>The kinds whose page is the generic edit page of their fields (<see cref="RecordPage"/>): those with values worth a row each.</summary>
+    private static bool RecordPaged(string type) => type is RecordTypes.Spell or RecordTypes.Skill or RecordTypes.WeaponSkill or RecordTypes.Stat or RecordTypes.Progression
+        or RecordTypes.Combat or RecordTypes.Magic or RecordTypes.Camping or RecordTypes.Shop or RecordTypes.Loot or RecordTypes.Recipe or RecordTypes.Journal
+        or RecordTypes.Terrain or RecordTypes.DialogEntity or RecordTypes.Trigger;
 
     /// <summary>
     /// Loads the plugins again, then opens the record afresh, the history kept, and an edit page's held changes with it: after a save,
@@ -1023,7 +1019,7 @@ public partial class RecordBrowser : Control
     private async Task<object> BuildPreviewAsync(PluginCatalog catalog, RecordId id, CatalogEntry? entry, JsonObject? json)
     {
         var plugins = catalog.Plugins;
-        if (id.Type is RecordTypes.Flag or RecordTypes.Journal)
+        if (id.Type is RecordTypes.Flag)
             return _game is null ? Message("These plugins are too old for a game: import the ROM again.") : new FlagPanel(catalog, _game, id, FollowLink);
         if (id.Type == RecordTypes.Dialogue && plugins.TryGet<DialogueRecord>(id) is { } script)
             return new ScriptPanel(catalog, _game, _rules, _items, script, FollowLink);
@@ -1043,14 +1039,17 @@ public partial class RecordBrowser : Control
                 return new ItemPage(catalog, _game, _rules, items, itemItem, itemRecord, json, catalog.ReferencesTo(id), FollowLink, () => ReloadAt(id), _models, usage);
             if (id.Type is RecordTypes.Weapon or RecordTypes.Armor or RecordTypes.Shield or RecordTypes.Item && items.TryGet(id) is { } item)
                 return new ItemPanel(catalog, _game, _rules, items, item, FollowLink);
-            if (id.Type == RecordTypes.Shop && plugins.TryGet<ShopRecord>(id) is { } shop)
-                return new ShopPanel(catalog, _game, _rules, items, shop, FollowLink);
-            if (id.Type == RecordTypes.Loot && plugins.TryGet<LootRecord>(id) is { } loot)
-                return new LootPanel(catalog, _game, items, loot, FollowLink);
-            if (id.Type == RecordTypes.Recipe && plugins.TryGet<RecipeRecord>(id) is { } recipe)
-                return new RecipePanel(catalog, _game, _rules, items, recipe, FollowLink);
             if (id.Type == RecordTypes.Inventory && _rules is { } partyRules && plugins.Contains(RecordId.Decimal(RecordTypes.Font, 0)))
                 return new PartyTabPanel(catalog, _game, partyRules, items);
+        }
+        if (RecordPaged(id.Type) && json is not null)
+        {
+            // A shop's page shows the shop's window on the editor's game, as a script opens it.
+            var window = id.Type == RecordTypes.Shop && _game is { } game && plugins.TryGet<ShopRecord>(id) is { } shop
+                && plugins.TryGet<EntityRecord>(shop.Shopkeeper) is { } shopkeeper
+                ? BarterWindowPanel.ForShop(plugins, game, Shop.Open(shop, shopkeeper, game.Game.Party, game.Game.Party.Inventory.Catalog, game.Game.Flags))
+                : null;
+            return new RecordPage(catalog, id, json, catalog.ReferencesTo(id), _quests, await ImagesNamedAsync(catalog, json), window, FollowLink, () => ReloadAt(id), _models, usage);
         }
         if (id.Type == RecordTypes.Actor && json is not null)
         {

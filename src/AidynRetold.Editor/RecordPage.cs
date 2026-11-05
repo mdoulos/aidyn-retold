@@ -9,7 +9,7 @@ using Godot;
 namespace AidynRetold.Editor;
 
 /// <summary>
-/// The page of a record whose kind has no page of its own (editor.md#a-records-page): an <see cref="EditPage"/> whose card is a row for
+/// The page of a record whose kind has no page of its own (editor.md#a-records-edit-page): an <see cref="EditPage"/> whose card is a row for
 /// each of the record's fields, typed by the record class the plugins read it as: a number in a box, a switch, text, one of an enum's
 /// names, a record as a link with a picker over the records of its type, a list of records as links, a list of numbers in boxes, a
 /// list of small records (a shop's stock, a loot table's drops, a recipe's ingredients) as rows to add to and take from, and a nested
@@ -80,7 +80,8 @@ public partial class RecordPage : EditPage
 
     protected override string RecordsFile => PageFacts.FileOf(_id.Type);
 
-    protected override string Noun => _facts.Singular.ToLowerInvariant();
+    // A mod's own image is named by it, so its key has to be one: weapon_skill, not "weapon skill".
+    protected override string Noun => string.Concat(_facts.Singular.ToLowerInvariant().Select(c => char.IsAsciiLetterOrDigit(c) ? c : '_'));
 
     // ---- The rows ----------------------------------------------------------------------------------------------------------------
 
@@ -102,7 +103,8 @@ public partial class RecordPage : EditPage
         var property = _class?.GetProperty(Pascal(field), BindingFlags.Public | BindingFlags.Instance);
         var type = property?.PropertyType;
         var underlying = type is null ? null : Nullable.GetUnderlyingType(type) ?? type;
-        var original = value?.DeepClone();
+        var element = ElementType(property);
+        var elementKind = element is null ? null : Nullable.GetUnderlyingType(element) ?? element;
         switch (value)
         {
             case JsonValue v when underlying?.IsEnum == true:
@@ -112,7 +114,7 @@ public partial class RecordPage : EditPage
                 AddRow(label, Switch(field, on, label), fact.Help);
                 break;
             case JsonValue v when v.TryGetValue(out int n) && (underlying is null || underlying == typeof(int) || underlying == typeof(uint) || underlying == typeof(byte) || underlying == typeof(short)):
-                AddRow(label, Number(field, n, fact.Min ?? (n < 0 ? -32768 : 0), fact.Max ?? Math.Max(65535, n)), fact.Help);
+                AddRow(label, Number(field, n, Math.Min(fact.Min ?? (n < 0 ? -32768 : 0), n), Math.Max(fact.Max ?? 65535, n)), fact.Help);
                 break;
             case JsonValue v when v.TryGetValue(out double d):
                 AddRow(label, Decimal(field, d), fact.Help);
@@ -123,14 +125,15 @@ public partial class RecordPage : EditPage
             case JsonValue v when Text(v) is { } text:
                 AddRow(label, text.Length > 80 || field is "description" or "text" ? Paragraph(field, text) : TextField(field, text), fact.Help);
                 break;
-            case JsonArray a when a.Count > 0 && a.All(e => e is JsonValue ev && ev.TryGetValue(out int _)) && a.Count <= 64:
+            // A list goes by its element's class, where the record has one: an empty list can't say what it holds.
+            case JsonArray a when elementKind == typeof(RecordId) || (element is null && a.Count > 0 && a.All(e => e is JsonValue ev && Text(ev) is { } t && RecordId.TryParse(t, out _))):
+                AddRow(label, RecordList(field, a), fact.Help);
+                break;
+            case JsonArray a when a.Count > 0 && a.Count <= 64 && (elementKind == typeof(int) || element is null) && a.All(e => e is JsonValue ev && ev.TryGetValue(out int _)):
                 AddRow(label, NumberList(field, a, fact), fact.Help);
                 break;
-            case JsonArray a when a.All(e => e is JsonValue ev && Text(ev) is { } t && RecordId.TryParse(t, out _)):
-                AddRow(label, RecordList(field, a, ElementType(property)), fact.Help);
-                break;
-            case JsonArray a when ElementClass(property) is { IsSealed: true } element && element.GetProperties() is { Length: > 0 } ps && ps.All(p => IsPlain(p.PropertyType)):
-                AddRow(label, RowList(field, a, element, property!), fact.Help);
+            case JsonArray a when ElementClass(property) is { IsSealed: true } rowClass && rowClass.GetProperties() is { Length: > 0 } ps && ps.All(p => IsPlain(p.PropertyType)):
+                AddRow(label, RowList(field, a, rowClass, property!), fact.Help);
                 break;
             case JsonArray a:
                 AddRow(label, EditorStyle.DimLabel(a.Count == 0 ? "None." : $"{a.Count} {(a.Count == 1 ? "item" : "items")}, which All fields below lists; the page doesn't edit them."), fact.Help);
@@ -259,7 +262,7 @@ public partial class RecordPage : EditPage
     }
 
     /// <summary>A list of records as links, with <b>Add</b> and each one's <b>×</b>; the list is held whole.</summary>
-    private Control RecordList(string field, JsonArray value, Type? element)
+    private Control RecordList(string field, JsonArray value)
     {
         var type = PageFacts.TypeOf(_id.Type, field) ?? (value.Count > 0 && Text(value[0]) is { } first && RecordId.TryParse(first, out var f) ? f.Type : "");
         var now = (TryChanged(field, out var held) && held is JsonArray h ? h : value).Select(Text).OfType<string>()
@@ -319,7 +322,7 @@ public partial class RecordPage : EditPage
             var index = i;
             var spin = new SpinBox
             {
-                MinValue = fact.Min ?? (now[i] < 0 ? -32768 : 0), MaxValue = fact.Max ?? Math.Max(65535, now[i]), Step = 1, Rounded = true, Value = now[i],
+                MinValue = Math.Min(fact.Min ?? (now[i] < 0 ? -32768 : 0), now[i]), MaxValue = Math.Max(fact.Max ?? 65535, now[i]), Step = 1, Rounded = true, Value = now[i],
                 UpdateOnTextChanged = true, SelectAllOnFocus = true, CustomMinimumSize = new Vector2(width, 0),
             };
             spin.ValueChanged += v =>
@@ -340,6 +343,10 @@ public partial class RecordPage : EditPage
     {
         var rows = (TryChanged(field, out var held) && held is JsonArray h ? h : value).OfType<JsonObject>().Select(o => (JsonObject)o.DeepClone()).ToList();
         var properties = element.GetProperties();
+        var keyName = RecordSchema.Find(_class, property.Name)?.Keyed?.Keys.FirstOrDefault();
+        // The type a row's record is: the facts', else that of one a row has.
+        string RecordTypeOf(string key) => PageFacts.TypeOf(_id.Type, $"{field}.{key}")
+            ?? rows.Select(row => Text(row[key]) is { } t && RecordId.TryParse(t, out var parsed) ? parsed.Type : null).FirstOrDefault(t => t is not null) ?? "";
         var grid = new GridContainer { Columns = properties.Length + 1, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         grid.AddThemeConstantOverride("h_separation", 8);
         grid.AddThemeConstantOverride("v_separation", 4);
@@ -366,9 +373,13 @@ public partial class RecordPage : EditPage
                         Text = id is { } i ? Describe(i, withKey: false) : "None", SizeFlagsHorizontal = SizeFlags.ExpandFill, Alignment = HorizontalAlignment.Left,
                         ClipText = true, TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis, TooltipText = id is { } tip ? $"{tip}: click to change it" : "Click to pick one",
                     };
-                    var recordType = PageFacts.TypeOf(_id.Type, $"{field}.{key}") ?? id?.Type ?? "";
-                    pick.Pressed += () => PickRecord(recordType, p.PropertyType != type, id, picked =>
+                    var recordType = id?.Type ?? RecordTypeOf(key);
+                    // A keyed list's key is never none, and never one another row has: the merge goes by it.
+                    var isKey = key == keyName;
+                    pick.Pressed += () => PickRecord(recordType, p.PropertyType != type && !isKey, id, picked =>
                     {
+                        if (isKey && (picked is null || rows.Any(r => r != row && Text(r[key]) == picked.ToString())))
+                            return;
                         row[key] = picked?.ToString();
                         Hold();
                     });
@@ -421,8 +432,8 @@ public partial class RecordPage : EditPage
                 else
                 {
                     var fact = _facts.Field($"{field}.{key}");
-                    var n = current is JsonValue nv && nv.TryGetValue(out int got) ? got : 0;
-                    var spin = new SpinBox { MinValue = fact.Min ?? 0, MaxValue = fact.Max ?? Math.Max(65535, n), Step = 1, Rounded = true, Value = n, UpdateOnTextChanged = true, CustomMinimumSize = new Vector2(96, 0) };
+                    var n = current is JsonValue nv && nv.TryGetValue(out int got) ? got : fact.Default ?? 0;
+                    var spin = new SpinBox { MinValue = Math.Min(fact.Min ?? 0, n), MaxValue = Math.Max(fact.Max ?? 65535, n), Step = 1, Rounded = true, Value = n, UpdateOnTextChanged = true, CustomMinimumSize = new Vector2(96, 0) };
                     spin.ValueChanged += v =>
                     {
                         row[key] = (int)v;
@@ -466,20 +477,22 @@ public partial class RecordPage : EditPage
                 else
                     fresh[key] = _facts.Field($"{field}.{key}").Default ?? 0;
             }
-            // The row's record first, where it has one, or the row stands empty.
-            var first = properties.FirstOrDefault(p => (Nullable.GetUnderlyingType(p.PropertyType) ?? p.PropertyType) == typeof(RecordId));
-            if (first is not null && PageFacts.TypeOf(_id.Type, $"{field}.{Camel(first.Name)}") is { } recordType)
+            // The row's record first, where it has one (its key, in a keyed list, which no other row may share), or the row stands empty.
+            var first = properties.FirstOrDefault(p => Camel(p.Name) == keyName && (Nullable.GetUnderlyingType(p.PropertyType) ?? p.PropertyType) == typeof(RecordId))
+                ?? properties.FirstOrDefault(p => (Nullable.GetUnderlyingType(p.PropertyType) ?? p.PropertyType) == typeof(RecordId));
+            var firstKey = first is null ? null : Camel(first.Name);
+            if (firstKey is not null && RecordTypeOf(firstKey) is { Length: > 0 } recordType)
             {
                 PickRecord(recordType, false, null, picked =>
                 {
-                    if (picked is null)
+                    if (picked is null || (firstKey == keyName && rows.Any(r => Text(r[firstKey]) == picked.ToString())))
                         return;
-                    fresh[Camel(first.Name)] = picked.ToString();
+                    fresh[firstKey] = picked.ToString();
                     rows.Add(fresh);
                     Hold();
                 });
             }
-            else
+            else if (firstKey is null || firstKey != keyName)
             {
                 rows.Add(fresh);
                 Hold();
@@ -531,7 +544,7 @@ public partial class RecordPage : EditPage
                     grid.AddChild(box);
                     break;
                 case JsonValue v when v.TryGetValue(out int n) && (type is null || type == typeof(int) || type == typeof(uint)):
-                    var spin = new SpinBox { MinValue = fact.Min ?? (n < 0 ? -32768 : 0), MaxValue = fact.Max ?? Math.Max(65535, n), Step = 1, Rounded = true, Value = n, UpdateOnTextChanged = true, CustomMinimumSize = new Vector2(150, 0), SizeFlagsHorizontal = SizeFlags.ShrinkBegin };
+                    var spin = new SpinBox { MinValue = Math.Min(fact.Min ?? (n < 0 ? -32768 : 0), n), MaxValue = Math.Max(fact.Max ?? 65535, n), Step = 1, Rounded = true, Value = n, UpdateOnTextChanged = true, CustomMinimumSize = new Vector2(150, 0), SizeFlagsHorizontal = SizeFlags.ShrinkBegin };
                     spin.ValueChanged += d =>
                     {
                         held[key] = (int)d;
@@ -549,9 +562,23 @@ public partial class RecordPage : EditPage
                     grid.AddChild(dec);
                     break;
                 case JsonValue v when Text(v) is { } text && RecordId.TryParse(text, out var linked):
-                    var link = new Button { Text = Describe(linked, withKey: true), ThemeTypeVariation = "LinkButton", SizeFlagsHorizontal = SizeFlags.ShrinkBegin, TooltipText = $"{linked}: open it" };
+                    var linkRow = EditorStyle.Row(12);
+                    var link = new Button { Text = Describe(linked, withKey: true), ThemeTypeVariation = "LinkButton", TooltipText = $"{linked}: open it" };
                     link.Pressed += () => Open(linked);
-                    grid.AddChild(link);
+                    linkRow.AddChild(link);
+                    if (type == typeof(RecordId))
+                    {
+                        var nullable = p!.PropertyType != type;
+                        var change = new Button { Text = "Change", TooltipText = $"One of the game's {TypeGroups.Name(linked.Type).ToLowerInvariant()}" + (nullable ? ", or none" : "") };
+                        change.Pressed += () => PickRecord(linked.Type, nullable, linked, picked =>
+                        {
+                            held[key] = picked?.ToString();
+                            Hold();
+                            BuildRows();
+                        });
+                        linkRow.AddChild(change);
+                    }
+                    grid.AddChild(linkRow);
                     break;
                 case JsonValue v when Text(v) is { } text:
                     var edit = new LineEdit { Text = text, CustomMinimumSize = new Vector2(240, 0), SizeFlagsHorizontal = SizeFlags.ShrinkBegin };
@@ -573,8 +600,8 @@ public partial class RecordPage : EditPage
                         var number = (JsonValue)a[i]!;
                         var one = new SpinBox
                         {
-                            MinValue = whole ? (fact.Min ?? 0) : -1e6, MaxValue = whole ? (fact.Max ?? 65535) : 1e6, Step = whole ? 1 : 0.01, Rounded = whole,
-                            Value = number.TryGetValue(out double x) ? x : 0, UpdateOnTextChanged = true, SelectAllOnFocus = true, CustomMinimumSize = new Vector2(84, 0),
+                            Value = number.TryGetValue(out double x) ? x : 0,
+                            MinValue = whole ? Math.Min(fact.Min ?? 0, x) : -1e6, MaxValue = whole ? Math.Max(fact.Max ?? 65535, x) : 1e6, Step = whole ? 1 : 0.01, Rounded = whole, UpdateOnTextChanged = true, SelectAllOnFocus = true, CustomMinimumSize = new Vector2(84, 0),
                         };
                         one.ValueChanged += x =>
                         {
@@ -601,6 +628,19 @@ public partial class RecordPage : EditPage
                     break;
                 case JsonArray a:
                     grid.AddChild(EditorStyle.DimLabel($"{a.Count} {(a.Count == 1 ? "item" : "items")}, which All fields below lists."));
+                    break;
+                case null when type == typeof(RecordId) && PageFacts.TypeOf(_id.Type, $"{field}.{key}") is { } noneType:
+                    var noneRow = EditorStyle.Row(12);
+                    noneRow.AddChild(EditorStyle.DimLabel("None"));
+                    var pickOne = new Button { Text = "Change", TooltipText = $"One of the game's {TypeGroups.Name(noneType).ToLowerInvariant()}, or none" };
+                    pickOne.Pressed += () => PickRecord(noneType, true, null, picked =>
+                    {
+                        held[key] = picked?.ToString();
+                        Hold();
+                        BuildRows();
+                    });
+                    noneRow.AddChild(pickOne);
+                    grid.AddChild(noneRow);
                     break;
                 default:
                     grid.AddChild(EditorStyle.DimLabel(inner?.ToJsonString() ?? "None"));
@@ -678,20 +718,34 @@ public partial class RecordPage : EditPage
         filter.CallDeferred(Control.MethodName.GrabFocus);
     }
 
-    /// <summary>A keyed list's elements taken off are removed by their key as the patch is written, as the merge asks.</summary>
-    protected override JsonNode? Patched(string field, JsonNode? value)
+    /// <summary>
+    /// A keyed list's elements taken off are removed by their key as the patch is written, as the merge asks: those the record has
+    /// beneath the mod, where that's known, so a row the mod's patch removed before stays removed; else those the record has as it merges.
+    /// A row without its key, which the merge refuses, is left out.
+    /// </summary>
+    protected override JsonNode? Patched(string field, JsonNode? value, JsonObject? beneath, JsonNode? existing, bool patch)
     {
-        if (value is not JsonArray held || _class?.GetProperty(Pascal(field))?.GetCustomAttribute<KeyedListAttribute>() is not { Keys: { Count: > 0 } keys }
-            || _json[field] is not JsonArray original)
+        if (value is not JsonArray held || RecordSchema.Find(_class, Pascal(field))?.Keyed is not { Keys: { Count: > 0 } keys })
             return value;
         var key = keys[0];
-        var kept = held.OfType<JsonObject>().Select(o => o[key]?.ToJsonString()).ToHashSet();
-        var patch = new JsonArray([.. held.Select(e => e?.DeepClone())]);
+        var rows = held.OfType<JsonObject>().Where(o => o[key] is not null).Select(o => (JsonNode?)o.DeepClone()).ToList();
+        if (!patch)
+            return new JsonArray([.. rows]);
+        var kept = rows.OfType<JsonObject>().Select(o => o[key]!.ToJsonString()).ToHashSet();
+        var written = new JsonArray([.. rows]);
+        var removed = new HashSet<string>(StringComparer.Ordinal);
+        var original = (beneath?[field] ?? _json[field]) as JsonArray ?? [];
         foreach (var o in original.OfType<JsonObject>())
         {
-            if (o[key] is { } k && !kept.Contains(k.ToJsonString()))
-                patch.Add(new JsonObject { [key] = k.DeepClone(), [MergePatch.RemoveField] = true });
+            if (o[key] is { } k && !kept.Contains(k.ToJsonString()) && removed.Add(k.ToJsonString()))
+                written.Add(new JsonObject { [key] = k.DeepClone(), [MergePatch.RemoveField] = true });
         }
-        return patch;
+        // What the mod's patch removed before stays removed, whether or not the plugins could be read without the mod.
+        foreach (var o in (existing as JsonArray ?? []).OfType<JsonObject>())
+        {
+            if (o[MergePatch.RemoveField] is JsonValue flag && flag.TryGetValue(out bool on) && on && o[key] is { } k && !kept.Contains(k.ToJsonString()) && removed.Add(k.ToJsonString()))
+                written.Add(o.DeepClone());
+        }
+        return written;
     }
 }

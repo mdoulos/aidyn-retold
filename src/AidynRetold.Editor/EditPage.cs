@@ -139,8 +139,11 @@ public abstract partial class EditPage : HSplitContainer
     /// <summary>Whether the card has a Name row: not for a kind the game doesn't name, such as a shop, which its shopkeeper names.</summary>
     protected virtual bool ShowsName => true;
 
-    /// <summary>A held value as the patch writes it: as it is, unless the kind has to say more, as a keyed list says which elements it removes.</summary>
-    protected virtual JsonNode? Patched(string field, JsonNode? value) => value;
+    /// <summary>
+    /// A held value as the patch writes it: as it is, unless the kind has to say more, as a keyed list says which elements it removes.
+    /// <paramref name="beneath"/> is the record as the plugins merge it without the mod, where that's known.
+    /// </summary>
+    protected virtual JsonNode? Patched(string field, JsonNode? value, JsonObject? beneath, JsonNode? existing, bool patch) => value;
 
     /// <summary>Whether its Model row shows now, where the model can be changed.</summary>
     protected virtual bool ShowsModelRow => ShowsModel;
@@ -865,17 +868,37 @@ public abstract partial class EditPage : HSplitContainer
         {
             return Catalog.Plugins.Without(mod).GetJson(id);
         }
-        catch (Exception e) when (e is InvalidDataException or IOException)
+        catch (Exception e) when (e is InvalidDataException or IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
         {
             return null;
         }
     }
 
-    private void Save()
+    private void Save() => _ = SaveAsync();
+
+    private async Task SaveAsync()
     {
-        var changes = new Dictionary<string, JsonNode?>(_changes);
-        var png = _png;
         var id = Id;
+        // The record beneath the mod, loaded off the main thread while the mod to save to is known and doesn't define the record.
+        JsonObject? beneath = null;
+        var looked = false;
+        if (CurrentMod.Id is { } mod && Catalog.Plugins.DefinedBy(id) != mod)
+        {
+            (_save.Disabled, _discard.Disabled) = (true, true);
+            beneath = await Task.Run(() => Beneath(id, mod));
+            looked = true;
+            if (!IsInsideTree())
+                return;
+            UpdateCount();
+            // The mod changed while the plugins loaded: then nothing's written, and the changes stay held.
+            if (CurrentMod.Id != mod)
+                return;
+        }
+        // What's held now: a value typed while the plugins loaded counts too.
+        var changes = new Dictionary<string, JsonNode?>(_changes);
+        if (changes.Count == 0 && _png is null)
+            return;
+        var png = _png;
         var name = changes.TryGetValue("name", out var renamed) && (string?)renamed is { Length: > 0 } n ? n : RecordName;
         PluginFiles.Write(this, Catalog.Plugins, name, folder =>
         {
@@ -890,10 +913,13 @@ public abstract partial class EditPage : HSplitContainer
             var record = folder.Record(file, id) ?? new JsonObject { ["patch"] = id.ToString() };
             // A patch sets only what differs from the record beneath the mod: a value put back as it was leaves the patch, and a
             // patch left with nothing goes, so the record is the mod's no more.
-            var beneath = record["patch"] is not null ? Beneath(id, folder.Id) : null;
+            if (record["patch"] is null)
+                beneath = null;
+            else if (!looked)
+                beneath = Beneath(id, folder.Id);
             foreach (var (field, value) in changes)
             {
-                var patched = Patched(field, value);
+                var patched = Patched(field, value, beneath, record[field], record["patch"] is not null);
                 if (beneath is not null && JsonNode.DeepEquals(patched, beneath[field]))
                     record.Remove(field);
                 else

@@ -148,10 +148,11 @@ public sealed partial class Character
                 character.Equipment.EquipArmor(new ItemInstance(items[armor]));
             if (entity.Shield is { } shield)
                 character.Equipment.EquipShield(new ItemInstance(items[shield]));
-            // The port's own: gear a record gives, put on by the rules, so what it can't wear is left (EntityRecord.Gear).
+            // The port's own: gear a record gives, put on by the rules, so what it can't wear is left (EntityRecord.Gear); what isn't
+            // gear at all, which the rules don't check, is left too.
             foreach (var gear in entity.Gear ?? [])
             {
-                if (items.TryGet(gear) is { } worn)
+                if (items.TryGet(gear) is { IsGear: true } worn)
                     character.Equipment.EquipGear(new ItemInstance(worn));
             }
         }

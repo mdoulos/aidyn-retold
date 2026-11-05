@@ -1,3 +1,4 @@
+using AidynRetold.Core.Characters;
 using AidynRetold.Plugins;
 
 namespace AidynRetold.Editor;
@@ -26,7 +27,7 @@ public static class PageFacts
 
     private static readonly Dictionary<string, Kind> Kinds = new()
     {
-        [RecordTypes.Spell] = new("Spell", "spells", "icon", "Its symbol, on the Spells list and the spell's details.", new HashSet<string> { "unk1E", "position", "aspect" }, new Dictionary<string, FieldFact>
+        [RecordTypes.Spell] = new("Spell", "spells", "icon", "Its symbol, on the Spells list and the spell's details.", Aspects.Enabled ? new HashSet<string> { "unk1E", "position" } : new HashSet<string> { "unk1E", "position", "aspect" }, new Dictionary<string, FieldFact>
         {
             ["school"] = new(Help: "Which school's casters learn it; unschooled, anyone's."),
             ["damage"] = new(Help: "Its damage dice, d6 each, with the margin's; 0 for a spell that doesn't hurt.", Max: 255),
@@ -168,6 +169,29 @@ public static class PageFacts
         [(RecordTypes.Spell, "cast")] = RecordTypes.Sequence,
         [(RecordTypes.Progression, "training.freeTrainers")] = RecordTypes.Entity,
         [(RecordTypes.Journal, "flag")] = RecordTypes.Flag,
+        [(RecordTypes.Progression, "training.firstSpellFlag")] = RecordTypes.Flag,
+        [(RecordTypes.Magic, "keptAfterBattle")] = RecordTypes.Item,
+        [(RecordTypes.Combat, "ally")] = RecordTypes.Entity,
+        [(RecordTypes.Combat, "bystanders")] = RecordTypes.Entity,
+        [(RecordTypes.Combat, "fallback")] = RecordTypes.Entity,
+        [(RecordTypes.Combat, "noFlee")] = RecordTypes.Entity,
+        [(RecordTypes.Combat, "flee")] = RecordTypes.Entity,
+        [(RecordTypes.Combat, "rooted")] = RecordTypes.Entity,
+        [(RecordTypes.Combat, "closeRange")] = RecordTypes.Entity,
+        [(RecordTypes.Combat, "untargetable")] = RecordTypes.Entity,
+        [(RecordTypes.Combat, "undrawnWeapons")] = RecordTypes.Weapon,
+        [(RecordTypes.Combat, "otherHand")] = RecordTypes.Weapon,
+        [(RecordTypes.Combat, "fleeByEncounter.flag")] = RecordTypes.Flag,
+        [(RecordTypes.Combat, "missiles.weapon")] = RecordTypes.Weapon,
+        [(RecordTypes.Combat, "missiles.scene")] = RecordTypes.Scene,
+        [(RecordTypes.Combat, "bosses.entity")] = RecordTypes.Entity,
+        [(RecordTypes.Combat, "bosses.flag")] = RecordTypes.Flag,
+        [(RecordTypes.Combat, "flaskDanger.item")] = RecordTypes.Item,
+        [(RecordTypes.Combat, "encounters.flag")] = RecordTypes.Flag,
+        [(RecordTypes.Camping, "ambushes")] = RecordTypes.Flag,
+        [(RecordTypes.Camping, "checking")] = RecordTypes.Flag,
+        [(RecordTypes.Camping, "scenes")] = RecordTypes.Flag,
+        [(RecordTypes.DialogEntity, "body.actor")] = RecordTypes.Actor,
         [(RecordTypes.Terrain, "sky")] = RecordTypes.Image,
         [(RecordTypes.DialogEntity, "portrait")] = RecordTypes.Image,
     };

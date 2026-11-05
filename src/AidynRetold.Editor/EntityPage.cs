@@ -138,7 +138,7 @@ public partial class EntityPage : EditPage
         // The True Name is the story's: a script gives it, and the page never offers it. Heavy matters to the enemies' and characters' foes alone.
         if (Kind != EntityKind.Party)
             AddRow("Heavy", Switch("heavy", e.Heavy, "Heavy"), "Spells that need a heavy target work on it.");
-        AddRow("Level", Number("level", e.Level, 1, _rules.Progression.Levels.Count - 1), "Its level as it starts, which its experience and hit points follow.");
+        AddRow("Level", Number("level", e.Level, Math.Min(1, e.Level), Math.Max(_rules.Progression.Levels.Count - 1, e.Level)), "Its level as it starts, which its experience and hit points follow.");
         AddRow("Attributes", StatButtons(), "Its base attributes. Click one to change it, up to the attribute's base cap.");
         AddRow("Skills", SkillButtons(SkillId.All.Where(s => s.IsSkill)), "Its base skill levels. Click one to change it; a greyed skill is one it can never learn, which a click can allow.");
         AddRow("Weapon skills", SkillButtons(SkillId.All.Where(s => s.IsWeapon || s.IsShield)), "Its weapon skills and the shield skill, which say what it can wield and bear.");
@@ -233,7 +233,8 @@ public partial class EntityPage : EditPage
             var record = _rules[stat];
             var value = StatValue(stat);
             var button = new Button { Text = $"{record.Name}  {value}", TooltipText = $"{record.Name}, 1 to {record.BaseCap}. Click to change it." };
-            button.Pressed += () => AskNumber(record.Name, value, 1, record.BaseCap, n => SetStat(stat, n));
+            // An enemy's may stand past the party's cap, and stays there until it's changed.
+            button.Pressed += () => AskNumber(record.Name, value, Math.Min(1, value), Math.Max(record.BaseCap, value), n => SetStat(stat, n));
             flow.AddChild(button);
         }
         return flow;
@@ -287,7 +288,7 @@ public partial class EntityPage : EditPage
             {
                 if (level is { } current)
                 {
-                    AskNumber(record.Name, current, 0, record.BaseCap, n => SetSkill(skill, n), new DialogButton("Can Never Learn", DialogButtonKind.Secondary, () => SetSkill(skill, null)));
+                    AskNumber(record.Name, current, 0, Math.Max(record.BaseCap, current), n => SetSkill(skill, n), new DialogButton("Can Never Learn", DialogButtonKind.Secondary, () => SetSkill(skill, null)));
                 }
                 else
                 {

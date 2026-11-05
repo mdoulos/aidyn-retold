@@ -61,7 +61,7 @@ public sealed partial class PartyMenu
                 _ => null,
             };
         }
-        if (item.Kind is ItemKind.Potion or ItemKind.Misc or ItemKind.Key)
+        if (item.Kind is ItemKind.Potion or ItemKind.Food or ItemKind.Misc or ItemKind.Key)
             return null;
         return Party.CanEquip(member, item) switch
         {
@@ -133,6 +133,9 @@ public sealed partial class PartyMenu
                 break;
             case ItemKind.Potion:
                 about.Add(Potions.IsFlask(item) ? "Flask" : "Potion");
+                break;
+            case ItemKind.Food:
+                about.Add("Food");
                 break;
             default:
                 if (item.Protection != 0)

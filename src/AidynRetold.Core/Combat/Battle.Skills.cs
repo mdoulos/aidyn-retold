@@ -277,6 +277,15 @@ public sealed partial class Battle
             return;
         }
         var record = Game.Rules.Magic.Potion(item.Id);
+        // The remade game's food: what it healed, or that the member ate, in its own words; no potion's visual.
+        if (Potions.IsFood(item))
+        {
+            var healed = a.Sheet.Hp - before;
+            var eaten = healed > 0 ? Gains(a, healed) : $"{a.Sheet.Name} eats";
+            Write(eaten);
+            Lines.Queue(eaten);
+            return;
+        }
         if (effects.Any(e => e is HealEffect))
         {
             var gained = a.Sheet.Hp - before;

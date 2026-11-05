@@ -222,7 +222,7 @@ public sealed partial class PartyMenu
             return TakeOff(row, slot);
         switch (row.Item.Kind)
         {
-            case ItemKind.Potion:
+            case ItemKind.Potion or ItemKind.Food:
                 var drink = Potions.Drink(Party, member, row.Item, Random);
                 Say(drink switch
                 {
@@ -277,6 +277,9 @@ public sealed partial class PartyMenu
                 return true;
             case ItemKind.Potion:
                 Say(_text[MenuText.PotionFromCUp]);
+                return false;
+            case ItemKind.Food:
+                Say(FoodFromCUp);
                 return false;
             case ItemKind.Armor or ItemKind.Shield:
                 Say(_text[MenuText.CantEquip]);
@@ -370,15 +373,18 @@ public sealed partial class PartyMenu
         });
     }
 
-    // The Alchemist, Healer and Mechanic have popups; other skills do nothing.
+    // The Alchemist, Healer and Mechanic have popups, and the remade game's Cook; other skills do nothing.
     private void OpenCrafting(SkillId skill)
     {
         if (Shown is not { } member || !skill.IsSkill)
             return;
-        switch ((Skill)skill.Slot)
+        switch (skill.Skill)
         {
             case Skill.Alchemist:
                 Crafting = new CraftingMenu(CraftingTask.Alchemy, _text[MenuText.Alchemy], RecipeRows(member, Items.Crafting.Alchemist), Member);
+                break;
+            case Skill.Cook:
+                Crafting = new CraftingMenu(CraftingTask.Cooking, CookingTitle, RecipeRows(member, Items.Crafting.Cook), Member);
                 break;
             case Skill.Mechanic:
                 var rows = RecipeRows(member, Items.Crafting.Mechanic);
@@ -414,6 +420,9 @@ public sealed partial class PartyMenu
         {
             case CraftingTask.Alchemy:
                 Brew(user, row.Recipe!, before);
+                break;
+            case CraftingTask.Cooking:
+                CookDish(user, row.Recipe!, before);
                 break;
             case CraftingTask.Armor:
                 var made = Items.Crafting.MakeArmor(Party, user, row.Recipe!, Random) == CraftResult.Made;
@@ -462,6 +471,25 @@ public sealed partial class PartyMenu
             CraftResult.Made => flask ? MenuText.FlaskMade : MenuText.PotionMade,
             _ => flask ? MenuText.FlaskFailed : MenuText.PotionFailed,
         }], before);
+    }
+
+    /// <summary>The remade game's cooking popup's title and lines, its own, as the original has none for food.</summary>
+    public const string CookingTitle = "Cooking", FoodFromCUp = "Food is eaten from the battle's C-up menu.",
+        MissingIngredients = "You don't have the ingredients.", Cooked = "{0} is ready.", Burnt = "It burns: a Burnt Meal.",
+        CookingFailed = "The cooking fails.", StackFull = "You can't carry any more of it.";
+
+    // As the Alchemist brews: what's cooked, a Burnt Meal from a failure, or why nothing is.
+    private void CookDish(Character user, RecipeRecord recipe, HeaderNumbers before)
+    {
+        var name = Party.Inventory.Catalog.TryGet(recipe.Product)?.Name ?? recipe.Product.ToString();
+        Result(Items.Crafting.CookDish(Party, user, recipe, Random) switch
+        {
+            CraftResult.Made => string.Format(System.Globalization.CultureInfo.InvariantCulture, Cooked, name),
+            CraftResult.Spoilt => Burnt,
+            CraftResult.MissingIngredients => MissingIngredients,
+            CraftResult.StackFull => StackFull,
+            _ => CookingFailed,
+        }, before);
     }
 
     // WidgetMenuHealer::LayOnHands and HealWithHerbs: the living members, but not the Healer for laying on hands, in

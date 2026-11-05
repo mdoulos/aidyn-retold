@@ -6,6 +6,8 @@ public enum ActionTipChoice
     Unequip,
     Equip,
     Drink,
+    /// <summary>Food, the remade game's.</summary>
+    Eat,
     Read,
 
     /// <summary>C-down's details, held open until A, B or a click lets them go (<see cref="DetailsPane.Pin"/>).</summary>

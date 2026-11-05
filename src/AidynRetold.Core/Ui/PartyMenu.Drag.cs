@@ -40,7 +40,7 @@ public sealed partial class PartyMenu
             return;
         switch (row.Item.Kind)
         {
-            case ItemKind.Potion:
+            case ItemKind.Potion or ItemKind.Food:
                 Say(Potions.Drink(Party, member, row.Item, Random) switch
                 {
                     DrinkResult.NotNow => Messages?.PotionNotNow,

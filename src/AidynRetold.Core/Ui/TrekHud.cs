@@ -60,6 +60,21 @@ public sealed class TrekHud
         Raise(true);
     }
 
+    // Each slot's hunger as last seen, to raise the portraits as one grows hungrier.
+    private Characters.HungerState[] _hunger = [];
+
+    /// <summary>
+    /// The party's hunger as it stands, the remade game's (<see cref="HungerDisplay"/>): as a member turns Hungry or Starving, the
+    /// portraits come up, as trek's starting brings them, so the pulse over theirs is seen. No message says so.
+    /// </summary>
+    public void WatchHunger(IReadOnlyList<Characters.HungerState> hunger)
+    {
+        var worse = _hunger.Length == hunger.Count && hunger.Where((state, i) => state > _hunger[i]).Any();
+        _hunger = [.. hunger];
+        if (worse && !Portraits.Shown)
+            Raise(true);
+    }
+
     /// <summary>B in trek, with no fade, popup or conversation up (<c>Actor::Move</c>): raises or lowers them.</summary>
     public void PressB() => Raise(!Portraits.Shown);
 
@@ -101,7 +116,7 @@ public sealed class TrekHud
         var corner = Minimap.Showing ? Minimap.Draw(brightness) : outdoors ? Compass.Draw(look, brightness) : [];
         var down = height - 240;
         return Shift(Sundial.Draw(game.Clock.Time, brightness, SunAndMoon), 0, down)
-            .Concat(Shift(Portraits.Draw(portraits, brightness), (width - 320) / 2, down))
+            .Concat(Shift(Portraits.Draw(portraits, brightness, [.. game.Party.Slots.Select(m => m?.Hunger ?? Characters.HungerState.Fed)]), (width - 320) / 2, down))
             .Concat(Shift(corner, width - 320, down));
     }
 

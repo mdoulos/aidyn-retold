@@ -52,6 +52,8 @@ public enum CraftingTask
 {
     /// <summary>The Alchemist's recipes (<c>WidgetPotionCraft</c>).</summary>
     Alchemy,
+    /// <summary>The remade game's Cook's recipes, as the Alchemist's.</summary>
+    Cooking,
     /// <summary>The Mechanic's recipes (<c>WidgetArmorCraft</c>).</summary>
     Armor,
     /// <summary>The Healer's three tasks (<c>WidgetMenuHealer</c>).</summary>

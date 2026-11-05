@@ -56,8 +56,11 @@ public partial class ItemPage : ItemEditPage
 
     private bool IsWorn => Worn.Contains(_record.Kind);
 
-    /// <summary>Whether the game's details show its description rather than numbers: a potion's, a scroll's or another item's, a key item's too; not a key's.</summary>
-    private bool ShowsDescription => _record.Kind is ItemKind.Potion or ItemKind.Scroll or ItemKind.Misc;
+    /// <summary>
+    /// Whether the game's details show its description rather than numbers: a potion's, a scroll's or another item's, a key item's
+    /// too, and the remade game's food; not a key's.
+    /// </summary>
+    private bool ShowsDescription => _record.Kind is ItemKind.Potion or ItemKind.Scroll or ItemKind.Misc or ItemKind.Food;
 
     protected override void AddValueRows()
     {

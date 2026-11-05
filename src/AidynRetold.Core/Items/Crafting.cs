@@ -11,6 +11,8 @@ public enum CraftResult
     Made,
     /// <summary>The check failed: the ingredients are used up all the same.</summary>
     Failed,
+    /// <summary>The check failed, and the recipe's <see cref="RecipeRecord.Failure"/> was made in its place: a Burnt Meal.</summary>
+    Spoilt,
     /// <summary>The party lacks an ingredient. Nothing is used.</summary>
     MissingIngredients,
     /// <summary>The party's stack of the potion is full. Nothing is used.</summary>
@@ -42,12 +44,14 @@ public readonly record struct HealResult(HealOutcome Outcome, int Amount = 0);
 /// <summary>
 /// The skills used from the pause menu (<c>potionCraft.cpp</c>, <c>Armorcraft.cpp</c>, <c>HealMenu.cpp</c>): the
 /// Alchemist brews potions from reagents, the Mechanic makes armor from hides, and the Healer heals by
-/// hand or with herbs, and restores a hurt attribute.
+/// hand or with herbs, and restores a hurt attribute; and the remade game's Cook cooks food from ingredients, as the Alchemist
+/// brews.
 /// </summary>
 public static class Crafting
 {
     public static readonly RecordId Alchemist = ((SkillId)Skill.Alchemist).Record;
     public static readonly RecordId Mechanic = ((SkillId)Skill.Mechanic).Record;
+    public static readonly RecordId Cook = SkillId.CookRecord;
 
     /// <summary>
     /// The recipes a member is offered: the Alchemist's whose level their modified Alchemist reaches, in
@@ -56,6 +60,7 @@ public static class Crafting
     /// </summary>
     public static IEnumerable<RecipeRecord> Offered(Party party, Character member, IEnumerable<RecipeRecord> recipes) => recipes.Where(r =>
         r.Skill == Alchemist ? r.Level <= member.Skills.Modified(Skill.Alchemist)
+        : r.Skill == Cook ? r.Level <= member.Skills.Modified(Skill.Cook)
         : r.Skill == Mechanic && r.Level <= member.Skills.Base(Skill.Mechanic) && r.Ingredients.All(i => party.Inventory.Has(i.Item)));
 
     /// <summary>Makes something from a recipe by its skill.</summary>
@@ -69,6 +74,8 @@ public static class Crafting
     /// </summary>
     public static CraftResult Brew(Party party, Character member, RecipeRecord recipe, IRandom random)
     {
+        if (recipe.Skill == Cook)
+            return CookDish(party, member, recipe, random);
         var inventory = party.Inventory;
         if (recipe.Ingredients.Any(i => inventory.Count(i.Item) < i.Count))
             return CraftResult.MissingIngredients;
@@ -84,6 +91,29 @@ public static class Crafting
         if (roll >= total || Party.SkillCheckStep((short)(total - roll)) < recipe.Step)
             return CraftResult.Failed;
         return inventory.Add(recipe.Product) ? CraftResult.Made : CraftResult.Failed;
+    }
+
+    /// <summary>
+    /// Cooks a dish (the remade game's, the user's design, Nov 4, 2026), as the Alchemist brews: the ingredients are used up, then the
+    /// Cook rolls d100 against Intelligence × 3 + Cook × 6 (<see cref="Party.CookBonus"/>), and makes one if the step reaches the
+    /// recipe's; otherwise its <see cref="RecipeRecord.Failure"/>, a Burnt Meal. Cooking costs no Stamina.
+    /// </summary>
+    public static CraftResult CookDish(Party party, Character member, RecipeRecord recipe, IRandom random)
+    {
+        var inventory = party.Inventory;
+        if (recipe.Ingredients.Any(i => inventory.Count(i.Item) < i.Count))
+            return CraftResult.MissingIngredients;
+        if (inventory.Count(recipe.Product) >= inventory.Catalog.Rules.StackLimit)
+            return CraftResult.StackFull;
+        if (member.Skills.Modified(Skill.Cook) < recipe.Level)
+            return CraftResult.TooLow;
+        foreach (var ingredient in recipe.Ingredients)
+            inventory.Take(ingredient.Item, ingredient.Count);
+        var total = (ushort)Party.CookBonus(member);
+        var roll = random.RollD(1, 100);
+        if (roll < total && Party.SkillCheckStep((short)(total - roll)) >= recipe.Step)
+            return inventory.Add(recipe.Product) ? CraftResult.Made : CraftResult.Failed;
+        return recipe.Failure is { } burnt && inventory.Add(burnt) ? CraftResult.Spoilt : CraftResult.Failed;
     }
 
     /// <summary>

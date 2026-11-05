@@ -161,8 +161,9 @@ public static class MenuImages
         : ScrollPictures.Values.Contains(image) ? Scroll
         : null;
 
-    /// <summary>The port's own pictures: the potions' and the scrolls'.</summary>
-    public static IEnumerable<RecordId> OwnPictures => PotionPictures.Values.Concat(ScrollPictures.Values);
+    /// <summary>The port's own pictures: the potions', the scrolls' and hunger's icons (<see cref="HungerDisplay"/>).</summary>
+    public static IEnumerable<RecordId> OwnPictures => PotionPictures.Values.Concat(ScrollPictures.Values)
+        .Concat([HungerDisplay.HungryIcon, HungerDisplay.StarvingIcon]);
 
     private static RecordId Image(int borg8) => RecordId.Hex(RecordTypes.Image, borg8);
 }

@@ -298,9 +298,10 @@ public sealed record ShopStock(RecordId Item, float PriceMultiplier = 1);
 
 /// <summary>
 /// Something a skill makes from items in the inventory (<c>aidyn:recipe/&lt;n&gt;</c>): a potion the
-/// Alchemist brews (<c>potionRecipies</c>), or armor the Mechanic makes from a hide (<c>ArmorRecipies</c>).
+/// Alchemist brews (<c>potionRecipies</c>), armor the Mechanic makes from a hide (<c>ArmorRecipies</c>), or the remade game's
+/// food the Cook cooks from ingredients (<c>acre:recipe/…</c>).
 /// </summary>
-/// <param name="Skill">Alchemist (<c>aidyn:skill/0</c>) or Mechanic (<c>aidyn:skill/4</c>), whose check makes it.</param>
+/// <param name="Skill">Alchemist (<c>aidyn:skill/0</c>), Mechanic (<c>aidyn:skill/4</c>) or Cook (<c>acre:skill/12</c>), whose check makes it.</param>
 /// <param name="Product">What it makes, one at a time.</param>
 /// <param name="Ingredients">What it uses up, whether or not the check succeeds.</param>
 /// <param name="Level">
@@ -309,6 +310,10 @@ public sealed record ShopStock(RecordId Item, float PriceMultiplier = 1);
 /// </param>
 /// <param name="Step">The least step of the skill's check that makes it (see <c>gSkillCheck</c>). 0 for every potion.</param>
 /// <param name="Unk5">A potion recipe's sixth byte, 1 to 10. Nothing reads it.</param>
+/// <param name="Failure">
+/// What a failed check makes in its place, the ingredients used up all the same: the remade game's Burnt Meal for its dishes. None
+/// makes nothing, as the original's recipes do.
+/// </param>
 public sealed record RecipeRecord(
     RecordId Id,
     RecordId Skill,
@@ -316,7 +321,8 @@ public sealed record RecipeRecord(
     [property: KeyedList(nameof(Ingredient.Item))] IReadOnlyList<Ingredient> Ingredients,
     int Level,
     int Step,
-    int? Unk5 = null);
+    int? Unk5 = null,
+    RecordId? Failure = null);
 
 public sealed record Ingredient(RecordId Item, int Count);
 

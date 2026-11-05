@@ -13,6 +13,8 @@ public enum InventoryFilter
     Accessories,
     Potions,
     Scrolls,
+    /// <summary>The remade game's food and the ingredients it's cooked from.</summary>
+    Food,
     Other,
     Equipped,
 }
@@ -51,6 +53,7 @@ public sealed partial class PartyMenu
         [InventoryFilter.Accessories] = [ItemKind.Ring, ItemKind.Amulet, ItemKind.Wand],
         [InventoryFilter.Potions] = [ItemKind.Potion],
         [InventoryFilter.Scrolls] = [ItemKind.Scroll],
+        [InventoryFilter.Food] = [ItemKind.Food],
         [InventoryFilter.Other] = [ItemKind.Misc, ItemKind.Key],
     };
 

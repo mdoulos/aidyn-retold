@@ -63,7 +63,7 @@ public static class MenuDetailsBuilder
             return Armor(instance, armor, text, spells, wearer);
         if (item.Kind is ItemKind.Key)
             return null;
-        if (item.Kind is ItemKind.Potion or ItemKind.Scroll or ItemKind.Misc)
+        if (item.Kind is ItemKind.Potion or ItemKind.Scroll or ItemKind.Misc or ItemKind.Food)
         {
             if (item.Gear?.Description is not { } description)
                 return null;

@@ -114,7 +114,7 @@ public sealed partial class PartyMenu
     public IReadOnlyDictionary<Stat, int> StatChanges(Item item, EquipmentSlot? into = null)
     {
         var changes = new Dictionary<Stat, int>();
-        if (Shown is not { } member || item.Kind is ItemKind.Potion or ItemKind.Misc or ItemKind.Key
+        if (Shown is not { } member || item.Kind is ItemKind.Potion or ItemKind.Food or ItemKind.Misc or ItemKind.Key
             || item.Kind == ItemKind.Scroll && into is null)
             return changes;
         var equipment = member.Equipment;

@@ -40,7 +40,7 @@ public partial class PartyTabView : Control
     /// <summary>The aspect's and school's icons under the large portrait, from the portraits' frames' corner, 2 apart.</summary>
     private static readonly Vector2I OriginalIconsAt = new(4, 48);
 
-    private const int OriginalIconGap = 2;
+    private const int OriginalIconGap = 2, OriginalHungerIcon = 10;
 
     /// <summary>The hit points, level and gold labels and the bar's frame (<c>WidgetHealthGold</c>), and what's drawn on them.</summary>
     private static readonly Rect2I HealthPiece = new(160, 22, 140, 58);
@@ -767,7 +767,10 @@ public partial class PartyTabView : Control
     /// <summary>An aspect's or school's icon at a place in the frame: the original's own size in its look, else <see cref="IconSize"/>.</summary>
     private void Icon(RecordId icon, float x, float y, Rgba? color)
     {
-        if (OriginalLook)
+        // Hunger's icon has no original's size, so it's drawn at the original's icons', 10 square.
+        if (OriginalLook && (icon == HungerDisplay.HungryIcon || icon == HungerDisplay.StarvingIcon))
+            _ui.Image(_canvas, icon, new Rect2(x, y, OriginalHungerIcon, OriginalHungerIcon), color);
+        else if (OriginalLook)
             _ui.Image(_canvas, icon, (int)x, (int)y, color: color);
         else
             _ui.Image(_canvas, icon, new Rect2(x, y, IconSize, IconSize), color);
@@ -1259,7 +1262,11 @@ public partial class PartyTabView : Control
             var was = previous?.IndexOf(slot) ?? -1;
             var (from, fromSize) = was >= 0 ? PortraitPlace(was) : (to, toSize);
             var size = MenuTween.Value(fromSize, toSize, change);
-            FramedPortrait(portrait, new Rect2(at.X + MenuTween.Value(from.X, to.X, change), at.Y + MenuTween.Value(from.Y, to.Y, change), size, size));
+            var rect = new Rect2(at.X + MenuTween.Value(from.X, to.X, change), at.Y + MenuTween.Value(from.Y, to.Y, change), size, size);
+            FramedPortrait(portrait, rect);
+            // A hungry member's portrait pulses amber, a starving one's red (HungerDisplay).
+            if (HungerDisplay.Tint(Menu.Party.Slots[slot]!.Hunger, Time.GetTicksMsec() / 1000f) is { } tint)
+                HungerTint(portrait, rect, tint);
         }
         if (Menu.Previous is { } before)
             _ui.Text(_canvas, NameFont, before.Name, at.X + NameAt.X, at.Y + NameAt.Y, FadingOut(PartyMenu.TextColor, change));
@@ -1291,6 +1298,16 @@ public partial class PartyTabView : Control
             _canvas.DrawTextureRect(cut, rect, false, _ui.Tint(White));
     }
 
+    /// <summary>The portrait again over itself, in hunger's tint, cut as it is: the pulse over a hungry member's.</summary>
+    private void HungerTint(RecordId portrait, Rect2 rect, Rgba tint)
+    {
+        if (OriginalLook)
+            _ui.Image(_canvas, portrait, (int)rect.Position.X, (int)rect.Position.Y, new Vector2I((int)rect.Size.X, (int)rect.Size.Y), tint);
+        else if (_ui.Images.CutTo(portrait, UiPainter.SquareSheet) is { } cut)
+            _canvas.DrawTextureRect(cut, rect, false, _ui.Tint(tint));
+        QueueRedraw();
+    }
+
     /// <summary>Where the portrait so far round the party from the member shown goes, from the frames' corner, and how big it is.</summary>
     private static (Vector2I At, int Size) PortraitPlace(int i) =>
         i == 0 ? (ShownPortrait, ShownSize) : (OtherPortraits[Math.Min(i - 1, OtherPortraits.Length - 1)], OtherSize);
@@ -1313,7 +1330,14 @@ public partial class PartyTabView : Control
                 right -= IconGap;
             }
             if (MenuImages.SchoolIcon(member.School) is { } ownSchool)
-                icons.Add((ownSchool, right - IconSize, $"School of {member.School}"));
+            {
+                right -= IconSize;
+                icons.Add((ownSchool, right, $"School of {member.School}"));
+                right -= IconGap;
+            }
+            // Hunger's, before them, the user's design (Nov 4, 2026).
+            if (HungerDisplay.StatusIcon(member.Hunger) is { } hunger)
+                icons.Add((hunger, right - IconSize, HungerDisplay.Tooltip(member.Hunger)!));
             return icons;
         }
         float x = OriginalIconsAt.X;
@@ -1323,7 +1347,12 @@ public partial class PartyTabView : Control
             x += _ui.Size(aspect).X + OriginalIconGap;
         }
         if (MenuImages.SchoolIcon(member.School) is { } school)
+        {
             icons.Add((school, x, $"School of {member.School}"));
+            x += _ui.Size(school).X + OriginalIconGap;
+        }
+        if (HungerDisplay.StatusIcon(member.Hunger) is { } hungry)
+            icons.Add((hungry, x, HungerDisplay.Tooltip(member.Hunger)!));
         return icons;
     }
 

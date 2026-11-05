@@ -50,6 +50,7 @@ public sealed partial class PartyMenu
         : Picking is not null ? ActionTipChoice.Equip : row.Item.Kind switch
     {
         ItemKind.Potion => Combat is not null && Potions.IsFlask(row.Item) ? ActionTipChoice.Equip : ActionTipChoice.Drink,
+        ItemKind.Food => ActionTipChoice.Eat,
         ItemKind.Scroll => Combat is not null ? ActionTipChoice.Equip : ActionTipChoice.Read,
         ItemKind.Misc or ItemKind.Key => null,
         _ => ActionTipChoice.Equip,

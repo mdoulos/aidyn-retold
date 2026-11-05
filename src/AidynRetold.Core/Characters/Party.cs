@@ -165,6 +165,10 @@ public sealed partial class Party
     public static int AlchemistBonus(Character member) =>
         member.Stats.Modified(Stat.Intelligence) * 3 + member.Skills.Modified(Skill.Alchemist) * 6;
 
+    /// <summary>The remade game's Cook's bonus, as the Alchemist's: Intelligence × 3 + Cook × 6.</summary>
+    public static int CookBonus(Character member) =>
+        member.Stats.Modified(Stat.Intelligence) * 3 + member.Skills.Modified(Skill.Cook) * 6;
+
     /// <summary>
     /// The party's search for a secret door (<c>Party::SecretLock</c>): the best member's Intelligence × 3
     /// + Ranger × 10, dead or not, against d100. Below it, the step for what's left; otherwise 0.

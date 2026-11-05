@@ -28,9 +28,13 @@ public sealed class PartyPortraits
     /// <summary>The frames' top, which starts out of the screen when the game starts.</summary>
     public int Top { get; private set; } = Down;
 
+    // Frames counted for hunger's pulse over a portrait (HungerDisplay), at the HUD's 30 a second.
+    private int _pulseFrames;
+
     /// <summary>A frame: they move 4 toward where they're going (once a rendered frame, whatever its ticks).</summary>
     public void StepFrame()
     {
+        _pulseFrames++;
         if (!Shown && Top < Down)
             Top += Step;
         else if (Shown && Top >= Up + 2)
@@ -42,7 +46,8 @@ public sealed class PartyPortraits
     /// <paramref name="brightness"/>. An empty slot keeps its frame; a dead member looks the same.
     /// </summary>
     /// <param name="portraits">Each slot's portrait, or null for an empty slot or a member with none.</param>
-    public IEnumerable<HudSprite> Draw(IReadOnlyList<RecordId?> portraits, float brightness)
+    /// <param name="hunger">Each slot's hunger, the remade game's, whose pulse is drawn over a hungry member's portrait.</param>
+    public IEnumerable<HudSprite> Draw(IReadOnlyList<RecordId?> portraits, float brightness, IReadOnlyList<Characters.HungerState>? hunger = null)
     {
         if (Top >= Down)
             yield break;
@@ -53,8 +58,11 @@ public sealed class PartyPortraits
         var portrait = glow with { B = ColorBytes.Single(glow.B * brightness) };
         for (var i = 0; i < Math.Min(portraits.Count, FrameX.Length); i++)
         {
-            if (portraits[i] is { } image)
-                yield return new HudSprite(image, FrameX[i] + PortraitInset, Top + PortraitInset, PortraitScale, portrait);
+            if (portraits[i] is not { } image)
+                continue;
+            yield return new HudSprite(image, FrameX[i] + PortraitInset, Top + PortraitInset, PortraitScale, portrait);
+            if (hunger?.ElementAtOrDefault(i) is { } state && HungerDisplay.Tint(state, _pulseFrames / 30f) is { } tint)
+                yield return new HudSprite(image, FrameX[i] + PortraitInset, Top + PortraitInset, PortraitScale, HudSprite.Times(tint, brightness));
         }
     }
 }

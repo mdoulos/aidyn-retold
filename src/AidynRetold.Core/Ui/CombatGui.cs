@@ -224,6 +224,9 @@ public sealed class CombatGui
         SpellSelectedColor = new(255, 0, 0, 255);
 
     private readonly List<CombatPortrait> _portraits = [];
+
+    // Ticks counted for hunger's pulse over a portrait.
+    private int _pulseTicks;
     private readonly List<CombatBar> _bars = [];
     private bool _firstDraw = true;
     private readonly FrameGate _frame = new(Cadence.FrameTicks);
@@ -382,6 +385,7 @@ public sealed class CombatGui
     /// </summary>
     public void Tick(Battle battle)
     {
+        _pulseTicks++;
         if (_firstDraw)
         {
             // CombatGui.AssignBarsFirstDraw, 0x80086C84.
@@ -484,6 +488,10 @@ public sealed class CombatGui
             var (x, y) = Side(bar);
             var image = portrait(entity) ?? NoPortrait;
             portraits.Add(new HudSprite(image, entry.X + x, entry.Y + y, 1, White, (entry.Width, entry.Height)));
+            // A hungry member's portrait pulses, the remade game's (HungerDisplay).
+            if (entry.State == PortraitState.Party && battle.Combatants.FirstOrDefault(c => c.Entity == entity) is { } member
+                && HungerDisplay.Tint(member.Sheet.Hunger, _pulseTicks / 60f) is { } tint)
+                portraits.Add(new HudSprite(image, entry.X + x, entry.Y + y, 1, tint, (entry.Width, entry.Height)));
             if (entry.Skull)
                 portraits.Add(new HudSprite(SkullImage, entry.X + x, entry.Y + y, 1, White with { A = entry.SkullAlpha }, (entry.Width, entry.Height)));
         }

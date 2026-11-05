@@ -86,7 +86,7 @@ public class MenuTablesTests
         Assert.Equal(MenuImages.EmptySlots, menu.EquipmentSlotImages.Select(i => Image(i)));
 
         foreach (var aspect in Enum.GetValues<Aspect>())
-            Assert.Equal(items.AspectIcons[(int)aspect] is var a and not 0 ? Image(a) : (RecordId?)null, MenuImages.AspectIcon(aspect));
+            Assert.Equal(items.AspectIcons[(int)aspect] is var a and not 0 ? Image(a) : (RecordId?)null, MenuImages.AspectImage(aspect));
         foreach (var school in Enum.GetValues<MagicSchool>())
             Assert.Equal(items.SchoolIcons[(int)school] is var s and not 0 ? Image(s) : (RecordId?)null, MenuImages.SchoolIcon(school));
     }

@@ -65,7 +65,7 @@ public sealed partial class Party
         if (Inventory.Find(item) is not { } stack)
             return EquipRefusal.CantUse;
         var thing = stack.Item;
-        if (thing.Bonuses.Aspect != Aspect.None && thing.Bonuses.Aspect != member.Aspect)
+        if (Aspects.Enabled && thing.Bonuses.Aspect != Aspect.None && thing.Bonuses.Aspect != member.Aspect)
             return EquipRefusal.WrongAspect;
         var equipment = member.Equipment;
         switch (thing.Kind)
@@ -105,7 +105,7 @@ public sealed partial class Party
     /// </summary>
     public static EquipRefusal CanEquip(Character member, Item thing)
     {
-        if (thing.Bonuses.Aspect != Aspect.None && thing.Bonuses.Aspect != member.Aspect)
+        if (Aspects.Enabled && thing.Bonuses.Aspect != Aspect.None && thing.Bonuses.Aspect != member.Aspect)
             return EquipRefusal.WrongAspect;
         var equipment = member.Equipment;
         switch (thing.Kind)

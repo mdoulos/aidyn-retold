@@ -60,7 +60,7 @@ public abstract partial class ItemEditPage : EditPage
     {
         string Name(RecordId id) => (string?)Catalog.Plugins.GetJson(id)?["name"] ?? id.Key;
         var b = Item.Bonuses;
-        if (b.Aspect != Aspect.None)
+        if (Aspects.Enabled && b.Aspect != Aspect.None)
             yield return $"only for the {b.Aspect} aspect";
         if (b.Stat is { } stat)
             yield return $"{stat.Amount:+0;-0} {Name(stat.Stat)}";

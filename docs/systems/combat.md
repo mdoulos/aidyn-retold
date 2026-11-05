@@ -382,7 +382,7 @@ Read from 1.0's code (`0x80056E10`–`0x8005C0C0`, `aiInfo.cpp` and `aiscores.cp
 | Term | |
 | --- | --- |
 | its record's | `+0x06` |
-| aspect against the time (Lunar by day, Solar at night) | −1 |
+| aspect against the time (Lunar by day, Solar at night); none while aspects are off (`Aspects.Enabled`) | −1 |
 | a weakness has hit it (flag `0x10`, set with the check due by `ApplyResistance`, and by a spell's damage, `Combatant.SpellDamage` `0x80064A84`, on a combatant the AI plays: `Battle.HitByWeakness`) | −2 |
 | no Stamina | −1 |
 | strictly fewer than half the enemies that began able | −1 |

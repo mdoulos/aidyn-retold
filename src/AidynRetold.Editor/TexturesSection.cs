@@ -58,6 +58,13 @@ public partial class TexturesSection : VBoxContainer
         _ = BackgroundTask.Report(CountUsage());
     }
 
+    /// <summary>Shows only the tiles of <paramref name="images"/>, the model's image indices, or every tile for null.</summary>
+    public void Limit(IReadOnlySet<int>? images)
+    {
+        for (var i = 0; i < _frames.Count; i++)
+            _frames[i].Visible = images is null || images.Contains(i);
+    }
+
     /// <summary>What to say after the section's title: how many textures, and how many a plugin replaces.</summary>
     public string Summary => _entries.Count == 0 ? "none"
         : $"{_entries.Count}" + (_entries.Count(e => e.Override is not null) is > 0 and var n ? $", {n} replaced" : "");

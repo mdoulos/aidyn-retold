@@ -73,6 +73,21 @@ public partial class ModelThumb : SubViewportContainer
         Billboards.Face(Billboards.Facings(node), _camera.GlobalPosition);
     }
 
+    /// <summary>Shows outfit <paramref name="index"/>'s meshes, and hides those the others name (as <c>ActorOutfits</c> does in play).</summary>
+    public void Dress(IReadOnlyList<ActorOutfit> outfits, int index)
+    {
+        if (_content is null || index < 0 || index >= outfits.Count)
+            return;
+        var names = outfits.SelectMany(o => o.Meshes).ToHashSet();
+        var worn = outfits[index].Meshes;
+        foreach (var node in Nodes.FindAll<Node3D>(_content))
+        {
+            var name = node.Name.ToString();
+            if (names.Contains(name))
+                node.Visible = worn.Contains(name);
+        }
+    }
+
     public void Clear()
     {
         _content?.QueueFree();

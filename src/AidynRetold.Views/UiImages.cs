@@ -35,8 +35,8 @@ public sealed class UiImages
     /// </summary>
     private static readonly Dictionary<RecordId, string> OwnArt = new Dictionary<RecordId, string>
     {
-        [MenuImages.AspectIcon(Aspect.Lunar)!.Value] = "icon_lunar",
-        [MenuImages.AspectIcon(Aspect.Solar)!.Value] = "icon_solar",
+        [MenuImages.AspectImage(Aspect.Lunar)!.Value] = "icon_lunar",
+        [MenuImages.AspectImage(Aspect.Solar)!.Value] = "icon_solar",
         [MenuImages.SchoolIcon(MagicSchool.Chaos)!.Value] = "icon_chaos",
         [MenuImages.SchoolIcon(MagicSchool.Elemental)!.Value] = "icon_elemental",
         [MenuImages.SchoolIcon(MagicSchool.Naming)!.Value] = "icon_naming",

@@ -117,7 +117,7 @@ public sealed partial class Battle
     /// </summary>
     public int AspectScale(Character c, int chance)
     {
-        if (c.Aspect == Aspect.None)
+        if (!Aspects.Enabled || c.Aspect == Aspect.None)
             return chance;
         var night = PartOfDay == PartOfDay.Night;
         var favoured = c.Aspect == Aspect.Lunar ? night : !night;

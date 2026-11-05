@@ -77,6 +77,29 @@ public partial class EntityPage : EditPage
 
     protected override RecordId? RecordModel => _scene;
 
+    /// <summary>What kind of entity it is, as the record has it: which rows and slots the page shows.</summary>
+    private EntityKind Kind => _entity.Kind;
+
+    protected override float PictureSize => 80;
+
+    /// <summary>Its body's outfits, where its actor has more than one, for the model card's arrows.</summary>
+    protected override IReadOnlyList<ActorOutfit>? Outfits =>
+        _entity.Body?.Actor is { } actor && Catalog.Plugins.TryGet<ActorRecord>(actor)?.Outfits is { Count: > 1 } outfits ? outfits : null;
+
+    /// <summary>The outfit it wears as it starts: the first its gear meets, as <c>ActorOutfits.Meets</c> asks.</summary>
+    protected override int FirstOutfit(IReadOnlyList<ActorOutfit> outfits)
+    {
+        var gear = new[] { _entity.Armor, _entity.Shield }.Concat(_entity.Weapons).OfType<RecordId>().ToList();
+        var armored = _entity.Armor is { } armor && Catalog.Plugins.TryGet<ArmorRecord>(armor) is { Protection: > 0 };
+        for (var i = 0; i < outfits.Count; i++)
+        {
+            var o = outfits[i];
+            if ((o.Armored is not { } a || a == armored) && (o.Items is not { Count: > 0 } items || items.Any(gear.Contains)))
+                return i;
+        }
+        return 0;
+    }
+
     protected override string CardTitle => _entity.Kind switch
     {
         EntityKind.Party => "Party member",
@@ -106,25 +129,32 @@ public partial class EntityPage : EditPage
             "The sheet the game builds from the record: its hit points are its Endurance, Stamina and Level, and its experience its level's.");
         AddRow("Kind", Choice("category", e.Category, Enum.GetValues<EntityCategory>()),
             "The entity DB's group. Party is the party; Chaos and Natural are enemies, and so is a Humanoid worth experience; Named and Generic are the characters. Charming fails on Chaos.");
-        AddRow("Aspect", Choice("aspect", e.Aspect, Enum.GetValues<Aspect>()), "Lunar or Solar, which gear and spells of an aspect need.");
         AddRow("School", Choice("school", e.School, Enum.GetValues<MagicSchool>(), s => s switch
         {
             MagicSchool.None => "Unschooled: only unschooled spells",
             MagicSchool.Chaos => "Chaos: every school",
             _ => s.ToString(),
         }), "Which spells it can learn.");
-        AddRow("True Name", Switch("trueName", e.TrueName, "Has its True Name"), "Alaron's comes with the Roog cinematic's flag instead.");
-        AddRow("Heavy", Switch("heavy", e.Heavy, "Heavy"), "Spells that need a heavy target work on it.");
+        // The True Name is the story's: a script gives it, and the page never offers it. Heavy matters to the enemies' and characters' foes alone.
+        if (Kind != EntityKind.Party)
+            AddRow("Heavy", Switch("heavy", e.Heavy, "Heavy"), "Spells that need a heavy target work on it.");
         AddRow("Level", Number("level", e.Level, 1, _rules.Progression.Levels.Count - 1), "Its level as it starts, which its experience and hit points follow.");
         AddRow("Attributes", StatButtons(), "Its base attributes. Click one to change it, up to the attribute's base cap.");
         AddRow("Skills", SkillButtons(SkillId.All.Where(s => s.IsSkill)), "Its base skill levels. Click one to change it; a greyed skill is one it can never learn, which a click can allow.");
         AddRow("Weapon skills", SkillButtons(SkillId.All.Where(s => s.IsWeapon || s.IsShield)), "Its weapon skills and the shield skill, which say what it can wield and bear.");
         AddRow("Spells", SpellList(), "The spells it knows, at their levels.");
         AddRow("Equipment", Slots(), SlotsHelp());
-        AddRow("Morale", Number("morale", e.Morale, 0, 255), "How likely an enemy is to flee: 12 or more never flees.");
-        AddRow("Experience", Number("experience", e.Experience, 0, 65535), "What beating it is worth, before the award multiplier.");
-        AddRow("Loot table", Number("lootCategory", e.LootCategory, 0, 255), "Which loot table a beaten enemy rolls.");
-        AddRow("Perception", Number("perception", e.Perception, 0, 255), "How far it notices the party in trek: 10, or 0 for one that never does.");
+        // What a party member never uses is left out: its morale, and what beating it is worth; a character's loot and perception too.
+        if (Kind != EntityKind.Party)
+        {
+            AddRow("Morale", Number("morale", e.Morale, 0, 255), "How likely an enemy is to flee: 12 or more never flees.");
+            AddRow("Experience", Number("experience", e.Experience, 0, 65535), "What beating it is worth, before the award multiplier.");
+        }
+        if (Kind == EntityKind.Enemy)
+        {
+            AddRow("Loot table", Number("lootCategory", e.LootCategory, 0, 255), "Which loot table a beaten enemy rolls.");
+            AddRow("Perception", Number("perception", e.Perception, 0, 255), "How far it notices the party in trek: 10, or 0 for one that never does.");
+        }
         AddRow("Protection", Number("protection", e.Protection, 0, 255), "Its base protection, which armor and spells add to.");
         AddRow("Damage", Number("damage", e.Damage, 0, 255), "Its base damage, which gear adds to.");
         if (e.Resistances.Count > 0)
@@ -203,7 +233,7 @@ public partial class EntityPage : EditPage
             var record = _rules[stat];
             var value = StatValue(stat);
             var button = new Button { Text = $"{record.Name}  {value}", TooltipText = $"{record.Name}, 1 to {record.BaseCap}. Click to change it." };
-            button.Pressed += () => AskNumber(record.Name, $"{_entity.Name}'s base {record.Name}, 1 to its base cap of {record.BaseCap}.", value, 1, record.BaseCap, n => SetStat(stat, n));
+            button.Pressed += () => AskNumber(record.Name, value, 1, record.BaseCap, n => SetStat(stat, n));
             flow.AddChild(button);
         }
         return flow;
@@ -257,12 +287,11 @@ public partial class EntityPage : EditPage
             {
                 if (level is { } current)
                 {
-                    AskNumber(record.Name, $"{_entity.Name}'s base {record.Name}, 0 to {record.BaseCap}. A skill above 0 rises after battles; one at 0 only at a trainer.",
-                        current, 0, record.BaseCap, n => SetSkill(skill, n), new DialogButton("Can Never Learn", DialogButtonKind.Secondary, () => SetSkill(skill, null)));
+                    AskNumber(record.Name, current, 0, record.BaseCap, n => SetSkill(skill, n), new DialogButton("Can Never Learn", DialogButtonKind.Secondary, () => SetSkill(skill, null)));
                 }
                 else
                 {
-                    new EditorDialog($"Allow {record.Name}?", EditorDialog.Paragraphs($"Allow {_entity.Name} to learn {record.Name}? It starts at 0, which a trainer can raise."),
+                    new EditorDialog($"Allow {record.Name}?", EditorDialog.Paragraphs($"{_entity.Name} can't learn {record.Name}. Would you like {_entity.Name} to be able to learn it?"),
                     [
                         new DialogButton("Cancel", DialogButtonKind.Cancel),
                         new DialogButton("Allow", DialogButtonKind.Primary, () => SetSkill(skill, 0)),
@@ -298,11 +327,11 @@ public partial class EntityPage : EditPage
         BuildRows();
     }
 
-    /// <summary>A dialog asking for a whole number, from <paramref name="min"/> to <paramref name="max"/>, with any other choices after Cancel.</summary>
-    private void AskNumber(string what, string words, int value, int min, int max, Action<int> use, params DialogButton[] others)
+    /// <summary>A dialog asking for a whole number, from <paramref name="min"/> to <paramref name="max"/>: its title, the box and the buttons, with any other choices after Cancel.</summary>
+    private void AskNumber(string what, int value, int min, int max, Action<int> use, params DialogButton[] others)
     {
         var spin = new SpinBox { MinValue = min, MaxValue = max, Step = 1, Rounded = true, Value = value, UpdateOnTextChanged = true, SelectAllOnFocus = true, CustomMinimumSize = new Vector2(150, 0) };
-        var dialog = new EditorDialog($"Change {what}", [.. EditorDialog.Paragraphs(words), spin],
+        var dialog = new EditorDialog($"Change {what}", [spin],
             [new DialogButton("Cancel", DialogButtonKind.Cancel), .. others, new DialogButton("Use", DialogButtonKind.Primary, () => use((int)spin.Value))]);
         dialog.Open(this);
         spin.GetLineEdit().CallDeferred(Control.MethodName.GrabFocus);
@@ -419,7 +448,7 @@ public partial class EntityPage : EditPage
             {
                 Text = item is null ? $"{slot.Label}: none" : $"{slot.Label}: {item.Name}", Alignment = HorizontalAlignment.Left, SizeFlagsHorizontal = SizeFlags.ExpandFill,
                 ClipText = true, TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis, TooltipText = held is { } h ? $"{h}: click to change it" : "Empty: click to fill it",
-                ExpandIcon = true, CustomMinimumSize = new Vector2(0, 32), TextureFilter = TextureFilterEnum.LinearWithMipmaps,
+                ExpandIcon = true, CustomMinimumSize = new Vector2(0, 40), TextureFilter = TextureFilterEnum.LinearWithMipmaps,
             };
             if (item is not null && Texture(item.Icon) is { } icon)
                 button.Icon = icon;

@@ -1,3 +1,4 @@
+using AidynRetold.Core.Characters;
 using AidynRetold.Core.Calendar;
 using AidynRetold.Core.Combat;
 using AidynRetold.Plugins.Records;
@@ -48,7 +49,7 @@ public static class SpellValues
         var night = partOfDay == PartOfDay.Night;
         return inPlay.Sum(c =>
         {
-            var hindered = c.Sheet.Aspect switch
+            var hindered = Aspects.Enabled && c.Sheet.Aspect switch
             {
                 Aspect.Lunar => !night,
                 Aspect.Solar => night,

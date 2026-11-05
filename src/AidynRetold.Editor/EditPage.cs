@@ -16,7 +16,7 @@ namespace AidynRetold.Editor;
 /// <remarks>A page builds itself once its own fields are set (<see cref="Build"/>), as its rows read them.</remarks>
 public abstract partial class EditPage : HSplitContainer
 {
-    private const float LabelWidth = 260, PictureSize = 64;
+    private const float LabelWidth = 260;
     // The picture dialog's tiles, nine across, 6 apart, as wide as its words, its edges as far from the first and the last.
     protected const int PictureTile = 56, PictureColumns = 9, PictureGap = 6, PictureGrid = PictureColumns * PictureTile + (PictureColumns - 1) * PictureGap;
     // How far the grid's scroll reaches into the dialog's right margin, for its bar, which is about 4 wide.
@@ -148,6 +148,15 @@ public abstract partial class EditPage : HSplitContainer
     /// <summary>What the panel says of it with no model, and why that matters in the game.</summary>
     protected virtual string NoModelText => "No model.";
 
+    /// <summary>How large its picture is drawn in its well.</summary>
+    protected virtual float PictureSize => 64;
+
+    /// <summary>The model's outfits, where its actor has more than one: the model card's arrows dress it in each in turn.</summary>
+    protected virtual IReadOnlyList<ActorOutfit>? Outfits => null;
+
+    /// <summary>Which outfit the model is dressed in first.</summary>
+    protected virtual int FirstOutfit(IReadOnlyList<ActorOutfit> outfits) => 0;
+
     // ---- Building the page -------------------------------------------------------------------------------------------------------
 
     /// <summary>
@@ -277,8 +286,16 @@ public abstract partial class EditPage : HSplitContainer
         };
 
         var thumb = new ModelThumb { SizeFlagsVertical = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(0, 280), TooltipText = "Drag to turn it, scroll to zoom" };
-        // Framed once it's in the tree, where its bounds can be measured.
-        thumb.Ready += () => thumb.Show(Catalog.Plugins, models, model);
+        var outfits = Outfits;
+        if (outfits is not null && _outfit < 0)
+            _outfit = Math.Clamp(FirstOutfit(outfits), 0, outfits.Count - 1);
+        // Framed once it's in the tree, where its bounds can be measured, and dressed in its outfit.
+        thumb.Ready += () =>
+        {
+            thumb.Show(Catalog.Plugins, models, model);
+            if (outfits is not null)
+                thumb.Dress(outfits, _outfit);
+        };
         var framed = new PanelContainer { ThemeTypeVariation = "Frame", SizeFlagsVertical = SizeFlags.ExpandFill };
         framed.AddChild(thumb);
         var body = new VBoxContainer();
@@ -297,18 +314,76 @@ public abstract partial class EditPage : HSplitContainer
         {
             Note = provider is null ? model.Key : $"{model.Key} · {EditorStyle.PluginName(provider)}",
         };
+        var textures = glb is null ? null : new TexturesSection(ctx);
+        if (outfits is not null)
+        {
+            // The outfits' arrows in the card's head, before its note: each dresses the model and limits the textures to the outfit's.
+            var which = EditorStyle.DimLabel();
+            void Wear(int index)
+            {
+                _outfit = ((index % outfits.Count) + outfits.Count) % outfits.Count;
+                which.Text = $"outfit {_outfit + 1} of {outfits.Count}";
+                thumb.Dress(outfits, _outfit);
+                textures?.Limit(glb is null ? null : ImagesOf(glb, outfits[_outfit].Meshes));
+            }
+            var back = new Button { Text = "◀", ThemeTypeVariation = "FlatButton", FocusMode = FocusModeEnum.None, TooltipText = "The outfit before" };
+            var next = new Button { Text = "▶", ThemeTypeVariation = "FlatButton", FocusMode = FocusModeEnum.None, TooltipText = "The next outfit" };
+            back.Pressed += () => Wear(_outfit - 1);
+            next.Pressed += () => Wear(_outfit + 1);
+            var at = modelCard.HeadRow.GetChildCount() - 1;
+            foreach (var control in new Control[] { back, which, next })
+            {
+                modelCard.HeadRow.AddChild(control);
+                modelCard.HeadRow.MoveChild(control, at++);
+            }
+            thumb.Ready += () => Wear(_outfit);
+        }
 
         // The model's card takes what height its textures' card leaves.
-        var panel = glb is null ? SidePanel(modelCard) : SidePanel(modelCard, TexturesCard(ctx));
+        var panel = textures is null ? SidePanel(modelCard) : SidePanel(modelCard, new Section("Textures", textures) { Note = textures.Summary });
         // The parsed file goes with the panel, which a change of model builds again.
         panel.TreeExiting += () => glb?.Dispose();
         return panel;
     }
 
-    private static Section TexturesCard(ModelContext ctx)
+    // Which outfit the model is dressed in, kept as the panel is built again; none chosen yet below 0.
+    private int _outfit = -1;
+
+    /// <summary>
+    /// The model's images that <paramref name="meshes"/>, nodes of its scene by name, draw: through each node's mesh, its primitives'
+    /// materials and their colour and emissive textures. Null where the file names none of them, so nothing is limited.
+    /// </summary>
+    private static IReadOnlySet<int>? ImagesOf(AidynRetold.Views.GlbScene glb, IReadOnlyList<string> meshes)
     {
-        var textures = new TexturesSection(ctx);
-        return new Section("Textures", textures) { Note = textures.Summary };
+        var root = glb.Reader.Root;
+        if (!root.TryGetProperty("nodes", out var nodes) || !root.TryGetProperty("meshes", out var meshList))
+            return null;
+        var wanted = meshes.ToHashSet();
+        var images = new HashSet<int>();
+        root.TryGetProperty("materials", out var materials);
+        root.TryGetProperty("textures", out var textures);
+        foreach (var node in nodes.EnumerateArray())
+        {
+            if (!node.TryGetProperty("name", out var name) || !wanted.Contains(name.GetString() ?? "") || !node.TryGetProperty("mesh", out var meshIndex))
+                continue;
+            var mesh = meshList[meshIndex.GetInt32()];
+            if (!mesh.TryGetProperty("primitives", out var primitives))
+                continue;
+            foreach (var primitive in primitives.EnumerateArray())
+            {
+                if (!primitive.TryGetProperty("material", out var materialIndex) || materials.ValueKind != System.Text.Json.JsonValueKind.Array)
+                    continue;
+                var material = materials[materialIndex.GetInt32()];
+                foreach (var slot in new[] { material.TryGetProperty("pbrMetallicRoughness", out var pbr) && pbr.TryGetProperty("baseColorTexture", out var colour) ? colour : default,
+                    material.TryGetProperty("emissiveTexture", out var emissive) ? emissive : default })
+                {
+                    if (slot.ValueKind == System.Text.Json.JsonValueKind.Object && slot.TryGetProperty("index", out var textureIndex)
+                        && textures.ValueKind == System.Text.Json.JsonValueKind.Array && textures[textureIndex.GetInt32()].TryGetProperty("source", out var source))
+                        images.Add(source.GetInt32());
+                }
+            }
+        }
+        return images.Count == 0 ? null : images;
     }
 
     /// <summary>A model's glTF, parsed, or none where it can't be read.</summary>

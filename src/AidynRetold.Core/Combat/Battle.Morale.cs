@@ -43,6 +43,8 @@ public sealed partial class Battle
     /// <summary>Whether a combatant's aspect is against the time of day (<c>Combatant.AspectOpposesTime</c>, <c>0x800615B4</c>): Lunar by day, Solar at night.</summary>
     private bool AspectOpposed(Aspect aspect)
     {
+        if (!Aspects.Enabled)
+            return false;
         var night = PartOfDay == PartOfDay.Night;
         return aspect == Aspect.Lunar ? !night : aspect == Aspect.Solar && night;
     }

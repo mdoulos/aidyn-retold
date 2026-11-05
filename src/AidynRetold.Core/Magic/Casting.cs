@@ -109,8 +109,8 @@ public static class Casting
     {
         SpellSpecial.TrueName when !target.TrueName => CastRefusal.NeedsTrueName,
         SpellSpecial.Heavy when !target.Heavy => CastRefusal.TooLarge,
-        SpellSpecial.SolarAspect when target.Aspect != Aspect.Solar => CastRefusal.NeedsSolar,
-        SpellSpecial.LunarAspect when target.Aspect != Aspect.Lunar => CastRefusal.NeedsLunar,
+        SpellSpecial.SolarAspect when Aspects.Enabled && target.Aspect != Aspect.Solar => CastRefusal.NeedsSolar,
+        SpellSpecial.LunarAspect when Aspects.Enabled && target.Aspect != Aspect.Lunar => CastRefusal.NeedsLunar,
         _ => CastRefusal.None,
     };
 
@@ -154,7 +154,7 @@ public static class Casting
     /// </summary>
     public static int Chance(Character caster, int level, CastChance rules, PartOfDay partOfDay, int moonPhase, int troubadour, bool hostile)
     {
-        var factor = caster.Aspect == Aspect.Lunar
+        var factor = Aspects.Enabled && caster.Aspect == Aspect.Lunar
             ? rules.ByMoon[Math.Clamp(moonPhase, 0, rules.ByMoon.Count - 1)]
             : rules.ByPartOfDay[(int)partOfDay];
         var sum = (ushort)(caster.Stats.Modified(Stat.Intelligence) * rules.Intelligence + (byte)level * rules.Level
@@ -213,7 +213,7 @@ public static class Casting
         var ward = (ushort)Ward(sheet, spell.School);
         if (ward != 0)
             score = (short)(ward + score);
-        if (spell.Aspect != Aspect.None)
+        if (Aspects.Enabled && spell.Aspect != Aspect.None)
             score = (short)(int)(score * (sheet.Aspect == caster.Sheet.Aspect ? rules.SameAspect : rules.OtherAspect));
         var roll = (short)random.RollD(1, 100);
         if (roll > score)

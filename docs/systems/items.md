@@ -39,7 +39,7 @@ What can be equipped (`Party::GetEquipError` and the item kinds' functions):
 
 | Kind | Rule |
 | --- | --- |
-| Any | An aspect other than none must be the character's. |
+| Any | An aspect other than none must be the character's. Off while aspects are (`Aspects.Enabled`, [changes](../changes/mechanics.md#aspects)). |
 | Weapon | Base Strength at least its need, its weapon skill above 0, and for Niesen only the Archmage Staff. Replaces the one wielded. |
 | Body armor | Anyone. Replaces the one worn. |
 | Shield | The shield skill above 0. Replaces the one carried. |

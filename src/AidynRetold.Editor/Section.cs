@@ -45,6 +45,7 @@ public partial class Section : PanelContainer
         _title.Disabled = !foldable;
         head.AddChild(_title);
         head.AddChild(_note);
+        HeadRow = head;
         _head.AddChild(head);
         column.AddChild(_head);
         if (flush)
@@ -66,6 +67,9 @@ public partial class Section : PanelContainer
     private readonly bool _foldable;
 
     public Control Content { get; }
+
+    /// <summary>The head's row, the title and the note, which a card may put its own controls in before the note.</summary>
+    public HBoxContainer HeadRow { get; }
 
     /// <summary>Its title, without the fold's arrow.</summary>
     public string Title => _name;

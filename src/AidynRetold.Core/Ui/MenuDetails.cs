@@ -202,7 +202,7 @@ public static class MenuDetailsBuilder
 
     private static void AspectLine(List<DetailLine> lines, Aspect aspect, MenuText text)
     {
-        if (MenuImages.AspectIcon(aspect) is { } icon)
+        if (Aspects.Enabled && MenuImages.AspectIcon(aspect) is { } icon)
             lines.Add(new DetailLine([new DetailText(text[MenuText.Aspect], TextColor)], [new DetailImage(icon)]));
     }
 

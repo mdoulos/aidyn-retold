@@ -1021,16 +1021,18 @@ public class PartyItemTests
         Assert.Equal(EquipRefusal.CantUse, party.Equip(alaron, Helm.Id));
     }
 
+    /// <summary>Aspects are off (<see cref="Aspects.Enabled"/>), the user's choice: gear of any aspect fits anyone. On, the Lunar gem would be refused as WrongAspect.</summary>
     [Fact]
-    public void AnItemOfAnotherAspectCantBeEquippedButNeutralAndOwnAspectCan()
+    public void AnItemOfAnyAspectCanBeEquippedWhileAspectsAreOff()
     {
         var (party, alaron) = Setup();
         party.Inventory.Add(LunarGem.Id);
         party.Inventory.Add(SolarGem.Id);
         party.Inventory.Add(Cap.Id);
 
-        Assert.Equal(EquipRefusal.WrongAspect, party.Equip(alaron, LunarGem.Id));
-        Assert.True(party.Inventory.Has(LunarGem.Id));
+        Assert.False(Aspects.Enabled);
+        Assert.Equal(EquipRefusal.None, party.Equip(alaron, LunarGem.Id));
+        Assert.False(party.Inventory.Has(LunarGem.Id));
         Assert.Equal(EquipRefusal.None, party.Equip(alaron, SolarGem.Id));
         Assert.Equal(EquipRefusal.None, party.Equip(alaron, Cap.Id));
     }

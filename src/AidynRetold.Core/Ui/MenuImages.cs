@@ -1,3 +1,4 @@
+using AidynRetold.Core.Characters;
 using AidynRetold.Core.Items;
 using AidynRetold.Plugins;
 using AidynRetold.Plugins.Records;
@@ -81,7 +82,11 @@ public static class MenuImages
             .Select(Image)];
 
     /// <summary>Lunar's and Solar's icons (<c>getAspectIcon</c>). An item or spell of no aspect has none.</summary>
-    public static RecordId? AspectIcon(Aspect aspect) => aspect switch
+    /// <summary>The aspect's icon as the menus draw it, or none while aspects are off (<see cref="Aspects.Enabled"/>).</summary>
+    public static RecordId? AspectIcon(Aspect aspect) => Aspects.Enabled ? AspectImage(aspect) : null;
+
+    /// <summary>The aspect's image, on or off: the art's key.</summary>
+    public static RecordId? AspectImage(Aspect aspect) => aspect switch
     {
         Aspect.Lunar => Image(0x01A3),
         Aspect.Solar => Image(0x01A4),

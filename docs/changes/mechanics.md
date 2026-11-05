@@ -52,3 +52,10 @@ original's bugs fixed here are in [bug fixes](bug-fixes.md#mechanics).
   ([saves](../systems/saves.md#the-format)).
 - **A mod's flags can't hang the game.** A flag no loaded plugin has reads as clear and takes no writes, and a mod's derived flag that
   loops is cut off after a number of passes ([flags](../systems/flags.md#the-network)).
+## Aspects
+
+- **Aspects do nothing.** The original gives every character, spell and some gear a Lunar or Solar aspect: gear of an aspect fits only
+  its own, a few spells need a target of theirs, a spell of an aspect is resisted more by the other, a Lunar caster's chance goes by the
+  moon, the time of day favours one side's blows and morale, and the menus show the icons. Retold switches all of it off, the owner's
+  choice (Nov 5, 2026): `Aspects.Enabled` in the core, kept with the machinery behind it for a day it's wanted back. The records keep
+  their aspects, the editor no longer offers them, and the Party tab draws no aspect icon.

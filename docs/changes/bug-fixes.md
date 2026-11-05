@@ -21,6 +21,7 @@ The original's bugs Retold fixes, each the owner's choice, with no switch to bri
   ([combat](../systems/combat.md#where-the-port-differs)).
 - **The Goblin Ambush's end puts Alaron's Strength back to its base.** The original adds the base to what he has, doubling it if the battle
   ended before the ambush's second blow ([hardcoded content](../hardcoded-content.md#the-goblin-ambush-encounter-flag-978)).
+- **A large caster casts.** The original's two-cell casters, Kitarak's Hobgoblins among them, score a cast from where they stand and then rest every turn, their own footprint blocking the walk the cast is checked by. Retold lets a caster's own footprint be ([combat](../systems/combat.md#where-the-port-differs)).
 - **A script's battle gives no bonus loot.** The original's can pay out the last monster party's bonus loot again, as a value is never
   cleared ([hardcoded content](../hardcoded-content.md#findings)).
 - **The Shadow's battle says why healing fails.** The original replaces "The Shadow's presence prevents all healing." with "fails to

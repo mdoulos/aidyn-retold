@@ -37,8 +37,14 @@ internal static class EffectRules
     };
 
     /// <summary>Whether the effect refuses its target, so nothing goes on: the Shadow held (<c>0x800702F0</c> returns <c>0xFFFF</c>).</summary>
-    public static bool Refuses(Effect effect, EffectTarget target) =>
-        effect is ImmobiliseEffect { Immune: { } immune } && target.Combatant is not null && immune.Contains(target.Sheet.Entity);
+    public static bool Refuses(Effect effect, EffectTarget target) => effect switch
+    {
+        ImmobiliseEffect { Immune: { } immune } => target.Combatant is not null && immune.Contains(target.Sheet.Entity),
+        // A morale effect on a target with no morale, a party member or anyone outside a battle, leaves no record (0x800702F0 returns
+        // 0xFFFF), so Aura of Death and Solar Wrath take no slot on a member and bar no second cast.
+        MoraleEffect => target.Combatant?.Morale is null,
+        _ => false,
+    };
 
     /// <summary>An effect starting on its target, at the record's power.</summary>
     public static void Start(ActiveEffect record, int index, EffectTarget target, IRandom random)

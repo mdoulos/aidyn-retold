@@ -212,4 +212,16 @@ public sealed class ArenaGridTests
         Assert.Equal(0, grid[0, 2]);
         Assert.Equal(0, grid[50, 50]);
     }
+
+    /// <summary>A walker's own footprint doesn't block its walk: the port's fix for a 2-cell caster whose cast is checked from under itself.</summary>
+    [Fact]
+    public void WalkClearPassesOverTheWalkersOwnFootprint()
+    {
+        var grid = Sized(6, 6);
+        grid.Occupy(1, 1, 2);
+
+        Assert.False(grid.WalkClear(1, 1, 4, 1));
+        Assert.True(grid.WalkClear(1, 1, 4, 1, ownFootprint: 2));
+        Assert.True(grid.WalkClear(1, 1, 1, 4, ownFootprint: 2));
+    }
 }

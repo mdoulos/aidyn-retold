@@ -143,4 +143,18 @@ public sealed class PakSaveTests(Na10Import fixture)
         Assert.Equal(Saves.Encode(pak), Saves.Encode(read.Save));
         Assert.Equal(28, target.Notes.Single().Pages);
     }
+
+    /// <summary>The original's writer keeps a stat's low bits alone (<c>SaveBits.Write</c>, <c>0x80002700</c>): Sholeh's Intelligence of 35 in 5 bits is 3.</summary>
+    [Fact]
+    public void AStatPastItsBitsIsSavedShortAndSaidSo()
+    {
+        var save = AidynRetold.Core.GameState.NewGame(Set).Save();
+        var alaron = save.Party.Members[0];
+        save = save with { Party = save.Party with { Members = [alaron with { Trained = alaron.Trained with { Intelligence = 35 } }] } };
+        var problems = new List<string>();
+        var pak = Saves.FromSave(save, problems);
+        Assert.Contains(problems, p => p.Contains("trained Intelligence of 35 is saved as 3", StringComparison.Ordinal));
+        var back = Saves.ToSave(Saves.Decode(Saves.Encode(pak)));
+        Assert.Equal(3, back.Party.Members[0].Trained.Intelligence);
+    }
 }

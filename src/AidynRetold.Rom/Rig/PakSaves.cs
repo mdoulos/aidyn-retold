@@ -319,6 +319,9 @@ public sealed class PakSaves
         return new SaveStack(worn.Item, quantity) { Battery = worn.Battery, Charges = worn.Charges };
     }
 
+    /// <summary>The stats' names by their place in a sheet's row, as the core's <c>Stat</c> orders them.</summary>
+    private static readonly string[] StatNames = ["Intelligence", "Willpower", "Dexterity", "Endurance", "Strength", "Stamina", "Level"];
+
     private PakSheet Sheet(SaveCharacter c, bool party, ICollection<string> problems)
     {
         var entity = Number(c.Entity);
@@ -339,6 +342,14 @@ public sealed class PakSaves
             problems.Add($"{c.Entity}'s {spell.Spell} isn't saved: the original keeps only the spells of the character's school and unschooled ones.");
         if (party && c.Potions.Count > 0)
             problems.Add($"{c.Entity}'s potions aren't saved, as the original never saves any.");
+        // The original's writer keeps a stat's low bits alone (SaveBits.Write, 0x80002700), so one past its width is saved short: Sholeh's
+        // Intelligence of 35 in 5 bits as 3. The port's own save keeps it whole; the pak holds what the original would.
+        foreach (var (stats, which) in new[] { (c.Trained, "trained"), (c.Current, "current") })
+        {
+            var values = stats.ToArray();
+            foreach (var (stat, bits) in PakSheet.StatOrder.Where(s => values[s.Stat] >> s.Bits != 0))
+                problems.Add($"{c.Entity}'s {which} {StatNames[stat]} of {values[stat]} is saved as {values[stat] & ((1 << bits) - 1)}, in the original's {bits} bits.");
+        }
 
         return new PakSheet(entity, c.TotalExp, c.SpendableExp, c.Trained.ToArray(), c.Current.ToArray(),
             [.. PakSheet.SavedSkills.Select(s => levels[s] ?? 0xF)],

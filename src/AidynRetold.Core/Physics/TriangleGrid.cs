@@ -23,7 +23,9 @@ internal sealed class TriangleGrid<T> where T : struct, IGridTriangle
     private const float CellSize = 4;
 
     private readonly Dictionary<ChunkKey, Part> _parts = [];
-    private readonly HashSet<int> _seen = [];
+    /// <summary>A query's scratch, each thread's own: chunks are read on more than one thread (ADR 0025).</summary>
+    [ThreadStatic]
+    private static HashSet<int>? _seen;
 
     private sealed record Part(T[] Triangles, Dictionary<(int X, int Z), int[]> Cells, float MinX, float MinZ, float MaxX, float MaxZ);
 
@@ -76,7 +78,8 @@ internal sealed class TriangleGrid<T> where T : struct, IGridTriangle
                 continue;
             if (maxX < part.MinX || minX > part.MaxX || maxZ < part.MinZ || minZ > part.MaxZ)
                 continue;
-            _seen.Clear();
+            var seen = _seen ??= [];
+            seen.Clear();
             for (var x = Cell(minX); x <= Cell(maxX); x++)
             {
                 for (var z = Cell(minZ); z <= Cell(maxZ); z++)
@@ -85,7 +88,7 @@ internal sealed class TriangleGrid<T> where T : struct, IGridTriangle
                         continue;
                     foreach (var i in cell)
                     {
-                        if (_seen.Add(i))
+                        if (seen.Add(i))
                             into.Add(part.Triangles[i]);
                     }
                 }
@@ -110,7 +113,8 @@ internal sealed class TriangleGrid<T> where T : struct, IGridTriangle
         {
             if (key == except || highX < part.MinX || lowX > part.MaxX || highZ < part.MinZ || lowZ > part.MaxZ)
                 continue;
-            _seen.Clear();
+            var seen = _seen ??= [];
+            seen.Clear();
             for (var x = Cell(lowX); x <= Cell(highX); x++)
             {
                 for (var z = Cell(lowZ); z <= Cell(highZ); z++)
@@ -119,7 +123,7 @@ internal sealed class TriangleGrid<T> where T : struct, IGridTriangle
                         continue;
                     foreach (var i in cell)
                     {
-                        if (_seen.Add(i) && SameCorners(triangle, part.Triangles[i], squared) && SameCorners(part.Triangles[i], triangle, squared))
+                        if (seen.Add(i) && SameCorners(triangle, part.Triangles[i], squared) && SameCorners(part.Triangles[i], triangle, squared))
                             into.Add((part.Triangles, i));
                     }
                 }

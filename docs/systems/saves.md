@@ -152,7 +152,7 @@ Loading a converted save gives what the console holds for every member's stats, 
 | 0x1B00 | The chart as RAM holds it: the count of entries used, the 19 slot numbers (those in use first), and the 19 entries. |
 | 0x1BFC | The CRC: CRC-32, polynomial 0x04C11DB7, MSB first, from 0 with no final XOR, over the file with this word zero, plus 8 (`Crc.Seal`, `0x800CBC0C`). |
 
-**The bit stream** (`SaveBlock.Write`, `0x80019810`; `SaveBits`, `0x800026F0`–`0x800027F4`) packs each field's bits lowest first, from bit 0 of byte 0x1340. In order:
+**The bit stream** (`SaveBlock.Write`, `0x80019810`; `SaveBits`, `0x800026F0`–`0x800027F4`) packs each field's bits lowest first, from bit 0 of byte 0x1340. In order: A value past its field's width loses its high bits (`SaveBits.Write`, `0x80002700`): Sholeh's Intelligence of 35 goes into 5 bits as 3. The port's own save keeps it whole; `to-pak` writes the low bits as the original does, and lists each stat it saves short.
 
 - The clock and the gold, 32 bits each, and the party's three movement timers, 12 bits each in units of 7,200 ticks.
 - The party's four sheets, Alaron's first, each 0x500 bits (a null one zero), with Alaron's block after his: his name in 20 bytes, then 4-bit levels of the Elemental, Naming and Necromancy spells.

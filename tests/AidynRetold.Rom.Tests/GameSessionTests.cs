@@ -306,12 +306,14 @@ public sealed partial class GameSessionTests(Na10Import fixture)
         Assert.True(session.Trek.CutSceneFade.Fading);
         var here = new ChunkRef(place.Set.Id, place.Chunk.Row, place.Chunk.Column);
         Assert.Equal(new BattleSetup(BattleSource.MonsterParty, here, place.Chunk.Terrain, id, party.Enemies, null, false, true, party.Used?.Flag)
-            with { Enemies = fight.Enemies, Size = (party.MinSize, party.MaxSize), BonusLoot = party.Loot, PartyGate = party.Enabled }, fight);
+            with { Enemies = fight.Enemies, Size = (party.MinSize, party.MaxSize), BonusLoot = party.Loot, PartyGate = party.Enabled, CollisionByte = fight.CollisionByte }, fight);
         Assert.Equal(party.Enemies, fight.Enemies);
+        // Used, the collision byte is the cone's (TrekLoop.TalkByte): the player stood where the party was placed, so which side is the body's.
+        Assert.InRange(fight.CollisionByte, 0, 1);
 
-        // A wanderer catching the party is the same, as an ambush.
+        // A wanderer catching the party is the same, as an ambush, but for the collision byte, which a catch doesn't write.
         var ambush = BattleSetup.WithParty(BattleSource.Wanderer, id, party, here, place.Chunk.Terrain, ambush: true);
-        Assert.Equal(fight with { Source = BattleSource.Wanderer, Ambush = true }, ambush);
+        Assert.Equal(fight with { Source = BattleSource.Wanderer, Ambush = true, CollisionByte = 0 }, ambush);
 
         // A camp ambush where the player stands, in G14 (terrain 0): the terrain's two kinds at the party's level's tier, its least
         // and most theirs summed, and no fleeing. Two of the Gwernia recruits make ambushes possible; each camp that isn't one heals and cues the scene.

@@ -170,6 +170,9 @@ public sealed class Wanderer
     /// the player, giving up and ending a chase, turning to face him, moving on, and chasing. Returns
     /// whether it ambushes him.
     /// </summary>
+    /// <summary>Whether it noticed the player in its last tick.</summary>
+    internal bool Noticed { get; private set; }
+
     internal bool Tick(in WanderTick tick)
     {
         Timer--;
@@ -210,6 +213,7 @@ public sealed class Wanderer
         // The original keeps one "noticed" for the whole loop, so every hunter after one that notices
         // the player chases him too; as the user chose, each notices for itself.
         var noticed = Hunts && bodyOut <= Leash && !Calmed && perceived <= (Ranges ?? default).For(tick.PlayerRequest);
+        Noticed = noticed;
 
         if (!Hunts && playerProx < FaceDistance)
         {

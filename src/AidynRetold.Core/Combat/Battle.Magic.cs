@@ -149,7 +149,7 @@ public sealed partial class Battle : IMagicHost
         var aged = new List<(Combatant, EffectAgeing)>();
         foreach (var combatant in Combatants.Where(c => !c.Flags.HasFlag(CombatantFlags.Gone)))
         {
-            var ageing = combatant.Sheet.AgeRound(combatant, this, Game.Clock.Date.PartOfDay, Game.Random.Combat);
+            var ageing = combatant.Sheet.AgeRound(combatant, this, PartOfDay, Game.Random.Combat);
             // Combatant.Death (0x80062080) takes off what holds it; the rest of a death is session 5's.
             if (ageing.Died)
             {
@@ -213,7 +213,9 @@ public sealed partial class Battle : IMagicHost
         // (margin + the dice) d6, through the resistances.
         var dice = Game.Random.Combat.RollD((margin + result) & 0xFF, 6);
         var elements = spell.Effects?.OfType<DamageEffect>().SelectMany(d => d.Elements).ToList() ?? [];
-        var damage = Casting.Damage(dice, Casting.ResistanceMultiplier(spell, elements, target.Sheet));
+        var multiplier = Casting.ResistanceMultiplier(spell, elements, target.Sheet);
+        var damage = Casting.Damage(dice, multiplier);
+        HitByWeakness(target, multiplier);
         return new(target, CastResult.Damage, Damage: damage, Margin: margin);
     }
 

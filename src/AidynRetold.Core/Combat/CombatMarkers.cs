@@ -72,7 +72,8 @@ public sealed class CombatMarkers
         for (var i = 0; i < Count; i++)
         {
             var at = new Vector3(centre.X + dx * radius, 0, centre.Z + dz * radius);
-            if (Ground(battle.World, at, battle.Game?.Random.Combat) is { } ground)
+            // The retries draw on the cosmetic stream, so a ring's misses move no rules draw; the original's move every one after them.
+            if (Ground(battle.World, at, battle.Game?.Random.Cosmetic) is { } ground)
             {
                 _points[i] = ground;
             }

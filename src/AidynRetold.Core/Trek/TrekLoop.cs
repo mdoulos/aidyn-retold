@@ -360,7 +360,7 @@ public sealed partial class TrekLoop : IMapObjectHost
         {
             foreach (var w in Wanderers.Tick(world, motion.Sphere.Position, motion.Request, Game.Party, Game.Random.Wander,
                 Game.Weather.FogTime))
-                CueBattle(Battle(BattleSource.Wanderer, w.Map, w.Party, ambush: true) with { AniByte = AniByte(motion.Request) });
+                CueBattle(Battle(BattleSource.Wanderer, w.Map, w.Party, ambush: true) with { AniByte = Wanderers.NoticedAs });
         }
         // Bodies.Process: the player is the first body, then the rest move and push.
         Nearest = Wanderers.Step(world, motion.Sphere, before, Chunks.MapAt(motion.Sphere.Position)?.Key, Camera.Aim,
@@ -974,13 +974,26 @@ public sealed partial class TrekLoop : IMapObjectHost
         Refresh();
     }
 
+    /// <summary>
+    /// Whether a hunter used by A starts its battle facing the party (<c>EncounterDat.collisionByte</c>, which <c>IMapObjectHost.Talk</c>
+    /// writes at <c>0x80010AA8</c>–<c>0x80010B74</c>): 0 with the player nearer than its distance d from the party's body to the point d
+    /// ahead of the body, a cone of 60° either side of its heading on the level; else 1, which turns the enemies away.
+    /// </summary>
+    public static int TalkByte(Vector3 party, Vector2 heading, Vector3 player)
+    {
+        var distance = Vector3.Distance(party, player);
+        var ahead = party + Vector3.Normalize(new Vector3(heading.X, 0, heading.Y)) * distance;
+        return Vector3.Distance(ahead, player) < distance ? 0 : 1;
+    }
+
     void IMapObjectHost.Talk(LoadedMap map, MonsterPartyObject party)
     {
         if (Conversation is not null || Wanderers.Of(map, party) is not { } wanderer)
             return;
         if (party.Dialogue is null)
         {
-            CueBattle(Battle(BattleSource.MonsterParty, map, party, ambush: false));
+            CueBattle(Battle(BattleSource.MonsterParty, map, party, ambush: false)
+                with { CollisionByte = TalkByte(wanderer.Body.Sphere.Position, wanderer.Body.Heading, Player.Sphere.Position) });
             return;
         }
         // A talker whose script is a cut-scene stages it in the chunk the player is in, from reference

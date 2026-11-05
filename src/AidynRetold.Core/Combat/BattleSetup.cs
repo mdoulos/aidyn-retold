@@ -195,6 +195,10 @@ public sealed record BattleSetup(
                 list.Clear();
         }
     Trim:
+        // Sure ones past the party's most come down to it (ChooseKinds returns the most, not the count): only a most of 0 is past it,
+        // which leaves the fallback.
+        if (list.Count > most)
+            list.RemoveRange(most, list.Count - most);
         TrimByLevel(list, party, level);
         return list.Count == 0 ? [fallback] : list;
     }

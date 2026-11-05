@@ -124,7 +124,7 @@ The pause menu's popups for these, and what they say, are in [ui](ui.md#the-part
 
 The remade game's, the user's design (Nov 4, 2026), in the ACRE plugin's `records/cooking/`: the **Cook** skill (`acre:skill/12`, [characters](characters.md#the-cook-skill)) cooks food from ingredients as the Alchemist brews potions (`Crafting.CookDish`), from a member's Skills popup anywhere outside a battle. Food is an item kind of its own (`ItemKind.Food`, 32, which no original ID has), eaten as a potion is drunk, by its record's `use` and effects (`Potions.Drink`, `CanDrink`): from the pause menu (Eat), from C-up's menu in a battle, which takes the turn, or by dragging it to a portrait. It can always be eaten where its record allows, whatever it would do, as eating anything feeds the eater ([characters](characters.md#hunger)). The Party tab has a Food filter for it, and a battle's line says what it healed or that the member ate.
 
-- **Ingredients:** Meat, Fish, Potato, Egg, Cured Bacon and the Bag of Oats (`Misc`, only cooked), and Carrot and Apple, which are food too, eaten raw for Stamina +4. **Bread** is food bought as it is, never cooked: it heals 10–15%. Each has a slot of its own, as reagents do. They're sold in a general store or reagent seller in each town (shops 29 and 30 in Gwernia, 25 in Port Saiid, 18 in Talewok, 34 in Erromon, 48 in Ugarit and 68 in Terminor), and a beast drops Meat half the time, one or two (`aidyn:loot/0x081D`'s first drop).
+- **Ingredients:** Meat, Fish, Potato, Egg, Cured Bacon and the Bag of Oats (`Misc`, only cooked, never eaten), and Carrot and Apple, which are food too, eaten raw for Stamina +4: snacks, which don't count as meals. **Bread** is a meal bought as it is, never cooked: it heals 10–15%. Each has a slot of its own, as reagents do. They're sold in a general store or reagent seller in each town (shops 29 and 30 in Gwernia, 25 in Port Saiid, 18 in Talewok, 34 in Erromon, 48 in Ugarit and 68 in Terminor), and a beast drops Meat half the time, one or two (`aidyn:loot/0x081D`'s first drop).
 - **The dishes** share a few effects, each from different ingredients:
 
   | Effect | Cook rank | Dishes |
@@ -134,8 +134,8 @@ The remade game's, the user's design (Nov 4, 2026), in the ACRE plugin's `record
   | Stamina +15 | 3 | Glazed Carrots (Apple, Carrot) |
   | Heals 25–35%, Stamina +6 | 4 | Pot Roast (Meat, Potato), Meat Stew (Meat, Carrot), Fish Cakes (Fish, Potato), Fish Stew (Fish, Carrot), Root Pottage (Potato, Carrot), Bacon and Eggs (Cured Bacon, Egg) |
   | Heals 35–50%, Stamina +10 | 6 | Shepherd's Pie (Meat, Potato, Carrot), Fisherman's Pie (Fish, Potato, Carrot) |
-  | Heals 40–60%, Stamina to its base, not in a battle | 8 | Gwernian Supper (all five) |
 
-  A failed check makes the recipe's `failure`, the **Burnt Meal** (`RecipeRecord.Failure`), which heals 5% and feeds as any food does. Ranks 9 and 10 are left for the Spicy and Herbed dishes planned.
+  Rank 6 is the top: a Cook above it only fails less (the user's design, Nov 5, 2026). A failed check makes the recipe's `failure` (`RecipeRecord.Failure`), a burnt dish of its own (Burnt Apple, Burnt Fish Cakes), which heals 5% and feeds as any food does.
+- **In a battle** only the snacks, Bread, and Cooked Apple, Cooked Carrot, Roast Meat, Grilled Fish, Fish Cakes and Fried Bacon, with their burnt dishes, can be eaten (their `use`); the rest are too filling, eaten in trek alone. Every dish, burnt or not, and Bread is a **meal** (`ItemTraits.Meal`): two make the eater Well Fed, who can't eat more until it wears off ([characters](characters.md#hunger)).
 - **Their pictures** are the original's default item icon (`0x35DC`) until the food has art of its own.
 

@@ -15,6 +15,8 @@ public enum DrinkResult
     NotNow,
     /// <summary>It isn't drunk here: a flask, a potion with no effect, or one its record keeps from trek or from a battle. Nothing is used.</summary>
     NotInTrek,
+    /// <summary>Food, which a Well Fed member can't eat until it wears off (<see cref="Character.Hunger"/>). Nothing is used.</summary>
+    WellFed,
 }
 
 /// <summary>
@@ -58,9 +60,9 @@ public static class Potions
         var drunkHere = inBattle ? PotionUse.DrinkInBattle : PotionUse.DrinkInTrek;
         if (potion.Gear is not { Effects: [_, ..] effects } record || IsFlask(potion) || !Use(potion).HasFlag(drunkHere))
             return DrinkResult.NotInTrek;
-        // Food can always be eaten where its record allows: it feeds the eater, whatever else it does.
+        // Food can be eaten where its record allows, whatever else it does, since it feeds the eater: unless they're Well Fed.
         if (IsFood(potion))
-            return DrinkResult.Drunk;
+            return member.Hunger == HungerState.WellFed ? DrinkResult.WellFed : DrinkResult.Drunk;
         if (record.Duration is not null && effects.Any(EffectRules.Lasting))
             return member.HasEffect(record.Id) ? DrinkResult.NotNow : DrinkResult.Drunk;
         return effects.Any(e => WouldDo(member, e)) ? DrinkResult.Drunk : DrinkResult.NotNow;
@@ -98,7 +100,7 @@ public static class Potions
         if (result.Dice is { } dice)
             member.TakeDamage(random.RollD(dice & 0xFF, 6), on);
         if (IsFood(item))
-            member.Eat();
+            member.Eat(meal: item.Traits.Meal);
         party.Inventory.Take(item.Id);
         return DrinkResult.Drunk;
     }

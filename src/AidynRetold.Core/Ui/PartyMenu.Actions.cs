@@ -228,6 +228,7 @@ public sealed partial class PartyMenu
                 {
                     DrinkResult.NotNow => Messages?.PotionNotNow,
                     DrinkResult.NotInTrek => Messages?.PotionNotInTrek,
+                    DrinkResult.WellFed => string.Format(System.Globalization.CultureInfo.InvariantCulture, WellFedLine, member.Name),
                     _ => null,
                 });
                 Refresh();
@@ -475,17 +476,18 @@ public sealed partial class PartyMenu
 
     /// <summary>The remade game's cooking popup's title and lines, its own, as the original has none for food.</summary>
     public const string CookingTitle = "Cooking", FoodFromCUp = "Food is eaten from the battle's C-up menu.",
-        MissingIngredients = "You don't have the ingredients.", Cooked = "{0} is ready.", Burnt = "It burns: a Burnt Meal.",
-        CookingFailed = "The cooking fails.", StackFull = "You can't carry any more of it.";
+        MissingIngredients = "You don't have the ingredients.", Cooked = "{0} is ready.", Burnt = "It burns: {0}.",
+        CookingFailed = "The cooking fails.", StackFull = "You can't carry any more of it.", WellFedLine = "{0} is well fed, and can't eat more for now.";
 
-    // As the Alchemist brews: what's cooked, a Burnt Meal from a failure, or why nothing is.
+    // As the Alchemist brews: what's cooked, the recipe's burnt dish from a failure, or why nothing is.
     private void CookDish(Character user, RecipeRecord recipe, HeaderNumbers before)
     {
         var name = Party.Inventory.Catalog.TryGet(recipe.Product)?.Name ?? recipe.Product.ToString();
         Result(Items.Crafting.CookDish(Party, user, recipe, Random) switch
         {
             CraftResult.Made => string.Format(System.Globalization.CultureInfo.InvariantCulture, Cooked, name),
-            CraftResult.Spoilt => Burnt,
+            CraftResult.Spoilt => string.Format(System.Globalization.CultureInfo.InvariantCulture, Burnt,
+                recipe.Failure is { } burnt ? Party.Inventory.Catalog.TryGet(burnt)?.Name?.ToLowerInvariant() ?? "a burnt meal" : "nothing"),
             CraftResult.MissingIngredients => MissingIngredients,
             CraftResult.StackFull => StackFull,
             _ => CookingFailed,

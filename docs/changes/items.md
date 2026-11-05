@@ -39,8 +39,9 @@ New, the user's design (Nov 4, 2026; [items](../systems/items.md#cooking-and-foo
 
 - **Food heals and restores Stamina**, eaten from the pause menu, or from the battle's C-up menu, which takes the turn, as a potion is drunk. The best dishes stand in for the Curing Potion in a battle.
 - **Ingredients:** Meat, Fish, Potato, Carrot, Apple, Egg, Cured Bacon and the Bag of Oats, sold in a general store in each town; beasts drop Meat. Carrot and Apple can be eaten raw, for a little Stamina. Bread is sold there too, a finished dish no one cooks.
-- **Seventeen dishes**, from Cooked Apple to the Gwernian Supper, cooked by the new Cook skill ([characters](characters.md#the-cook-skill)), several to an effect from different ingredients. A failed cook makes a Burnt Meal.
-- **Eating anything feeds the eater**, against hunger ([characters](characters.md#hunger)).
+- **Sixteen dishes**, from Cooked Apple to the pies, cooked by the new Cook skill ([characters](characters.md#the-cook-skill)), several to an effect from different ingredients, up to Cook 6, a rank above only failing less. A failed cook makes the recipe's own burnt dish, which still feeds.
+- **In a battle** only the snacks, Bread, and the lighter dishes (the cooked or burnt apple, carrot, meat and fish, the fish cakes and the bacon) can be eaten; the rest are too filling.
+- **Eating anything feeds the eater**, against hunger ([characters](characters.md#hunger)); two meals make them Well Fed, and then nothing more goes down until it wears off.
 
 ## Flasks
 

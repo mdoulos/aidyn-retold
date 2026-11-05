@@ -768,7 +768,7 @@ public partial class PartyTabView : Control
     private void Icon(RecordId icon, float x, float y, Rgba? color)
     {
         // Hunger's icon has no original's size, so it's drawn at the original's icons', 10 square.
-        if (OriginalLook && (icon == HungerDisplay.HungryIcon || icon == HungerDisplay.StarvingIcon))
+        if (OriginalLook && HungerDisplay.Icons.Contains(icon))
             _ui.Image(_canvas, icon, new Rect2(x, y, OriginalHungerIcon, OriginalHungerIcon), color);
         else if (OriginalLook)
             _ui.Image(_canvas, icon, (int)x, (int)y, color: color);

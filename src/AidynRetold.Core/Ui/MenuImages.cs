@@ -168,7 +168,7 @@ public static class MenuImages
 
     /// <summary>The port's own pictures: the potions', the scrolls' and hunger's icons (<see cref="HungerDisplay"/>).</summary>
     public static IEnumerable<RecordId> OwnPictures => PotionPictures.Values.Concat(ScrollPictures.Values)
-        .Concat([HungerDisplay.HungryIcon, HungerDisplay.StarvingIcon]);
+        .Concat(HungerDisplay.Icons);
 
     private static RecordId Image(int borg8) => RecordId.Hex(RecordTypes.Image, borg8);
 }

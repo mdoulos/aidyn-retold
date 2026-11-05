@@ -16,10 +16,17 @@ public class HungerTests
         Effects = [new StaminaEffect(new Magnitude(4, 0))], Use = PotionUse.DrinkInTrek | PotionUse.DrinkInBattle,
     };
 
+    /// <summary>A meal: a cooked dish, which counts toward Well Fed.</summary>
+    private static readonly ItemRecord Stew = ItemData.NewItem(0x2002, ItemKind.Food, traits: new ItemTraits(OwnSlot: true, Meal: true)) with
+    {
+        Id = RecordId.Parse("acre:item/0x2002"), Name = "Stew",
+        Effects = [new HealEffect(25, 35)], Use = PotionUse.DrinkInTrek | PotionUse.DrinkInBattle,
+    };
+
     /// <summary>The test rules with food among the items, which hunger needs.</summary>
     private static readonly CharacterRules Fed = new(Characters.Rules.Stats, Characters.Rules.Skills, Characters.Rules.Progression)
     {
-        Magic = new MagicRules(MagicData.Record, MagicData.Spells, [.. Enum.GetValues<BasePotion>().Select(PotionData.Of), Apple], MagicData.Inventory),
+        Magic = new MagicRules(MagicData.Record, MagicData.Spells, [.. Enum.GetValues<BasePotion>().Select(PotionData.Of), Apple, Stew], MagicData.Inventory),
     };
 
     private static readonly Stat[] Four = [Stat.Intelligence, Stat.Willpower, Stat.Dexterity, Stat.Strength];
@@ -94,6 +101,62 @@ public class HungerTests
         Assert.Equal(DrinkResult.Drunk, Potions.Drink(party, member, food, new Rng.Lcg()));
         Assert.Equal(HungerState.Fed, member.Hunger);
         Assert.False(party.Inventory.Has(Apple.Id));
+    }
+
+    [Fact]
+    public void TwoMealsMakeAMemberWellFedWhoCantEatUntilItWearsOff()
+    {
+        var party = new Party(ItemData.Catalog(Apple, Stew));
+        var member = Member();
+        party.Add(member);
+        for (var i = 0; i < 3; i++)
+            party.Inventory.Add(Stew.Id);
+        party.Inventory.Add(Apple.Id);
+        var stew = party.Inventory.Catalog.TryGet(Stew.Id)!;
+        var apple = party.Inventory.Catalog.TryGet(Apple.Id)!;
+        var random = new Rng.Lcg();
+        Assert.False(member.IsFed);
+
+        // One meal: Fed, which hides, and shows as nothing.
+        Assert.Equal(DrinkResult.Drunk, Potions.Drink(party, member, stew, random));
+        Assert.True(member.IsFed);
+        Assert.Equal(HungerState.Fed, member.Hunger);
+
+        // Two: Well Fed, which shows, and nothing more goes down, a snack neither.
+        Assert.Equal(DrinkResult.Drunk, Potions.Drink(party, member, stew, random));
+        Assert.Equal(HungerState.WellFed, member.Hunger);
+        Assert.Equal(DrinkResult.WellFed, Potions.CanDrink(member, stew));
+        Assert.Equal(DrinkResult.WellFed, Potions.CanDrink(member, apple, inBattle: true));
+        Assert.Equal(DrinkResult.WellFed, Potions.Drink(party, member, apple, random));
+        Assert.True(party.Inventory.Has(Apple.Id));
+
+        // A third of a day on, it's worn off, and the meals are forgotten: eating starts over.
+        member.AgeEffects(Days(0.34));
+        Assert.Equal(HungerState.Fed, member.Hunger);
+        Assert.False(member.IsFed);
+        Assert.Equal(DrinkResult.Drunk, Potions.Drink(party, member, apple, random));
+        Assert.False(member.IsFed);
+    }
+
+    [Fact]
+    public void ASnackIsNoMealAndASaveKeepsTheMeals()
+    {
+        var party = new Party(ItemData.Catalog(Apple, Stew));
+        var member = Member();
+        party.Add(member);
+        party.Inventory.Add(Apple.Id);
+        party.Inventory.Add(Apple.Id);
+        var apple = party.Inventory.Catalog.TryGet(Apple.Id)!;
+        Potions.Drink(party, member, apple, new Rng.Lcg());
+        Potions.Drink(party, member, apple, new Rng.Lcg());
+        Assert.False(member.IsFed);
+        Assert.Equal(HungerState.Fed, member.Hunger);
+
+        member.SetMeals(2, 100);
+        Assert.Equal(HungerState.WellFed, member.Hunger);
+        Assert.Equal((2, 100ul), (member.Meals, member.SinceMealEaten));
+        member.SetMeals(2, Character.FullFor);
+        Assert.Equal(0, member.Meals);
     }
 
     /// <summary>Cook is held after the shield, so the original's 24 keep their places, and listed after the Alchemist.</summary>

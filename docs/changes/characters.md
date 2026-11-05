@@ -17,6 +17,7 @@ remodel in [graphics](graphics.md#models), his armor in [armor](armor.md), and t
 
 ## Hunger
 
+- **Two meals make a member Well Fed** (a dish, burnt or not, or bread; a raw apple or carrot is a snack): it shows as a status, and while it lasts, a third of a game day, they can't eat anything. One meal is Fed, which hides.
 - **Members grow hungry.** Two game days without eating anything, a member is Hungry, −2 to Intelligence, Willpower, Dexterity and Strength; three days, Starving, −5. Eating anything feeds them. Hit points aren't touched, and no stat goes below 1. It shows as an icon by the aspect's and school's and a pulse over the portrait ([ui](ui.md#the-party-tab), [characters](../systems/characters.md#hunger)).
 
 ## The party

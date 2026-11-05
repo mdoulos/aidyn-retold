@@ -69,7 +69,9 @@ public sealed class TrekHud
     /// </summary>
     public void WatchHunger(IReadOnlyList<Characters.HungerState> hunger)
     {
-        var worse = _hunger.Length == hunger.Count && hunger.Where((state, i) => state > _hunger[i]).Any();
+        // Hungrier: Well Fed wearing off is no worse than Fed.
+        static int Want(Characters.HungerState state) => state switch { Characters.HungerState.Hungry => 1, Characters.HungerState.Starving => 2, _ => 0 };
+        var worse = _hunger.Length == hunger.Count && hunger.Where((state, i) => Want(state) > Want(_hunger[i])).Any();
         _hunger = [.. hunger];
         if (worse && !Portraits.Shown)
             Raise(true);

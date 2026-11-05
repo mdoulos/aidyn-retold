@@ -271,6 +271,14 @@ public sealed partial class Battle
         var before = a.Sheet.Hp;
         var drunk = Potions.Drink(Game.Party, a.Sheet, item, Game.Random.Combat, a, this);
         a.RevertAction(Game.Party.Inventory, _rules);
+        if (drunk == DrinkResult.WellFed)
+        {
+            // The remade game's: a Well Fed member can't eat, and the line says so in its own words.
+            var full = $"{a.Sheet.Name} is well fed";
+            Write(full);
+            Lines.Queue(full);
+            return;
+        }
         if (drunk != DrinkResult.Drunk)
         {
             SayBoth(PotionOnLine, a.Sheet.Name);

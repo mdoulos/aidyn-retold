@@ -45,6 +45,7 @@ public sealed partial class PartyMenu
                 {
                     DrinkResult.NotNow => Messages?.PotionNotNow,
                     DrinkResult.NotInTrek => Messages?.PotionNotInTrek,
+                    DrinkResult.WellFed => string.Format(System.Globalization.CultureInfo.InvariantCulture, WellFedLine, member.Name),
                     _ => null,
                 });
                 break;

@@ -151,6 +151,11 @@ public sealed record SaveCharacter(RecordId Entity)
 
     /// <summary>The game's time since the character last ate, in the clock's units: the remade game's hunger. 0 in an older save.</summary>
     public ulong SinceMeal { get; init; }
+
+    /// <summary>The meals eaten lately, up to two, and the game's time since the last (<c>Character.Meals</c>).</summary>
+    public int Meals { get; init; }
+
+    public ulong SinceMealEaten { get; init; }
 }
 
 /// <summary>A potion working on a character.</summary>

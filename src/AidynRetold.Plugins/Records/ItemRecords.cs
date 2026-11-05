@@ -259,7 +259,8 @@ public sealed record ItemEnchantment(RecordId Spell, int Level);
 /// unique gear (<c>PartyInventory::AddKeyItem</c>, <c>AddKeyEquipment</c>).
 /// </param>
 /// <param name="MustTake">Loot that holds it can't be left behind (<c>IInventory::HasNoKeyItem</c>).</param>
-public sealed record ItemTraits(bool OwnSlot = false, bool MustTake = false);
+/// <param name="Meal">Food that is a meal, the remade game's: a cooked dish, a burnt one or bread, which counts toward Well Fed (<c>Character.Hunger</c>); a raw apple or carrot is a snack, and doesn't.</param>
+public sealed record ItemTraits(bool OwnSlot = false, bool MustTake = false, bool Meal = false);
 
 /// <summary>The flags a key item sets (<c>PartyInventory::AddKeyItem2</c>).</summary>
 /// <param name="Held">Set while the party has it, and cleared when the last is taken. A save restores the item from it (<c>LoadKeyItems</c>).</param>

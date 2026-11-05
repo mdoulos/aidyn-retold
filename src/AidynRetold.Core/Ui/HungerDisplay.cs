@@ -13,7 +13,10 @@ namespace AidynRetold.Core.Ui;
 public static class HungerDisplay
 {
     /// <summary>The icons, the ACRE plugin's: a fork and spoon on amber and on red.</summary>
-    public static readonly RecordId HungryIcon = Icon("status_hungry"), StarvingIcon = Icon("status_starving");
+    public static readonly RecordId HungryIcon = Icon("status_hungry"), StarvingIcon = Icon("status_starving"), WellFedIcon = Icon("status_wellfed");
+
+    /// <summary>The icons, for a look that draws them at the original's icons' size.</summary>
+    public static readonly IReadOnlyList<RecordId> Icons = [HungryIcon, StarvingIcon, WellFedIcon];
 
     public static readonly Rgba Hungry = new(255, 176, 48, 255), Starving = new(255, 40, 24, 255);
 
@@ -25,6 +28,7 @@ public static class HungerDisplay
     {
         HungerState.Hungry => HungryIcon,
         HungerState.Starving => StarvingIcon,
+        HungerState.WellFed => WellFedIcon,
         _ => null,
     };
 
@@ -33,6 +37,7 @@ public static class HungerDisplay
     {
         HungerState.Hungry => $"Hungry: -{Character.HungryLoss} to Intelligence, Willpower, Dexterity and Strength",
         HungerState.Starving => $"Starving: -{Character.StarvingLoss} to Intelligence, Willpower, Dexterity and Strength",
+        HungerState.WellFed => "Well fed: can't eat more for now",
         _ => null,
     };
 
@@ -42,7 +47,7 @@ public static class HungerDisplay
     /// </summary>
     public static Rgba? Tint(HungerState state, float seconds)
     {
-        if (state == HungerState.Fed)
+        if (state is HungerState.Fed or HungerState.WellFed)
             return null;
         var period = state == HungerState.Starving ? StarvingPeriod : HungryPeriod;
         var phase = 0.5f - 0.5f * MathF.Cos(2 * MathF.PI * (seconds % period) / period);

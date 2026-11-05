@@ -47,15 +47,19 @@ public static class EditorStyle
         return label;
     }
 
-    /// <summary>A small rounded tag: a plugin's ID, a count, a state; edged and lettered in the changed colour for what a plugin changed.</summary>
-    public static PanelContainer Chip(string text, string tooltip = "", bool changed = false)
+    /// <summary>
+    /// A small rounded tag: a plugin's ID, a count, a state; edged and lettered in the changed colour for what a plugin changed, or the
+    /// good colour for what one added.
+    /// </summary>
+    public static PanelContainer Chip(string text, string tooltip = "", bool changed = false, bool added = false)
     {
+        var variation = added ? "AddedChip" : changed ? "ChangedChip" : "Chip";
         var panel = new PanelContainer
         {
             TooltipText = tooltip, MouseFilter = Control.MouseFilterEnum.Pass, SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
-            ThemeTypeVariation = changed ? "ChangedChip" : "Chip",
+            ThemeTypeVariation = variation,
         };
-        panel.AddChild(new Label { Text = text, MouseFilter = Control.MouseFilterEnum.Pass, ThemeTypeVariation = changed ? "ChangedChipLabel" : "ChipLabel" });
+        panel.AddChild(new Label { Text = text, MouseFilter = Control.MouseFilterEnum.Pass, ThemeTypeVariation = variation + "Label" });
         return panel;
     }
 

@@ -256,11 +256,14 @@ public static class EditorTheme
         Label(t, "CardTitleLabel", p.Text, 16, bold);
         Label(t, "ChipLabel", p.Text, 11, bold);
         Label(t, "ChangedChipLabel", p.Changed, 11, bold);
+        Label(t, "AddedChipLabel", p.Good, 11, bold);
         // A chip is a pill: a tint, its line, its ink.
         t.SetTypeVariation("Chip", "PanelContainer");
         t.SetStylebox("panel", "Chip", Box(p.Raised, p.Border, 99, 1, 10, 2));
         t.SetTypeVariation("ChangedChip", "PanelContainer");
         t.SetStylebox("panel", "ChangedChip", Box(p.Raised, p.Changed, 99, 1, 10, 2));
+        t.SetTypeVariation("AddedChip", "PanelContainer");
+        t.SetStylebox("panel", "AddedChip", Box(p.Raised, p.Good, 99, 1, 10, 2));
         t.SetTypeVariation("Toolbar", "PanelContainer");
         // Its padding is 3 above and below, the quick buttons' pictures filling the rest of its height (RecordBrowser); the row's other
         // controls stand centred in it.

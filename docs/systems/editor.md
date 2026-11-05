@@ -64,7 +64,7 @@ Loading the plugins again, after a save, its Undo or a texture or model replaced
 
 ## A record's page
 
-The header is one row (`RecordHeader`): the record's summary, large (a one-of-a-kind record by its type's name, such as Combat rules, and a texture, UI image, animation or sample by its type and key), its ID and Borg dim, which a click copies, a chip for each plugin it comes from in load order (the definer, each patcher, with the fields it sets in its tooltip, and a plugin whose file replaces an earlier one's, in orange), and the page's tabs at its end, which the `TabContainer` under it doesn't draw. An actor's, a model's, an armor's, a weapon's and an item's page is one page, with what the tabs would hold in its cards, so it has none.
+The header is one row (`RecordHeader`): the record's summary, large (a one-of-a-kind record by its type's name, such as Combat rules, and a texture, UI image, animation or sample by its type and key), its ID and Borg dim, which a click copies, one chip for the last plugin that touches it: grey for a ROM plugin record as it is, green for a record a plugin added, and orange for one a plugin patches or whose file it replaces, whichever plugin defined it, the ACRE plugin's or another's (the whole chain, with the fields each patcher sets, is the chip's tooltip), and the page's tabs at its end, which the `TabContainer` under it doesn't draw. An actor's, a model's, an armor's, a weapon's and an item's page is one page, with what the tabs would hold in its cards, so it has none.
 
 ## A model's page
 

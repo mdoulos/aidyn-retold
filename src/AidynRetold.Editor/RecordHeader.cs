@@ -1,10 +1,12 @@
+using AidynRetold.Plugins;
 using Godot;
 
 namespace AidynRetold.Editor;
 
 /// <summary>
-/// The record page's header, one row: the record's name, large; its ID and Borg, dim; a chip for each plugin it comes from, in load
-/// order, the definer's first and each patcher's or replacing file's after an arrow; and the page's tabs, at the row's end. Clicking the
+/// The record page's header, one row: the record's name, large; its ID and Borg, dim; one chip, the last plugin that touches it: grey
+/// for the ROM plugin's record as it is, green for one a plugin added, and the changed colour for one a plugin patches or whose file it
+/// replaces, whichever plugin defined it (the whole chain is the chip's tooltip); and the page's tabs, at the row's end. Clicking the
 /// ID copies it.
 /// </summary>
 public partial class RecordHeader : HBoxContainer
@@ -62,12 +64,13 @@ public partial class RecordHeader : HBoxContainer
             _sources.RemoveChild(child);
             child.QueueFree();
         }
-        for (var i = 0; i < sources.Count; i++)
-        {
-            if (i > 0)
-                _sources.AddChild(EditorStyle.DimLabel("›"));
-            var (plugin, gives) = sources[i];
-            _sources.AddChild(EditorStyle.Chip(EditorStyle.PluginName(plugin), $"{EditorStyle.PluginName(plugin)} ({plugin}): {gives}", changed: i > 0));
-        }
+        if (sources.Count == 0)
+            return;
+        // The last plugin's chip alone: the chain, last first, is its tooltip.
+        var (plugin, _) = sources[^1];
+        var chain = string.Join("\n", sources.Reverse().Select(s => $"{EditorStyle.PluginName(s.Plugin)} ({s.Plugin}): {s.Gives}"));
+        var changed = sources.Count > 1;
+        var added = !changed && plugin != RecordId.RomNamespace;
+        _sources.AddChild(EditorStyle.Chip(EditorStyle.PluginName(plugin), chain, changed, added));
     }
 }

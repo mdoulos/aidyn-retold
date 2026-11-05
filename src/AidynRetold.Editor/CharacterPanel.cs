@@ -66,10 +66,9 @@ public static class EditorCharacters
 }
 
 /// <summary>
-/// An entity's page: its character sheet, with its hit points, experience, attributes, skills,
-/// spells and equipment, and what raising each costs. Experience can be added, training tried after
-/// a battle or at a trainer, and items put on and taken off, with the core's rules. A party member's
-/// sheet can be a loaded checkpoint's.
+/// An entity's page: its character sheet as its record starts it, built by the core's rules (<c>Entity::Init</c>): its hit points,
+/// experience, attributes, skills, spells and what it wears, and what it's worth in combat. A trainer's page ends with the game's
+/// training window. The page shows the record; it tries nothing out.
 /// </summary>
 public partial class CharacterPanel : PagePanel
 {
@@ -77,132 +76,65 @@ public partial class CharacterPanel : PagePanel
     private readonly EntityRecord _entity;
     private readonly CharacterRules _rules;
     private readonly ItemCatalog? _items;
-    private readonly Label _result = new() { AutowrapMode = TextServer.AutowrapMode.WordSmart };
-    private readonly List<EntityRecord> _trainers;
-    private Character _character;
-    private Party? _party;
-    private Trainer? _trainer;
-    private uint _gold;
-    // The experience to award, kept as the sheet's built again after each award; and the gold's edits, counted so the sheet's built
-    // again once they stop, its box keeping the focus, not under the arrows as they're clicked.
-    private int _award = 1000;
-    private int _goldEdits;
-    private bool _focusGold;
-    private bool _fromGame;
+    private readonly Character _character;
+    private readonly Party? _party;
     private TrainingWindowPanel? _window;
 
     public CharacterPanel(PluginCatalog catalog, EditorGame? game, EntityRecord entity, CharacterRules rules, ItemCatalog? items, Action<RecordId> open)
         : base(catalog, open)
     {
         (_game, _entity, _rules, _items) = (game, entity, rules, items);
-        // Trainers are the plain NPCs, recruits who teach and anyone who trains for free.
-        _trainers = [.. catalog.Plugins.All<EntityRecord>(RecordTypes.Entity)
-            .Where(e => e.Category is EntityCategory.Generic or EntityCategory.Party || rules.Training.FreeTrainers.Contains(e.Id))
-            .OrderBy(e => e.Name, StringComparer.OrdinalIgnoreCase)];
-        _fromGame = InGame;
-        _character = Build();
+        // The sheet as the record starts it, alone in a party, so the weapons it brings and doesn't wield go where they would.
+        _character = EditorCharacters.Create(Plugins, _rules, _entity.Id, _game, _items)!;
+        _party = _items is null ? null : new Party(_items);
+        _party?.Add(_character);
         // Someone who teaches has the training window, on the editor's game, as a script's Train opens it.
         var teaches = Trainer.From(entity, rules, catalog.Plugins.Get<SpellRecord>);
         if (game is not null && items is not null && (teaches.SkillsOffered.Any() || teaches.Spells.Count > 0))
             _window = new TrainingWindowPanel(catalog.Plugins, game, teaches);
-        Refresh();
+        ShowSheet();
     }
 
     /// <summary>The training window, if the entity teaches anything.</summary>
     public TrainingWindowPanel? Window => _window;
 
-    /// <summary>Whether the entity is in the editor's game's party, a loaded one's.</summary>
-    private bool InGame => _game is { IsNewGame: false } game && game.Game.Party.Contains(_entity.Id);
-
-    /// <summary>
-    /// The sheet as it starts, and the party's gold with it: a copy of the game's, or plenty to try
-    /// training with. It's alone in a party whose inventory holds what it takes off, and the weapons it brings.
-    /// </summary>
-    private Character Build()
+    private void ShowSheet()
     {
-        _gold = _fromGame ? _game!.Game.Party.Gold : 10_000;
-        var character = (_fromGame ? _game!.CopyParty().Get(_entity.Id) : null)
-            ?? EditorCharacters.Create(Plugins, _rules, _entity.Id, _game, _items)!;
-        _party = _items is null ? null : new Party(_items);
-        _party?.Add(character);
-        return character;
-    }
-
-    private void Refresh()
-    {
-        // The training window plays on the game, so it outlives the sheet's rebuilds.
-        if (_window?.GetParent() is { } parent)
-            parent.RemoveChild(_window);
         ClearBody();
         var c = _character;
-
         Body.AddChild(Header());
-        if (InGame)
-        {
-            var source = new OptionButton { TooltipText = "Whose sheet: the record's, or the loaded game's." };
-            source.AddItem("The record's sheet", 0);
-            source.AddItem($"The sheet in {_game!.Name}", 1);
-            source.Selected = _fromGame ? 1 : 0;
-            source.ItemSelected += i => Reset(i == 1);
-            Body.AddChild(source);
-        }
-        Body.AddChild(Controls());
-        _result.Text = _result.Text.Length == 0 ? " " : _result.Text;
-        Body.AddChild(_result);
 
         Heading("Attributes");
-        var stats = Grid(["", "Base", "Modified", "Base cap", "Raise for", ""]);
+        var stats = Grid(["", "Base", "Modified", "Base cap"]);
         foreach (var stat in Enum.GetValues<Stat>())
-        {
-            var quote = Training.QuoteStat(c, stat);
-            Row(stats, [_rules[stat].Name, Num(c.Stats.Base(stat)), Modified(c.Stats.Modified(stat), c.Stats.Base(stat)),
-                Num(_rules[stat].BaseCap), stat == Stat.Level ? "levels by experience" : Price(quote)]);
-            if (stat == Stat.Level || _trainer is not null)
-                stats.AddChild(new Control());
-            else
-                stats.AddChild(TrainButton(quote, () => Training.TrainStat(c, stat), $"{_rules[stat].Name} raised to {c.Stats.Trained(stat) + 1}"));
-        }
+            Row(stats, [_rules[stat].Name, Num(c.Stats.Base(stat)), Modified(c.Stats.Modified(stat), c.Stats.Base(stat)), Num(_rules[stat].BaseCap)]);
         Body.AddChild(stats);
 
         Heading("Skills");
-        var offered = Training.SkillsOffered(c, _trainer).ToHashSet();
-        var skills = Grid(["", "Level", "Modified", _trainer is null ? "Raise for, after a battle" : "Raise for, at the trainer", ""]);
-        foreach (var skill in SkillId.All.Where(s => c.Skills.CanLearn(s) || offered.Contains(s)))
-        {
-            var quote = Training.QuoteSkill(c, skill, _trainer, _gold);
-            var name = _rules[skill].Name + (_trainer is not null && offered.Contains(skill) ? $" (teaches {_trainer.Skills.Base(skill)})" : "");
-            Row(skills, [name, Num(c.Skills.Base(skill)), Modified(c.Skills.Modified(skill), c.Skills.Base(skill)), offered.Contains(skill) ? Price(quote) : _trainer is null ? "only at a trainer" : "not offered"]);
-            skills.AddChild(offered.Contains(skill)
-                ? TrainButton(quote, () => Training.TrainSkill(c, skill, _trainer, ref _gold), $"{_rules[skill].Name} raised to {c.Skills.Base(skill) + 1}")
-                : new Control());
-        }
+        var skills = Grid(["", "Level", "Modified"]);
+        foreach (var skill in SkillId.All.Where(c.Skills.CanLearn))
+            Row(skills, [_rules[skill].Name, Num(c.Skills.Base(skill)), Modified(c.Skills.Modified(skill), c.Skills.Base(skill))]);
         Body.AddChild(skills);
         var never = SkillId.All.Where(s => !c.Skills.CanLearn(s)).Select(s => _rules[s].Name).ToList();
         if (never.Count > 0)
             Line($"Can never learn: {string.Join(", ", never)}.", Dim);
 
         Heading("Spells");
-        var spells = Training.SpellsOffered(c, _trainer).Select(s => s.Id).Concat(c.Spells.Select(s => s.Spell.Id)).Distinct().ToList();
-        if (spells.Count == 0)
+        if (c.Spells.Count == 0)
             Line(c.Skills.CanLearn(Skill.Wizard) ? "None." : "None, and it can't learn Wizard, so it can learn no spells.", Dim);
         else
         {
-            var grid = Grid(["", "Level", "School", "Wizard", "Raise for", ""]);
-            foreach (var id in spells)
+            var grid = Grid(["", "Level", "School", "Wizard"]);
+            foreach (var known in c.Spells)
             {
-                var spell = c.FindSpell(id)?.Spell ?? Plugins.Get<SpellRecord>(id);
-                var level = c.FindSpell(id)?.Level;
-                var quote = Training.QuoteSpell(c, spell, _trainer, _gold);
-                grid.AddChild(LinkButton(id, spell.Name));
-                Row(grid, [level is { } l ? Num(l) : "—", spell.School.ToString(), Num(spell.Wizard), Price(quote)]);
-                grid.AddChild(TrainButton(quote, () => Training.TrainSpell(c, spell, _trainer, ref _gold, out _),
-                    level is null ? $"{spell.Name} learnt" : $"{spell.Name} raised to {level + 1}"));
+                grid.AddChild(LinkButton(known.Spell.Id, known.Spell.Name));
+                Row(grid, [Num(known.Level), known.Spell.School.ToString(), Num(known.Spell.Wizard)]);
             }
             Body.AddChild(grid);
         }
 
-        if (_party is { } party)
-            ShowEquipment(party);
+        if (_party is not null)
+            ShowEquipment();
 
         Heading("In combat");
         var armor = c.Equipment.ArmorProtection;
@@ -223,16 +155,12 @@ public partial class CharacterPanel : PagePanel
         }
     }
 
-    /// <summary>
-    /// What it wears, each with what it does and a button to take it off, what the party carries, and
-    /// any item to put on, by the core's rules.
-    /// </summary>
-    private void ShowEquipment(Party party)
+    /// <summary>What it wears as it starts, by the core's rules, each with what it does.</summary>
+    private void ShowEquipment()
     {
-        var c = _character;
-        var equipment = c.Equipment;
+        var equipment = _character.Equipment;
         Heading("Equipment");
-        var worn = Grid(["", "", "What it does", ""]);
+        var worn = Grid(["", "", "What it does"]);
         var slots = new List<(string Slot, ItemInstance? Item)> { ("Weapon", equipment.Weapon), ("Armor", equipment.Armor), ("Shield", equipment.Shield) };
         slots.AddRange(equipment.Gear.Select((g, i) => ($"Gear {i + 1}", g)));
         foreach (var (slot, item) in slots)
@@ -243,49 +171,17 @@ public partial class CharacterPanel : PagePanel
             worn.AddChild(ItemLink(item.Id, item.Item.Icon, item.Item.Name));
             var does = ItemText.Does(NameOf, item.Item).Append(ItemText.State(item)).Where(t => t.Length > 0).ToList();
             worn.AddChild(new Label { Text = does.Count == 0 ? "—" : string.Join("; ", does) });
-            var off = new Button { Text = "Take off", TooltipText = "Into the party's inventory, with its battery and charges." };
-            off.Pressed += () =>
-            {
-                _result.Text = party.Unequip(c, item) ? $"{item.Item.Name} taken off."
-                    : item.Item.Weapon?.Fixed == true ? $"{item.Item.Name} can't be taken off." : "The inventory has no room for it.";
-                Refresh();
-            };
-            worn.AddChild(off);
         }
-        if (worn.GetChildCount() == 4)
+        if (worn.GetChildCount() == 3)
             Line("Nothing.", Dim);
         else
             Body.AddChild(worn);
         if (equipment.Enchantments.Any())
             Line("On while worn: " + string.Join(", ", equipment.Enchantments.Select(e => $"{NameOf(e.Spell)} at level {e.Level}")) + ".");
-
-        var carried = party.Inventory.Stacks;
-        if (carried.Count > 0)
-            Line("Carried: " + string.Join(", ", carried.Select(s => s.Quantity > 1 ? $"{s.Item.Name} × {s.Quantity}" : s.Item.Name)) + ".", Dim);
-
-        // Anything worn, what the party carries first. Scrolls are read in trek, and worn only in combat.
-        var wearable = _items!.All.Where(i => i.Kind is ItemKind.Weapon or ItemKind.Armor or ItemKind.Shield || (i.IsGear && i.Kind != ItemKind.Scroll))
-            .OrderBy(i => party.Inventory.Has(i.Id) ? 0 : 1).ThenBy(i => i.Kind).ThenBy(i => i.Name, StringComparer.OrdinalIgnoreCase).ToList();
-        var row = new HBoxContainer();
-        var choice = new OptionButton { TooltipText = "An item to put on. If the party doesn't carry it, it's given one first.", FitToLongestItem = false };
-        foreach (var item in wearable)
-            choice.AddItem($"{item.Name} ({item.Kind}{(party.Inventory.Has(item.Id) ? ", carried" : "")})");
-        var put = new Button { Text = "Put on", TooltipText = "By the core's rules: what it needs, and what it replaces goes to the inventory." };
-        put.Pressed += () =>
-        {
-            if (choice.Selected < 0)
-                return;
-            var item = wearable[choice.Selected];
-            var given = !party.Inventory.Has(item.Id) && party.Inventory.Add(item);
-            var refusal = party.Equip(c, item.Id);
-            if (refusal != EquipRefusal.None && given)
-                party.Inventory.Take(item.Id);
-            _result.Text = refusal == EquipRefusal.None ? $"{item.Name} put on." : $"{c.Name} can't put on {item.Name}: {ItemText.Refusal(refusal, item)}";
-            Refresh();
-        };
-        row.AddChild(choice);
-        row.AddChild(put);
-        Body.AddChild(row);
+        // The weapons it brings and doesn't wield, which go to the party's inventory as it joins.
+        var brought = _party!.Inventory.Stacks;
+        if (brought.Count > 0)
+            Line("Brings: " + string.Join(", ", brought.Select(s => s.Quantity > 1 ? $"{s.Item.Name} × {s.Quantity}" : s.Item.Name)) + ".", Dim);
     }
 
     private Control Header()
@@ -300,7 +196,7 @@ public partial class CharacterPanel : PagePanel
         name.AddThemeFontSizeOverride("font_size", 20);
         text.AddChild(name);
         var next = c.NextLevelExp is { } n ? $", level {c.Level + 1} at {n:N0}" : ", the last level";
-        text.AddChild(new Label { Text = $"Level {c.Level} · {c.Hp} of {c.MaxHp} hit points · {c.TotalExp:N0} experience{next} · {c.SpendableExp:N0} to spend" });
+        text.AddChild(new Label { Text = $"Level {c.Level} · {c.Hp} of {c.MaxHp} hit points · {c.TotalExp:N0} experience{next}" });
         var traits = new List<string> { _entity.Category.ToString(), c.Aspect.ToString(), c.School == MagicSchool.None ? "unschooled" : $"{c.School} school" };
         if (c.TrueName)
             traits.Add("True Name");
@@ -313,103 +209,5 @@ public partial class CharacterPanel : PagePanel
         return row;
     }
 
-    private Control Controls()
-    {
-        var row = new HFlowContainer();
-        row.AddThemeConstantOverride("h_separation", 8);
-        var exp = new SpinBox { MinValue = 0, MaxValue = 10_000_000, Step = 50, Value = _award, TooltipText = "Experience to award, before the award multiplier." };
-        exp.ValueChanged += v => _award = (int)v;
-        var add = new Button { Text = "Award experience", TooltipText = "As a script or a battle does: × the award multiplier, and any levels it reaches." };
-        add.Pressed += () =>
-        {
-            var level = _character.Level;
-            _character.AddExp((int)exp.Value);
-            _result.Text = _character.Level > level ? $"Reached level {_character.Level}." : "No new level.";
-            Refresh();
-        };
-        row.AddChild(exp);
-        row.AddChild(add);
-
-        var trainer = new OptionButton { TooltipText = "Who teaches: no one, after a battle, or a trainer, whose own skills and spells limit what's offered." };
-        trainer.AddItem("After a battle", 0);
-        for (var i = 0; i < _trainers.Count; i++)
-            trainer.AddItem($"At {_trainers[i].Name} ({_trainers[i].Id.Key})", i + 1);
-        trainer.Selected = _trainer is null ? 0 : _trainers.FindIndex(t => t.Id == _trainer.Entity) + 1;
-        trainer.ItemSelected += i =>
-        {
-            _trainer = i == 0 ? null : Trainer.From(_trainers[(int)i - 1], _rules, Plugins.Get<SpellRecord>);
-            Refresh();
-        };
-        row.AddChild(trainer);
-
-        row.AddChild(new Label { Text = "Party gold" });
-        var gold = new SpinBox { MinValue = 0, MaxValue = 10_000_000, Step = 10, Value = _gold };
-        gold.ValueChanged += v =>
-        {
-            _gold = (uint)v;
-            var edit = ++_goldEdits;
-            GetTree().CreateTimer(0.4).Timeout += () =>
-            {
-                if (!IsInstanceValid(this) || edit != _goldEdits || !IsInsideTree())
-                    return;
-                _focusGold = IsInstanceValid(gold) && (gold.HasFocus() || gold.GetLineEdit().HasFocus());
-                Refresh();
-            };
-        };
-        row.AddChild(gold);
-        if (_focusGold)
-        {
-            _focusGold = false;
-            gold.GetLineEdit().CallDeferred(Control.MethodName.GrabFocus);
-        }
-
-        var reset = new Button { Text = "Reset", TooltipText = "Back to the sheet as it started." };
-        reset.Pressed += () => Reset(_fromGame);
-        row.AddChild(reset);
-        return row;
-    }
-
-    private void Reset(bool fromGame)
-    {
-        _fromGame = fromGame;
-        _character = Build();
-        _result.Text = "";
-        Refresh();
-    }
-
-    private Button TrainButton(TrainingQuote quote, Func<TrainingQuote> train, string done)
-    {
-        var button = new Button { Text = "+", Disabled = !quote.Allowed, TooltipText = quote.Allowed ? "Train it." : Refusal(quote.Refusal) };
-        button.Pressed += () =>
-        {
-            var result = train();
-            _result.Text = result.Allowed ? $"{done}, for {Price(result)}." : Refusal(result.Refusal);
-            Refresh();
-        };
-        return button;
-    }
-
-    private static string Refusal(TrainingRefusal refusal) => refusal switch
-    {
-        TrainingRefusal.CantLearn => "It can't learn that.",
-        TrainingRefusal.TrainerKnowsNoMore => "The trainer knows it no better.",
-        TrainingRefusal.AtMost => "It's at its most.",
-        TrainingRefusal.WizardTooLow => "Its Wizard skill is too low for that spell.",
-        TrainingRefusal.WrongSchool => "That spell is of another school.",
-        TrainingRefusal.CantAfford => "It can't afford that.",
-        _ => "",
-    };
-
-    private static string Price(TrainingQuote quote) => quote.Refusal switch
-    {
-        TrainingRefusal.CantLearn when quote.Exp == 0 => "—",
-        TrainingRefusal.AtMost => "at its most",
-        TrainingRefusal.TrainerKnowsNoMore => "the trainer knows no more",
-        TrainingRefusal.WizardTooLow => "Wizard too low",
-        TrainingRefusal.WrongSchool => "another school",
-        _ => quote.Gold > 0 ? $"{quote.Exp:N0} experience and {quote.Gold:N0} gold" : $"{quote.Exp:N0} experience",
-    };
-
     private static string Modified(int modified, int @base) => modified == @base ? Num(modified) : $"{modified} ({modified - @base:+0;-0})";
-
 }

@@ -62,6 +62,12 @@ public partial class RecordBrowser : Control
     private readonly Dictionary<RecordId, TreeItem> _rows = [];
     private readonly List<RecordId> _history = [];
     private readonly List<string> _typeNames = [];
+    /// <summary>Party, Characters, Enemies and Other, under the search while entities are listed; the one pressed lists its kind alone.</summary>
+    private Control? _kindButtons;
+    private readonly Dictionary<EntityKind, Button> _kindButtonOf = [];
+    private EntityKind? _kind;
+    /// <summary>Each entity's kind, looked up once from its record.</summary>
+    private readonly Dictionary<RecordId, EntityKind> _entityKinds = [];
 
     private PluginCatalog? _catalog;
     private Models? _models;
@@ -136,6 +142,7 @@ public partial class RecordBrowser : Control
         var listed = _types.GetSelectedId() is > 0 and var t && t <= _typeNames.Count ? _typeNames[t - 1] : null;
         var oldGame = _game;
         _catalog = null;
+        _entityKinds.Clear();
         (_original, _originalPlugins, _usage) = (false, null, null);
         _map.Clear();
         _models?.Dispose();
@@ -211,6 +218,15 @@ public partial class RecordBrowser : Control
     {
         var id = type is null ? 0 : _typeNames.IndexOf(type) + 1;
         _types.Select(_types.GetItemIndex(Math.Max(id, 0)));
+        Populate();
+    }
+
+    /// <summary>Lists one kind of entity, as pressing its button under the search does while entities are listed.</summary>
+    public void SelectKind(EntityKind kind)
+    {
+        SelectType(RecordTypes.Entity);
+        _kindButtonOf[kind].ButtonPressed = true;
+        _kind = kind;
         Populate();
     }
 
@@ -376,6 +392,29 @@ public partial class RecordBrowser : Control
         filters.AddChild(_types);
         filters.AddChild(_search);
         side.AddChild(filters);
+        // Under them, while entities are listed, the four kinds of entity, each an equal share of the row: the one pressed lists its
+        // kind alone, and pressed again lists them all.
+        var kinds = new List<Button>();
+        var group = new ButtonGroup { AllowUnpress = true };
+        foreach (var (kind, text, tip) in new[]
+        {
+            (EntityKind.Party, "Party", "The party members: the recruitable ones, and Alaron"),
+            (EntityKind.Character, "Characters", "Story characters, NPCs, trainers and shopkeepers"),
+            (EntityKind.Enemy, "Enemies", "Monsters and enemies"),
+            (EntityKind.Other, "Other", "Entities that are none of those"),
+        })
+        {
+            var button = new Button { Text = text, TooltipText = tip, ToggleMode = true, ButtonGroup = group, FocusMode = FocusModeEnum.None };
+            button.Pressed += () =>
+            {
+                _kind = button.ButtonPressed ? kind : null;
+                Populate();
+            };
+            kinds.Add(button);
+            _kindButtonOf[kind] = button;
+        }
+        _kindButtons = new ButtonRows(4, [.. kinds]) { Visible = false };
+        side.AddChild(_kindButtons);
         _list.SizeFlagsVertical = SizeFlags.ExpandFill;
         side.AddChild(_list);
         side.AddChild(_count);
@@ -473,7 +512,7 @@ public partial class RecordBrowser : Control
 
     // ---- The list -------------------------------------------------------------------------------
 
-    /// <summary>Fills the list with the entries that match the type and search filters.</summary>
+    /// <summary>Fills the list with the entries that match the type and search filters, and the kind's while entities are listed.</summary>
     private void Populate()
     {
         _list.Clear();
@@ -483,6 +522,10 @@ public partial class RecordBrowser : Control
             return;
         var type = _types.GetSelectedId() is > 0 and var t ? _typeNames[t - 1] : null;
         var search = _search.Text.Trim();
+        // The kinds filter entities alone: their buttons show while entities are listed, and the one pressed keeps its kind for next time.
+        if (_kindButtons is { } buttons)
+            buttons.Visible = type == RecordTypes.Entity;
+        var kind = type == RecordTypes.Entity ? _kind : null;
         // Scripts whose text holds the search, with the first line that does.
         var said = new Dictionary<RecordId, string>();
         if (search.Length >= 3 && _quests is { } quests)
@@ -497,7 +540,7 @@ public partial class RecordBrowser : Control
         foreach (var entry in _catalog.Entries)
         {
             var line = said.GetValueOrDefault(entry.Id);
-            if ((type is not null && entry.Id.Type != type) || (line is null && !Matches(entry, search)))
+            if ((type is not null && entry.Id.Type != type) || (kind is { } k && KindOf(entry.Id) != k) || (line is null && !Matches(entry, search)))
                 continue;
             var row = _list.CreateItem(root);
             var id = entry.Id.ToString();
@@ -515,6 +558,14 @@ public partial class RecordBrowser : Control
         if (_current is { } current && _rows.TryGetValue(current, out var selected))
             SelectRow(selected);
         _count.Text = $"{_rows.Count:N0} of {_catalog.Entries.Count:N0} records and assets";
+    }
+
+    /// <summary>An entity's kind, by its record, or Other for one the plugins can't read; kept once looked up.</summary>
+    private EntityKind KindOf(RecordId id)
+    {
+        if (!_entityKinds.TryGetValue(id, out var kind))
+            _entityKinds[id] = kind = Partly(() => _catalog!.Plugins.TryGet<EntityRecord>(id), "No entity kind")?.Kind ?? EntityKind.Other;
+        return kind;
     }
 
     private static bool Matches(CatalogEntry entry, string search) =>

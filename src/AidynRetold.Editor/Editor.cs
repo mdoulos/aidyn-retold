@@ -1,5 +1,6 @@
 using System.Globalization;
 using AidynRetold.Plugins;
+using AidynRetold.Plugins.Records;
 using Godot;
 
 namespace AidynRetold.Editor;
@@ -9,7 +10,8 @@ namespace AidynRetold.Editor;
 /// </summary>
 /// <remarks>
 /// Command-line options, after <c>--</c>: <c>--data &lt;plugins folder&gt;</c> (default: the
-/// data folder's), <c>--record &lt;id&gt;</c>, <c>--tab preview|fields|used-by|atlas</c>, and
+/// data folder's), <c>--type &lt;type&gt;</c> and <c>--kind party|character|enemy|other</c>, which list that type, or that kind of
+/// entity, as the side panel's dropdown and buttons do, <c>--record &lt;id&gt;</c>, <c>--tab preview|fields|used-by|atlas</c>, and
 /// <c>--screenshot &lt;png&gt;</c>, which saves the window once the record is shown and quits. For a record's 3D preview,
 /// <c>--drive &lt;request&gt;</c> runs an actor's state machine, <c>--wireframe 1</c> and
 /// <c>--scene-camera 1</c> set those switches, <c>--collision surface|role</c> colours a map's
@@ -108,6 +110,10 @@ public partial class Editor : Control
                 GD.PrintErr($"Couldn't load the save {save}: {e.Message}");
             }
         }
+        if (args.TryGetValue("type", out var type))
+            _records.SelectType(type);
+        if (args.TryGetValue("kind", out var kind))
+            _records.SelectKind(Enum.Parse<EntityKind>(kind, ignoreCase: true));
         if (args.TryGetValue("record", out var record))
             await _records.OpenAsync(RecordId.Parse(record));
         // After the record, as the loading card and the start page show the Preview tab, and the record says which tabs it has.

@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace AidynRetold.Plugins.Records;
 
 /// <summary>
@@ -78,7 +80,36 @@ public sealed record EntityRecord(
     Voice? Voice = null,
     float? VoicePitch = null,
     string? VoiceTone = null,
-    BlipCadence? VoiceCadence = null);
+    BlipCadence? VoiceCadence = null)
+{
+    /// <summary>
+    /// Which of the four kinds the editor lists it under (<see cref="EntityKind"/>), from the entity DB's own groups: the Party group
+    /// is the party; Chaos and Natural are enemies, and so is a Humanoid worth experience (the goblins, bandits, ogres and Chaos troops),
+    /// while one worth none is a character (the dryads); Named and Generic are characters, the shopkeepers and trainers among them.
+    /// </summary>
+    [JsonIgnore]
+    public EntityKind Kind => Category switch
+    {
+        EntityCategory.Party => EntityKind.Party,
+        EntityCategory.Chaos or EntityCategory.Natural => EntityKind.Enemy,
+        EntityCategory.Humanoid => Experience > 0 ? EntityKind.Enemy : EntityKind.Character,
+        EntityCategory.Generic or EntityCategory.Named => EntityKind.Character,
+        _ => EntityKind.Other,
+    };
+}
+
+/// <summary>What an entity is to the player, the editor's four groups of them (<see cref="EntityRecord.Kind"/>).</summary>
+public enum EntityKind
+{
+    /// <summary>A party member: the recruitable ones, and Alaron.</summary>
+    Party,
+    /// <summary>A story character, an NPC, a trainer or a shopkeeper.</summary>
+    Character,
+    /// <summary>A monster or an enemy.</summary>
+    Enemy,
+    /// <summary>None of those: an entity of a group the game doesn't use, as a mod might add.</summary>
+    Other,
+}
 
 /// <summary>
 /// What the engine does for a recruitable party member (<c>Party::CheckFlags</c>, <c>SaveEntity::GetSlot</c>).

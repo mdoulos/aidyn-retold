@@ -107,6 +107,23 @@ public sealed class CharacterImportTests(Na10Import fixture)
         Assert.Equal([Alaron], entities.Where(e => e.TrueNameFlag is not null).Select(e => e.Id));
     }
 
+    /// <summary>The editor's four kinds of entity (<see cref="EntityRecord.Kind"/>) split 1.0's between the party, the characters and the enemies.</summary>
+    [Fact]
+    public void EveryEntityIsOfThePartyACharacterOrAnEnemy()
+    {
+        var entities = Set.All<EntityRecord>(RecordTypes.Entity).ToList();
+        var byKind = entities.ToLookup(e => e.Kind);
+
+        Assert.Equal(["Abrecan", "Alaron", "Arturo", "Baird", "Becan", "Brenna", "Donovan", "Dougal", "Farris", "Godric", "Keelin", "Niesen", "Rheda", "Sholeh"],
+            byKind[EntityKind.Party].Select(e => e.Name).Order());
+        Assert.Equal(111, byKind[EntityKind.Character].Count());
+        Assert.Equal(96, byKind[EntityKind.Enemy].Count());
+        Assert.Empty(byKind[EntityKind.Other]);
+        // The dryads are humanoids worth no experience, so characters, the Female Dryad with her shop; Trahern and the town guards are too.
+        Assert.All(new[] { "Female Dryad", "Male Dryad", "Trahern", "Town Guard", "Tamberlain", "STUG01" }, name => Assert.Equal(EntityKind.Character, entities.First(e => e.Name == name).Kind));
+        Assert.All(new[] { "Goblin", "Bandit Boss", "Wolf", "Shadow", "Shamsuk" }, name => Assert.Equal(EntityKind.Enemy, entities.First(e => e.Name == name).Kind));
+    }
+
     /// <summary>The flags of each recruitable member (<c>Party::CheckFlags</c>), from the engine's table in 1.0, and whose sheets the game keeps.</summary>
     [Fact]
     public void EveryRecruitableMemberHasTheFlagsTheEngineKeepsForThem()

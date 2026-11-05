@@ -150,12 +150,13 @@ public sealed record SaveCharacter(RecordId Entity)
     public IReadOnlyList<SavePotion> Potions { get; init; } = [];
 
     /// <summary>The game's time since the character last ate, in the clock's units: the remade game's hunger. 0 in an older save.</summary>
+    /// <summary>The game's time since the member last ate, which saves before the satiety tracker (Nov 5, 2026) hold in its place.</summary>
     public ulong SinceMeal { get; init; }
 
-    /// <summary>The meals eaten lately, up to two, and the game's time since the last (<c>Character.Meals</c>).</summary>
-    public int Meals { get; init; }
+    /// <summary>How full the member is (<c>Character.Satiety</c>), and the game's time toward its next point falling; none in an older save.</summary>
+    public int? Satiety { get; init; }
 
-    public ulong SinceMealEaten { get; init; }
+    public ulong SinceFell { get; init; }
 }
 
 /// <summary>A potion working on a character.</summary>

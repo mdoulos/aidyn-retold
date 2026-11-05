@@ -77,9 +77,8 @@ public sealed class CharacterSaves(PluginSet plugins, CharacterRules rules, Item
             Gear = [.. worn.Gear.OfType<ItemInstance>().Select(g => Item(g)!)],
             Spells = [.. member.Spells.Select(s => new KnownSpell(s.Spell.Id, s.Level))],
             Potions = [.. member.PotionEffects.Select(p => new SavePotion(p.Source, p.Timer) { Power = p.Power })],
-            SinceMeal = member.SinceMeal,
-            Meals = member.Meals,
-            SinceMealEaten = member.SinceMealEaten,
+            Satiety = member.Satiety,
+            SinceFell = member.SinceFell,
         };
 
         static SaveItem? Item(ItemInstance? item) => item is null ? null : new SaveItem(item.Id) { Battery = item.Battery, Charges = item.Charges };
@@ -147,8 +146,8 @@ public sealed class CharacterSaves(PluginSet plugins, CharacterRules rules, Item
             else
                 problems.Add($"{entity.Name} has {potion.Potion} working, which isn't a potion.");
         }
-        character.SetSinceMeal(saved.SinceMeal);
-        character.SetMeals(saved.Meals, saved.SinceMealEaten);
+        // An older save has the time since a meal alone, which stands for a satiety.
+        character.SetSatiety(saved.Satiety ?? Character.SatietyOf(saved.SinceMeal), saved.SinceFell);
         return character;
 
         void Wear(SaveItem? item, Func<ItemInstance, EquipRefusal> equip)

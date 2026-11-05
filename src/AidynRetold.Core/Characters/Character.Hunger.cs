@@ -3,9 +3,8 @@ using AidynRetold.Core.Calendar;
 namespace AidynRetold.Core.Characters;
 
 /// <summary>
-/// How fed a member is, the remade game's (characters.md#hunger): <see cref="Fed"/> is the ordinary state, and hides whether a meal
-/// was eaten lately (<see cref="Character.IsFed"/>); <see cref="WellFed"/> shows, after two meals, and stops them eating more until it
-/// wears off. The order is how badly off they are, for the HUD.
+/// How fed a member is, the remade game's (characters.md#hunger), by their <see cref="Character.Satiety"/>: <see cref="Fed"/> shows
+/// nothing; <see cref="WellFed"/> shows, and stops them eating; <see cref="Hungry"/> and <see cref="Starving"/> show and cost stats.
 /// </summary>
 public enum HungerState
 {
@@ -17,11 +16,14 @@ public enum HungerState
 
 public sealed partial class Character
 {
-    /// <summary>The game's time without eating anything before a member is Hungry, and Starving.</summary>
-    public const ulong HungryAfter = 2UL * GameClock.Day, StarvingAfter = 3UL * GameClock.Day;
+    /// <summary>
+    /// The satiety bands (the user's design, Nov 5, 2026): Starving from 1, Hungry from 4, Fed from 7, Well Fed from 10, up to 12, and
+    /// where a member starts, at the top of Fed.
+    /// </summary>
+    public const int SatietyLeast = 1, HungryFrom = 4, FedFrom = 7, WellFedFrom = 10, SatietyMost = 12, SatietyStart = 9;
 
-    /// <summary>How long a meal counts for (the user's design, Nov 5, 2026): two within it make a member Well Fed, for as long.</summary>
-    public const ulong FullFor = GameClock.Day / 3;
+    /// <summary>How much of the game's time takes a point off: eight hours, a camp's rest, three a day.</summary>
+    public const ulong FallEvery = 8UL * GameClock.Hour;
 
     /// <summary>What Hungry and Starving take off each of the four stats.</summary>
     public const int HungryLoss = 2, StarvingLoss = 5;
@@ -31,36 +33,30 @@ public sealed partial class Character
     // What hunger has taken off each of the four, to give back exactly.
     private int _hungerLoss;
 
-    /// <summary>The game's time since the member last ate anything, as the effects count it.</summary>
-    public ulong SinceMeal { get; private set; }
+    /// <summary>
+    /// How full the member is, <see cref="SatietyLeast"/> to <see cref="SatietyMost"/>, which the player never sees: food adds its points (<c>ItemRecord.Satiety</c>),
+    /// and time takes one off every <see cref="FallEvery"/>.
+    /// </summary>
+    public int Satiety { get; private set; } = SatietyStart;
 
-    /// <summary>The meals eaten lately, up to two, which <see cref="FullFor"/> after the last one are forgotten.</summary>
-    public int Meals { get; private set; }
+    /// <summary>The game's time since the last point fell, toward the next.</summary>
+    public ulong SinceFell { get; private set; }
 
-    /// <summary>The game's time since the last meal, which <see cref="Meals"/> counts by.</summary>
-    public ulong SinceMealEaten { get; private set; }
-
-    /// <summary>Whether a meal was eaten lately: the hidden Fed status, which the next meal makes Well Fed.</summary>
-    public bool IsFed => Rules.Magic.HasFood && Meals > 0;
-
-    /// <summary>How the member stands: Well Fed after two meals, else by the time since they last ate anything.</summary>
+    /// <summary>The member's band, or Fed wherever the plugins have no food, so the original game alone has no hunger.</summary>
     public HungerState Hunger => !Rules.Magic.HasFood ? HungerState.Fed
-        : Meals >= 2 ? HungerState.WellFed
-        : SinceMeal >= StarvingAfter ? HungerState.Starving
-        : SinceMeal >= HungryAfter ? HungerState.Hungry
-        : HungerState.Fed;
+        : Satiety >= WellFedFrom ? HungerState.WellFed
+        : Satiety >= FedFrom ? HungerState.Fed
+        : Satiety >= HungryFrom ? HungerState.Hungry
+        : HungerState.Starving;
 
-    /// <summary>Eats something, which feeds the member; a meal (<c>ItemTraits.Meal</c>) counts toward Well Fed too.</summary>
-    public void Eat(bool meal = false)
-    {
-        SetSinceMeal(0);
-        if (meal)
-            SetMeals(Math.Min(2, Meals + 1), 0);
-    }
+    /// <summary>Eats something worth <paramref name="points"/>: a snack 1, a dish 2 or 3. The next point falls as it would have.</summary>
+    public void Eat(int points) => SetSatiety(Satiety + points, SinceFell);
 
-    public void SetSinceMeal(ulong since)
+    /// <summary>Sets the satiety and the time toward its next fall, as a save has them, and the stats hunger costs with it.</summary>
+    public void SetSatiety(int satiety, ulong sinceFell)
     {
-        SinceMeal = Math.Min(since, StarvingAfter + GameClock.Day);
+        Satiety = Math.Clamp(satiety, SatietyLeast, SatietyMost);
+        SinceFell = Math.Min(sinceFell, FallEvery - 1);
         var loss = Hunger switch { HungerState.Starving => StarvingLoss, HungerState.Hungry => HungryLoss, _ => 0 };
         if (loss == _hungerLoss)
             return;
@@ -69,19 +65,17 @@ public sealed partial class Character
         _hungerLoss = loss;
     }
 
-    /// <summary>The meals eaten lately and the time since the last, as a save has them: past <see cref="FullFor"/>, none count.</summary>
-    public void SetMeals(int meals, ulong since)
-    {
-        SinceMealEaten = Math.Min(since, FullFor);
-        Meals = SinceMealEaten >= FullFor ? 0 : Math.Clamp(meals, 0, 2);
-    }
+    /// <summary>
+    /// The satiety a save from before the tracker stands for, by the time since its member last ate: Starving past three days, Hungry
+    /// past two, else the top of Fed.
+    /// </summary>
+    public static int SatietyOf(ulong sinceMeal) => sinceMeal >= 3UL * GameClock.Day ? HungryFrom - 1 : sinceMeal >= 2UL * GameClock.Day ? FedFrom - 1 : SatietyStart;
 
     private void AgeHunger(ulong units)
     {
         if (units == 0 || !Rules.Magic.HasFood)
             return;
-        SetSinceMeal(SinceMeal + units);
-        if (Meals > 0)
-            SetMeals(Meals, SinceMealEaten + units);
+        var since = SinceFell + units;
+        SetSatiety(Satiety - (int)Math.Min(since / FallEvery, (ulong)SatietyMost), since % FallEvery);
     }
 }

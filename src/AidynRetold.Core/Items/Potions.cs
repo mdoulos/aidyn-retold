@@ -99,8 +99,9 @@ public static class Potions
         var result = EffectLanding.Land(record.Effects!, record.Duration, landing);
         if (result.Dice is { } dice)
             member.TakeDamage(random.RollD(dice & 0xFF, 6), on);
+        // Food is worth its satiety points, or one where the record gives none.
         if (IsFood(item))
-            member.Eat(meal: item.Traits.Meal);
+            member.Eat(item.Gear?.Satiety is > 0 and var points ? points : 1);
         party.Inventory.Take(item.Id);
         return DrinkResult.Drunk;
     }

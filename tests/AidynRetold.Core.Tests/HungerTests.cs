@@ -7,20 +7,21 @@ using AidynRetold.Plugins.Records;
 
 namespace AidynRetold.Core.Tests;
 
-/// <summary>The remade game's hunger and its Cook skill (the user's design, Nov 4, 2026).</summary>
+/// <summary>The remade game's hunger, its satiety and its Cook skill (the user's design, Nov 4 and 5, 2026).</summary>
 public class HungerTests
 {
+    /// <summary>A snack, worth a point.</summary>
     private static readonly ItemRecord Apple = ItemData.NewItem(0x2001, ItemKind.Food) with
     {
         Id = RecordId.Parse("acre:item/0x2001"), Name = "Apple",
-        Effects = [new StaminaEffect(new Magnitude(4, 0))], Use = PotionUse.DrinkInTrek | PotionUse.DrinkInBattle,
+        Effects = [new StaminaEffect(new Magnitude(4, 0))], Use = PotionUse.DrinkInTrek | PotionUse.DrinkInBattle, Satiety = 1,
     };
 
-    /// <summary>A meal: a cooked dish, which counts toward Well Fed.</summary>
-    private static readonly ItemRecord Stew = ItemData.NewItem(0x2002, ItemKind.Food, traits: new ItemTraits(OwnSlot: true, Meal: true)) with
+    /// <summary>A dish of two ingredients, worth three.</summary>
+    private static readonly ItemRecord Stew = ItemData.NewItem(0x2002, ItemKind.Food) with
     {
         Id = RecordId.Parse("acre:item/0x2002"), Name = "Stew",
-        Effects = [new HealEffect(25, 35)], Use = PotionUse.DrinkInTrek | PotionUse.DrinkInBattle,
+        Effects = [new HealEffect(25, 35)], Use = PotionUse.DrinkInTrek | PotionUse.DrinkInBattle, Satiety = 3,
     };
 
     /// <summary>The test rules with food among the items, which hunger needs.</summary>
@@ -36,38 +37,64 @@ public class HungerTests
     // Ticks of play for a number of the game's days: the clock runs 72 of its units a tick.
     private static int Days(double days) => (int)(days * GameClock.Day / GameClock.DaySpeed);
 
+    private static (Party Party, Character Member, Item Apple, Item Stew) Table()
+    {
+        var party = new Party(ItemData.Catalog(Apple, Stew));
+        var member = Member();
+        party.Add(member);
+        for (var i = 0; i < 3; i++)
+        {
+            party.Inventory.Add(Apple.Id);
+            party.Inventory.Add(Stew.Id);
+        }
+        return (party, member, party.Inventory.Catalog.TryGet(Apple.Id)!, party.Inventory.Catalog.TryGet(Stew.Id)!);
+    }
+
     [Fact]
-    public void AMemberGrowsHungryAfterTwoDaysAndStarvingAfterThreeAndEatingFeedsThem()
+    public void AMemberStartsFedAndLosesAPointEveryEightHoursHungryAfterADayAndStarvingAfterTwo()
     {
         var member = Member();
         var before = Four.Select(s => member.Stats.Modified(s)).ToList();
+        Assert.Equal(Character.SatietyStart, member.Satiety);
+        Assert.Equal(HungerState.Fed, member.Hunger);
 
-        member.AgeEffects(Days(1.9));
+        member.AgeEffects(Days(0.9));
+        Assert.Equal(7, member.Satiety);
         Assert.Equal(HungerState.Fed, member.Hunger);
 
         member.AgeEffects(Days(0.2));
+        Assert.Equal(6, member.Satiety);
         Assert.Equal(HungerState.Hungry, member.Hunger);
         Assert.Equal(before.Select(v => v - Character.HungryLoss), Four.Select(s => member.Stats.Modified(s)));
 
         member.AgeEffects(Days(1));
+        Assert.Equal(3, member.Satiety);
         Assert.Equal(HungerState.Starving, member.Hunger);
         Assert.Equal(before.Select(v => v - Character.StarvingLoss), Four.Select(s => member.Stats.Modified(s)));
         // Endurance and Stamina, hit points, aren't touched.
         Assert.Equal(member.MaxHp, member.Hp);
 
-        member.Eat();
+        // Nothing falls below one.
+        member.AgeEffects(Days(3));
+        Assert.Equal(Character.SatietyLeast, member.Satiety);
+
+        // Starving to Hungry takes three points, Hungry to Fed three more: a stew each.
+        member.Eat(3);
+        Assert.Equal(HungerState.Hungry, member.Hunger);
+        member.Eat(3);
         Assert.Equal(HungerState.Fed, member.Hunger);
         Assert.Equal(before, Four.Select(s => member.Stats.Modified(s)));
     }
 
     [Fact]
-    public void CampingsHoursMakeAMemberHungrier()
+    public void CampingsHoursTakeAPointEach()
     {
         var member = Member();
-        // Six camps of eight hours: two days.
+        // Six camps of eight hours: two days, six points.
         for (var i = 0; i < 6; i++)
             member.AgeEffects(24_000);
-        Assert.Equal(HungerState.Hungry, member.Hunger);
+        Assert.Equal(3, member.Satiety);
+        Assert.Equal(HungerState.Starving, member.Hunger);
     }
 
     [Fact]
@@ -84,79 +111,60 @@ public class HungerTests
         var member = Character.Create(Characters.Alaron(), Characters.Rules, _ => Characters.Fireball);
         member.AgeEffects(Days(5));
         Assert.Equal(HungerState.Fed, member.Hunger);
-        Assert.Equal(0ul, member.SinceMeal);
+        Assert.Equal(Character.SatietyStart, member.Satiety);
     }
 
     [Fact]
-    public void EatingFoodFeedsTheEaterEvenAtFullHealth()
+    public void FoodAddsItsPointsASnackOneADishMoreEvenAtFullHealth()
     {
-        var party = new Party(ItemData.Catalog(Apple));
-        var member = Member();
-        party.Add(member);
-        party.Inventory.Add(Apple.Id);
-        member.AgeEffects(Days(2.5));
+        var (party, member, apple, stew) = Table();
+        member.AgeEffects(Days(1.5));
+        Assert.Equal(5, member.Satiety);
         Assert.Equal(HungerState.Hungry, member.Hunger);
 
-        var food = party.Inventory.Catalog.TryGet(Apple.Id)!;
-        Assert.Equal(DrinkResult.Drunk, Potions.Drink(party, member, food, new Rng.Lcg()));
-        Assert.Equal(HungerState.Fed, member.Hunger);
-        Assert.False(party.Inventory.Has(Apple.Id));
-    }
-
-    [Fact]
-    public void TwoMealsMakeAMemberWellFedWhoCantEatUntilItWearsOff()
-    {
-        var party = new Party(ItemData.Catalog(Apple, Stew));
-        var member = Member();
-        party.Add(member);
-        for (var i = 0; i < 3; i++)
-            party.Inventory.Add(Stew.Id);
-        party.Inventory.Add(Apple.Id);
-        var stew = party.Inventory.Catalog.TryGet(Stew.Id)!;
-        var apple = party.Inventory.Catalog.TryGet(Apple.Id)!;
         var random = new Rng.Lcg();
-        Assert.False(member.IsFed);
-
-        // One meal: Fed, which hides, and shows as nothing.
-        Assert.Equal(DrinkResult.Drunk, Potions.Drink(party, member, stew, random));
-        Assert.True(member.IsFed);
-        Assert.Equal(HungerState.Fed, member.Hunger);
-
-        // Two: Well Fed, which shows, and nothing more goes down, a snack neither.
-        Assert.Equal(DrinkResult.Drunk, Potions.Drink(party, member, stew, random));
-        Assert.Equal(HungerState.WellFed, member.Hunger);
-        Assert.Equal(DrinkResult.WellFed, Potions.CanDrink(member, stew));
-        Assert.Equal(DrinkResult.WellFed, Potions.CanDrink(member, apple, inBattle: true));
-        Assert.Equal(DrinkResult.WellFed, Potions.Drink(party, member, apple, random));
-        Assert.True(party.Inventory.Has(Apple.Id));
-
-        // A third of a day on, it's worn off, and the meals are forgotten: eating starts over.
-        member.AgeEffects(Days(0.34));
-        Assert.Equal(HungerState.Fed, member.Hunger);
-        Assert.False(member.IsFed);
         Assert.Equal(DrinkResult.Drunk, Potions.Drink(party, member, apple, random));
-        Assert.False(member.IsFed);
+        Assert.Equal(6, member.Satiety);
+        Assert.Equal(HungerState.Hungry, member.Hunger);
+        Assert.Equal(DrinkResult.Drunk, Potions.Drink(party, member, stew, random));
+        Assert.Equal(9, member.Satiety);
+        Assert.Equal(HungerState.Fed, member.Hunger);
+        Assert.Equal(2, party.Inventory.Count(Apple.Id));
     }
 
     [Fact]
-    public void ASnackIsNoMealAndASaveKeepsTheMeals()
+    public void WellFedFromNineStopsEatingUntilTimeBringsItDown()
     {
-        var party = new Party(ItemData.Catalog(Apple, Stew));
-        var member = Member();
-        party.Add(member);
-        party.Inventory.Add(Apple.Id);
-        party.Inventory.Add(Apple.Id);
-        var apple = party.Inventory.Catalog.TryGet(Apple.Id)!;
-        Potions.Drink(party, member, apple, new Rng.Lcg());
-        Potions.Drink(party, member, apple, new Rng.Lcg());
-        Assert.False(member.IsFed);
-        Assert.Equal(HungerState.Fed, member.Hunger);
-
-        member.SetMeals(2, 100);
+        var (party, member, apple, stew) = Table();
+        var random = new Rng.Lcg();
+        Assert.Equal(DrinkResult.Drunk, Potions.Drink(party, member, stew, random));
+        Assert.Equal(Character.SatietyMost, member.Satiety);
         Assert.Equal(HungerState.WellFed, member.Hunger);
-        Assert.Equal((2, 100ul), (member.Meals, member.SinceMealEaten));
-        member.SetMeals(2, Character.FullFor);
-        Assert.Equal(0, member.Meals);
+        Assert.Equal(DrinkResult.WellFed, Potions.CanDrink(member, apple));
+        Assert.Equal(DrinkResult.WellFed, Potions.CanDrink(member, stew, inBattle: true));
+        Assert.Equal(DrinkResult.WellFed, Potions.Drink(party, member, apple, random));
+        Assert.Equal(3, party.Inventory.Count(Apple.Id));
+
+        // A day on, three points down: Fed, and eating again.
+        member.AgeEffects(Days(1.01));
+        Assert.Equal(9, member.Satiety);
+        Assert.Equal(HungerState.Fed, member.Hunger);
+        Assert.Equal(DrinkResult.Drunk, Potions.Drink(party, member, apple, random));
+        Assert.Equal(HungerState.WellFed, member.Hunger);
+    }
+
+    [Fact]
+    public void ASaveKeepsTheSatietyAndAnOlderOneIsReadByItsTimeSinceAMeal()
+    {
+        var member = Member();
+        member.SetSatiety(10, 100);
+        Assert.Equal((10, 100ul, HungerState.WellFed), (member.Satiety, member.SinceFell, member.Hunger));
+        member.SetSatiety(20, Character.FallEvery * 2);
+        Assert.Equal((Character.SatietyMost, Character.FallEvery - 1), (member.Satiety, member.SinceFell));
+
+        Assert.Equal(Character.SatietyStart, Character.SatietyOf(0));
+        Assert.Equal(Character.FedFrom - 1, Character.SatietyOf(2UL * GameClock.Day));
+        Assert.Equal(Character.HungryFrom - 1, Character.SatietyOf(3UL * GameClock.Day));
     }
 
     /// <summary>Cook is held after the shield, so the original's 24 keep their places, and listed after the Alchemist.</summary>

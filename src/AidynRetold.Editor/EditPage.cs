@@ -858,6 +858,19 @@ public abstract partial class EditPage : HSplitContainer
     /// records file (<see cref="RecordsFile"/>), merged with what the patch already sets; a picture from a file as the mod's own image
     /// beside it.
     /// </summary>
+    /// <summary>The record as the plugins merge it without the mod, or null where they can't load without it.</summary>
+    private JsonObject? Beneath(RecordId id, string mod)
+    {
+        try
+        {
+            return Catalog.Plugins.Without(mod).GetJson(id);
+        }
+        catch (Exception e) when (e is InvalidDataException or IOException)
+        {
+            return null;
+        }
+    }
+
     private void Save()
     {
         var changes = new Dictionary<string, JsonNode?>(_changes);
@@ -875,9 +888,21 @@ public abstract partial class EditPage : HSplitContainer
             // The mod's own record, or its patch that wins, wherever it is, else a new patch in the records file of its kind.
             var file = folder.FileDefining(id) ?? folder.FilePatching(id) ?? RecordsFile;
             var record = folder.Record(file, id) ?? new JsonObject { ["patch"] = id.ToString() };
+            // A patch sets only what differs from the record beneath the mod: a value put back as it was leaves the patch, and a
+            // patch left with nothing goes, so the record is the mod's no more.
+            var beneath = record["patch"] is not null ? Beneath(id, folder.Id) : null;
             foreach (var (field, value) in changes)
-                record[field] = Patched(field, value)?.DeepClone();
-            folder.WriteRecord(file, record);
+            {
+                var patched = Patched(field, value);
+                if (beneath is not null && JsonNode.DeepEquals(patched, beneath[field]))
+                    record.Remove(field);
+                else
+                    record[field] = patched?.DeepClone();
+            }
+            if (record.Count == 1 && record["patch"] is not null)
+                folder.RemoveRecord(file, id);
+            else
+                folder.WriteRecord(file, record);
             // Saved: nothing's held any more, so the reload after doesn't carry it over.
             _changes.Clear();
             (_png, _pngText) = (null, null);

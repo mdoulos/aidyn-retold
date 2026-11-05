@@ -134,6 +134,13 @@ public sealed class PluginSet
     /// <summary>Loads plugin folders in the order given.</summary>
     public static PluginSet Load(IEnumerable<string> directories) => Load([.. directories.Select(Plugin.Open)]);
 
+    /// <summary>
+    /// The same plugins loaded again without one of them: what every record is beneath that plugin's patches, for an editor that
+    /// drops a patch's field once it's set back to what it was (editor.md#a-records-page). Throws as <see cref="Load(IEnumerable{string})"/> does
+    /// where another plugin needs the one left out.
+    /// </summary>
+    public PluginSet Without(string pluginId) => Load([.. Plugins.Where(p => p.Manifest.Id != pluginId)]);
+
     private static PluginSet Load(IReadOnlyList<Plugin> plugins)
     {
         var set = new PluginSet(plugins);

@@ -148,6 +148,12 @@ public sealed partial class Character
                 character.Equipment.EquipArmor(new ItemInstance(items[armor]));
             if (entity.Shield is { } shield)
                 character.Equipment.EquipShield(new ItemInstance(items[shield]));
+            // The port's own: gear a record gives, put on by the rules, so what it can't wear is left (EntityRecord.Gear).
+            foreach (var gear in entity.Gear ?? [])
+            {
+                if (items.TryGet(gear) is { } worn)
+                    character.Equipment.EquipGear(new ItemInstance(worn));
+            }
         }
         // Entity::EquipFunc0, as a party member joins. Enemies' sheets start at 0, which nothing reads.
         character.TotalExp = (uint)rules.Progression.Levels[Math.Min(stats.Base(Stat.Level), rules.Progression.Levels.Count - 1)];

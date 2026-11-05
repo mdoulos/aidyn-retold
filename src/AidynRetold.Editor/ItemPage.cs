@@ -34,7 +34,7 @@ public partial class ItemPage : ItemEditPage
 
     protected override string RecordName => _record.Name;
 
-    protected override RecordId Icon => _record.Icon;
+    protected override RecordId? Icon => _record.Icon;
 
     protected override RecordId? RecordModel => _record.Model;
 

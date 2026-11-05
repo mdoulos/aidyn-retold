@@ -46,6 +46,10 @@ namespace AidynRetold.Plugins.Records;
 /// <param name="VoicePitch">As <see cref="DbRecord.VoicePitch"/>: a mod's pitch for the port's text voice.</param>
 /// <param name="VoiceTone">As <see cref="DbRecord.VoiceTone"/>: the tone of the port's text voice, by name.</param>
 /// <param name="VoiceCadence">As <see cref="DbRecord.VoiceCadence"/>: how often the port's text voice blips.</param>
+/// <param name="Gear">
+/// The gear it wears as it starts, the port's own (the original's entities wear none; the importer writes none): a party member's as it
+/// joins, each put on by the rules, so one it can't wear is left. The editor's entity page sets it.
+/// </param>
 public sealed record EntityRecord(
     RecordId Id,
     string Name,
@@ -80,7 +84,8 @@ public sealed record EntityRecord(
     Voice? Voice = null,
     float? VoicePitch = null,
     string? VoiceTone = null,
-    BlipCadence? VoiceCadence = null)
+    BlipCadence? VoiceCadence = null,
+    IReadOnlyList<RecordId>? Gear = null)
 {
     /// <summary>
     /// Which of the four kinds the editor lists it under (<see cref="EntityKind"/>), from the entity DB's own groups: the Party group

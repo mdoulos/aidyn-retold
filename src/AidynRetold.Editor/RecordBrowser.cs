@@ -90,7 +90,7 @@ public partial class RecordBrowser : Control
     private Task _showing = Task.CompletedTask;
     // An edit page's held changes, carried over when its own record's page is built again: after the plugins reload for a texture or
     // a model it replaced, or when the mode changes.
-    private (RecordId Id, ItemEditPage.Held Held)? _carry;
+    private (RecordId Id, EditPage.Held Held)? _carry;
 
     // A model's page can show the original a plugin replaces, from the ROM plugin alone, loaded when first asked; and the index of
     // which models use which textures, built when first asked. Both go with the plugins.
@@ -328,7 +328,7 @@ public partial class RecordBrowser : Control
     }
 
     /// <summary>The training window on the preview: a trainer's.</summary>
-    private TrainingWindowPanel? TrainingWindow => _preview.GetChildren().OfType<CharacterPanel>().FirstOrDefault()?.Window;
+    private TrainingWindowPanel? TrainingWindow => _preview.GetChildren().OfType<EntityPage>().FirstOrDefault()?.Window;
 
     /// <summary>The barter window open on the preview: a loot table's roll, a shop's, or a container's on the map.</summary>
     private BarterWindowPanel? LootWindow => _preview.GetChildren().OfType<LootPanel>().FirstOrDefault()?.Window
@@ -747,7 +747,7 @@ public partial class RecordBrowser : Control
     }
 
     /// <summary>The changes the page holds, if it's an edit page of <paramref name="id"/> holding any, to carry over to its next page.</summary>
-    private (RecordId, ItemEditPage.Held)? HeldFor(RecordId id) => EditPage is { HasChanges: true } page && page.Record == id ? (id, page.Hold()) : null;
+    private (RecordId, EditPage.Held)? HeldFor(RecordId id) => EditPage is { HasChanges: true } page && page.Record == id ? (id, page.Hold()) : null;
 
     private void Go(RecordId id)
     {
@@ -859,7 +859,7 @@ public partial class RecordBrowser : Control
         {
             case Control control:
                 SetPreview(control);
-                if (control is ItemEditPage page && carry is not null)
+                if (control is EditPage page && carry is not null)
                     page.Restore(carry);
                 break;
             case MapSetView.Focus focus when _models is { } models:
@@ -898,7 +898,7 @@ public partial class RecordBrowser : Control
     /// Whether a record's page is one page, with what the tabs would hold in its cards: an actor's, a model's, an armor's, a weapon's
     /// or an item's.
     /// </summary>
-    private static bool OnePage(RecordId id) => id.Type is RecordTypes.Actor or RecordTypes.Scene or RecordTypes.Armor or RecordTypes.Shield or RecordTypes.Weapon or RecordTypes.Item;
+    private static bool OnePage(RecordId id) => id.Type is RecordTypes.Actor or RecordTypes.Scene or RecordTypes.Entity or RecordTypes.Armor or RecordTypes.Shield or RecordTypes.Weapon or RecordTypes.Item;
 
     /// <summary>
     /// Loads the plugins again, then opens the record afresh, the history kept, and an edit page's held changes with it: after a save,
@@ -1027,12 +1027,12 @@ public partial class RecordBrowser : Control
             return _game is null ? Message("These plugins are too old for a game: import the ROM again.") : new FlagPanel(catalog, _game, id, FollowLink);
         if (id.Type == RecordTypes.Dialogue && plugins.TryGet<DialogueRecord>(id) is { } script)
             return new ScriptPanel(catalog, _game, _rules, _items, script, FollowLink);
-        if (id.Type == RecordTypes.Entity && plugins.TryGet<EntityRecord>(id) is { } entity && _rules is { } rules)
-            return new CharacterPanel(catalog, _game, entity, rules, _items, FollowLink);
+        // An entity's, an armor's, a weapon's and an item's page is one of cards that edit it (EditPage).
+        Func<Task<AidynRetold.Plugins.Assets.TextureUsage>> usage = () => _usage ??= Task.Run(() => AidynRetold.Plugins.Assets.TextureUsage.Build(catalog.Plugins));
+        if (id.Type == RecordTypes.Entity && plugins.TryGet<EntityRecord>(id) is { } entity && _rules is { } rules && json is not null)
+            return new EntityPage(catalog, _game, rules, _items, entity, json, catalog.ReferencesTo(id), _quests, FollowLink, () => ReloadAt(id), _models, usage);
         if (_items is { } items)
         {
-            // An armor's, a weapon's and an item's page is one of cards that edit it (ItemEditPage).
-            Func<Task<AidynRetold.Plugins.Assets.TextureUsage>> usage = () => _usage ??= Task.Run(() => AidynRetold.Plugins.Assets.TextureUsage.Build(catalog.Plugins));
             if (id.Type == RecordTypes.Armor && items.TryGet(id) is { } armorItem && plugins.TryGet<ArmorRecord>(id) is { } armor && json is not null)
                 return new ArmorPage(catalog, _game, _rules, items, armorItem, armor, json, catalog.ReferencesTo(id), FollowLink, () => ReloadAt(id), _models, usage);
             if (id.Type == RecordTypes.Shield && items.TryGet(id) is { } shieldItem && plugins.TryGet<ShieldRecord>(id) is { } shield && json is not null)
@@ -1094,7 +1094,7 @@ public partial class RecordBrowser : Control
     }
 
     /// <summary>The armor's, weapon's or item's page, if one is showing, for scripts.</summary>
-    public ItemEditPage? EditPage => _preview.GetChildren().OfType<ItemEditPage>().FirstOrDefault();
+    public EditPage? EditPage => _preview.GetChildren().OfType<EditPage>().FirstOrDefault();
 
     /// <summary>The model page's inspector, if a model's page is showing.</summary>
     public ModelInspector? Inspector => _model.Inspector.GetChildren().OfType<ModelInspector>().FirstOrDefault();

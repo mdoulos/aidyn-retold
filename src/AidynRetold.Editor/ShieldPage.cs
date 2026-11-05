@@ -30,7 +30,7 @@ public partial class ShieldPage : ItemEditPage
 
     protected override string RecordName => _shield.Name;
 
-    protected override RecordId Icon => _shield.Icon;
+    protected override RecordId? Icon => _shield.Icon;
 
     protected override RecordId? RecordModel => _shield.Model;
 

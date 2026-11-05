@@ -677,7 +677,8 @@ public class CharacterItemTests
     private static readonly WeaponRecord Pole = ItemData.NewWeapon(3, WeaponClass.Pole);
     private static readonly ArmorRecord Mail = ItemData.NewArmor(1, protection: 5);
     private static readonly ShieldRecord Buckler = ItemData.NewShield(2);
-    private static readonly ItemCatalog Catalog = ItemData.Catalog(Sword, Axe, Pole, Mail, Buckler);
+    private static readonly ItemRecord Ring = ItemData.NewItem(1, ItemKind.Ring), Crown = ItemData.NewItem(2, ItemKind.Helmet, intelligence: 30);
+    private static readonly ItemCatalog Catalog = ItemData.Catalog(Sword, Axe, Pole, Mail, Buckler, Ring, Crown);
 
     private static Character Create(Func<EntityRecord, EntityRecord> edit) =>
         Character.Create(edit(Characters.Alaron()), Characters.Rules, _ => Characters.Fireball, null, Catalog);
@@ -689,6 +690,15 @@ public class CharacterItemTests
 
         Assert.Equal(Mail.Id, alaron.Equipment.Armor?.Id);
         Assert.Equal(Buckler.Id, alaron.Equipment.Shield?.Id);
+    }
+
+    /// <summary>The record's gear, the port's own, goes on by the rules: what it can't wear is left.</summary>
+    [Fact]
+    public void ACharacterWearsItsEntitysGearWhereTheRulesAllow()
+    {
+        var alaron = Create(e => e with { Gear = [Ring.Id, Crown.Id] });
+
+        Assert.Equal([Ring.Id], alaron.Equipment.Gear.OfType<ItemInstance>().Select(g => g.Id));
     }
 
     [Fact]

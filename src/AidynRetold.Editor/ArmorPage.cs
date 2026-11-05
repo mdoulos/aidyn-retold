@@ -28,7 +28,7 @@ public partial class ArmorPage : ItemEditPage
 
     protected override string RecordName => _armor.Name;
 
-    protected override RecordId Icon => _armor.Icon;
+    protected override RecordId? Icon => _armor.Icon;
 
     protected override RecordId? RecordModel => null;
 

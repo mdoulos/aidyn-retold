@@ -30,7 +30,7 @@ public partial class WeaponPage : ItemEditPage
 
     protected override string RecordName => _weapon.Name;
 
-    protected override RecordId Icon => _weapon.Icon;
+    protected override RecordId? Icon => _weapon.Icon;
 
     protected override RecordId? RecordModel => _weapon.Model;
 

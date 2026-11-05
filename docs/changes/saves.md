@@ -22,6 +22,7 @@ As the original's, and also ([saves](../systems/saves.md#the-format)):
   load ([weather](../systems/weather.md#differences-from-the-original));
 - **the journal's order** ([mechanics](mechanics.md#flags-and-the-journal));
 - **Alaron's name**, and each member's True Name ([characters](characters.md));
+- **each member's hunger**: the time since they last ate ([characters](characters.md#hunger));
 - **every random stream** and the minimaps' pieces seen.
 
 The volumes and the resolution aren't saved: they're the player's settings ([options](options.md)).

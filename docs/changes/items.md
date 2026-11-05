@@ -33,6 +33,15 @@ The ACRE plugin's potions, the user's (Nov 4, 2026; [items](../systems/items.md#
 - **A potion is data.** Each potion's effects and how it's used, drunk in trek, in a battle or thrown, are its record's, so a mod's potion
   works as the original's do ([ADR 0021](../adr/0021-instant-effects-land-in-one-place.md), [magic](../systems/magic.md#potions-and-flasks)).
 
+## Food and cooking
+
+New, the user's design (Nov 4, 2026; [items](../systems/items.md#cooking-and-food)): the original has no food.
+
+- **Food heals and restores Stamina**, eaten from the pause menu, or from the battle's C-up menu, which takes the turn, as a potion is drunk. The best dishes stand in for the Curing Potion in a battle.
+- **Ingredients:** Meat, Fish, Potato, Carrot and Apple, sold in a general store in each town; beasts drop Meat. Carrot and Apple can be eaten raw, for a little Stamina.
+- **Fourteen dishes**, from Cooked Apple to the Gwernian Supper, cooked by the new Cook skill ([characters](characters.md#the-cook-skill)), several to an effect from different ingredients. A failed cook makes a Burnt Meal.
+- **Eating anything feeds the eater**, against hunger ([characters](characters.md#hunger)).
+
 ## Flasks
 
 - **A flask's damage shows in full.** The original's target takes the blast's share and then the blow's again, but its number and line show
@@ -49,4 +58,5 @@ The ACRE plugin's potions, the user's (Nov 4, 2026; [items](../systems/items.md#
 ## New items
 
 - **The Intellect, Determination and Ingenuity Potions** ([above](#potions)).
+- **Five ingredients, fourteen dishes and the Burnt Meal** ([above](#food-and-cooking)).
 - **Squire Armor**, Alaron's starting armor ([armor](armor.md#squire-armor)).

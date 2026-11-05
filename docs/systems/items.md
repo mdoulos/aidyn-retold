@@ -110,6 +110,7 @@ The skills used from the pause menu (`Crafting`; in a battle the Healer's two ar
 | Task | Offered | Check | Cost | Result |
 | --- | --- | --- | --- | --- |
 | **Alchemist**: a potion | Recipes up to the modified Alchemist | Intelligence × 3 + Alchemist × 6 | The reagents, whatever happens | One potion if the step reaches the recipe's (0 for all) |
+| **Cook**: a dish, the remade game's | Recipes up to the modified Cook | Intelligence × 3 + Cook × 6 | The ingredients, whatever happens | The dish if the step reaches the recipe's (0 for all); else its failure, a Burnt Meal |
 | **Mechanic**: armor | Recipes up to the base Mechanic, whose hide the party has | (Mechanic × 5 + Intelligence + Dexterity) × 2 | 5 less Mechanic Stamina, at least 1, on passing; the hide, whatever happens | The armor if the step reaches the recipe's |
 | **Healer**: lay on hands | Another living member | None | 3 Stamina | Heals Healer × 2 + 5 |
 | **Healer**: herbs | A living member | Intelligence × 4 + Healer × 11 | A herb, then 5 less Healer Stamina, at least 1 | Heals 4 × the step |
@@ -118,3 +119,23 @@ The skills used from the pause menu (`Crafting`; in a battle the Healer's two ar
 A potion isn't brewed while the party holds 99. The Mechanic's check rolls, and its Stamina is paid, before the hide is looked for. A herb is used up even when the Healer hasn't the Stamina.
 
 The pause menu's popups for these, and what they say, are in [ui](ui.md#the-party-tabs-actions). The Mechanic's popup makes each recipe's own armor; the Alchemist's messages say Flask for the flasks and Potion for the rest.
+
+## Cooking and food
+
+The remade game's, the user's design (Nov 4, 2026), in the ACRE plugin's `records/cooking/`: the **Cook** skill (`acre:skill/12`, [characters](characters.md#the-cook-skill)) cooks food from ingredients as the Alchemist brews potions (`Crafting.CookDish`), from a member's Skills popup anywhere outside a battle. Food is an item kind of its own (`ItemKind.Food`, 32, which no original ID has), eaten as a potion is drunk, by its record's `use` and effects (`Potions.Drink`, `CanDrink`): from the pause menu (Eat), from C-up's menu in a battle, which takes the turn, or by dragging it to a portrait. It can always be eaten where its record allows, whatever it would do, as eating anything feeds the eater ([characters](characters.md#hunger)). The Party tab has a Food filter for it, and a battle's line says what it healed or that the member ate.
+
+- **Ingredients:** Meat, Fish and Potato (`Misc`, only cooked), and Carrot and Apple, which are food too, eaten raw for Stamina +4. Each has a slot of its own, as reagents do. They're sold in a general store or reagent seller in each town (shops 29 and 30 in Gwernia, 25 in Port Saiid, 18 in Talewok, 34 in Erromon, 48 in Ugarit and 68 in Terminor), and a beast drops Meat half the time, one or two (`aidyn:loot/0x081D`'s first drop).
+- **The dishes** share a few effects, each from different ingredients:
+
+  | Effect | Cook rank | Dishes |
+  | --- | --- | --- |
+  | Stamina +8 | 1 | Cooked Apple, Cooked Carrot |
+  | Heals 15–25% of maximum hit points | 2 | Roast Meat (Meat), Grilled Fish (Fish), Baked Potato (Potato) |
+  | Stamina +15 | 3 | Glazed Carrots (Apple, Carrot) |
+  | Heals 25–35%, Stamina +6 | 4 | Pot Roast (Meat, Potato), Meat Stew (Meat, Carrot), Fish Cakes (Fish, Potato), Fish Stew (Fish, Carrot), Root Pottage (Potato, Carrot) |
+  | Heals 35–50%, Stamina +10 | 6 | Shepherd's Pie (Meat, Potato, Carrot), Fisherman's Pie (Fish, Potato, Carrot) |
+  | Heals 40–60%, Stamina to its base, not in a battle | 8 | Gwernian Supper (all five) |
+
+  A failed check makes the recipe's `failure`, the **Burnt Meal** (`RecipeRecord.Failure`), which heals 5% and feeds as any food does. Ranks 9 and 10 are left for the Spicy and Herbed dishes planned.
+- **Their pictures** are the original's default item icon (`0x35DC`) until the food has art of its own.
+

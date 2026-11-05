@@ -118,6 +118,14 @@ Scripts add and take away members (Borg13 ops 47 and 48), and `GameState.AddMemb
 
   The VM runs all of it, so nothing in the engine is needed.
 
+## The Cook skill
+
+The remade game's thirteenth skill, the user's (Nov 4, 2026): its record is the ACRE plugin's `acre:skill/12` (training like Diplomat's, 500 a level), and it cooks food ([items](items.md#cooking-and-food)). A character holds it in a 25th slot, after the shield (`SkillId.Cook`, `SkillSlots.Cook`), so the original's 24 keep their places in its ROM, saves and checkpoints, which give it 0 (`SkillSlots.Split`); the skill screen and training list it after the Alchemist, as the original's are by name (`SkillId.Shown`). Anyone can learn it: an entity's is 0 unless its record says otherwise (`SkillLevels.Cook`), and every party member starts at 1, the ACRE plugin's, so each raises it after battles as any skill above 0 is raised. A save from before it gives a member the record's, as Cook only rises. With no plugin giving its record, as with the original game alone, Cook is a skill no one has, which nothing lists or teaches (`CharacterRules.NoCook`). It has no icon yet.
+
+## Hunger
+
+The remade game's, the user's design (Nov 4, 2026; `Character.Hunger`): each member counts the game's time since they last ate anything (`SinceMeal`), which runs as their effects' does, in trek and through a camp's or a rest's hours, not in a battle's rounds, nor for the dead. Two game days on, a member is **Hungry**, Intelligence, Willpower, Dexterity and Strength each 2 lower; three days on, **Starving**, each 5 lower. They never read below 1 ([magic](magic.md#where-the-port-differs)), and Endurance and Stamina, which are hit points, aren't touched. Eating anything, a raw apple or a Burnt Meal among them, feeds the member and gives the stats back (`Character.Eat`); potions don't feed. A save keeps each member's time (`SaveCharacter.SinceMeal`). Hunger runs only where the plugins have food (`MagicRules.HasFood`), so the original game alone has none. How it shows, an icon and a pulse over the portraits, is [ui](ui.md#the-ports-layout)'s.
+
 ## Deaths
 
 - **The died flags** (`Party.SyncMemberFlags`, `0x80074A4C`) are set for each dead member and cleared for each living one, at each party member's death in battle and as a battle ends (`GameState.WriteDeathFlags`). Sholeh's, 622, is also set at her death whatever her side, the combat record's ally ([combat](combat.md#deaths)).

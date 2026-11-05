@@ -11,6 +11,14 @@ remodel in [graphics](graphics.md#models), his armor in [armor](armor.md), and t
 - **He starts in Squire Armor** in place of Leather Armor ([armor](armor.md#squire-armor)).
 - **He looks and moves as his remodel** ([graphics](graphics.md#models), [mechanics](mechanics.md#moving)).
 
+## The Cook skill
+
+- **A thirteenth skill, Cook**, which cooks food from ingredients as the Alchemist brews potions, ranks 1 to 8 opening better dishes ([items](items.md#food-and-cooking), [characters](../systems/characters.md#the-cook-skill)). Anyone can learn it, every party member starts at 1, and it trains as cheaply as Diplomat.
+
+## Hunger
+
+- **Members grow hungry.** Two game days without eating anything, a member is Hungry, −2 to Intelligence, Willpower, Dexterity and Strength; three days, Starving, −5. Eating anything feeds them. Hit points aren't touched, and no stat goes below 1. It shows as an icon by the aspect's and school's and a pulse over the portrait ([ui](ui.md#the-party-tab), [characters](../systems/characters.md#hunger)).
+
 ## The party
 
 - **A True Name is kept per member**, as a mod's trigger can give anyone one; the original's comes from the record and, for Alaron, flag

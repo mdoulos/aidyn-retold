@@ -167,6 +167,46 @@ public class HungerTests
         Assert.Equal(Character.HungryFrom - 1, Character.SatietyOf(3UL * GameClock.Day));
     }
 
+    /// <summary>A spicy dish, which wards off Elemental magic for a while (the user's design, Nov 5, 2026).</summary>
+    private static readonly ItemRecord SpicyStew = ItemData.NewItem(0x2003, ItemKind.Food) with
+    {
+        Id = RecordId.Parse("acre:item/0x2003"), Name = "Spicy Stew",
+        Effects = [new HealEffect(25, 35), new WardEffect(MagicSchool.Elemental, new Magnitude(25))], Duration = new EffectDuration(Flat: 648_000),
+        Use = PotionUse.DrinkInTrek, Satiety = 3,
+    };
+
+    [Fact]
+    public void ASpicyDishWardsOffElementalMagicAndASecondNeitherStacksNorRefreshesIt()
+    {
+        var rules = new CharacterRules(Characters.Rules.Stats, Characters.Rules.Skills, Characters.Rules.Progression)
+        {
+            Magic = new MagicRules(MagicData.Record, MagicData.Spells, [.. Enum.GetValues<BasePotion>().Select(PotionData.Of), SpicyStew], MagicData.Inventory),
+        };
+        var party = new Party(ItemData.Catalog(SpicyStew));
+        var member = Character.Create(Characters.Alaron(), rules, _ => Characters.Fireball);
+        party.Add(member);
+        party.Inventory.Add(SpicyStew.Id, 2);
+        var stew = party.Inventory.Catalog.TryGet(SpicyStew.Id)!;
+        member.AgeEffects(Days(1.5));
+        Assert.Equal(0, Casting.Ward(member, MagicSchool.Elemental));
+
+        var random = new Rng.Lcg();
+        Assert.Equal(DrinkResult.Drunk, Potions.Drink(party, member, stew, random));
+        Assert.Equal(25, Casting.Ward(member, MagicSchool.Elemental));
+        Assert.Single(member.PotionEffects);
+        var timer = member.PotionEffects.Single().Timer;
+        member.AgeEffects(Days(0.05));
+        Assert.True(member.PotionEffects.Single().Timer < timer);
+
+        // Eaten again while it lasts: fed, but one ward, with its time as it was.
+        var left = member.PotionEffects.Single().Timer;
+        Assert.Equal(DrinkResult.Drunk, Potions.Drink(party, member, stew, random));
+        Assert.Equal(11, member.Satiety);
+        Assert.Single(member.PotionEffects);
+        Assert.Equal(left, member.PotionEffects.Single().Timer);
+        Assert.Equal(0, party.Inventory.Count(SpicyStew.Id));
+    }
+
     /// <summary>Cook is held after the shield, so the original's 24 keep their places, and listed after the Alchemist.</summary>
     [Fact]
     public void CookIsHeldAfterTheShieldAndListedAfterTheAlchemist()

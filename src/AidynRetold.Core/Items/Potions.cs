@@ -96,7 +96,12 @@ public static class Potions
         var record = item.Gear!;
         var drinker = new EffectTarget(member, on, host);
         var landing = new Landing(record.Id, MagicSchool.None, 0, Margin, drinker, drinker, random) { RecordMargin = 0 };
-        var result = EffectLanding.Land(record.Effects!, record.Duration, landing);
+        // Food with a lasting effect, a spicy dish's ward, can be eaten again while it lasts, for its satiety and what it does at once;
+        // the lasting effect neither stacks nor refreshes, as a spell's doesn't.
+        var again = IsFood(item) && record.Duration is not null && member.HasEffect(record.Id);
+        var result = again
+            ? EffectLanding.Land([.. record.Effects!.Where(e => !EffectRules.Lasting(e))], null, landing)
+            : EffectLanding.Land(record.Effects!, record.Duration, landing);
         if (result.Dice is { } dice)
             member.TakeDamage(random.RollD(dice & 0xFF, 6), on);
         // Food is worth its satiety points, or one where the record gives none.

@@ -24,7 +24,7 @@ Sorted by what the code does with it (`Entity.AddEffect` `0x800702F0`, `Combatan
 | --- | --- | --- |
 | `stat` | Strength (10), Endurance (19), Brilliance (13), Stamina (32), Dexterity (51) +2L; Debilitation (5), Weakness (22), Stupidity (14), Exhaustion (31), Clumsiness (52) −2L | base and modified (`Character.AddStat` `0x800723E8`: not on the dead; Endurance, and the Level while Endurance is 0, left at 1 at the least) |
 | `protection` | Air Shield (3), Spirit Shield (35), Starlight Shield (48), 2L | the sheet's protection byte; Spirit and Starlight Shield take off L as they end |
-| `ward` | vs. Elemental, Naming, Necromancy, Star (38–41), 6L | added to the resist roll against that school (`0x80061F3C`, the first such record by slot) |
+| `ward` | vs. Elemental, Naming, Necromancy, Star (38–41), 6L | added to the resist roll against that school (`0x80061F3C`, the first such record by slot, the spells' slots then the potions', which the remade game's spicy dishes ward from) |
 | `damage` | Dragon Flames (6, Fire), Earth Smite (7, Earth), Fireball (8, Fire, L), Lightning (9, Water), Crushing Death (28), Whitefire (58), Wind at an opponent (11, Air) | (margin + the damage byte, or L for Fireball) d6, times the resistances that meet it |
 | `damagePerRound` | Immolation (0), Acid Bolt (24) 1d6; Web of Starlight (57) 2d6 | each round, if no more than the target's hit points |
 | `poison` | Poison (36) | each round, L >> 1 of Endurance's current value, no more than it has, not if hit points are below it |

@@ -73,7 +73,7 @@ public partial class ItemPage : ItemEditPage
         if (r.Kind == ItemKind.Food)
             AddRow("Satiety", Number("satiety", r.Satiety, 0, 3), "How much eating it fills the eater: a snack 1, a dish 2, a dish of several ingredients 3. From Starving, each band up takes 3, and at 10 of 12 a member is Well Fed and eats no more.");
         if (r.Kind is ItemKind.Food or ItemKind.Misc)
-            AddRow("Keeps", Number("keeps", r.Keeps, 0, 365, " days"), "How many game days it keeps once gained before it spoils and leaves the inventory, the oldest of a stack first: a cooked dish 2, meat or fish 3, a snack or bread 7, a potato or an egg 14. 0 keeps for good.");
+            AddRow("Keeps", Number("keeps", r.Keeps, 0, 365, " days"), "How many game days it keeps once gained before it spoils and leaves the inventory, the oldest of a stack first: a dish, meat or fish 3, a dish with herbs or spices 4, a snack or bread 7, a potato or an egg 14. 0 keeps for good.");
         if (ShowsDescription || r.Description is not null)
         {
             AddRow("Description", Paragraph("description", r.Description), ShowsDescription

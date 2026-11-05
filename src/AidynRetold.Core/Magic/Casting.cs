@@ -231,11 +231,12 @@ public static class Casting
 
     /// <summary>
     /// A character's ward against a school (<c>Combatant.ResistBonusFromEffects</c>, <c>0x80061F3C</c>): its first effect, by slot,
-    /// that wards the school.
+    /// that wards the school. The spells' slots first, then the potions', which the remade game's spicy dishes ward from
+    /// (items.md#cooking-and-food); the original's potions never ward, so it reads only the spells'.
     /// </summary>
     public static int Ward(Character target, MagicSchool school)
     {
-        foreach (var effect in target.Effects)
+        foreach (var effect in target.Effects.Concat(target.PotionEffects))
         {
             if (effect.Effects.OfType<WardEffect>().FirstOrDefault(w => w.School == school) is { } ward)
                 return ward.Amount.At(effect.Power);

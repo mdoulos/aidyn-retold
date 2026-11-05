@@ -67,8 +67,11 @@ public sealed class UiImages
         if ((original ? _plugins.FindOriginalAsset(image, "png") : _plugins.FindAsset(image, "png")) is { } png)
         {
             var (width, height) = _plugins.ImageSize(image);
+            // The game's own art with no original to stand in for, a food's picture, is drawn at whatever size asks for it, so it's
+            // mipmapped as a larger replacement is rather than scaled raw.
             texture = Png.Load(png) is not { } data ? null
                 : width > 0 && (data.GetWidth() != width || data.GetHeight() != height) ? Sharper(data, new Vector2I(width, height))
+                : image.Namespace == MenuImages.OwnNamespace ? Sharper(data, new Vector2I(data.GetWidth(), data.GetHeight()))
                 : ImageTexture.CreateFromImage(data);
         }
         else

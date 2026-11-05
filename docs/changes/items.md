@@ -43,7 +43,7 @@ New, the user's design (Nov 4, 2026; [items](../systems/items.md#cooking-and-foo
 - **Herby, Spicy and Hearty versions** of the eight meals of two and three ingredients, which heal or restore Stamina more; no recipe makes them yet.
 - **In a battle** only the snacks, Bread, and the lighter dishes (the cooked or burnt apple, carrot, meat and fish, the fish cakes and the bacon) can be eaten; the rest are too filling.
 - **Eating anything feeds the eater**, against hunger ([characters](characters.md#hunger)): a snack, bread or a burnt dish a point, a dish two, a dish of several ingredients three. Well Fed, nothing more goes down until time brings it down.
-- **Food spoils** ([items](../systems/items.md#cooking-and-food)): a cooked dish keeps two game days, herby or spicy a day more, hearty two; meat, fish and fish cakes three; apples, carrots and bread a week; potatoes and eggs two; cured and fried bacon and the bag of oats for good. The oldest of a stack goes first, and is the one eaten, sold or dropped first. A toast says what spoiled, and the grid's clock warns of it ([ui](ui.md)).
+- **Food spoils** ([items](../systems/items.md#cooking-and-food)): a cooked dish keeps two game days, a herby, spicy or hearty one a day more; meat, fish and fish cakes three; apples, carrots and bread a week; potatoes and eggs two; cured and fried bacon and the bag of oats for good. The oldest of a stack goes first, and is the one eaten, sold or dropped first. A toast says what spoiled, and the grid's clock warns of it ([ui](ui.md)).
 
 ## Flasks
 

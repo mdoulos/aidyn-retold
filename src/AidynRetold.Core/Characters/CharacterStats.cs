@@ -62,8 +62,16 @@ public sealed class CharacterStats
     /// <summary>The trained value, capped (<c>CharStats::GetBase2</c>).</summary>
     public int TrainedCapped(Stat stat) => Cap(_trained[(int)stat], _rules[stat].BaseCap);
 
-    /// <summary>The modified value, capped and at least 0 (<c>CharStats::getModded</c>). What rules read.</summary>
-    public int Modified(Stat stat) => Cap((sbyte)_modified[(int)stat], _rules[stat].Cap);
+    /// <summary>
+    /// The modified value, capped and at least 0 (<c>CharStats::getModded</c>): what rules read. Intelligence, Willpower, Dexterity
+    /// and Strength read at least 1, whatever lowered them, the user's choice: the original stops a combatant acting while any of the
+    /// four is 0 (<c>Combatant.UpdateActive</c>), so a spell that lowers a stat could hold one for the battle, a bug. No entity has 0
+    /// in any of them. Endurance, Stamina and the Level are hit points, which damage takes to 0.
+    /// </summary>
+    public int Modified(Stat stat) => Math.Max(Cap((sbyte)_modified[(int)stat], _rules[stat].Cap), Floor(stat));
+
+    /// <summary>The least a stat reads: 1 for the four that a combatant needs to act, 0 for the hit points.</summary>
+    public static int Floor(Stat stat) => stat is Stat.Intelligence or Stat.Willpower or Stat.Dexterity or Stat.Strength ? 1 : 0;
 
     /// <summary>The modified value, unread by the cap. It can be negative.</summary>
     public int RawModified(Stat stat) => (sbyte)_modified[(int)stat];

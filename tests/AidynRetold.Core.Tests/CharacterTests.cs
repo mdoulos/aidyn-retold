@@ -251,12 +251,34 @@ public class CharacterTests
     {
         var stats = Alaron().Stats;
 
-        stats.ChangeModified(Stat.Strength, -20);
-        Assert.Equal(-5, stats.RawModified(Stat.Strength));
-        Assert.Equal(0, stats.Modified(Stat.Strength));
+        stats.ChangeModified(Stat.Endurance, -20);
+        Assert.Equal(-5, stats.RawModified(Stat.Endurance));
+        Assert.Equal(0, stats.Modified(Stat.Endurance));
 
         stats.ChangeModified(Stat.Strength, 50);
         Assert.Equal(40, stats.Modified(Stat.Strength));
+    }
+
+    /// <summary>
+    /// Intelligence, Willpower, Dexterity and Strength read at least 1, however far they're lowered, so no spell can stop a combatant
+    /// acting by taking one to 0 (the original's bug, which the port fixes). The raw value still goes down and comes back exactly.
+    /// </summary>
+    [Theory]
+    [InlineData(Stat.Intelligence)]
+    [InlineData(Stat.Willpower)]
+    [InlineData(Stat.Dexterity)]
+    [InlineData(Stat.Strength)]
+    public void TheStatsACombatantActsByReadAtLeastOne(Stat stat)
+    {
+        var stats = Alaron().Stats;
+        var before = stats.RawModified(stat);
+
+        stats.ChangeBase(stat, -40);
+        Assert.Equal(1, stats.Modified(stat));
+        Assert.Equal(before - 40, stats.RawModified(stat));
+
+        stats.ChangeBase(stat, 40);
+        Assert.Equal(before, stats.Modified(stat));
     }
 
     [Fact]

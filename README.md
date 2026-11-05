@@ -59,11 +59,13 @@ Examples of some fixed bugs:
   and restarting.
 - The time of day and compass are meant to be hidden inside some interiors. The
   original shows them when you load a save inside; this port hides them.
+- Lowering a stat with a spell no longer freezes the combatant for the rest
+  of the battle.
 
 The type of things not fixed:
 - Spirit and Starlight Shield leave a level of protection behind each time
   they end.
-- Debuffing an enemy's stats makes them immobile.
+- Wind cast on an ally raises its Stamina for good.
 
 ## Enhancements
 

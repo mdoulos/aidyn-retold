@@ -8,7 +8,6 @@ are, and aren't listed: only what looks like a mistake is.
 
 - **A flask's blast distance is kept in a byte**, so it wraps at 256 and a combatant far off can be caught, and friendly fire happens. The
   target takes its share twice, the blast's and the blow's; Retold shows both ([combat](../systems/combat.md#where-the-port-differs)).
-- **Lowering an enemy's stats can leave it unable to move** (the repository's [README](../../README.md#accuracy)).
 - **In the Shadow's battle**, Heal With Herbs loses its herb before it's refused, and a potion drunk there is used up for nothing
   ([combat](../systems/combat.md#the-special-battles)).
 - **A Fireball that would catch more of its own side scores above everything** for the AI, as a negative count wraps

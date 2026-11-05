@@ -293,16 +293,24 @@ public sealed class BattleTurnTests
     }
 
     [Fact]
-    public void PerformingDoesNotRaiseASmallerRadius()
+    public void DexterityLoweredToNothingStillGivesAField()
     {
-        // Dexterity 0 has a radius of 0; the hold is "at most 1".
+        // The original's Dexterity 0 has a radius of 0, and a combatant at 0 can't act; Dexterity now reads at least 1.
         var hero = Fighter(0, 0);
-        hero.Flags |= CombatantFlags.Performing;
         var battle = Alone(hero);
 
         hero.UpdateRadius(battle);
+        hero.UpdateActive(battle);
 
-        Assert.Equal(0, hero.Radius);
+        Assert.Equal(RadiusOf(1), hero.Radius);
+        Assert.True(hero.Flags.HasFlag(CombatantFlags.Active));
+    }
+
+    private static int RadiusOf(int dexterity)
+    {
+        var fighter = Fighter(0, dexterity);
+        fighter.UpdateRadius(Alone(fighter));
+        return fighter.Radius;
     }
 
     [Fact]
@@ -660,9 +668,6 @@ public sealed class BattleTurnTests
 
     // Radius = the field's + the body's scaled radius, + the scaled radius again when the AI plays it.
     [Theory]
-    [InlineData(0, 1f, false, 1.0f, 6)] // 0 + 1
-    [InlineData(0, 1.7f, false, 1.7f, 6)] // 0 + 1.7
-    [InlineData(0, 1.7f, true, 3.4f, 16)] // twice 1.7 crosses 3
     [InlineData(1, 1f, false, 4.0f, 16)] // 3 + 1
     [InlineData(4, 1.7f, false, 5.7f, 16)] // 4 + 1.7
     [InlineData(4, 1.7f, true, 7.4f, 20)] // twice 1.7 crosses 7

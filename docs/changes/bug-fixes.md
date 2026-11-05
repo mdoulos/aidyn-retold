@@ -25,6 +25,9 @@ The original's bugs Retold fixes, each the owner's choice, with no switch to bri
   cleared ([hardcoded content](../hardcoded-content.md#findings)).
 - **The Shadow's battle says why healing fails.** The original replaces "The Shadow's presence prevents all healing." with "fails to
   perform healing" in the same frame ([combat](../systems/combat.md#where-the-port-differs)).
+- **A lowered stat never freezes a combatant.** The original stops a combatant acting while its Intelligence, Willpower, Dexterity or
+  Strength is 0, so Stupidity, Clumsiness, Debilitation or Wraith Touch's drain could hold one for the rest of the battle. Those four
+  now never read below 1 ([magic](../systems/magic.md#where-the-port-differs)).
 - **The dim red tint shows only while a spell or an area is aimed.** The original's shows on everyone a selected spell would reach from the
   turn's first frame ([ui](../systems/ui.md#the-portraits)).
 - **Hunters notice for themselves.** In the original, when one wanderer notices the party, every later one in the list chases that frame,

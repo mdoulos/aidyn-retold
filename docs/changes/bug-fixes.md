@@ -40,6 +40,9 @@ The original's bugs Retold fixes, each the owner's choice, with no switch to bri
 
 ## Magic
 
+- **The Stamina spell raises Stamina,** by 2 a level while it lasts, as its description says. The original's lowers it by 2 a level and
+  takes 2 a level more as it ends, so each cast leaves the caster's Stamina 4 a level lower until a load
+  ([magic](../systems/magic.md#where-the-port-differs)).
 - **Detect Moon Phase and Detect Sun Phase in a battle** do nothing, where the original's write through a null pointer
   ([combat](../systems/combat.md#where-the-port-differs)).
 

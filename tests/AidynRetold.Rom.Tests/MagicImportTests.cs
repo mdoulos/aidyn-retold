@@ -46,6 +46,15 @@ public sealed class MagicImportTests(Na10Import fixture)
         Assert.All(Spells, s => Assert.Equal(s.Id, Spell(0x300 | list[s.Position!.Value])));
     }
 
+    /// <summary>The user's fix (magic.md): 1.0's Stamina spell lowers Stamina by 2L and takes 2L more as it ends (<c>0x80070560</c>).</summary>
+    [Fact]
+    public void TheStaminaSpellRaisesStaminaTwoALevel()
+    {
+        var stamina = Get(0x0319);
+        var stat = Assert.IsType<StatEffect>(Assert.Single(stamina.Effects!));
+        Assert.Equal((Stat(5), Magnitude.Per(2)), (stat.Stat, stat.Amount));
+    }
+
     [Fact]
     public void EnduranceIsAStatSpellOfTwoALevelFor1800TicksALevel()
     {

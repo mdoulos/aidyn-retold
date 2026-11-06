@@ -29,10 +29,10 @@ public sealed partial class PartyMenu
 {
     /// <summary>
     /// The silhouette's corner in the port's layout, centring its slots in the column under the bar; the view draws them from it, and the
-    /// stick steps between them by where they are. At y 86 until Nov 6, 2026, when the card's whole content went 1.5 up, then 2 more, the
-    /// user's eye.
+    /// stick steps between them by where they are. At y 86 until Nov 6, 2026, when the card's whole content went 1.5 up, then 2 more, then
+    /// half, the user's eye.
     /// </summary>
-    public static readonly (float X, float Y) SilhouetteCorner = (22, 82.5f);
+    public static readonly (float X, float Y) SilhouetteCorner = (22, 82);
 
     /// <summary>
     /// Each slot's place from the silhouette's corner, by <see cref="EquipmentSlot"/> (<c>DollEquipmentMenu::SetSlotCoords</c>). The

@@ -108,7 +108,7 @@ Redesigned, the user's design. Original brings back the original's layout ([ui](
 
 
 
-- **Two sheets and a page.** At the left, a sheet with the portraits, the name, "Level n", the hit points bar with "hp / max" in it, which splits into Stamina's lighter red at its right end and Endurance's darker red only once Stamina is under half ([characters](characters.md#hit-points)), and
+- **Two sheets and a page.** At the left, a sheet with the portraits, the name, "Level n", the hit points bar with "hp / max" in it, which splits into Stamina's lighter red at its right end and Endurance's darker red only once Stamina is under half, and says how much of each is left when the mouse is on it ([characters](characters.md#hit-points)), and
 
   the aspect's and school's icons with their names on hover; under it the silhouette, on a figure for a man, a large man or a woman, with
 

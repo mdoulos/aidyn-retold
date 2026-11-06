@@ -102,6 +102,9 @@ public partial class Game
     /// </summary>
     private void DressCursor()
     {
+        // The pose is the Party tab's while the menu is open; closed, with the open hand still up, the glove points again.
+        if (_session?.MenuOpen != true)
+            Views.MouseCursors.Over = Views.CursorPose.Point;
         var alaron = _session?.Game.Party.Members.FirstOrDefault(m => m.Entity == GameState.Alaron);
         var metal = alaron?.Equipment.Gear.Any(g => g is { Item: { Kind: ItemKind.Gloves, Traits.Metal: true } }) == true;
         Views.MouseCursors.Show(metal ? Views.CursorHand.Metal : Views.CursorHand.Leather);

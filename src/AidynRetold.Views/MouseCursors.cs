@@ -9,11 +9,20 @@ public enum CursorHand
     Metal,
 }
 
+/// <summary>What the glove is doing: pointing, open over what can be dragged, or a fist holding it.</summary>
+public enum CursorPose
+{
+    Point,
+    Grab,
+    Grabbed,
+}
+
 /// <summary>
 /// The mouse cursor as Alaron's glove, the user's art and design (Nov 6, 2026): a pointing hand, the same with a ring at its fingertip
-/// for a moment as the left button goes down (<see cref="Click"/>), an open hand over what can be dragged and a fist while it's held, in leather
-/// or in metal (<see cref="CursorHand"/>), as the game says each frame (<see cref="Show"/>). They fill Godot's Arrow, PointingHand and
-/// Drag shapes, which the views pick between (<c>PartyTabView.CursorOver</c>). The art is 250 square (<c>acre:image/cursor_leather</c>,
+/// for a moment as the left button goes down (<see cref="Click"/>), an open hand over what can be dragged and a fist while it's held
+/// (<see cref="Over"/>, which the views set, <c>PartyTabView.CursorOver</c>), in leather or in metal (<see cref="CursorHand"/>), as the
+/// game says each frame (<see cref="Show"/>). The pose fills Godot's Arrow shape, the one every control has: a shape of a control's own
+/// showed the open hand over the tabs, where the control under the mouse changes. The art is 250 square (<c>acre:image/cursor_leather</c>,
 /// <c>cursor_leather_click</c>, <c>cursor_leather_grab</c>, <c>cursor_leather_grabbed</c>, and the metal four); it's drawn small, as
 /// Baldur's Gate 3's is, at the size the player's computer draws its own cursor (<see cref="Size"/>). Without the ACRE plugin the
 /// cursor is the system's.
@@ -31,21 +40,34 @@ public static class MouseCursors
     /// <summary>Whether the pointing hand shows its ring now.</summary>
     private static bool Pressed => Time.GetTicksMsec() < _clickUntil;
 
+    /// <summary>What the glove is doing, which the view under the mouse says; pointing by default, and again once the mouse leaves it.</summary>
+    public static CursorPose Over { get; set; }
+
     private static CursorHand? _hand;
+    private static CursorPose _over;
     private static bool _pressed;
     private static int? _size;
     private static readonly Dictionary<string, (ImageTexture Texture, Vector2 Hotspot)?> Cursors = [];
 
-    /// <summary>Puts the hand's cursors up, if they aren't already, for the hand and whether the button is down.</summary>
+    /// <summary>Puts the hand's cursor up, if it isn't already, for the hand, its pose and whether the button just went down.</summary>
     public static void Show(CursorHand hand)
     {
-        if (_hand == hand && _pressed == Pressed)
+        if (_hand == hand && _pressed == Pressed && _over == Over)
             return;
-        (_hand, _pressed) = (hand, Pressed);
+        (_hand, _pressed, _over) = (hand, Pressed, Over);
         var name = hand == CursorHand.Metal ? "metal" : "leather";
-        Set(Input.CursorShape.Arrow, $"cursor_{name}{(Pressed ? "_click" : "")}", $"cursor_{name}");
-        Set(Input.CursorShape.PointingHand, $"cursor_{name}_grab", null);
-        Set(Input.CursorShape.Drag, $"cursor_{name}_grabbed", null);
+        switch (Over)
+        {
+            case CursorPose.Grab:
+                Set(Input.CursorShape.Arrow, $"cursor_{name}_grab", null);
+                break;
+            case CursorPose.Grabbed:
+                Set(Input.CursorShape.Arrow, $"cursor_{name}_grabbed", null);
+                break;
+            default:
+                Set(Input.CursorShape.Arrow, $"cursor_{name}{(Pressed ? "_click" : "")}", $"cursor_{name}");
+                break;
+        }
     }
 
     /// <summary>

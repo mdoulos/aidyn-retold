@@ -29,9 +29,10 @@ public partial class PartyTabView : Control
 
     /// <summary>
     /// The shown member's portrait's place in the frames' piece: the original's (4, 4); the port's a third up, then 2 down and half a unit
-    /// right, then 2 down again and 1 left with the whole header, the user's eye (Nov 6, 2026).
+    /// right, then 2 down again and 1 left with the whole header, then 1 down with the portraits and the name and half right with the
+    /// whole header, the user's eye (Nov 6, 2026).
     /// </summary>
-    private Vector2 ShownPortrait => OriginalLook ? new(4, 4) : new(3.5f, 7.7f);
+    private Vector2 ShownPortrait => OriginalLook ? new(4, 4) : new(4.5f - HeaderShift, 8.7f);
 
     /// <summary>
     /// The portraits' frames' corner, which the header's content is placed from: the original's piece's, or the port's <see cref="HeaderRise"/>
@@ -48,10 +49,13 @@ public partial class PartyTabView : Control
     /// The name's place: the original's at x 51, beside its 40 portrait; the port's over the small portraits' left edge, half a unit down
     /// and left with them, the user's eye (Nov 6, 2026).
     /// </summary>
-    private Vector2 NameAt => OriginalLook ? new(51, 6) : new(FirstOther, 6.5f);
+    private Vector2 NameAt => OriginalLook ? new(51, 6) : new(FirstOther, 7.5f);
 
-    /// <summary>How far left the port's whole header content went on Nov 6, 2026, the user's eye: the portraits, the name, the level, the icons and the bar.</summary>
-    private const float HeaderShift = 1;
+    /// <summary>
+    /// How far left the port's whole header content went on Nov 6, 2026, the user's eye: the portraits, the name, the level, the icons and
+    /// the bar; 1, then half back right.
+    /// </summary>
+    private const float HeaderShift = 0.5f;
 
     /// <summary>The member's name, a heading, larger than the menus' text; the slim font at its own size in the original's layout.</summary>
     private UiFont NameFont => OriginalLook ? _ui.Slim : _ui.Slim.Sized(UiPainter.HeadingText);
@@ -91,7 +95,7 @@ public partial class PartyTabView : Control
     /// the large portrait closed by 1.5 on Nov 6).
     /// </summary>
     private static readonly Vector2[] OriginalOthers = [new(49, 17), new(78, 17), new(107, 17)],
-        PortOthers = [.. Enumerable.Range(0, Core.Characters.Party.MaxSize - 1).Select(i => new Vector2(FirstOther + i * OtherPitch, 17.5f))];
+        PortOthers = [.. Enumerable.Range(0, Core.Characters.Party.MaxSize - 1).Select(i => new Vector2(FirstOther + i * OtherPitch, 18.5f))];
 
     /// <summary>The port's first small portrait's left edge, which the name is over too, and how far apart the small portraits are, 20 and a gap of 2.83.</summary>
     private const float FirstOther = 40.5f - HeaderShift, OtherPitch = (131 - 42.5f - 20) / (Core.Characters.Party.MaxSize - 2);
@@ -116,7 +120,7 @@ public partial class PartyTabView : Control
     // Up under the portraits and across to just before the school's icon, the user's choice (Nov 5, 2026): from x 22 to 137.2 at y 62,
     // then 2 nearer the icon, to 139.2, up 6 with the header's content, to y 56, and 1 shorter with its foot kept, from y 57, the user's
     // eye (Nov 6, 2026).
-    private static readonly Rect2 BarFrame = BarFrom(PortraitPiece.Position.X + 4 - HeaderShift, 139.2f - HeaderShift, 62 - HeaderRise + 1, 10);
+    private static readonly Rect2 BarFrame = BarFrom(PortraitPiece.Position.X + 4 - HeaderShift, 141.2f - HeaderShift, 62 - HeaderRise + 1, 10);
 
     /// <summary>The bar frame's rectangle with its drawn left edge, <see cref="BarArtLeft"/> into its art, at a point across.</summary>
     private static Rect2 BarFrom(float left, float right, float top, float height)
@@ -246,8 +250,8 @@ public partial class PartyTabView : Control
     /// </summary>
     private static readonly Vector2 SilhouetteAt = new(PartyMenu.SilhouetteCorner.X, PartyMenu.SilhouetteCorner.Y);
 
-    /// <summary>How far up the equipment card's whole content went on Nov 6, 2026, the user's eye (1.5, then 2 more): the slots, the figure, the stats and the experience.</summary>
-    private const float EquipmentRise = 3.5f;
+    /// <summary>How far up the equipment card's whole content went on Nov 6, 2026, the user's eye (1.5, then 2 more, then half): the slots, the figure, the stats and the experience.</summary>
+    private const float EquipmentRise = 4;
 
     /// <summary>
     /// The figure behind the slots, the user's art (<see cref="Figures"/>): its top and how tall it's drawn, centred under the helmet's
@@ -343,6 +347,9 @@ public partial class PartyTabView : Control
     private int? _hoveredCell;
     /// <summary>The aspect's or school's icon the mouse is on, by its place among <see cref="Icons"/>, or null.</summary>
     private int? _hoveredIcon;
+
+    /// <summary>Whether the mouse is on the hit points bar, whose tooltip says Stamina's and Endurance's points left, the user's design (Nov 6, 2026).</summary>
+    private bool _hoveredBar;
     /// <summary>Where the inventory's grid was last drawn, which the mouse is tested against, as <see cref="_listLayout"/> is for a list.</summary>
     private GridLayout _gridLayout = PartyMenu.InventoryGrid;
     /// <summary>Where the tab's list was last drawn, which the mouse is tested against: a list sliding in is drawn off its place.</summary>
@@ -436,7 +443,10 @@ public partial class PartyTabView : Control
         if (what == NotificationResized)
             QueueRedraw();
         else if (what == NotificationMouseExit)
-            (_hoveredTab, _hoveredIcon, _hoveredCell) = (null, null, null);
+            (_hoveredTab, _hoveredIcon, _hoveredCell, _hoveredBar) = (null, null, null, false);
+        // The mouse off the view, or the view gone, points again (MouseCursors.Over).
+        if (what == NotificationMouseExit || what == NotificationExitTree || what == NotificationVisibilityChanged && !Visible)
+            MouseCursors.Over = CursorPose.Point;
     }
 
     /// <summary>
@@ -459,6 +469,12 @@ public partial class PartyTabView : Control
             _hoveredTab = TabAt(mouse.Position) is { } tab && HasTab(PartyMenu.Tabs[tab]) ? tab : null;
             _hoveredSlot = SlotAt(mouse.Position);
             _hoveredIcon = IconAt(mouse.Position);
+            var onBar = OwnTab && !OriginalLook && Menu.Shown is not null && BarFrame.HasPoint(mouse.Position - (Vector2)_origin);
+            if (onBar != _hoveredBar)
+            {
+                _hoveredBar = onBar;
+                QueueRedraw();
+            }
             // The cell under the mouse is found again as it moves (Hover); a button's press or release leaves it, so a click on a cell
             // keeps its card up.
             if (@event is InputEventMouseMotion)
@@ -466,7 +482,7 @@ public partial class PartyTabView : Control
             // A release handled before the drag's, a double click's, left the press standing, and the fist showed at the next press anywhere.
             if (@event is InputEventMouseButton { Pressed: false, ButtonIndex: MouseButton.Left })
                 _press = null;
-            MouseDefaultCursorShape = CursorOver(mouse.Position);
+            MouseCursors.Over = CursorOver(mouse.Position);
             var onFoot = OwnTab && !OriginalLook && Menu.List == PartyList.Inventory && Menu.Grid ? FootControlAt(mouse.Position - (Vector2)_origin) : null;
             if (onFoot != _hoveredFoot)
             {
@@ -681,7 +697,7 @@ public partial class PartyTabView : Control
             case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } press:
                 _drag = null;
                 _press = Menu.HasPopup || Menu.Slide is not null ? null : DragFrom(press.Position) is { } from ? (from, press.Position) : null;
-                MouseDefaultCursorShape = CursorOver(press.Position);
+                MouseCursors.Over = CursorOver(press.Position);
                 return false;
             case InputEventMouseMotion motion when _press is { } pressed && (motion.ButtonMask & MouseButtonMask.Left) != 0:
                 if (_drag is null && (motion.Position - pressed.At).Length() < DragDistance)
@@ -702,14 +718,15 @@ public partial class PartyTabView : Control
     }
 
     /// <summary>
-    /// The cursor's shape over a point on the view, which the cursors' art fills (<see cref="MouseCursors"/>): the fist (Drag) while an
-    /// item is held or dragged, the open hand (PointingHand) over an item that could be dragged, else the pointing finger (Arrow).
+    /// The cursor's pose over a point on the view (<see cref="MouseCursors.Over"/>): the fist while an item is held or dragged, the open
+    /// hand over an item that could be dragged, else the pointing finger. The cursors draw it themselves: a shape of this control's showed
+    /// the open hand over the tabs, where the control under the mouse changes, until Nov 6, 2026.
     /// </summary>
-    private CursorShape CursorOver(Vector2 point) =>
-        !OwnTab || OriginalLook ? CursorShape.Arrow
-        : _drag is not null || _press is not null && Input.IsMouseButtonPressed(MouseButton.Left) ? CursorShape.Drag
-        : DragFrom(point) is not null ? CursorShape.PointingHand
-        : CursorShape.Arrow;
+    private CursorPose CursorOver(Vector2 point) =>
+        !OwnTab || OriginalLook ? CursorPose.Point
+        : _drag is not null || _press is not null && Input.IsMouseButtonPressed(MouseButton.Left) ? CursorPose.Grabbed
+        : DragFrom(point) is not null ? CursorPose.Grab
+        : CursorPose.Point;
 
     /// <summary>What a press at a point on the view would drag: a carried item in the grid, or what's worn in a slot.</summary>
     private DragSource? DragFrom(Vector2 point)
@@ -1317,12 +1334,26 @@ public partial class PartyTabView : Control
     };
 
     /// <summary>Text in the slim font from a point in the frame, to a fraction of a pixel, its shadow first if it has one.</summary>
-    private void Small(string text, float x, float y, Rgba color, Rgba? shadow = null, UiFont? font = null)
+    /// <summary>
+    /// Small text at (x, y), with a shadow 0.4 down and right if one's given, and in bold, drawn twice <see cref="BoldSpread"/> apart,
+    /// if asked: the faces are thin at the bar's and the counts' sizes, the user's eye (Nov 6, 2026), and the game has no heavier one.
+    /// </summary>
+    private void Small(string text, float x, float y, Rgba color, Rgba? shadow = null, UiFont? font = null, bool bold = false)
     {
+        var spread = bold ? BoldSpread : 0;
         if (shadow is { } dark)
+        {
             SmallAt(text, x + 0.4f, y + 0.4f, dark, font);
+            if (bold)
+                SmallAt(text, x + 0.4f + spread, y + 0.4f, dark, font);
+        }
         SmallAt(text, x, y, color, font);
+        if (bold)
+            SmallAt(text, x + spread, y, color, font);
     }
+
+    /// <summary>How far apart bold text's two drawings are, a fifth of a frame pixel: a touch of weight, not a blur.</summary>
+    private const float BoldSpread = 0.2f;
 
     private void SmallAt(string text, float x, float y, Rgba color, UiFont? font)
     {
@@ -1671,7 +1702,7 @@ public partial class PartyTabView : Control
         // The main face: the slim one at this size was too thin to read, the user's eye (Nov 6, 2026).
         var small = _ui.Main.Sized(HitPointsText);
         Small(hp, bar.Position.X + (bar.Size.X - small.ExactWidth(hp)) / 2, bar.Position.Y + bar.Size.Y / 2f - small.Middle, BarText with { A = a },
-            BarShadow with { A = (byte)(BarShadow.A * a / 255) }, small);
+            BarShadow with { A = (byte)(BarShadow.A * a / 255) }, small, bold: true);
         var level = $"{LevelLabel} {Num(numbers.Level)}";
         // Level with the name's foot.
         var nameFoot = PortraitsAt.Y + NameAt.Y + NameFont.Middle + NameFont.Capitals / 2;
@@ -2080,7 +2111,7 @@ public partial class PartyTabView : Control
                 var text = Num(row.Quantity);
                 var foot = y + grid.Cell - CellInset;
                 Small(text, x + grid.Cell - CellInset - count.ExactWidth(text), foot - count.Capitals / 2 - count.Middle, BarText,
-                    BarShadow, count);
+                    BarShadow, count, bold: true);
             }
             // An item chosen to drop is under a wash of red ink, with the red square round it, and from a stack, how many of it in red in
             // the top right corner, "-2" (the user's design, Nov 6, 2026); one of a lone item says nothing.
@@ -2092,7 +2123,7 @@ public partial class PartyTabView : Control
                 {
                     var text = $"-{Num(chosen)}";
                     Small(text, x + grid.Cell - CellInset - count.ExactWidth(text), y + CellInset + count.Capitals / 2 - count.Middle, UiPainter.RedInk,
-                        font: count);
+                        font: count, bold: true);
                 }
             }
             if (i == list.Cursor && Menu.Focus == PartyFocus.List && Menu.CursorShows
@@ -2179,6 +2210,15 @@ public partial class PartyTabView : Control
         {
             var rect = IconRect(icon);
             NameSlip(icon.Name, rect.Position.X + rect.Size.X / 2, rect.Position.Y - 1);
+            return;
+        }
+        if (_hoveredBar && !Window.HasPopup && Menu.Shown is { } member)
+        {
+            // Stamina's points of the hit points and the rest's, Endurance's, each of what it's worth full, over the bar.
+            var stamina = member.StaminaPoints;
+            var full = member.FullStamina;
+            var text = $"Stamina {Num(stamina)} of {Num(full)}, Endurance {Num(member.Hp - stamina)} of {Num(member.MaxHp - full)}";
+            NameSlip(text, BarFrame.Position.X + BarFrame.Size.X / 2, BarFrame.Position.Y - 1, tiny: true);
             return;
         }
         if (!OwnTab || Menu.Slide is not null || Window.HasPopup || Menu.Crafting is not null)

@@ -75,6 +75,11 @@ public sealed class FullPartyScriptTests(Na10Import fixture)
 
     private static bool IsSet(GameState game, int flag) => game.Flags.Get(Flag(flag));
 
+    /// <summary>Godric, who fills the party to the remade game's five, so the scripts see it as full as the original's four was (Party.ScriptSize).</summary>
+    private static RecordId Fifth => Entity(0x0248);
+
+    private static void Fill(GameState game) => Assert.True(game.AddMember(Fifth));
+
     [Fact]
     public void ScriptsStartAtTheNodeKeelinAsksWillYouJoinMeAndAFullPartyTakesTheNoRoomLine()
     {
@@ -92,6 +97,8 @@ public sealed class FullPartyScriptTests(Na10Import fixture)
         var game = Game("Before Rooughah");
         var party = game.Party.Members.Select(m => m.Entity).ToList();
         Assert.Equal([GameState.Alaron, Entity(0x024C), Entity(0x0243), Entity(0x024D)], party);
+        Fill(game);
+        var kept = game.Party.Kept.Count;
         Assert.True(IsSet(game, 523));
         Assert.False(IsSet(game, 694));
         Assert.True(IsSet(game, 458));
@@ -115,10 +122,10 @@ public sealed class FullPartyScriptTests(Na10Import fixture)
         Assert.True(IsSet(game, 694));
         Assert.True(IsSet(game, 265));
         Assert.False(IsSet(game, 688));
-        Assert.Equal([GameState.Alaron, Entity(0x024C), Entity(0x0243), Entity(0x0249)], game.Party.Members.Select(m => m.Entity));
+        Assert.Equal([GameState.Alaron, Entity(0x024C), Entity(0x0243), Fifth, Entity(0x0249)], game.Party.Members.Select(m => m.Entity));
         Assert.True(IsSet(game, 92));
-        // Sholeh isn't kept; the three the console kept are.
-        Assert.Equal(3, game.Party.Kept.Count);
+        // Sholeh isn't kept; those the console kept are.
+        Assert.Equal(kept, game.Party.Kept.Count);
         Assert.DoesNotContain(Entity(0x024D), game.Party.Kept.Keys);
     }
 
@@ -126,6 +133,7 @@ public sealed class FullPartyScriptTests(Na10Import fixture)
     public void WithSholehStayingRhedaWhoMayNowLeaveIsOfferedItAndKeelinTakesHerPlace()
     {
         var game = Game("Before Rooughah");
+        Fill(game);
 
         var runner = Play(game, node => node == Rheda ? 0 : null, out var menus);
 
@@ -137,13 +145,14 @@ public sealed class FullPartyScriptTests(Na10Import fixture)
         Assert.True(IsSet(game, 687));
         Assert.False(IsSet(game, 91));
         Assert.True(IsSet(game, 265));
-        Assert.Equal([GameState.Alaron, Entity(0x0243), Entity(0x024D), Entity(0x0249)], game.Party.Members.Select(m => m.Entity));
+        Assert.Equal([GameState.Alaron, Entity(0x0243), Entity(0x024D), Fifth, Entity(0x0249)], game.Party.Members.Select(m => m.Entity));
     }
 
     [Fact]
     public void NoOneLeavesIfEveryoneAskedStaysAndKeelinWalksOffSighing()
     {
         var game = Game("Before Rooughah");
+        Fill(game);
         var party = game.Party.Members.Select(m => m.Entity).ToList();
 
         var runner = Play(game, _ => null, out var menus);
@@ -164,6 +173,7 @@ public sealed class FullPartyScriptTests(Na10Import fixture)
     {
         var game = Game("Before Shamsuk's Tower");
         Assert.Equal([GameState.Alaron, Entity(0x024C), Entity(0x0243), Entity(0x024A)], game.Party.Members.Select(m => m.Entity));
+        Fill(game);
         Assert.False(IsSet(game, 458));
 
         var runner = Play(game, _ => null, out var menus);
@@ -175,7 +185,7 @@ public sealed class FullPartyScriptTests(Na10Import fixture)
         Assert.True(runner.Visited(56));
         Assert.True(runner.Visited(KeelinWalksOff));
         Assert.False(runner.Visited(KeelinJoins));
-        Assert.Equal([GameState.Alaron, Entity(0x024C), Entity(0x0243), Entity(0x024A)], game.Party.Members.Select(m => m.Entity));
+        Assert.Equal([GameState.Alaron, Entity(0x024C), Entity(0x0243), Entity(0x024A), Fifth], game.Party.Members.Select(m => m.Entity));
         Assert.True(IsSet(game, 91));
         Assert.True(IsSet(game, 412));
         Assert.False(IsSet(game, 265));

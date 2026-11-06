@@ -496,15 +496,32 @@ public class PartyTests
     };
 
     [Fact]
-    public void ThePartyHoldsFourAndPacksItsSlotsWhenOneLeaves()
+    public void ThePartyHoldsFiveAndPacksItsSlotsWhenOneLeaves()
     {
         var party = Party(Member(1, new()), Member(2, new()), Member(3, new()), Member(4, new()));
 
-        Assert.False(party.Add(Characters.Create(Member(5, new()))));
+        // The remade game's five (the user's choice, Nov 5, 2026), where the original held four.
+        Assert.True(party.Add(Characters.Create(Member(5, new()))));
+        Assert.False(party.Add(Characters.Create(Member(6, new()))));
         Assert.True(party.Remove(RecordId.Hex(RecordTypes.Entity, 2)));
 
-        Assert.Equal([1, 3, 4], party.Slots.Take(3).Select(m => int.Parse(m!.Entity.Key[2..], System.Globalization.NumberStyles.HexNumber)));
-        Assert.Null(party.Slots[3]);
+        Assert.Equal([1, 3, 4, 5], party.Slots.Take(4).Select(m => int.Parse(m!.Entity.Key[2..], System.Globalization.NumberStyles.HexNumber)));
+        Assert.Null(party.Slots[4]);
+    }
+
+    /// <summary>The scripts count a full party as four: five reads as four, four as three, and fewer as they are.</summary>
+    [Fact]
+    public void TheScriptsSeeAPartyOfFiveAsFullAtFourAndFourAsNotFull()
+    {
+        var party = Party(Member(1, new()));
+        Assert.Equal(1, party.ScriptSize);
+        party.Add(Characters.Create(Member(2, new())));
+        party.Add(Characters.Create(Member(3, new())));
+        Assert.Equal(3, party.ScriptSize);
+        party.Add(Characters.Create(Member(4, new())));
+        Assert.Equal(3, party.ScriptSize);
+        party.Add(Characters.Create(Member(5, new())));
+        Assert.Equal(AidynRetold.Core.Characters.Party.OriginalMaxSize, party.ScriptSize);
     }
 
     [Fact]

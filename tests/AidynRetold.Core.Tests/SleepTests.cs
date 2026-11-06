@@ -193,7 +193,7 @@ public class SleepTests
         var bar = hurt.Where(s => s.Image == PartyPortraits.Pixel).ToList();
         Assert.Equal(2, bar.Count);
         // The backing along the portrait's bottom, 2 in from each side, and the fill half as wide.
-        Assert.Equal((92f, 216f, (26f, 2f)), (bar[0].X, bar[0].Y, bar[0].Size!.Value));
+        Assert.Equal((71f, 216f, (26f, 2f)), (bar[0].X, bar[0].Y, bar[0].Size!.Value));
         Assert.Equal((13f, 2f), bar[1].Size!.Value);
         Assert.Equal(PartyPortraits.BarFill, bar[1].Color);
         Assert.DoesNotContain(hurt, s => RestDisplay.Icons.Contains(s.Image));
@@ -204,15 +204,15 @@ public class SleepTests
         // Tired: its icon in the bottom right corner, 8 square and 2 in from the right and the bottom, and the pulse over the portrait.
         var tired = portraits.Draw([new HudMember(face, Rest: RestState.Tired)], 1).ToList();
         var icon = tired.Single(s => s.Image == RestDisplay.TiredIcon);
-        Assert.Equal((110f, 210f, (8f, 8f)), (icon.X, icon.Y, icon.Size!.Value));
+        Assert.Equal((89f, 210f, (8f, 8f)), (icon.X, icon.Y, icon.Size!.Value));
         Assert.Equal(2, tired.Count(s => s.Image == face));
 
         // Starving and Tired: hunger's icon first, then tiredness's half an icon on; hurt too, both above the bar.
         var both = portraits.Draw([new HudMember(face, HungerState.Starving, RestState.Tired, 0.5f)], 1).ToList();
         var starving = both.Single(s => s.Image == HungerDisplay.StarvingIcon);
         var sleepy = both.Single(s => s.Image == RestDisplay.TiredIcon);
-        Assert.Equal((106f, 207f), (starving.X, starving.Y));
-        Assert.Equal((110f, 207f), (sleepy.X, sleepy.Y));
+        Assert.Equal((85f, 207f), (starving.X, starving.Y));
+        Assert.Equal((89f, 207f), (sleepy.X, sleepy.Y));
         // Well Fed shows no icon on the HUD: nothing pulses.
         Assert.DoesNotContain(portraits.Draw([new HudMember(face, HungerState.WellFed)], 1), s => HungerDisplay.Icons.Contains(s.Image));
     }

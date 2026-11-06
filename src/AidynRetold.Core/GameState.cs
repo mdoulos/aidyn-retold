@@ -413,7 +413,8 @@ public sealed class GameState : IScriptWorld
 
     int IScriptWorld.MemberStat(RecordId? member, int stat) => member is { } m && IsStat(stat) ? Party.MemberStat(m, (Stat)stat) : 0;
 
-    int IScriptWorld.PartySize => Party.Count;
+    // As the original's scripts count it: a full party is four (Party.ScriptSize).
+    int IScriptWorld.PartySize => Party.ScriptSize;
 
     string? IScriptWorld.PlayerName => Party.Members.FirstOrDefault()?.Name;
 

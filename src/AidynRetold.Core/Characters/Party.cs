@@ -16,17 +16,29 @@ namespace AidynRetold.Core.Characters;
 /// </remarks>
 public sealed partial class Party
 {
-    public const int MaxSize = 4;
+    /// <summary>The members the party holds: five, the remade game's, the user's choice (Nov 5, 2026), where the original holds <see cref="OriginalMaxSize"/>.</summary>
+    public const int MaxSize = 5;
+
+    /// <summary>The original's four, which its scripts count a full party as (<see cref="ScriptSize"/>).</summary>
+    public const int OriginalMaxSize = 4;
 
     private readonly Character?[] _slots = new Character?[MaxSize];
     private readonly Dictionary<RecordId, SaveCharacter> _kept = [];
 
-    /// <summary>The four slots. Members are packed to the front as others leave.</summary>
+    /// <summary>The five slots. Members are packed to the front as others leave.</summary>
     public IReadOnlyList<Character?> Slots => _slots;
 
     public IEnumerable<Character> Members => _slots.OfType<Character>();
 
     public int Count => _slots.Count(m => m is not null);
+
+    /// <summary>
+    /// The size as the original's scripts count it (<c>CheckPartySize</c>), which branch on a full party being four: one to three as
+    /// they are, four as three, not full, and five as four, full. So every joining script and the shared "no room" prompt keep their
+    /// meaning with the cap at five, and no script is patched. A script reading the size for anything else would see a party of four
+    /// as three; none is known to.
+    /// </summary>
+    public int ScriptSize => Count < OriginalMaxSize ? Count : Count >= MaxSize ? OriginalMaxSize : OriginalMaxSize - 1;
 
     public uint Gold { get; set; }
 

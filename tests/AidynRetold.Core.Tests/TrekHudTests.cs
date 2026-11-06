@@ -1,5 +1,6 @@
 using System.Numerics;
 using AidynRetold.Core.Calendar;
+using AidynRetold.Core.Characters;
 using AidynRetold.Core.Ui;
 using AidynRetold.Plugins;
 using AidynRetold.Plugins.Records;
@@ -94,10 +95,12 @@ public class TrekHudTests
             portraits.StepFrame();
         var face = RecordId.Hex(RecordTypes.Image, 0x0125);
         var sprites = portraits.Draw([new HudMember(face), null, null, null], 1).ToList();
-        // Four frames even for empty slots, then the one portrait, 30 square at (90, 190), as the capture has it.
-        Assert.Equal(4, sprites.Count(s => s.Image == PartyPortraits.Frame));
+        // A frame a slot even for empty ones, five centred where the original's four were, then the one portrait, 30 square at (69, 190):
+        // the capture has the original's at (90, 190), 6 inside the first of four frames at x 84.
+        Assert.Equal(Party.MaxSize, sprites.Count(s => s.Image == PartyPortraits.Frame));
+        Assert.Equal([63, 101, 139, 177, 215], PartyPortraits.FrameX);
         var portrait = sprites.Single(s => s.Image == face);
-        Assert.Equal((90f, 190f, 0.75f), (portrait.X, portrait.Y, portrait.Scale));
+        Assert.Equal((69f, 190f, 0.75f), (portrait.X, portrait.Y, portrait.Scale));
         Assert.Equal(new Rgba(255, 255, 255, 128), portrait.Color);
     }
 

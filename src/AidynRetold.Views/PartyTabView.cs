@@ -60,8 +60,9 @@ public partial class PartyTabView : Control
 
     /// <summary>The arrow under the knotwork.</summary>
     private static readonly Vector2I OriginalSliderAt = new(126, 207);
-    private static readonly Vector2I[] OtherPortraits = [new(49, 17), new(78, 17), new(107, 17)];
-    private const int ShownSize = 40, OtherSize = 24;
+    /// <summary>The other members' small portraits, one a slot but the shown member's, 22 square: four at 25 apart for a party of five, from x 49 to 146 on the sheet (the original's four had three at 29 apart, 24 square).</summary>
+    private static readonly Vector2I[] OtherPortraits = [.. Enumerable.Range(0, Core.Characters.Party.MaxSize - 1).Select(i => new Vector2I(49 + i * 25, 17))];
+    private const int ShownSize = 40, OtherSize = 22;
 
     /// <summary>
     /// The hit points bar beside the aspect's and school's icons and as tall as they are, the user's art and the user's choice (Nov 2,

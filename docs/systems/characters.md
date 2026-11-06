@@ -47,7 +47,7 @@ Base values read capped at the base cap, and modified ones at the cap and at lea
 
 ## The party
 
-`Party` holds four slots, Alaron first, and the gold. Members are packed to the front when one leaves. It answers scripts' questions (`IScriptWorld`):
+`Party` holds five slots (`Party.MaxSize`, the remade game's, the user's choice, Nov 5, 2026; the original's four, `OriginalMaxSize`), Alaron first, and the gold. The scripts still count a full party as four: they're answered with the size as they expect it (`Party.ScriptSize`), one to three as it is, four as three and five as four, so every joining script and the shared "no room" prompt keep their meaning and no script is patched. Members are packed to the front when one leaves. It answers scripts' questions (`IScriptWorld`):
 
 - **Best, worst and a member's stat** read modified values. The average level reads modified Levels, so damage lowers it.
 - **The member best at a skill** is the one with the highest modified level, the later on a tie, dead or not; a member at 0, or who can't learn it, still counts. Only an empty party has none.

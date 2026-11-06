@@ -87,7 +87,7 @@ public sealed class SpellCheckpointTests(Na10Import fixture)
 
         // 07's set B (Combat+0x4F0C): the four party members as candidates, two may be chosen, slots 0 and 1 selected.
         var s = built.Struct + 0x4F0C;
-        int[] Flags(uint at) => [.. Enumerable.Range(0, Battle.SlotCount).Where(i => built.Cp.ReadWord(at + (uint)i * 4) != 0)];
+        int[] Flags(uint at) => [.. Enumerable.Range(0, Battle.OriginalSlotCount).Where(i => built.Cp.ReadWord(at + (uint)i * 4) != 0)];
         Assert.Equal([0, 1, 2, 3], Flags(s));
         Assert.Equal([0, 1], Flags(s + 0x48));
         Assert.Equal((4, 2, 2), (built.Cp.ReadByte(s + 0xA3), built.Cp.ReadByte(s + 0xA4), built.Cp.ReadByte(s + 0xA5)));

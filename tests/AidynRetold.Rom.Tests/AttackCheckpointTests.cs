@@ -45,7 +45,7 @@ public sealed class AttackCheckpointTests(Na10Import fixture, ITestOutputHelper 
         // At() verified everything but what it copies; check that, and a few of the facts the tests lean on.
         var built = At(checkpoint);
         var battle = built.Battle;
-        for (var slot = 0; slot < Battle.SlotCount; slot++)
+        for (var slot = 0; slot < Battle.OriginalSlotCount; slot++)
         {
             var p = built.Record(slot);
             if (p == 0)

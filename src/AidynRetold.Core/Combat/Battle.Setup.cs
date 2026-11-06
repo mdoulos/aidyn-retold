@@ -49,9 +49,9 @@ public sealed partial class Battle
         var random = game.Random.Combat;
         var list = setup.EnemyList(game.Party, e => plugins.TryGet<EntityRecord>(e)?.Level ?? 0, random, rules.Fallback).ToList();
 
-        // Combat.FindSholeh: she's taken from the first four to fight with the party, and the list closes up.
-        var onField = Math.Min(list.Count, OnField);
-        var ally = list.Take(OnField).Contains(rules.Ally) ? rules.Ally : (RecordId?)null;
+        var onField = StartingOnField(list.Count, setup.OnField, rules.OnField);
+        // Combat.FindSholeh: she's taken from those on the field (the original's first four) to fight with the party, and the list closes up.
+        var ally = list.Take(onField).Contains(rules.Ally) ? rules.Ally : (RecordId?)null;
         if (ally is { } sholeh)
         {
             list.RemoveAt(list.IndexOf(sholeh));
@@ -61,6 +61,14 @@ public sealed partial class Battle
         battle.Build(rules, ally);
         return battle;
     }
+
+    /// <summary>
+    /// How many of an enemy list stand on the field as the battle starts, the rest reserves (the user's design, Nov 5, 2026): the
+    /// encounter's own number (<see cref="BattleSetup.OnField"/>), else the combat rules' (<see cref="CombatRecord.OnField"/>), else
+    /// the original's four, between 1 and the list's 12, and never more than the list has.
+    /// </summary>
+    public static int StartingOnField(int listCount, int? encounter, int? rules) =>
+        Math.Min(listCount, Math.Clamp(encounter ?? rules ?? OriginalOnField, 1, MaxEnemies));
 
     /// <summary>
     /// A battle of combatants already made, for tests of the rules that read only its sides, setup, arena and combat record
@@ -117,8 +125,8 @@ public sealed partial class Battle
         PartySize = slot;
         Danger = PartyDanger(rules);
 
-        // Combat.CreateEnemyCombatants: the first four of the list, each at the letter of its place in it; bystanders
-        // are dropped, leaving their letter unused.
+        // Combat.CreateEnemyCombatants: those on the field (the original's first four), each at the letter of its place in it, the
+        // fifth and later finding a free point (Add); bystanders are dropped, leaving their letter unused.
         for (var i = 0; i < EnemiesOnField; i++)
         {
             var entity = Enemies[i];
@@ -331,7 +339,7 @@ public sealed partial class Battle
         // none, and the ally, whose d a fourth member may hold already, can't share it: they take the first free and clear point,
         // their own side's sets from their own, then the other side's, with no draw spent (the remade game's, Nov 5, 2026). The
         // original's four stand where they stood, whatever stands there.
-        if (point is null || letter >= OnField || findFree && (Grid.IsOccupied((int)cell.X, (int)cell.Y, footprint) || !ClearOf(cell, look.Radius * look.Scale)))
+        if (point is null || letter >= Letters || findFree && (Grid.IsOccupied((int)cell.X, (int)cell.Y, footprint) || !ClearOf(cell, look.Radius * look.Scale)))
         {
             if (FreeSpawn(name, footprint, look) is { } free)
                 cell = free;
@@ -354,7 +362,7 @@ public sealed partial class Battle
         {
             foreach (var set in Enumerable.Range(0, SpawnSets).OrderBy(s => s == own ? 0 : 1))
             {
-                for (var l = 0; l < OnField; l++)
+                for (var l = 0; l < Letters; l++)
                 {
                     if (Arena.Point(SpawnPoint(side, set, l)) is not { } at)
                         continue;

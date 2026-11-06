@@ -21,7 +21,7 @@ Every flag that engine code names carries its label on the flag record, which th
 | Party members' joined, left and died flags | `Party::CheckFlags` | 1: member record | ROM |
 | Key items: each gets an inventory slot, a "has" flag, and sometimes a world map region flag | `PartyInventory.cpp` | 1: item record | ROM |
 | World map regions: entering a chunk sets its region's flag, outdoors in a map set with no minimap | `ZoneEngine.EnterRegion` (`0x8004960c`) | 1: the chunk's `region` | ROM |
-| Boss flags: winning a battle with a boss in its first four enemy slots | `Combat.SetKillFlags` (`0x80067860`) | 1: the combat record's `bosses` | Fact, by entity list place (jump table `0x800D2B60`) |
+| Boss flags: winning a battle with a boss in its first four enemy slots (the port's: those on the field at the start, the combat record's or the encounter's `onField`) | `Combat.SetKillFlags` (`0x80067860`) | 1: the combat record's `bosses` | Fact, by entity list place (jump table `0x800D2B60`) |
 | Cinematic done flags (3, 569, 590, 601) | `Cinematic::EndCase` | 1: cinematic record | ROM |
 | The encounter flag of the Goblin Ambush and Lugash scripts' battles | `Script.Start` (`0x8004ff80`) | 1: script field | ROM |
 | Flag 47 after the Goblin Ambush however it ends, with the heal and the move to Oriana's hut | `Combat.Exit` (`0x80023060`) | 1: the combat record's encounter `end` | Fact |

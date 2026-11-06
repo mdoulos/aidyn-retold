@@ -126,7 +126,7 @@ internal static class CombatCheckpoints
         // Every footprint leaves the grid where it stood, and takes it again where it stands now.
         foreach (var c in battle.Combatants)
             battle.Grid.Vacate(ArenaGrid.CellOf(c.Cell.X), ArenaGrid.CellOf(c.Cell.Y), c.Footprint);
-        for (var slot = 0; slot < Battle.SlotCount; slot++)
+        for (var slot = 0; slot < Battle.OriginalSlotCount; slot++)
         {
             var p = built.Record(slot);
             Assert.Equal(p != 0, battle.Slots[slot] is not null);
@@ -210,7 +210,7 @@ internal static class CombatCheckpoints
         battle.ActiveCounts = (cp.ReadByte(s + 2), cp.ReadByte(s + 4), cp.ReadByte(s + 6));
         battle.FirstEnemyDied = cp.ReadWord(s + 8) != 0;
         battle.Order.Now = cp.ReadByte(s + 0x31);
-        if (Enumerable.Range(0, Battle.SlotCount).Where(slot => built.Record(slot) == cp.ReadWord(s + 0x2C)).Cast<int?>().FirstOrDefault() is { } current)
+        if (Enumerable.Range(0, Battle.OriginalSlotCount).Where(slot => built.Record(slot) == cp.ReadWord(s + 0x2C)).Cast<int?>().FirstOrDefault() is { } current)
             battle.Current = battle.Slots[current];
         battle.FocusAt(new Vector2(Float(cp, s + 0x18), Float(cp, s + 0x1C)));
         battle.NextReserve = cp.ReadByte(s + 7);
@@ -243,7 +243,7 @@ internal static class CombatCheckpoints
     {
         var (battle, cp) = (built.Battle, built.Cp);
         var wrong = new List<string>();
-        for (var slot = 0; slot < Battle.SlotCount; slot++)
+        for (var slot = 0; slot < Battle.OriginalSlotCount; slot++)
         {
             var p = built.Record(slot);
             if (p == 0)

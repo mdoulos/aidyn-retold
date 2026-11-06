@@ -88,7 +88,7 @@ public sealed partial class Battle
         {
             foreach (var good in (ReadOnlySpan<bool>)[!enemySide, enemySide])
             {
-                for (var l = 0; l < OnField; l++)
+                for (var l = 0; l < Letters; l++)
                 {
                     if (Arena.Point(SpawnPoint(good, set, l)) is not { } at)
                         continue;

@@ -83,6 +83,10 @@ namespace AidynRetold.Plugins.Records;
 /// (<c>0x80060C38</c>) a caster or target in <c>Combat.ShadowSlot</c> (<c>0x800D94CC</c>), which <c>Combat.CreateBody</c> sets for that
 /// place; the original keeps no list. Null in a plugin from before it, which has the Shadow in <paramref name="Flee"/> alone.
 /// </param>
+/// <param name="OnField">
+/// The remade game's (Nov 5, 2026): how many of an enemy list stand on the field as a battle starts, the rest coming in as reserves,
+/// where an encounter says nothing of its own (<c>MonsterPartyObject.OnField</c>); up to the list's 12. Null, as the original's, is four.
+/// </param>
 public sealed record CombatRecord(
     RecordId Id,
     RecordId Ally,
@@ -104,7 +108,8 @@ public sealed record CombatRecord(
     ShadowRule? Shadow = null,
     IReadOnlyList<RecordId>? UndrawnWeapons = null,
     IReadOnlyList<RecordId>? OtherHand = null,
-    IReadOnlyList<RecordId>? Untargetable = null)
+    IReadOnlyList<RecordId>? Untargetable = null,
+    int? OnField = null)
 {
     /// <summary>The rules of the battle under encounter flag <paramref name="flag"/>, if it has any.</summary>
     public EncounterRule? Encounter(RecordId? flag) => flag is { } f ? Encounters?.FirstOrDefault(e => e.Flag == f) : null;

@@ -115,12 +115,12 @@ public sealed class BattleCheckpointTests(Na10Import fixture, ITestOutputHelper 
         var after = built.After;
 
         Assert.Equal(0x80282230u, built.Combat);
-        var present = Enumerable.Range(0, Battle.SlotCount).Count(s => built.Combatant(s) != 0);
+        var present = Enumerable.Range(0, Battle.OriginalSlotCount).Count(s => built.Combatant(s) != 0);
         Assert.Equal(8, present);
         Assert.Equal(present, battle.Combatants.Count());
 
         var wrong = new List<string>();
-        for (var slot = 0; slot < Battle.SlotCount; slot++)
+        for (var slot = 0; slot < Battle.OriginalSlotCount; slot++)
         {
             var p = built.Combatant(slot);
             var port = battle.Slots[slot];
@@ -249,7 +249,7 @@ public sealed class BattleCheckpointTests(Na10Import fixture, ITestOutputHelper 
     {
         var built = Build();
         var wrong = new List<string>();
-        for (var slot = 0; slot < Battle.SlotCount; slot++)
+        for (var slot = 0; slot < Battle.OriginalSlotCount; slot++)
         {
             var body = built.After.ReadWord(BodyPointers + (uint)slot * 4);
             if (built.Battle.Slots[slot] is not { } combatant)
@@ -276,7 +276,7 @@ public sealed class BattleCheckpointTests(Na10Import fixture, ITestOutputHelper 
         var built = Build();
         var wrong = new List<string>();
         var held = 0;
-        for (var slot = 0; slot < Battle.SlotCount; slot++)
+        for (var slot = 0; slot < Battle.OriginalSlotCount; slot++)
         {
             var body = built.After.ReadWord(BodyPointers + (uint)slot * 4);
             if (built.Battle.Slots[slot] is not { } combatant)

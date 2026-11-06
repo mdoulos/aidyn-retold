@@ -141,6 +141,10 @@ public static class PageFacts
             ["spellEffects"] = new(Help: "How many spells' effects a character holds at once.", Max: 32),
             ["potionEffects"] = new(Help: "How many potions' effects a character holds at once.", Max: 32),
         }),
+        [RecordTypes.Combat] = new("Combat", "combat rules", null, "", null, new Dictionary<string, FieldFact>
+        {
+            ["onField"] = new(Label: "Enemies on the field", Help: "How many of an enemy list stand on the field as a battle starts, the rest coming in as reserves, where the encounter says nothing of its own: the original's 4, up to the list's 12.", Min: 1, Max: 12, Default: 4),
+        }),
         [RecordTypes.Camping] = new("Camping", "camping rules", null, "", null, new Dictionary<string, FieldFact>
         {
             ["heal"] = new(Help: "The share of hit points and Stamina a camp gives back."),

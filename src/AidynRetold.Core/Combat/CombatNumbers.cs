@@ -11,8 +11,8 @@ namespace AidynRetold.Core.Combat;
 /// </summary>
 public sealed class CombatNumbers
 {
-    /// <summary>The pool's size.</summary>
-    public const int Pool = 16;
+    /// <summary>The pool's size: the original's 16, one a slot here, so a spell over everyone shows a number over each.</summary>
+    public const int Pool = Battle.SlotCount;
 
     /// <summary>How long one shows (<c>CombatStatIndicator.Frame</c>, <c>0x8008A630</c>).</summary>
     public const int LifeTicks = 120;

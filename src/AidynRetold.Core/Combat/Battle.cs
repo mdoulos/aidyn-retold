@@ -24,11 +24,24 @@ namespace AidynRetold.Core.Combat;
 /// </remarks>
 public sealed partial class Battle
 {
-    /// <summary>The combatants a battle holds (<c>Combat.Bodies</c>, 14 by slot).</summary>
-    public const int SlotCount = 14;
+    /// <summary>
+    /// The combatants a battle holds, by slot: the party's side first, then the enemies'. The original holds 14 (<c>Combat.Bodies</c>,
+    /// <see cref="OriginalSlotCount"/>); the remade game 24, twelve a side (the user's design, Nov 5, 2026).
+    /// </summary>
+    public const int SlotCount = 24;
 
-    /// <summary>The enemies on the field at once; the rest of the list are reserves.</summary>
-    public const int OnField = 4;
+    /// <summary>The original's 14 combatant slots, which the checkpoints' arrays hold.</summary>
+    public const int OriginalSlotCount = 14;
+
+    /// <summary>
+    /// The enemies on the field at once in the original, four, the rest of the list reserves; and the default where neither the
+    /// combat rules nor the encounter say how many (<see cref="CombatRecord.OnField"/>, <see cref="MonsterPartyObject.OnField"/>),
+    /// which may be the whole list, 12 (<see cref="EnemiesOnField"/>).
+    /// </summary>
+    public const int OriginalOnField = 4;
+
+    /// <summary>The spawn letters an arena's set has a side, a–d.</summary>
+    public const int Letters = 4;
 
     /// <summary>The enemy list's length (the setup block's 12 IDs).</summary>
     public const int MaxEnemies = 12;

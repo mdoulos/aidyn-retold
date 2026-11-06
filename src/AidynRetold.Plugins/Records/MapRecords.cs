@@ -556,6 +556,14 @@ public enum PartyFlags
 /// With a dialogue that starts a battle, the flag winning it sets (flag C). Otherwise a battle sets
 /// <see cref="MapObject.Used"/>.
 /// </param>
+/// <param name="OnField">
+/// The remade game's (Nov 5, 2026): how many of its enemies stand on the field as the battle starts, the rest coming in as reserves,
+/// up to 12; null takes the combat rules' (<c>CombatRecord.OnField</c>), the original's four.
+/// </param>
+/// <param name="Allies">
+/// The remade game's (Nov 5, 2026): guests who fight the battle beside the party, under the player's command, as members do but for
+/// experience; up to 12 on the party's side with the members.
+/// </param>
 public sealed record MonsterPartyObject(
     int Index,
     Vector3 Position,
@@ -570,7 +578,9 @@ public sealed record MonsterPartyObject(
     RecordId? Home,
     PartyFlags Flags,
     RecordId? Dialogue,
-    RecordId? BattleFlag) : MapObject(Index, Position, Radius, Pak, Visible);
+    RecordId? BattleFlag,
+    int? OnField = null,
+    IReadOnlyList<RecordId>? Allies = null) : MapObject(Index, Position, Radius, Pak, Visible);
 
 /// <summary>A named point that teleporters, cameras and scripts refer to. Most sit in clusters where cut-scenes place their cameras.</summary>
 /// <param name="Id">What scripts name it by, counting from their dialogue object's <see cref="DialogueObject.RefPointBase"/>.</param>

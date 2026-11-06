@@ -176,7 +176,8 @@ public sealed class SpellFx
     /// </summary>
     public static readonly int LoadDelayTicks = Cadence.Frames(5);
 
-    public const int MaxCasts = 64, MaxVisuals = 128, MaxBodies = 16;
+    /// <summary>The pools: the original's 64 casts, 128 visuals and 16 bodies, the bodies one a slot here.</summary>
+    public const int MaxCasts = 64, MaxVisuals = 128, MaxBodies = Battle.SlotCount;
 
     /// <summary>The scene the original drew in, which a lasting scene's alpha hump runs on: 3.14, not π.</summary>
     private const double HumpPi = 3.14;

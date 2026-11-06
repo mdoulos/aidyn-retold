@@ -170,7 +170,7 @@ public sealed partial class Battle
     {
         if (_rules.Bosses is not { } bosses)
             return;
-        foreach (var id in Enemies.Take(OnField))
+        foreach (var id in Enemies.Take(EnemiesOnField))
         {
             if (bosses.FirstOrDefault(b => b.Entity == id) is { } boss)
                 Game.Flags.TrySet(boss.Flag, true);

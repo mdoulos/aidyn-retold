@@ -215,6 +215,9 @@ public sealed class CombatGui
     /// <summary>An HP bar's x from its frame's portrait: the party's 4 left of it, an enemy's 24 right (<c>0x800D43E8</c>).</summary>
     public const int PartyBarOffset = -4, EnemyBarOffset = 24, BarWidth = 3;
 
+    /// <summary>The enemies with a large frame, the original's four on the field; the rest of a list, reserves or a bigger field's, have small ones.</summary>
+    public const int LargeEnemies = 4;
+
     /// <summary>The frames' colours (<c>CombatGui.TintAll</c>, <c>0x8008713C</c>), each later one over the earlier.</summary>
     public static readonly Rgba FrameColor = new(0, 0, 0, 200),
         FledColor = new(200, 164, 0, 255),
@@ -271,9 +274,9 @@ public sealed class CombatGui
         {
             _bars.Add(i switch
             {
-                < Battle.OnField => new CombatBar(false, true, EnemyColumn, Top + Pitch * i, false),
-                < 2 * Battle.OnField => new CombatBar(false, false, EnemyColumn, SmallTop + SmallPitch * (i - Battle.OnField), false),
-                _ => new CombatBar(false, false, EnemyColumn2, SmallTop + SmallPitch * (i - 2 * Battle.OnField), false),
+                < LargeEnemies => new CombatBar(false, true, EnemyColumn, Top + Pitch * i, false),
+                < 2 * LargeEnemies => new CombatBar(false, false, EnemyColumn, SmallTop + SmallPitch * (i - LargeEnemies), false),
+                _ => new CombatBar(false, false, EnemyColumn2, SmallTop + SmallPitch * (i - 2 * LargeEnemies), false),
             });
         }
     }

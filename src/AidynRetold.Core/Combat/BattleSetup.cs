@@ -70,6 +70,9 @@ public sealed record BattleSetup(
     /// <summary>How many enemies stand on the field as the battle starts, the encounter's own (<see cref="MonsterPartyObject.OnField"/>), or null for the rules' (<see cref="CombatRecord.OnField"/>).</summary>
     public int? OnField { get; init; }
 
+    /// <summary>The encounter's allies (<see cref="MonsterPartyObject.Allies"/>), who fight beside the party as guests (<see cref="Battle.Guests"/>).</summary>
+    public IReadOnlyList<RecordId> Guests { get; init; } = [];
+
 
     /// <summary>The share of each kind the level trim drops, by the party's level over the enemies' in thirds (<c>0x800CD470</c>).</summary>
     private static readonly float[] LevelTrim = [0.3f, 0.2f, 0.1f, 0f];
@@ -85,6 +88,7 @@ public sealed record BattleSetup(
             BonusLoot = party.Loot,
             PartyGate = party.Enabled,
             OnField = party.OnField,
+            Guests = party.Allies ?? [],
         };
 
     /// <summary>
@@ -144,7 +148,7 @@ public sealed record BattleSetup(
         this with
         {
             Party = id, Enemies = party.Enemies, EncounterFlag = party.BattleFlag, Size = (party.MinSize, party.MaxSize),
-            BonusLoot = party.Loot, PartyGate = party.Enabled, OnField = party.OnField, Arena = null, CollisionByte = 0, AniByte = 0, CanFlee = true,
+            BonusLoot = party.Loot, PartyGate = party.Enabled, OnField = party.OnField, Guests = party.Allies ?? [], Arena = null, CollisionByte = 0, AniByte = 0, CanFlee = true,
         };
 
     /// <summary>

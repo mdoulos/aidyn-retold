@@ -218,6 +218,13 @@ public sealed class CombatGui
     /// <summary>The enemies with a large frame, the original's four on the field; the rest of a list, reserves or a bigger field's, have small ones.</summary>
     public const int LargeEnemies = 4;
 
+    /// <summary>
+    /// The party's side with a large frame, the first six, the original's four members and two spares; the seventh and later, guests
+    /// and the spares beyond, small in a column before them (<see cref="PartyColumn2"/>), 12 apart from the top. With five members a
+    /// used sixth frame, the ally's, reaches 2 into the log box's top.
+    /// </summary>
+    public const int LargeParty = 6, PartyColumn2 = PartyColumn - 14;
+
     /// <summary>The frames' colours (<c>CombatGui.TintAll</c>, <c>0x8008713C</c>), each later one over the earlier.</summary>
     public static readonly Rgba FrameColor = new(0, 0, 0, 200),
         FledColor = new(200, 164, 0, 255),
@@ -253,23 +260,29 @@ public sealed class CombatGui
     public CombatState? TintState { get; set; }
 
     /// <summary>
-    /// The screen for a battle with <paramref name="party"/>'s members and <paramref name="enemies"/> (<c>CombatGui.Create</c>,
-    /// <c>0x80085B80</c>): an entry for each member, two placeholders and an entry for each of the list, reserves too, all
-    /// waiting at the screen's middle; a frame for each member and two hidden spares under them, and one for each of the
-    /// list, the first four large and the rest small in two columns.
+    /// The screen for a battle with <paramref name="party"/>'s members, its <paramref name="guests"/> and <paramref name="enemies"/>
+    /// (<c>CombatGui.Create</c>, <c>0x80085B80</c>): an entry for each member and guest, two placeholders and an entry for each of the
+    /// list, reserves too, all waiting at the screen's middle; a frame for each member and guest and two hidden spares after them,
+    /// the first six large and the rest small in a column before them, and one for each of the list, the first four large and the
+    /// rest small in two columns.
     /// </summary>
-    public CombatGui(IReadOnlyList<RecordId> party, IReadOnlyList<RecordId> enemies)
+    public CombatGui(IReadOnlyList<RecordId> party, IReadOnlyList<RecordId> enemies, IReadOnlyList<RecordId>? guests = null)
     {
-        foreach (var member in party)
+        var side = party.Concat(guests ?? []).ToList();
+        foreach (var member in side)
             _portraits.Add(new CombatPortrait(member, true, PortraitState.Waiting, StartX, StartY, StartSize));
         for (var i = 0; i < 2; i++)
             _portraits.Add(new CombatPortrait(null, true, PortraitState.Placeholder, StartX, StartY, PlaceholderSize));
         foreach (var enemy in enemies)
             _portraits.Add(new CombatPortrait(enemy, false, PortraitState.Waiting, StartX, StartY, StartSize));
 
-        // CombatGui.CreateBars, 0x800864F4.
-        for (var i = 0; i < party.Count + 2; i++)
-            _bars.Add(new CombatBar(true, true, PartyColumn, Top + Pitch * i, spare: i >= party.Count));
+        // CombatGui.CreateBars, 0x800864F4: the original's members and spares all large, six; here the seventh and later small.
+        for (var i = 0; i < side.Count + 2; i++)
+        {
+            _bars.Add(i < LargeParty
+                ? new CombatBar(true, true, PartyColumn, Top + Pitch * i, spare: i >= side.Count)
+                : new CombatBar(true, false, PartyColumn2, Top + SmallPitch * (i - LargeParty), spare: i >= side.Count));
+        }
         for (var i = 0; i < enemies.Count; i++)
         {
             _bars.Add(i switch
@@ -291,7 +304,7 @@ public sealed class CombatGui
         var party = battle.Game is { } game
             ? game.Party.Slots.OfType<Characters.Character>().Select(m => m.Entity).ToList()
             : battle.Combatants.Where(c => c.Slot < battle.PartySize).Select(c => c.Entity).ToList();
-        var gui = new CombatGui(party, battle.Enemies);
+        var gui = new CombatGui(party, battle.Enemies, battle.Guests);
         foreach (var combatant in battle.Combatants)
             gui.Assign(combatant.Entity, combatant.Slot, enemy: combatant.Slot >= battle.PartySize);
         return gui;

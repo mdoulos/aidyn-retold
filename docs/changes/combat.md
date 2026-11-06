@@ -5,6 +5,7 @@ screen's look in [ui](ui.md#the-battle-screen), and the original's combat bugs R
 
 ## Battles
 
+- **Guests fight beside the party.** An encounter can name allies who join the party's side for that battle, under the player's command, up to twelve on the party's side with the members; they gain nothing and leave after ([combat](../systems/combat.md#in-and-out)).
 - **How many enemies stand at once is data.** The original puts four of an encounter's list on the field and feeds the rest in as reserves; Retold reads the number from the encounter, else the combat rules, else keeps four, and it may be the whole list of twelve, so a set-piece can open with everyone up while a roadside pack keeps its waves. A battle holds twenty-four combatants, twelve a side ([combat](../systems/combat.md#in-and-out)).
 - **Spell auras can show at once** (option). The original's lasting spell shells and rings over the combatants' heads take turns, one at a
   time across the whole battle. Retold can show each character's at once, each over its own head with its own pulse; the five seconds after

@@ -122,6 +122,25 @@ public sealed partial class Battle
             GiveAi(Add(slot, allySheet, hostile: false, party: true, letter: 3, roll, findFree: true), spare);
             slot++;
         }
+        // The encounter's allies fight beside the party as guests, the remade game's (the user's design, Nov 5, 2026): after the
+        // members and the ally, at free points, the player's to command; the party's side holds twelve in all.
+        foreach (var guest in Setup.Guests)
+        {
+            if (slot >= MaxPartySide)
+            {
+                _problems.Add($"{guest} doesn't fit on the party's side, which holds {MaxPartySide}.");
+                break;
+            }
+            if (Game.Recruit(guest) is not { } guestSheet)
+            {
+                _problems.Add($"{guest} is in no plugin.");
+                continue;
+            }
+            ArmFromList(guestSheet, Game.Items);
+            Add(slot, guestSheet, hostile: false, party: true, letter: slot, roll, findFree: true);
+            _guests.Add(guest);
+            slot++;
+        }
         PartySize = slot;
         Danger = PartyDanger(rules);
 

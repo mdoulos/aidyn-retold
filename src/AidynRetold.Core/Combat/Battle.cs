@@ -43,6 +43,18 @@ public sealed partial class Battle
     /// <summary>The spawn letters an arena's set has a side, a–d.</summary>
     public const int Letters = 4;
 
+    /// <summary>The party's side's most: the members, the ally and the guests together, twelve (the user's design, Nov 5, 2026).</summary>
+    public const int MaxPartySide = 12;
+
+    private readonly List<RecordId> _guests = [];
+
+    /// <summary>
+    /// The guests fighting beside the party, the encounter's allies who fit (<see cref="BattleSetup.Guests"/>), in slot order after
+    /// the members and the ally: the player's to command, as members are; they gain no experience, and their falling loses nothing
+    /// but them.
+    /// </summary>
+    public IReadOnlyList<RecordId> Guests => _guests;
+
     /// <summary>The enemy list's length (the setup block's 12 IDs).</summary>
     public const int MaxEnemies = 12;
 

@@ -17,6 +17,7 @@ remodel in [graphics](graphics.md#models), his armor in [armor](armor.md), and t
 
 ## Hunger
 
+- **Members tire**: a day and a half without sleep makes a member Tired, three days Overtired, which cost the same four stats as Hungry and Starving do, on top of them. Only camping or a rest brings it back, and entirely ([characters](../systems/characters.md#sleep)).
 - **Each member has a hidden satiety**, 1 to 12, in bands of three: Starving, Hungry, Fed and Well Fed. Food adds one to three points, time takes one off every eight game hours, and Well Fed, which shows, stops them eating until it falls.
 - **Members grow hungry.** Two game days without eating anything, a member is Hungry, −2 to Intelligence, Willpower, Dexterity and Strength; three days, Starving, −5. Eating anything feeds them. Hit points aren't touched, and no stat goes below 1. It shows as an icon by the aspect's and school's and a pulse over the portrait ([ui](ui.md#the-party-tab), [characters](../systems/characters.md#hunger)).
 

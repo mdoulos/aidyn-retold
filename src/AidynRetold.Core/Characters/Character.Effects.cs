@@ -121,8 +121,9 @@ public sealed partial class Character
     {
         if (IsDead)
             return default;
-        // Hunger runs as the effects' time does, in trek and through a camp's or a rest's hours; a battle's rounds have no unit.
+        // Hunger and tiredness run as the effects' time does, in trek and through a camp's or a rest's hours; a battle's rounds have no unit.
         AgeHunger((ulong)unit * (ulong)Math.Max(amount, 0));
+        AgeRest((ulong)unit * (ulong)Math.Max(amount, 0));
         var round = Rules.Magic.Record.RoundTicks;
         var potions = PotionEffectSlots;
         foreach (var potion in potions.OfType<ActiveEffect>().ToList())

@@ -157,6 +157,9 @@ public sealed record SaveCharacter(RecordId Entity)
     public int? Satiety { get; init; }
 
     public ulong SinceFell { get; init; }
+
+    /// <summary>The game's time since the member last slept (<c>Character.SinceSlept</c>); none, as in a save from before sleep (Nov 5, 2026), is rested.</summary>
+    public ulong SinceSlept { get; init; }
 }
 
 /// <summary>A potion working on a character.</summary>

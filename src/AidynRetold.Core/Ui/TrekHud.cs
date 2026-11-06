@@ -60,19 +60,19 @@ public sealed class TrekHud
         Raise(true);
     }
 
-    // Each slot's hunger as last seen, to raise the portraits as one grows hungrier.
-    private Characters.HungerState[] _hunger = [];
+    // Each slot's worse of hunger and tiredness as last seen (StatusPulse.Worst), to raise the portraits as one grows worse.
+    private int[] _status = [];
 
     /// <summary>
-    /// The party's hunger as it stands, the remade game's (<see cref="HungerDisplay"/>): as a member turns Hungry or Starving, the
-    /// portraits come up, as trek's starting brings them, so the pulse over theirs is seen. No message says so.
+    /// The party's hunger and tiredness as they stand, the remade game's (<see cref="StatusPulse"/>): as a member turns Hungry or Tired,
+    /// Starving or Overtired, the portraits come up, as trek's starting brings them, so the pulse over theirs is seen. No message says so.
     /// </summary>
-    public void WatchHunger(IReadOnlyList<Characters.HungerState> hunger)
+    public void WatchStatus(IReadOnlyList<(Characters.HungerState Hunger, Characters.RestState Tiredness)> status)
     {
-        // Hungrier: Well Fed wearing off is no worse than Fed.
-        static int Want(Characters.HungerState state) => state switch { Characters.HungerState.Hungry => 1, Characters.HungerState.Starving => 2, _ => 0 };
-        var worse = _hunger.Length == hunger.Count && hunger.Where((state, i) => Want(state) > Want(_hunger[i])).Any();
-        _hunger = [.. hunger];
+        // Worse: Well Fed wearing off is no worse than Fed.
+        var now = status.Select(s => StatusPulse.Worst(s.Hunger, s.Tiredness)).ToArray();
+        var worse = _status.Length == now.Length && now.Where((rank, i) => rank > _status[i]).Any();
+        _status = now;
         if (worse && !Portraits.Shown)
             Raise(true);
     }
@@ -114,11 +114,12 @@ public sealed class TrekHud
     /// </summary>
     public IEnumerable<HudSprite> Draw(GameState game, bool outdoors, Vector2 look, float brightness, int width = 320, int height = 240)
     {
-        var portraits = game.Party.Slots.Select(m => m is null ? null : game.Plugins.TryGet<EntityRecord>(m.Entity)?.Portrait).ToList();
+        var members = game.Party.Slots.Select(m => m is null ? null
+            : new HudMember(game.Plugins.TryGet<EntityRecord>(m.Entity)?.Portrait, m.Hunger, m.Rest, m.MaxHp > 0 ? (float)m.Hp / m.MaxHp : 1)).ToList();
         var corner = Minimap.Showing ? Minimap.Draw(brightness) : outdoors ? Compass.Draw(look, brightness) : [];
         var down = height - 240;
         return Shift(Sundial.Draw(game.Clock.Time, brightness, SunAndMoon), 0, down)
-            .Concat(Shift(Portraits.Draw(portraits, brightness, [.. game.Party.Slots.Select(m => m?.Hunger ?? Characters.HungerState.Fed)]), (width - 320) / 2, down))
+            .Concat(Shift(Portraits.Draw(members, brightness), (width - 320) / 2, down))
             .Concat(Shift(corner, width - 320, down));
     }
 

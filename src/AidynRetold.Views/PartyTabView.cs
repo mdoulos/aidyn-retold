@@ -768,8 +768,8 @@ public partial class PartyTabView : Control
     /// <summary>An aspect's or school's icon at a place in the frame: the original's own size in its look, else <see cref="IconSize"/>.</summary>
     private void Icon(RecordId icon, float x, float y, Rgba? color)
     {
-        // Hunger's icon has no original's size, so it's drawn at the original's icons', 10 square.
-        if (OriginalLook && HungerDisplay.Icons.Contains(icon))
+        // Hunger's and tiredness's icons have no original's size, so they're drawn at the original's icons', 10 square.
+        if (OriginalLook && (HungerDisplay.Icons.Contains(icon) || RestDisplay.Icons.Contains(icon)))
             _ui.Image(_canvas, icon, new Rect2(x, y, OriginalHungerIcon, OriginalHungerIcon), color);
         else if (OriginalLook)
             _ui.Image(_canvas, icon, (int)x, (int)y, color: color);
@@ -1265,8 +1265,8 @@ public partial class PartyTabView : Control
             var size = MenuTween.Value(fromSize, toSize, change);
             var rect = new Rect2(at.X + MenuTween.Value(from.X, to.X, change), at.Y + MenuTween.Value(from.Y, to.Y, change), size, size);
             FramedPortrait(portrait, rect);
-            // A hungry member's portrait pulses amber, a starving one's red (HungerDisplay).
-            if (HungerDisplay.Tint(Menu.Party.Slots[slot]!.Hunger, Time.GetTicksMsec() / 1000f) is { } tint)
+            // A hungry or tired member's portrait pulses amber, a starving or overtired one's red (StatusPulse).
+            if (Menu.Party.Slots[slot] is { } who && StatusPulse.Tint(who.Hunger, who.Rest, Time.GetTicksMsec() / 1000f) is { } tint)
                 HungerTint(portrait, rect, tint);
         }
         if (Menu.Previous is { } before)
@@ -1330,15 +1330,28 @@ public partial class PartyTabView : Control
                 icons.Add((ownAspect, right, $"{member.Aspect} Aspect"));
                 right -= IconGap;
             }
+            // The unschooled have an icon of their own in the port's look, the user's (Nov 5, 2026).
             if (MenuImages.SchoolIcon(member.School) is { } ownSchool)
             {
                 right -= IconSize;
                 icons.Add((ownSchool, right, $"School of {member.School}"));
                 right -= IconGap;
             }
-            // Hunger's, before them, the user's design (Nov 4, 2026).
+            else
+            {
+                right -= IconSize;
+                icons.Add((MenuImages.UnschooledIcon, right, "No school of magic"));
+                right -= IconGap;
+            }
+            // Hunger's and tiredness's, before them, the user's design (Nov 4 and 5, 2026).
             if (HungerDisplay.StatusIcon(member.Hunger) is { } hunger)
-                icons.Add((hunger, right - IconSize, HungerDisplay.Tooltip(member.Hunger)!));
+            {
+                right -= IconSize;
+                icons.Add((hunger, right, HungerDisplay.Tooltip(member.Hunger)!));
+                right -= IconGap;
+            }
+            if (RestDisplay.StatusIcon(member.Rest) is { } tired)
+                icons.Add((tired, right - IconSize, RestDisplay.Tooltip(member.Rest)!));
             return icons;
         }
         float x = OriginalIconsAt.X;
@@ -1353,7 +1366,12 @@ public partial class PartyTabView : Control
             x += _ui.Size(school).X + OriginalIconGap;
         }
         if (HungerDisplay.StatusIcon(member.Hunger) is { } hungry)
+        {
             icons.Add((hungry, x, HungerDisplay.Tooltip(member.Hunger)!));
+            x += OriginalHungerIcon + OriginalIconGap;
+        }
+        if (RestDisplay.StatusIcon(member.Rest) is { } sleepy)
+            icons.Add((sleepy, x, RestDisplay.Tooltip(member.Rest)!));
         return icons;
     }
 

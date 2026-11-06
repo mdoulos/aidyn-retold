@@ -81,6 +81,7 @@ public sealed class CharacterSaves(PluginSet plugins, CharacterRules rules, Item
             Potions = [.. member.PotionEffects.Select(p => new SavePotion(p.Source, p.Timer) { Power = p.Power })],
             Satiety = member.Satiety,
             SinceFell = member.SinceFell,
+            SinceSlept = member.SinceSlept,
         };
 
         static SaveItem? Item(ItemInstance? item) => item is null ? null : new SaveItem(item.Id) { Battery = item.Battery, Charges = item.Charges };
@@ -150,6 +151,7 @@ public sealed class CharacterSaves(PluginSet plugins, CharacterRules rules, Item
         }
         // An older save has the time since a meal alone, which stands for a satiety.
         character.SetSatiety(saved.Satiety ?? Character.SatietyOf(saved.SinceMeal), saved.SinceFell);
+        character.SetSinceSlept(saved.SinceSlept);
         return character;
 
         void Wear(SaveItem? item, Func<ItemInstance, EquipRefusal> equip)

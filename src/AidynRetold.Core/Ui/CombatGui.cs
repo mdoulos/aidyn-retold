@@ -488,9 +488,9 @@ public sealed class CombatGui
             var (x, y) = Side(bar);
             var image = portrait(entity) ?? NoPortrait;
             portraits.Add(new HudSprite(image, entry.X + x, entry.Y + y, 1, White, (entry.Width, entry.Height)));
-            // A hungry member's portrait pulses, the remade game's (HungerDisplay).
+            // A hungry or tired member's portrait pulses, the remade game's (StatusPulse).
             if (entry.State == PortraitState.Party && battle.Combatants.FirstOrDefault(c => c.Entity == entity) is { } member
-                && HungerDisplay.Tint(member.Sheet.Hunger, _pulseTicks / 60f) is { } tint)
+                && StatusPulse.Tint(member.Sheet.Hunger, member.Sheet.Rest, _pulseTicks / 60f) is { } tint)
                 portraits.Add(new HudSprite(image, entry.X + x, entry.Y + y, 1, tint, (entry.Width, entry.Height)));
             if (entry.Skull)
                 portraits.Add(new HudSprite(SkullImage, entry.X + x, entry.Y + y, 1, White with { A = entry.SkullAlpha }, (entry.Width, entry.Height)));

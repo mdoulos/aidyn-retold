@@ -166,9 +166,15 @@ public static class MenuImages
         : ScrollPictures.Values.Contains(image) ? Scroll
         : null;
 
-    /// <summary>The port's own pictures: the potions', the scrolls' and hunger's icons (<see cref="HungerDisplay"/>), and food's clock (<see cref="FoodClock"/>).</summary>
+    /// <summary>The icon for a member with no school of magic, the user's (Nov 5, 2026), drawn where the school's would be in the port's look.</summary>
+    public static readonly RecordId UnschooledIcon = RecordId.Parse($"{OwnNamespace}:image/icon_unschooled");
+
+    /// <summary>
+    /// The port's own pictures: the potions', the scrolls', hunger's and tiredness's icons (<see cref="HungerDisplay"/>, <see cref="RestDisplay"/>),
+    /// the unschooled's, and food's clock (<see cref="FoodClock"/>).
+    /// </summary>
     public static IEnumerable<RecordId> OwnPictures => PotionPictures.Values.Concat(ScrollPictures.Values)
-        .Concat(HungerDisplay.Icons).Append(FoodClock.Icon);
+        .Concat(HungerDisplay.Icons).Concat(RestDisplay.Icons).Append(UnschooledIcon).Append(FoodClock.Icon);
 
     private static RecordId Image(int borg8) => RecordId.Hex(RecordTypes.Image, borg8);
 }

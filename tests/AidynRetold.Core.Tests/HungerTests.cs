@@ -68,6 +68,8 @@ public class HungerTests
         Assert.Equal(before.Select(v => v - Character.HungryLoss), Four.Select(s => member.Stats.Modified(s)));
 
         member.AgeEffects(Days(1));
+        // Slept, so tiredness's costs (SleepTests) stay out of it.
+        member.Sleep();
         Assert.Equal(3, member.Satiety);
         Assert.Equal(HungerState.Starving, member.Hunger);
         Assert.Equal(before.Select(v => v - Character.StarvingLoss), Four.Select(s => member.Stats.Modified(s)));
@@ -76,6 +78,7 @@ public class HungerTests
 
         // Nothing falls below one.
         member.AgeEffects(Days(3));
+        member.Sleep();
         Assert.Equal(Character.SatietyLeast, member.Satiety);
 
         // Starving to Hungry takes three points, Hungry to Fed three more: a stew each.

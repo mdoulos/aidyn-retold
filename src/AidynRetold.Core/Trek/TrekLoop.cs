@@ -391,7 +391,7 @@ public sealed partial class TrekLoop : IMapObjectHost
             Hud.Enter(Chunks.MapSet);
             var chunk = Chunks.ChunkAt(motion.Sphere.Position);
             Hud.Tick(chunk, chunk is null ? motion.Sphere.Position : motion.Sphere.Position - Chunks.Origin(chunk), Game.Flags);
-            Hud.WatchHunger([.. Game.Party.Slots.Select(m => m?.Hunger ?? Characters.HungerState.Fed)]);
+            Hud.WatchStatus([.. Game.Party.Slots.Select(m => (m?.Hunger ?? Characters.HungerState.Fed, m?.Rest ?? Characters.RestState.Rested))]);
         }
         // RenderVoxelScenes, as the frame is drawn.
         if (_drawFrame.Tick())

@@ -93,7 +93,7 @@ public class TrekHudTests
         for (var i = 0; i < 14; i++)
             portraits.StepFrame();
         var face = RecordId.Hex(RecordTypes.Image, 0x0125);
-        var sprites = portraits.Draw([face, null, null, null], 1).ToList();
+        var sprites = portraits.Draw([new HudMember(face), null, null, null], 1).ToList();
         // Four frames even for empty slots, then the one portrait, 30 square at (90, 190), as the capture has it.
         Assert.Equal(4, sprites.Count(s => s.Image == PartyPortraits.Frame));
         var portrait = sprites.Single(s => s.Image == face);

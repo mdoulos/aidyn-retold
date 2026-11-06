@@ -45,13 +45,16 @@ public static class HungerDisplay
     /// The tint over a hungry member's portrait <paramref name="seconds"/> into the pulse, its alpha rising and falling smoothly from
     /// nothing; none while they're fed.
     /// </summary>
-    public static Rgba? Tint(HungerState state, float seconds)
+    public static Rgba? Tint(HungerState state, float seconds) => Pulse(StatusPulse.Rank(state), seconds);
+
+    /// <summary>The pulse of a band by how bad it is (<see cref="StatusPulse.Rank(HungerState)"/>): amber at 1, red at 2, none at 0.</summary>
+    public static Rgba? Pulse(int rank, float seconds)
     {
-        if (state is HungerState.Fed or HungerState.WellFed)
+        if (rank <= 0)
             return null;
-        var period = state == HungerState.Starving ? StarvingPeriod : HungryPeriod;
+        var period = rank >= 2 ? StarvingPeriod : HungryPeriod;
         var phase = 0.5f - 0.5f * MathF.Cos(2 * MathF.PI * (seconds % period) / period);
-        var color = state == HungerState.Starving ? Starving : Hungry;
+        var color = rank >= 2 ? Starving : Hungry;
         return color with { A = (byte)(255 * Peak * phase) };
     }
 

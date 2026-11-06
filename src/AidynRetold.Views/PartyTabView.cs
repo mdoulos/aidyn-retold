@@ -29,9 +29,9 @@ public partial class PartyTabView : Control
 
     /// <summary>
     /// The shown member's portrait's place in the frames' piece: the original's (4, 4); the port's a third up, then 2 down and half a unit
-    /// right, the user's eye (Nov 6, 2026).
+    /// right, then 2 down again and 1 left with the whole header, the user's eye (Nov 6, 2026).
     /// </summary>
-    private Vector2 ShownPortrait => OriginalLook ? new(4, 4) : new(4.5f, 5.7f);
+    private Vector2 ShownPortrait => OriginalLook ? new(4, 4) : new(3.5f, 7.7f);
 
     /// <summary>
     /// The portraits' frames' corner, which the header's content is placed from: the original's piece's, or the port's <see cref="HeaderRise"/>
@@ -49,6 +49,9 @@ public partial class PartyTabView : Control
     /// and left with them, the user's eye (Nov 6, 2026).
     /// </summary>
     private Vector2 NameAt => OriginalLook ? new(51, 6) : new(FirstOther, 6.5f);
+
+    /// <summary>How far left the port's whole header content went on Nov 6, 2026, the user's eye: the portraits, the name, the level, the icons and the bar.</summary>
+    private const float HeaderShift = 1;
 
     /// <summary>The member's name, a heading, larger than the menus' text; the slim font at its own size in the original's layout.</summary>
     private UiFont NameFont => OriginalLook ? _ui.Slim : _ui.Slim.Sized(UiPainter.HeadingText);
@@ -91,10 +94,10 @@ public partial class PartyTabView : Control
         PortOthers = [.. Enumerable.Range(0, Core.Characters.Party.MaxSize - 1).Select(i => new Vector2(FirstOther + i * OtherPitch, 17.5f))];
 
     /// <summary>The port's first small portrait's left edge, which the name is over too, and how far apart the small portraits are, 20 and a gap of 2.83.</summary>
-    private const float FirstOther = 40.5f, OtherPitch = (131 - 42.5f - 20) / (Core.Characters.Party.MaxSize - 2);
+    private const float FirstOther = 40.5f - HeaderShift, OtherPitch = (131 - 42.5f - 20) / (Core.Characters.Party.MaxSize - 2);
 
     /// <summary>The port's aspect's and school's icons' right edge, where the last small portrait ended until Nov 6, 2026, kept as the icons' edge.</summary>
-    private const float IconsRight = 131;
+    private const float IconsRight = 131 - HeaderShift;
 
     private Vector2[] OtherPortraits => OriginalLook ? OriginalOthers : PortOthers;
 
@@ -113,7 +116,7 @@ public partial class PartyTabView : Control
     // Up under the portraits and across to just before the school's icon, the user's choice (Nov 5, 2026): from x 22 to 137.2 at y 62,
     // then 2 nearer the icon, to 139.2, up 6 with the header's content, to y 56, and 1 shorter with its foot kept, from y 57, the user's
     // eye (Nov 6, 2026).
-    private static readonly Rect2 BarFrame = BarFrom(PortraitPiece.Position.X + 4, 139.2f, 62 - HeaderRise + 1, 10);
+    private static readonly Rect2 BarFrame = BarFrom(PortraitPiece.Position.X + 4 - HeaderShift, 139.2f - HeaderShift, 62 - HeaderRise + 1, 10);
 
     /// <summary>The bar frame's rectangle with its drawn left edge, <see cref="BarArtLeft"/> into its art, at a point across.</summary>
     private static Rect2 BarFrom(float left, float right, float top, float height)
@@ -166,7 +169,7 @@ public partial class PartyTabView : Control
     private const float IconSize = 7.5f, IconGap = 1, IconsTop = 41.75f;
 
     /// <summary>The level's right edge, under the small portraits' right edge, and the gold's, at the list's.</summary>
-    private const float LevelRight = 148.5f;
+    private const float LevelRight = 148.5f - HeaderShift;
 
     /// <summary>
     /// The right column's page, the user's design (Nov 2, 2026): a loose sheet of the user's parchment (<see cref="UiPainter.Slip"/>) the
@@ -243,8 +246,8 @@ public partial class PartyTabView : Control
     /// </summary>
     private static readonly Vector2 SilhouetteAt = new(PartyMenu.SilhouetteCorner.X, PartyMenu.SilhouetteCorner.Y);
 
-    /// <summary>How far up the equipment card's whole content went on Nov 6, 2026, the user's eye: the slots, the figure, the stats and the experience.</summary>
-    private const float EquipmentRise = 1.5f;
+    /// <summary>How far up the equipment card's whole content went on Nov 6, 2026, the user's eye (1.5, then 2 more): the slots, the figure, the stats and the experience.</summary>
+    private const float EquipmentRise = 3.5f;
 
     /// <summary>
     /// The figure behind the slots, the user's art (<see cref="Figures"/>): its top and how tall it's drawn, centred under the helmet's
@@ -460,6 +463,9 @@ public partial class PartyTabView : Control
             // keeps its card up.
             if (@event is InputEventMouseMotion)
                 _hoveredCell = null;
+            // A release handled before the drag's, a double click's, left the press standing, and the fist showed at the next press anywhere.
+            if (@event is InputEventMouseButton { Pressed: false, ButtonIndex: MouseButton.Left })
+                _press = null;
             MouseDefaultCursorShape = CursorOver(mouse.Position);
             var onFoot = OwnTab && !OriginalLook && Menu.List == PartyList.Inventory && Menu.Grid ? FootControlAt(mouse.Position - (Vector2)_origin) : null;
             if (onFoot != _hoveredFoot)
@@ -701,7 +707,7 @@ public partial class PartyTabView : Control
     /// </summary>
     private CursorShape CursorOver(Vector2 point) =>
         !OwnTab || OriginalLook ? CursorShape.Arrow
-        : _press is not null || _drag is not null ? CursorShape.Drag
+        : _drag is not null || _press is not null && Input.IsMouseButtonPressed(MouseButton.Left) ? CursorShape.Drag
         : DragFrom(point) is not null ? CursorShape.PointingHand
         : CursorShape.Arrow;
 

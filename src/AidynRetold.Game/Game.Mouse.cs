@@ -37,8 +37,8 @@ public partial class Game
     public override void _Input(InputEvent e)
     {
         NoteDevice(e);
-        if (e is InputEventMouseButton { ButtonIndex: MouseButton.Left } left)
-            Views.MouseCursors.Pressed = left.Pressed;
+        if (e is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true })
+            Views.MouseCursors.Click();
         if (_camera is not { MouseLook: true } camera)
             return;
         switch (e)

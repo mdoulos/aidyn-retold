@@ -11,7 +11,7 @@ public enum CursorHand
 
 /// <summary>
 /// The mouse cursor as Alaron's glove, the user's art and design (Nov 6, 2026): a pointing hand, the same with a ring at its fingertip
-/// while the left button is down (<see cref="Pressed"/>), an open hand over what can be dragged and a fist while it's held, in leather
+/// for a moment as the left button goes down (<see cref="Click"/>), an open hand over what can be dragged and a fist while it's held, in leather
 /// or in metal (<see cref="CursorHand"/>), as the game says each frame (<see cref="Show"/>). They fill Godot's Arrow, PointingHand and
 /// Drag shapes, which the views pick between (<c>PartyTabView.CursorOver</c>). The art is 250 square (<c>acre:image/cursor_leather</c>,
 /// <c>cursor_leather_click</c>, <c>cursor_leather_grab</c>, <c>cursor_leather_grabbed</c>, and the metal four); it's drawn small, as
@@ -20,8 +20,16 @@ public enum CursorHand
 /// </summary>
 public static class MouseCursors
 {
-    /// <summary>Whether the left button is down, which the game notes from its events: the pointing hand then shows its ring.</summary>
-    public static bool Pressed { get; set; }
+    /// <summary>The left button went down, which the game notes from its events: the pointing hand shows its ring for <see cref="ClickFlash"/>.</summary>
+    public static void Click() => _clickUntil = Time.GetTicksMsec() + ClickFlash;
+
+    /// <summary>How long the ring shows after a press, in milliseconds: a flash, not the press's length, the user's choice (Nov 6, 2026).</summary>
+    private const ulong ClickFlash = 120;
+
+    private static ulong _clickUntil;
+
+    /// <summary>Whether the pointing hand shows its ring now.</summary>
+    private static bool Pressed => Time.GetTicksMsec() < _clickUntil;
 
     private static CursorHand? _hand;
     private static bool _pressed;

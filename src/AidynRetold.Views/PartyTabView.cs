@@ -92,8 +92,8 @@ public partial class PartyTabView : Control
 
     private Vector2[] OtherPortraits => OriginalLook ? OriginalOthers : PortOthers;
 
-    /// <summary>The shown member's portrait, the original's 40 square and the port's 34; the others' the original's 24 and the port's 20.</summary>
-    private float ShownSize => OriginalLook ? 40 : 34;
+    /// <summary>The shown member's portrait, the original's 40 square and the port's 30.6 (34 less a tenth, the user's eye, Nov 6, 2026); the others' the original's 24 and the port's 20.</summary>
+    private float ShownSize => OriginalLook ? 40 : 30.6f;
 
     private float OtherSize => OriginalLook ? 24 : 20;
 
@@ -105,8 +105,9 @@ public partial class PartyTabView : Control
     /// it, sliced alike, the red cut to the share of hit points left across the frame's opening. The hit points are on it.
     /// </summary>
     // Up under the portraits and across to just before the school's icon, the user's choice (Nov 5, 2026): from x 22 to 137.2 at y 62,
-    // then 2 nearer the icon, to 139.2, and up 6 with the header's content, to y 56, the user's eye (Nov 6, 2026).
-    private static readonly Rect2 BarFrame = BarFrom(PortraitPiece.Position.X + 4, 139.2f, 62 - HeaderRise, 11);
+    // then 2 nearer the icon, to 139.2, up 6 with the header's content, to y 56, and 1 shorter with its foot kept, from y 57, the user's
+    // eye (Nov 6, 2026).
+    private static readonly Rect2 BarFrame = BarFrom(PortraitPiece.Position.X + 4, 139.2f, 62 - HeaderRise + 1, 10);
 
     /// <summary>The bar frame's rectangle with its drawn left edge, <see cref="BarArtLeft"/> into its art, at a point across.</summary>
     private static Rect2 BarFrom(float left, float right, float top, float height)
@@ -133,8 +134,8 @@ public partial class PartyTabView : Control
     /// </summary>
     private static readonly Rgba StaminaWash = new(255, 255, 255, 90), EnduranceShade = new(0, 0, 0, 40);
 
-    /// <summary>How tall the hit points' capitals are on the bar.</summary>
-    private const float HitPointsText = 3;
+    /// <summary>How tall the hit points' capitals are on the bar: 3 less three tenths, the user's eye (Nov 6, 2026).</summary>
+    private const float HitPointsText = 2.1f;
 
     /// <summary>The bar frame's opening, where it's drawn, which the hit points are centred in and the red fills.</summary>
     private static Rect2 BarOpening
@@ -508,14 +509,6 @@ public partial class PartyTabView : Control
                 AcceptEvent();
                 return;
             }
-        }
-        // The cancel's seal in the frame's corner: a click on it presses B, Cancel, Close, Back or Done (the user's design, Nov 6, 2026).
-        if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } cancel && CancelTakes
-            && CancelRect.HasPoint(cancel.Position - (Vector2)_origin))
-        {
-            UiScreen.Of(this)?.Click(MenuAction.Back);
-            AcceptEvent();
-            return;
         }
         if (DetailsInput(@event) || DragInput(@event))
         {
@@ -1078,30 +1071,12 @@ public partial class PartyTabView : Control
             ItemBox(shown);
         if (_drag is { } drag)
             DragArt(drag);
-        if (CancelShows)
-            Art(UiPainter.CancelSeal, CancelRect);
         _overlay.DrawSetTransform(Vector2.Zero);
+        // A question's seal is the cancel's red X with the mouse in use (PartyMenu.CancelShows, UiPainter.OnQuestionCancel), the user's
+        // design (Nov 6, 2026); it stood in the frame's top right corner too, for the tab's own Close or Back, for a few hours that day.
         _ui.Pointing = OwnTab && Menu.CancelShows;
         Popups();
     }
-
-    /// <summary>
-    /// The cancel's seal, the user's design and art (Nov 6, 2026; <see cref="PartyMenu.CancelShows"/>, <see cref="UiPainter.CancelSeal"/>): a
-    /// red X in wax in the frame's top right corner, over the gold, while the mouse is in use and a prompt is B's, Cancel, Close, Back or
-    /// Done; a click on it presses B. A question's hangs on its slip instead, in the plain seal's place (<see cref="UiPainter.OnQuestionCancel"/>),
-    /// and none is in the corner while one is up. Not as the tab slides away, with the prompts.
-    /// </summary>
-    private static readonly Rect2 CancelRect = new(FrameWidth - CancelSize - 1, 9, CancelSize, CancelSize);
-
-    private const float CancelSize = 13;
-
-    private bool CancelShows => CancelTakes && Menu.Pointing;
-
-    /// <summary>
-    /// Whether a click in the seal's corner presses B: as the seal shows, but whichever device was last used, as the click is the mouse's
-    /// and the tab learns of the mouse a frame later (<see cref="PartyMenu.Pointing"/>, which the pause menu lays the tab out with).
-    /// </summary>
-    private bool CancelTakes => OwnTab && Veil == 0 && Window.Overlay.Choice is null && Menu.CancelPrompted;
 
     /// <summary>The plain parchment, the header, the silhouette's slots in their column, the tabs and the arrow under the gap between the columns.</summary>
     private void DrawTab()
@@ -1920,8 +1895,8 @@ public partial class PartyTabView : Control
 
     private const float TrashSize = 8, TrashLine = 0.45f;
 
-    /// <summary>What the trash's art is drawn times while it's hot, which flushes its tan red.</summary>
-    private static readonly Rgba TrashHot = new(255, 110, 100, 255);
+    /// <summary>What the trash's art is drawn times while it's hot, which flushes its tan a little red: subtly, the user's eye (Nov 6, 2026).</summary>
+    private static readonly Rgba TrashHot = new(255, 190, 180, 255);
 
     /// <summary>
     /// The controls' places under the grid, right-aligned at its edge: the trash last, and before it the order and the filter, each its
@@ -2012,7 +1987,8 @@ public partial class PartyTabView : Control
     /// <summary>The colour a worn item's box is drawn in, a little grey, as it's in use, the user's choice (Nov 2, 2026).</summary>
     private static readonly Rgba WornBox = new(178, 178, 186, 255);
 
-    private const float CountText = 3.6f, CellInset = 2.5f;
+    // The count's capitals 3.6 less three tenths, the user's eye (Nov 6, 2026).
+    private const float CountText = 2.52f, CellInset = 2.5f;
 
     /// <summary>How much of a grid's cell its item's icon takes across, inside its box's inner line: 12 of the original's 18.</summary>
     private const float GridIcon = 12f / 18;
@@ -2257,7 +2233,7 @@ public partial class PartyTabView : Control
         var width = lines.Select(l => (l.Help ? help : small).ExactWidth(l.Text)).Append(face.ExactWidth(name)).Max() + 2 * TipSide;
         var cards = lines.Count(l => !l.Help);
         var helps = lines.Count - cards;
-        var height = SlipEnds + face.Capitals + BoxNameGap + cards * BoxLinePitch + (helps > 0 ? BoxHelpGap + helps * BoxHelpPitch : 0) + TipEnds;
+        var height = BoxTop + face.Capitals + BoxNameGap + cards * BoxLinePitch + (helps > 0 ? BoxHelpGap + helps * BoxHelpPitch : 0) + TipEnds;
         return (width, height);
     }
 
@@ -2269,7 +2245,7 @@ public partial class PartyTabView : Control
         var help = _ui.Slim.Sized(BoxHelpText);
         _ui.Slip(_canvas, rect);
         var x = rect.Position.X + TipSide;
-        var y = rect.Position.Y + SlipEnds;
+        var y = rect.Position.Y + BoxTop;
         Small(name, x, y + face.Capitals / 2 - face.Middle, UiPainter.Ink, font: face);
         y += face.Capitals + BoxNameGap;
         var helping = false;
@@ -2290,6 +2266,9 @@ public partial class PartyTabView : Control
     private const float NameText = UiPainter.StandardText / 2 * 1.25f, SlipSide = 3, SlipEnds = 2;
 
     private const float TipSide = 4, TipEnds = 2.5f;
+
+    /// <summary>How far under a box's top its name's capitals start: a slip's end and 1 more, the user's eye (Nov 6, 2026).</summary>
+    private const float BoxTop = SlipEnds + 1;
 
     /// <summary>
     /// The item box, the user's design (Nov 5 and 6, 2026; <see cref="PartyMenu.BoxShown"/>): on one slip beside the selected item, the

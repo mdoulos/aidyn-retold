@@ -340,8 +340,7 @@ public sealed class UiPainter
 
     /// <summary>
     /// The cancel's seal, a red X in wax, the user's art and design (Nov 6, 2026): on a question's slip in the plain seal's place while the
-    /// mouse is in use (<see cref="Pointing"/>), and in the Party tab's top right corner wherever B cancels (<c>PartyTabView.CancelRect</c>);
-    /// a click on it presses B.
+    /// mouse is in use (<see cref="Pointing"/>); a click on it presses B. Only on the dialogs, the user's choice: not on the menu itself.
     /// </summary>
     public const string CancelSeal = "ui_wax_cancel";
 

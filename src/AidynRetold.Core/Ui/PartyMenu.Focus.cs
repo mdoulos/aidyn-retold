@@ -311,14 +311,12 @@ public sealed partial class PartyMenu
     }
 
     /// <summary>
-    /// Whether the cancel's seal shows, the user's design (Nov 6, 2026): with the mouse in use, wherever B cancels, closes, goes back or
-    /// is done, which the prompts say (<see cref="MenuPrompt.Cancels"/>), a red X in wax stands in the top right corner, of a question's
-    /// slip or of the frame, and a click on it presses B. A key or a controller shows none, having B.
+    /// Whether the cancel's seal shows, the user's design (Nov 6, 2026): with the mouse in use, where B cancels, which the prompts say
+    /// (<see cref="MenuPrompt.Cancels"/>), a red X in wax stands in a question's slip's top right corner, and a click on it presses B. A
+    /// key or a controller shows none, having B. It stood in the frame's corner too, for the tab's own Close or Back, for a few hours that
+    /// day, and was too much on the menu itself.
     /// </summary>
-    public bool CancelShows => Pointing && CancelPrompted;
-
-    /// <summary>Whether a prompt is B's now (<see cref="MenuPrompt.Cancels"/>), which a click on the seal's place presses whichever device was last used, the click being the mouse's.</summary>
-    public bool CancelPrompted => Prompts.Any(p => p.Cancels);
+    public bool CancelShows => Pointing && Prompts.Any(p => p.Cancels);
 
     /// <summary>
     /// A prompt for a label and the controls that do it, each named on the device in use (<see cref="KeyName"/>), two joined with a

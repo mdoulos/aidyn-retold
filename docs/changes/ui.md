@@ -66,7 +66,7 @@ them ([ui](../systems/ui.md#options)).
 
 - **Loose sheets of parchment** in place of the original's feathered black boxes: popups, messages, questions, names and details, each with a
 
-  soft shadow, and a wax seal on a question that must be answered; with the mouse the seal is a red X that cancels, and the same X stands in the Party tab's top right corner wherever Backspace or B would cancel, close or go back, for a click. Original draws the boxes ([ui](../systems/ui.md#the-ports-layout)).
+  soft shadow, and a wax seal on a question that must be answered; with the mouse the seal is a red X that cancels for a click. Original draws the boxes ([ui](../systems/ui.md#the-ports-layout)).
 
 - **A message has Close**, for the mouse, and a question's answers take clicks ([ui](../systems/ui.md#the-ports-layout)).
 

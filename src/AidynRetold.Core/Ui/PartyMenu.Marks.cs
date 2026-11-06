@@ -32,12 +32,14 @@ public sealed partial class PartyMenu
 {
     /// <summary>
     /// How an item stands with the member shown: <see cref="ItemMark.Unusable"/> if they can't put it on, or for a scroll they'd read,
-    /// learn its spell; <see cref="ItemMark.Upgrade"/> if it would be better than what they wear in its place (<see cref="BetterThan"/>);
-    /// none for what's worn, potions and the rest.
+    /// learn its spell; <see cref="ItemMark.Upgrade"/> if it would be better than what they wear in its place (<see cref="BetterThan"/>),
+    /// but only while the item is <paramref name="selected"/>, under the cursor or the mouse, or a slot it fits is selected
+    /// (<see cref="Fitting"/>), the user's choice (Nov 5, 2026), so the grid isn't strewn with arrows; none for what's worn, potions and
+    /// the rest.
     /// </summary>
-    public ItemMark Mark(InventoryRow row) => Shown is not { } member || row.Wearer is not null ? ItemMark.None
+    public ItemMark Mark(InventoryRow row, bool selected = false) => Shown is not { } member || row.Wearer is not null ? ItemMark.None
         : Refusal(member, row.Item) is not null ? ItemMark.Unusable
-        : BetterThan(member, row.Item) is not null ? ItemMark.Upgrade
+        : (selected || Fitting is { } slot && Fits(row.Item, slot)) && BetterThan(member, row.Item) is not null ? ItemMark.Upgrade
         : ItemMark.None;
 
     /// <summary>
@@ -133,9 +135,6 @@ public sealed partial class PartyMenu
                 break;
             case ItemKind.Potion:
                 about.Add(Potions.IsFlask(item) ? "Flask" : "Potion");
-                break;
-            case ItemKind.Food:
-                about.Add("Food");
                 break;
             default:
                 if (item.Protection != 0)

@@ -1775,8 +1775,8 @@ public partial class PartyTabView : Control
     /// <summary>How much of a grid's cell its item's icon takes across, inside its box's inner line: 12 of the original's 18.</summary>
     private const float GridIcon = 12f / 18;
 
-    /// <summary>How an unusable item's icon is drawn, faded; and a mark's size and its lines' thickness.</summary>
-    private static readonly Rgba DimIcon = new(255, 255, 255, 110);
+    /// <summary>The box over an unusable item's cell, grey at half alpha; and a mark's size and its lines' thickness.</summary>
+    private static readonly Rgba UnusableBox = new(128, 128, 128, 128);
 
     private const float MarkSize = 3.2f, MarkLine = 0.55f;
 
@@ -1825,12 +1825,16 @@ public partial class PartyTabView : Control
             var row = list.Rows[i];
             Art(SlotBox, new Rect2(x + 0.5f, y + 0.5f, grid.Cell - 1, grid.Cell - 1), row.Wearer is null ? White : WornBox);
             var icon = grid.Cell * GridIcon;
-            // What the member shown can't use is dimmed with a red cross, and what would be better than what they wear has a green arrow,
-            // in the top right corner.
-            var mark = OriginalLook ? ItemMark.None : Menu.Mark(row);
+            // What the member shown can't use is under a grey box at half alpha, its icon over the box at half saturation, the user's
+            // choice (Nov 5, 2026); what would be better than what they wear has a green arrow in the top right corner, while it's under
+            // the cursor or the mouse or a slot it fits is selected (PartyMenu.Mark).
+            var selected = i == list.Cursor && Menu.Focus == PartyFocus.List || _hoveredCell == i;
+            var mark = OriginalLook ? ItemMark.None : Menu.Mark(row, selected);
+            if (mark == ItemMark.Unusable)
+                _canvas.DrawRect(new Rect2(x + 0.5f, y + 0.5f, grid.Cell - 1, grid.Cell - 1), _ui.Tint(UnusableBox));
             _ui.Image(_canvas, Menu.ItemIcon(row.Item), new Rect2(x + (grid.Cell - icon) / 2, y + (grid.Cell - icon) / 2, icon, icon),
-                mark == ItemMark.Unusable ? DimIcon : null);
-            if (mark != ItemMark.None)
+                desaturated: mark == ItemMark.Unusable);
+            if (mark == ItemMark.Upgrade)
                 MarkArt(mark, x + grid.Cell - CellInset - MarkSize, y + CellInset);
             if (row.Wearer is { } wearer && Menu.Party.Slots[wearer] is { } who && Menu.Portrait(who.Entity) is { } portrait)
             {
@@ -1839,16 +1843,15 @@ public partial class PartyTabView : Control
                 _canvas.DrawRect(new Rect2(x + 1.5f, wearerY - 0.5f, WearerSize + 1, WearerSize + 1), _ui.Tint(UiPainter.Ink));
                 _ui.Image(_canvas, portrait, x + 2, wearerY, new Vector2I(WearerSize, WearerSize));
             }
-            // A food that spoils has its clock in the bottom right, in the port's look, and the count stands before it.
-            Freshness? clock = OriginalLook ? null : row.Freshness;
-            if (clock is { } band)
-                _ui.Image(_canvas, FoodClock.Icon, new Rect2(x + grid.Cell - CellInset - ClockSize, y + grid.Cell - CellInset - ClockSize, ClockSize, ClockSize),
-                    FoodClock.Tint(band));
+            // A food that spoils has its clock in the bottom left, in the port's look, only once it's yellow or red, the user's choice
+            // (Nov 5, 2026): the bottom right is the count's.
+            if (!OriginalLook && row.Freshness is { } band and not Freshness.Fresh)
+                _ui.Image(_canvas, FoodClock.Icon, new Rect2(x + CellInset, y + grid.Cell - CellInset - ClockSize, ClockSize, ClockSize), FoodClock.Tint(band));
             if (row.Quantity > 1)
             {
                 var text = Num(row.Quantity);
                 var foot = y + grid.Cell - CellInset;
-                Small(text, x + grid.Cell - CellInset - (clock is null ? 0 : ClockSize + 1) - count.ExactWidth(text), foot - count.Capitals / 2 - count.Middle, BarText,
+                Small(text, x + grid.Cell - CellInset - count.ExactWidth(text), foot - count.Capitals / 2 - count.Middle, BarText,
                     BarShadow, count);
             }
             if (i == list.Cursor && Menu.Focus == PartyFocus.List && Menu.CursorShows)

@@ -9,8 +9,9 @@ namespace AidynRetold.Core.Ui;
 /// and cut to <paramref name="Clip"/>'s pixels, inclusive, if it has one (<c>WidgetBorg8::Render</c>).
 /// </summary>
 /// <param name="Size">Its size as drawn, if it's stretched to one rather than scaled.</param>
+/// <param name="Original">Draws the original's image whatever the look or the plugins put over it: the trek HUD's frames, the user's choice (Nov 5, 2026).</param>
 public readonly record struct HudSprite(RecordId Image, float X, float Y, float Scale, Rgba Color, (float Width, float Height)? Size = null,
-    ScreenRect? Clip = null)
+    ScreenRect? Clip = null, bool Original = false)
 {
     /// <summary>Where the RDP puts a position: <c>N64BorgImageDraw</c> takes it times 4, truncated.</summary>
     public static float Quarter(float at) => (int)(at * 4) / 4f;

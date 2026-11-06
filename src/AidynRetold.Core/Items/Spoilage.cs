@@ -36,15 +36,19 @@ public static class Spoilage
     public static Freshness Of(ulong left, ulong keepsFor) =>
         left <= Soon ? Freshness.Spoiling : left * 2 <= keepsFor ? Freshness.Half : Freshness.Fresh;
 
-    /// <summary>What the slip over a stack says of the oldest unit's time left: "Keeps 3 more days", "Spoils within a day" or "Spoils by the next camp".</summary>
+    /// <summary>
+    /// What the slip over a stack says of the oldest unit's time left, the user's wording (Nov 5, 2026): "Expires in 3 days", to the
+    /// nearest day, or under a day "Expires in 8 hours", to the next hour.
+    /// </summary>
     public static string Describe(ulong left)
     {
-        if (left <= Soon)
-            return "Spoils by the next camp";
         if (left <= GameClock.Day)
-            return "Spoils within a day";
-        var days = (left + GameClock.Day - 1) / GameClock.Day;
-        return $"Keeps {days.ToString(CultureInfo.InvariantCulture)} more days";
+        {
+            var hours = Math.Max(1, (left + GameClock.Hour - 1) / GameClock.Hour);
+            return $"Expires in {hours.ToString(CultureInfo.InvariantCulture)} {(hours == 1 ? "hour" : "hours")}";
+        }
+        var days = Math.Max(1, (left + GameClock.Day / 2) / GameClock.Day);
+        return $"Expires in {days.ToString(CultureInfo.InvariantCulture)} {(days == 1 ? "day" : "days")}";
     }
 
     /// <summary>The notice of what spoiled: "Spoiled and tossed: 2 Meat Stew, 1 Fish."</summary>

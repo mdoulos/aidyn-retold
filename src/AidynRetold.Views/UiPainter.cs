@@ -497,10 +497,13 @@ public sealed class UiPainter
         canvas.DrawTextureRectRegion(Filtered(texture, drawn, source), rect, Sampled(source, drawn), tint);
     }
 
-    /// <summary>An image stretched over a rectangle placed to a fraction of a pixel, filtered as a scaled image is, times a colour.</summary>
-    public void Image(CanvasItem canvas, RecordId image, Rect2 rect, Rgba? color = null)
+    /// <summary>
+    /// An image stretched over a rectangle placed to a fraction of a pixel, filtered as a scaled image is, times a colour; at half
+    /// saturation if <paramref name="desaturated"/> (<see cref="UiImages.Desaturated"/>).
+    /// </summary>
+    public void Image(CanvasItem canvas, RecordId image, Rect2 rect, Rgba? color = null, bool desaturated = false)
     {
-        if (Images.Get(image) is not { } texture)
+        if ((desaturated ? Images.Desaturated(image) : Images.Get(image)) is not { } texture)
             return;
         var source = new Rect2(Vector2.Zero, texture.GetSize());
         var drawn = new Vector2I(Math.Max(1, (int)MathF.Round(rect.Size.X)), Math.Max(1, (int)MathF.Round(rect.Size.Y)));
@@ -566,7 +569,7 @@ public sealed class UiPainter
     /// </summary>
     public void Sprite(CanvasItem canvas, HudSprite sprite)
     {
-        if (Images.Get(sprite.Image) is not { } texture)
+        if (Images.Get(sprite.Image, sprite.Original) is not { } texture)
             return;
         var source = new Rect2(Vector2.Zero, texture.GetSize());
         var size = sprite.Size is var (w, h) ? new Vector2(w, h) : source.Size * sprite.Scale;

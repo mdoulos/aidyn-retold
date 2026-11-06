@@ -51,10 +51,13 @@ public sealed class UiImages
     /// original's size is drawn pixel for pixel as the original is. One of the port's own pictures draws the image it stands in for
     /// (<see cref="MenuImages.Shared"/>) in the original look.
     /// </summary>
-    public Texture2D? Get(RecordId image)
+    public Texture2D? Get(RecordId image) => Get(image, false);
+
+    /// <summary>The image, or with <paramref name="wantOriginal"/> the original's whatever the look, as the trek HUD's frames are drawn.</summary>
+    public Texture2D? Get(RecordId image, bool wantOriginal)
     {
         // The original look draws the original's image, the first plugin's, whatever a mod or the game's own art puts over it.
-        var original = UiPainter.Original;
+        var original = UiPainter.Original || wantOriginal;
         var textures = original ? _originals : _textures;
         if (textures.TryGetValue(image, out var texture))
             return texture;
@@ -87,6 +90,38 @@ public sealed class UiImages
         var texture = ImageTexture.CreateFromImage(Png.Mipmapped(data));
         texture.SetSizeOverride(size);
         return new CanvasTexture { DiffuseTexture = texture, TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps };
+    }
+
+    private readonly Dictionary<RecordId, Texture2D?> _desaturated = [];
+
+    /// <summary>
+    /// An image at half saturation, each pixel halfway to its grey, made the first time it's asked for, for an item the member can't
+    /// use; null if no plugin has the image. A sharper image stays sharper, at the size it's laid out at.
+    /// </summary>
+    public Texture2D? Desaturated(RecordId image)
+    {
+        if (_desaturated.TryGetValue(image, out var made))
+            return made;
+        var texture = Get(image);
+        var data = texture switch { CanvasTexture canvas => canvas.DiffuseTexture?.GetImage(), _ => texture?.GetImage() };
+        if (data is not null)
+        {
+            data.Convert(Image.Format.Rgba8);
+            if (data.HasMipmaps())
+                data.ClearMipmaps();
+            var (width, height) = (data.GetWidth(), data.GetHeight());
+            var bytes = data.GetData();
+            for (var i = 0; i + 3 < bytes.Length; i += 4)
+            {
+                var grey = (bytes[i] * 299 + bytes[i + 1] * 587 + bytes[i + 2] * 114) / 1000;
+                bytes[i] = (byte)((bytes[i] + grey) / 2);
+                bytes[i + 1] = (byte)((bytes[i + 1] + grey) / 2);
+                bytes[i + 2] = (byte)((bytes[i + 2] + grey) / 2);
+            }
+            var faded = Image.CreateFromData(width, height, false, Image.Format.Rgba8, bytes);
+            made = texture is CanvasTexture ? Sharper(faded, (Vector2I)texture!.GetSize()) : ImageTexture.CreateFromImage(faded);
+        }
+        return _desaturated[image] = made;
     }
 
     private readonly Dictionary<RecordId, Texture2D?> _plain = [];

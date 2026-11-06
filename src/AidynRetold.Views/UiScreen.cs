@@ -214,9 +214,40 @@ public partial class UiScreen : Control
         var rect = ScreenRect;
         if (rect.Size.X <= 0 || rect.Size.Y <= 0)
             return;
-        var copy = (InputEventMouse)mouse.Duplicate();
-        copy.Position = (mouse.Position - rect.Position) / rect.Size * (Vector2)CanvasSize;
-        copy.GlobalPosition = copy.Position;
+        var scale = (Vector2)CanvasSize / rect.Size;
+        var position = (mouse.Position - rect.Position) * scale;
+        // A fresh event, not a duplicate: a duplicated motion event, which keeps the window it came from, never reaches the views in the
+        // screen's own viewport, though a duplicated button's does (Godot 4.7), so hovering showed nothing where clicking worked.
+        InputEventMouse copy = mouse switch
+        {
+            InputEventMouseMotion motion => new InputEventMouseMotion
+            {
+                Position = position, GlobalPosition = position, Relative = motion.Relative * scale, Velocity = motion.Velocity * scale,
+                ButtonMask = motion.ButtonMask, Pressure = motion.Pressure, Tilt = motion.Tilt, PenInverted = motion.PenInverted,
+            },
+            InputEventMouseButton button => new InputEventMouseButton
+            {
+                Position = position, GlobalPosition = position, ButtonIndex = button.ButtonIndex, Pressed = button.Pressed, DoubleClick = button.DoubleClick,
+                ButtonMask = button.ButtonMask, Factor = button.Factor, Canceled = button.Canceled,
+            },
+            _ => (InputEventMouse)mouse.Duplicate(),
+        };
+        copy.AltPressed = mouse.AltPressed;
+        copy.CtrlPressed = mouse.CtrlPressed;
+        copy.ShiftPressed = mouse.ShiftPressed;
+        copy.MetaPressed = mouse.MetaPressed;
+        if (copy is not InputEventMouseMotion and not InputEventMouseButton)
+        {
+            copy.Position = position;
+            copy.GlobalPosition = position;
+        }
+        // The screen's viewport isn't a SubViewportContainer's, so the engine never tells it the mouse is over it or which control is
+        // under the mouse, and a motion event pushed to it reaches no control (a button's finds its control itself). Told, it does.
+        if (copy is InputEventMouseMotion)
+        {
+            _viewport.NotifyMouseEntered();
+            _viewport.UpdateMouseCursorState();
+        }
         _viewport.PushInput(copy, true);
         // Only what the screen's views took stops here: a click or the wheel they pass over goes on to the game's unhandled input,
         // where the Controls page's prompt binds it and a menu control bound to it acts.

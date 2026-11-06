@@ -36,7 +36,9 @@ public class PartyMenuMarksTests
 
         Assert.Equal(ItemMark.Unusable, menu.Mark(Row(menu, Heavy.Id)));
         Assert.Equal("Needs 99 Strength", menu.Card(Row(menu, Heavy.Id)).Warning);
-        Assert.Equal(ItemMark.Upgrade, menu.Mark(Row(menu, Better.Id)));
+        // The arrow shows only while the item is selected, or a slot it fits is (the user's choice, Nov 5, 2026).
+        Assert.Equal(ItemMark.None, menu.Mark(Row(menu, Better.Id)));
+        Assert.Equal(ItemMark.Upgrade, menu.Mark(Row(menu, Better.Id), selected: true));
         Assert.Equal(new ItemCard(Better.Name, "Protection 5", null, $"Better than {Old.Name}"), menu.Card(Row(menu, Better.Id)));
         Assert.Equal(ItemMark.None, menu.Mark(Row(menu, Worse.Id)));
         Assert.Equal(new ItemCard(Worse.Name, "Protection 1"), menu.Card(Row(menu, Worse.Id)));

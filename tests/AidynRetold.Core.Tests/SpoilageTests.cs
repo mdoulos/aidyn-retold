@@ -128,11 +128,13 @@ public class SpoilageTests
     [Fact]
     public void TheSlipSaysHowLongTheOldestKeeps()
     {
-        Assert.Equal("Keeps 7 more days", Spoilage.Describe(7 * Day));
-        Assert.Equal("Keeps 2 more days", Spoilage.Describe(Day + 1));
-        Assert.Equal("Spoils within a day", Spoilage.Describe(Day));
-        Assert.Equal("Spoils within a day", Spoilage.Describe(8 * Hour + 1));
-        Assert.Equal("Spoils by the next camp", Spoilage.Describe(8 * Hour));
+        Assert.Equal("Expires in 7 days", Spoilage.Describe(7 * Day));
+        Assert.Equal("Expires in 1 day", Spoilage.Describe(Day + 1));
+        Assert.Equal("Expires in 2 days", Spoilage.Describe(Day + 13 * Hour));
+        Assert.Equal("Expires in 24 hours", Spoilage.Describe(Day));
+        Assert.Equal("Expires in 9 hours", Spoilage.Describe(8 * Hour + 1));
+        Assert.Equal("Expires in 8 hours", Spoilage.Describe(8 * Hour));
+        Assert.Equal("Expires in 1 hour", Spoilage.Describe(1));
         Assert.Equal("Spoiled and tossed: 2 Meat Stew, 1 Apple.",
             Spoilage.Notice([new Tossed(Item.From(Stew), 2), new Tossed(Item.From(Apple), 1)]));
     }

@@ -60,7 +60,7 @@ Redesigned, the user's design. Original brings back the original's layout ([ui](
 - **The inventory is a grid**, 7 × 8, each item's count on it and the wearer's portrait on what's worn, with Show (All, Weapons, Armor,
   Accessories, Potions, Scrolls, Other, Equipped) and Sort (Type, Name, Value), and the inventory's total. Worn items are under Equipped and
   on the silhouette. The other lists are 12 rows, not 8, with thin scroll bars in place of arrows.
-- **Marks on the grid.** What the member can't use (by aspect, Strength, Intelligence, skill, or a scroll they can't learn or know already)
+- **Marks on the grid.** What the member can't use (by aspect, Strength, Intelligence, skill, or a scroll they can't learn or know already) sits under a grey box at half alpha, its icon faded to half saturation; what would be better than what they wear gets a green arrow, but only while it's under the cursor or the mouse or a slot it fits is selected, so the grid isn't strewn with arrows ([ui](../systems/ui.md#the-ports-layout)).
   is faded and crossed out in red; what's better than what they wear has a green arrow. An item's card says why in red ("Needs 18 Strength",
   "Needs the Lunar aspect", "Already known") or what it's better than in green.
 - **The stats show what an item would do**: with the cursor on one, each stat shows its total, an arrow and what it would be, green up or
@@ -74,8 +74,8 @@ Redesigned, the user's design. Original brings back the original's layout ([ui](
 - **An action menu** on a right click, or the controller's Appraise: what A does, and Details.
 - **Hunger shows**: an amber or red fork and spoon before the school's icon, a green one for Well Fed, its hover saying what it costs, and a soft pulse over the member's portrait, amber every 3 seconds while Hungry, red every 1.5 while Starving, on the HUD and the battle screen too; the HUD's portraits come up as someone grows hungrier ([ui](../systems/ui.md#the-ports-layout)).
 - **Tiredness shows**: three Zs on amber or red beside hunger's icon, and the portrait pulses for whichever of hunger and tiredness is worse, never both; the unschooled have a white ring where the school's icon would be ([ui](../systems/ui.md#the-ports-layout)).
-- **The trek HUD's portraits show a hurt member's health**, a thin bar along the portrait's bottom, green or red under a third, and a small amber or red dot in the corner while a status pulses over them; the pause menu has the icon itself ([ui](../systems/ui.md#the-partys-portraits)).
-- **Food's clock**: a stack of food that spoils has a little clock in the bottom right of its cell, green, yellow or red by how close its oldest unit is to spoiling, and its slip says how long it keeps; a toast in trek says what spoiled and was tossed ([ui](../systems/ui.md#the-ports-layout), [items](items.md)).
+- **The trek HUD's portraits show a hurt member's health**, a thin bar along the portrait's bottom, green or red under a third, and the small status icons in the corner, overlapping by half, while hunger or tiredness pulses over them; the frames are the original's, whatever art replaces them elsewhere ([ui](../systems/ui.md#the-partys-portraits)).
+- **Food's clock**: a stack of food that spoils has a little clock in the bottom left of its cell once its oldest unit has half its life or less left, yellow, then red when it won't survive the next camp; fresh food shows none. Its slip says "Expires in 3 days", or in hours under a day. A toast in trek says what spoiled and was tossed ([ui](../systems/ui.md#the-ports-layout), [items](items.md)).
 - **Food and cooking**: a Food filter, Eat, and the Cook skill's Cooking popup ([items](items.md#food-and-cooking)).
 - **No waiting.** The original ignores the next member or list for about a quarter of a second after a potion or an equip; Retold takes the
   press at once, finishing what moves. The header changes in 10 frames, not 15. Original waits as the original does

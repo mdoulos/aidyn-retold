@@ -112,6 +112,9 @@ public partial class Game
     /// <c>shot:&lt;png&gt;</c> saves the window as it is then.
     /// Returns how long that takes after the half second before the first, or 0 with none.
     /// </summary>
+    // Where the last move: token put the mouse, for the next one's relative motion.
+    private Vector2? _lastMove;
+
     private double Press(string? presses)
     {
         if (presses is null)
@@ -178,6 +181,20 @@ public partial class Game
             // hover:1100x432 moves the mouse to that point of the window, as hovering a menu's icon does, and click: and rclick: move it
             // there and click the left or right button: straight to each UI screen that takes the mouse, as the window passes over a
             // mouse moved while the cursor itself is off it.
+            // move:XxY warps the mouse itself, so the motion goes the way a real mouse's does, through the viewport to whatever control
+            // has it, rather than straight to the UI screens as hover: goes.
+            if (token.Split(':') is ["move", var moveTo] && moveTo.Split('x') is [var mx, var my])
+            {
+                var point = new Vector2(float.Parse(mx, CultureInfo.InvariantCulture), float.Parse(my, CultureInfo.InvariantCulture));
+                var from = _lastMove;
+                _lastMove = point;
+                GetTree().CreateTimer(at).Timeout += () => Input.ParseInputEvent(new InputEventMouseMotion
+                {
+                    Position = point, GlobalPosition = point, Relative = from is { } last ? point - last : new Vector2(8, 8),
+                });
+                at += 0.2;
+                continue;
+            }
             if (token.Split(':') is [var kind and ("hover" or "click" or "rclick"), var where] && where.Split('x') is [var hx, var hy])
             {
                 var point = new Vector2(float.Parse(hx, CultureInfo.InvariantCulture), float.Parse(hy, CultureInfo.InvariantCulture));

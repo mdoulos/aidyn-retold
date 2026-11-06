@@ -73,12 +73,14 @@ public partial class Game
         };
         if (controller is { } c)
             _controller = c;
-        // An action pressed for the press harness counts as a key's.
+        // An action pressed for the press harness counts as a key's. A key counts only if it's one of the situation's controls, the
+        // user's choice (Nov 6, 2026): Ctrl alone, or any key the menu has no use for, leaves the mouse in use and its hover standing.
         bool? pointing = e switch
         {
             InputEventMouseButton { Pressed: true } => true,
             InputEventMouseMotion motion when motion.Relative.LengthSquared() > 4 => true,
-            InputEventKey { Pressed: true } or InputEventJoypadButton { Pressed: true } or InputEventAction { Pressed: true } => false,
+            InputEventKey { Pressed: true } key => _stick.Translate(key) != Core.Ui.MenuAction.None ? false : null,
+            InputEventJoypadButton { Pressed: true } or InputEventAction { Pressed: true } => false,
             InputEventJoypadMotion motion when Math.Abs(motion.AxisValue) > 0.5f => false,
             _ => null,
         };

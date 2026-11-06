@@ -179,23 +179,22 @@ public class PartyMenuGridTests
     }
 
     /// <summary>
-    /// In the port's look a slot of the silhouette is selected empty or not, the stick going onto it, and its actiontip's Unequip takes
-    /// off what's in it, the slot staying selected; the stick off the silhouette lets the slot go, A then being the cursor's row's again.
+    /// In the port's look a slot of the silhouette is selected empty or not, the stick going onto it, and the menus' Appraise takes off
+    /// what's in it, the slot staying selected; the stick off the silhouette lets the slot go, A then being the cursor's row's again.
     /// </summary>
     [Fact]
-    public void ASelectedSlotsActiontipTakesItsItemOff()
+    public void AppraiseOnASelectedSlotTakesItsItemOff()
     {
         var (menu, member) = Menu(showWorn: false);
         menu.SelectSlot(EquipmentSlot.Helmet);
         Assert.Equal(EquipmentSlot.Helmet, menu.SelectedSlot);
+        Assert.False(((IPartyWindow)menu).Appraise());
 
         menu.SelectSlot(EquipmentSlot.Weapon);
         Assert.Equal(EquipmentSlot.Weapon, menu.SelectedSlot);
         Assert.Equal(Sword.Id, member.Equipment.Weapon?.Id);
         Assert.Equal(Sword.Name, menu.Details()?.Title);
-        Assert.True(menu.OpenTip());
-        Assert.Equal(ActionTipChoice.Unequip, menu.Tip!.Choices.Current);
-        menu.Accept();
+        Assert.True(((IPartyWindow)menu).Appraise());
         Assert.Null(member.Equipment.Weapon);
         Assert.Equal(EquipmentSlot.Weapon, menu.SelectedSlot);
         menu.Back();
@@ -222,67 +221,132 @@ public class PartyMenuGridTests
         var menu = new PartyMenu(party, new MenuText([]), _ => null, _ => null) { Grid = true };
 
         menu.SelectSlot(EquipmentSlot.Weapon);
-        menu.OpenTip();
-        menu.Accept();
+        Assert.True(((IPartyWindow)menu).Appraise());
 
         Assert.Equal(Sword.Id, member.Equipment.Weapon?.Id);
         Assert.Equal(PartyMenu.NoRoom, menu.Message?.Text);
     }
 
     /// <summary>
-    /// The actiontip on a worn slot offers Unequip and Details; the stick moves its cursor, not the grid's, and choosing Unequip takes
-    /// the item off as A would. B closes it, and with it up the member and the list stay.
+    /// The item box says which buttons do what with the selected item, named on the device in use: Change and Unequip on a worn slot with
+    /// the details, A's action on a carried item, and nothing for a plain item with no details; none with the mouse in use, nor in the
+    /// original's look.
     /// </summary>
     [Fact]
-    public void TheActionTipOnAWornItemUnequipsIt()
+    public void TheItemBoxSaysWhichButtonsDoWhat()
     {
         var (menu, member) = Menu(showWorn: false);
+        menu.KeyName = Keys;
+        menu.Point(menu.Inventory.Rows.ToList().FindIndex(r => r.Item.Id == Things[0].Id));
+        Assert.NotNull(menu.BoxShown);
+        Assert.Empty(menu.BoxShown!.Value.Help);
+
         menu.SelectSlot(EquipmentSlot.Weapon);
-        Assert.True(menu.OpenTip());
+        Assert.Equal([new MenuPrompt("A", "Change"), new MenuPrompt("X", "Unequip"), new MenuPrompt("Y", "See Details")], menu.BoxShown!.Value.Help);
+        Assert.True(menu.Party.Unequip(member, member.Equipment.Weapon!));
+        menu.Refresh();
+        menu.Back();
+        menu.Point(menu.Inventory.Rows.ToList().FindIndex(r => r.Item.Id == Sword.Id));
+        Assert.Equal([new MenuPrompt("A", "Equip"), new MenuPrompt("Y", "See Details")], menu.BoxShown!.Value.Help);
 
-        Assert.Equal([ActionTipChoice.Unequip, ActionTipChoice.Details], menu.Tip!.Choices.Rows);
-        Assert.True(menu.HasPopup);
-        var cursor = menu.Inventory.Cursor;
-        menu.MoveCursor(1);
-        Assert.Equal((1, cursor, EquipmentSlot.Weapon), (menu.Tip.Choices.Cursor, menu.Inventory.Cursor, menu.SelectedSlot));
-        Assert.True(menu.Back());
-        Assert.Null(menu.Tip);
-
-        menu.OpenTip();
-        menu.Accept();
-        Assert.Null(menu.Tip);
-        Assert.Null(member.Equipment.Weapon);
-        Assert.Contains(menu.Inventory.Rows, r => r.Item.Id == Sword.Id && r.Wearer is null);
+        menu.Pointing = true;
+        Assert.Null(menu.BoxShown);
+        menu.Pointing = false;
+        menu.OriginalLook = true;
+        Assert.Null(menu.BoxShown);
     }
 
     /// <summary>
-    /// The actiontip on a carried item names what A does, Equip for what can be worn, and its Details hold the details open until A or B
-    /// lets them go; the menus' Appraise opens it on the cursor's item, the controller's way. A plain item with no details has none.
+    /// C-down's button holds the details open in the port's look, and any press lets them go, the stick's among them, which moves nothing
+    /// while they fade.
     /// </summary>
     [Fact]
-    public void TheActionTipNamesWhatADoesAndHoldsTheDetails()
+    public void AnyPressLetsTheHeldDetailsGo()
     {
         var (menu, member) = Menu(showWorn: false);
-        menu.Point(menu.Inventory.Rows.ToList().FindIndex(r => r.Item.Id == Things[0].Id));
-        Assert.False(menu.OpenTip());
         Assert.True(menu.Party.Unequip(member, member.Equipment.Weapon!));
         menu.Refresh();
-        menu.Point(menu.Inventory.Rows.ToList().FindIndex(r => r.Item.Id == Sword.Id));
-        Assert.True(((IPartyWindow)menu).Appraise());
-        Assert.Equal([ActionTipChoice.Equip, ActionTipChoice.Details], menu.Tip!.Choices.Rows);
-        menu.MoveCursor(1);
-        menu.Accept();
-        Assert.Null(menu.Tip);
+        var sword = menu.Inventory.Rows.ToList().FindIndex(r => r.Item.Id == Sword.Id);
+        menu.Point(sword);
+        menu.PressDetails();
         Assert.True(menu.DetailsPane is { Showing: true, Pinned: true });
         menu.Step();
         menu.MoveCursor(1);
-        Assert.True(menu.DetailsPane.Showing);
-        Assert.True(menu.Back());
-        Assert.False(menu.DetailsPane.Pinned);
+        Assert.True(menu.DetailsPane is { Showing: true, Pinned: false });
+        Assert.Equal(sword, menu.Inventory.Cursor);
+        for (var i = 0; i < 120 && menu.DetailsPane.Showing; i++)
+            menu.Step();
+        Assert.False(menu.DetailsPane.Showing);
 
-        menu.OriginalLook = true;
-        Assert.False(menu.OpenTip());
+        menu.PressDetails();
+        Assert.True(menu.DetailsPane.Pinned);
+        ((IPartyWindow)menu).Sideways(1);
+        Assert.False(menu.DetailsPane.Pinned);
+        Assert.Equal(PartyList.Inventory, menu.List);
     }
+
+    /// <summary>
+    /// A press the mouse makes is never taken just to show the hidden cursor: a click on a tab aims the stick's press, and a double click
+    /// moves the cursor quietly before its A; a key's press after them is taken as ever.
+    /// </summary>
+    [Fact]
+    public void AClicksPressIsNeverTakenToShowTheCursor()
+    {
+        var (menu, _) = Menu(showWorn: false);
+        menu.Pointing = true;
+
+        menu.AimAt(PartyList.Stats);
+        Assert.False(menu.ShowCursor(MenuAction.Right));
+        menu.AimAt(null);
+        menu.Point(3, quietly: true);
+        Assert.False(menu.ShowCursor(MenuAction.Accept));
+        Assert.True(menu.ShowCursor(MenuAction.Accept));
+    }
+
+    /// <summary>
+    /// The trash under the grid starts choosing items to drop: A on a cell, or a click, chooses it or lets it go, any number; B, the trash
+    /// again or the list changing ends it, letting them all go. What can't be dropped isn't chosen.
+    /// </summary>
+    [Fact]
+    public void TheTrashUnderTheGridChoosesItemsToDrop()
+    {
+        var (menu, _) = Menu(showWorn: false);
+        menu.KeyName = Keys;
+        menu.ChooseFoot(PartyMenu.FootTrash);
+        Assert.True(menu.Discarding);
+        Assert.Equal(PartyFocus.List, menu.Focus);
+
+        menu.Point(2);
+        menu.Accept();
+        Assert.True(menu.IsDiscard(menu.Inventory.Rows[2]));
+        Assert.Contains(new MenuPrompt("A", "Unselect"), menu.Prompts);
+        Assert.Contains(new MenuPrompt("B", "Done"), menu.Prompts);
+        Assert.True(menu.ToggleDiscard(menu.Inventory.Rows[3]));
+        Assert.Equal(2, menu.Discards.Count);
+        menu.Accept();
+        Assert.False(menu.IsDiscard(menu.Inventory.Rows[2]));
+        Assert.True(menu.Back());
+        Assert.False(menu.Discarding);
+        Assert.Empty(menu.Discards);
+
+        menu.ChooseFoot(PartyMenu.FootTrash);
+        menu.ChangeList(1);
+        Assert.False(menu.Discarding);
+        menu.ShowList(PartyList.Inventory);
+        menu.ChooseFoot(PartyMenu.FootTrash);
+        menu.ChooseFoot(PartyMenu.FootTrash);
+        Assert.False(menu.Discarding);
+    }
+
+    /// <summary>A controller's names for the menus' buttons, as the Controls page gives them.</summary>
+    private static string? Keys(string control) => control switch
+    {
+        "menu_accept" => "A",
+        "menu_back" => "B",
+        "menu_details" => "Y",
+        "menu_appraise" => "X",
+        _ => null,
+    };
 
     /// <summary>The wheel scrolls a grid a line at a time, no further than shows its first line or its last, leaving the cursor where it is.</summary>
     [Fact]
@@ -409,25 +473,18 @@ public class PartyMenuGridTests
 
     /// <summary>
     /// The prompts along the foot name each button on the device in use and what it does with what's selected: A's action for the item,
-    /// the details, the actiontip, the member and Back, but none for what an item hasn't, as a thing of no use with no description; none
-    /// in the original's look.
+    /// Appraise's Unequip on a worn slot, the details, the member and Back, but none for what an item hasn't, as a thing of no use with
+    /// no description; none in the original's look.
     /// </summary>
     [Fact]
     public void ThePromptsSayWhatEachButtonDoes()
     {
         var (menu, _) = Menu(showWorn: false);
-        menu.KeyName = control => control switch
-        {
-            "menu_accept" => "A",
-            "menu_back" => "B",
-            "menu_details" => "Y",
-            "menu_appraise" => "X",
-            _ => null,
-        };
+        menu.KeyName = Keys;
 
         Assert.Equal([new MenuPrompt("B", "Close")], menu.Prompts);
         menu.SelectSlot(EquipmentSlot.Weapon);
-        Assert.Equal([new MenuPrompt("A", "Change"), new MenuPrompt("Y", "Details"), new MenuPrompt("X", "Actions"), new MenuPrompt("B", "Back")],
+        Assert.Equal([new MenuPrompt("A", "Change"), new MenuPrompt("X", "Unequip"), new MenuPrompt("Y", "Details"), new MenuPrompt("B", "Back")],
             menu.Prompts);
         menu.OriginalLook = true;
         Assert.Empty(menu.Prompts);

@@ -304,9 +304,6 @@ public partial class PartyTabView : Control
     private int? _hoveredCell;
     /// <summary>The aspect's or school's icon the mouse is on, by its place among <see cref="Icons"/>, or null.</summary>
     private int? _hoveredIcon;
-    /// <summary>The actiontip a right click opened and where in the frame, which it opens beside; the stick's opens by its item.</summary>
-    /// <summary>The item box's choice under the mouse while the actiontip hasn't the presses, drawn in red ink, or null.</summary>
-    private int? _hoveredChoice;
     /// <summary>Where the inventory's grid was last drawn, which the mouse is tested against, as <see cref="_listLayout"/> is for a list.</summary>
     private GridLayout _gridLayout = PartyMenu.InventoryGrid;
     /// <summary>Where the tab's list was last drawn, which the mouse is tested against: a list sliding in is drawn off its place.</summary>
@@ -427,7 +424,7 @@ public partial class PartyTabView : Control
             // keeps its card up.
             if (@event is InputEventMouseMotion)
                 _hoveredCell = null;
-            var onFoot = OwnTab && Menu.Fitting is not null && FootControlAt(mouse.Position - (Vector2)_origin) is not null;
+            var onFoot = OwnTab && !OriginalLook && Menu.List == PartyList.Inventory && Menu.Grid ? FootControlAt(mouse.Position - (Vector2)_origin) : null;
             if (onFoot != _hoveredFoot)
             {
                 _hoveredFoot = onFoot;
@@ -461,7 +458,7 @@ public partial class PartyTabView : Control
             AcceptEvent();
             return;
         }
-        if (TipInput(@event) || DragInput(@event))
+        if (DetailsInput(@event) || DragInput(@event))
         {
             AcceptEvent();
             return;
@@ -494,20 +491,26 @@ public partial class PartyTabView : Control
             AcceptEvent();
             return;
         }
-        // A click on a slot of the silhouette with something worn in it selects it, and a double click uses it as A does, taking it off:
-        // with what's worn not in the inventory, the silhouette is where the mouse reaches it.
+        // A click on a slot of the silhouette with something worn in it selects it, and a double click takes it off, through the game
+        // as the menus' Appraise, which takes it off in the port's look, or as A in the original's: with what's worn not in the
+        // inventory, the silhouette is where the mouse reaches it.
         if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } slotClick && _hoveredSlot is { } slot)
         {
             Menu.SelectSlot(slot);
             if (slotClick.DoubleClick)
-                UiScreen.Of(this)?.Click(MenuAction.Accept);
+                UiScreen.Of(this)?.Click(OriginalLook ? MenuAction.Accept : MenuAction.Appraise);
             AcceptEvent();
             return;
         }
         // A click on a tab aims the stick at it and presses it toward it, so it slides and sounds as the stick does, and waits as
-        // the stick waits.
+        // the stick waits. Any tab clicked ends choosing items to drop (the user's design, Nov 6, 2026).
         if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } && _hoveredTab is { } clicked)
         {
+            if (Menu.Discarding)
+            {
+                Menu.StopDiscarding();
+                QueueRedraw();
+            }
             // The Inventory tab clicked while the grid shows what fits a slot shows the whole inventory again, the user's design (Nov 5, 2026).
             if (PartyMenu.Tabs[clicked] == PartyList.Inventory && Menu.List == PartyList.Inventory && Menu.Fitting is not null)
             {
@@ -527,7 +530,8 @@ public partial class PartyTabView : Control
             return;
         }
         // A click on a cell selects nothing, the user's design (Nov 6, 2026): a double click uses the item, as A does, the cursor moved
-        // there quietly; Shift and a click drops it; a list's row a click still selects. Anywhere else a click does nothing.
+        // there quietly; while items are being chosen to drop a click chooses the cell's or lets it go; a list's row a click still
+        // selects. Anywhere else a click does nothing.
         if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } click)
         {
             if (OwnTab && Menu.List == PartyList.Inventory && Menu.Grid && Menu.Crafting is null)
@@ -535,8 +539,8 @@ public partial class PartyTabView : Control
                 var at = click.Position - (Vector2)_origin;
                 if (_gridLayout.RowAt(Menu.Inventory, at.X, at.Y) is { } cell && Menu.Inventory.Rows.ElementAtOrDefault(cell) is { } row)
                 {
-                    if (click.ShiftPressed)
-                        Menu.DropItem(row);
+                    if (Menu.Discarding)
+                        Menu.ToggleDiscard(row);
                     else if (click.DoubleClick)
                     {
                         Menu.Point(cell, quietly: true);
@@ -681,63 +685,34 @@ public partial class PartyTabView : Control
     private const float DragIcon = 14, DragOutline = 0.6f;
 
     /// <summary>
-    /// The mouse and the actiontip (<see cref="ActionTip"/>): a click while the details it held open show lets them go; while it's up,
-    /// hovering a choice points at it, a click on one chooses it as A does, and a click elsewhere closes it, a right click on an item
-    /// opening it there instead; and with none up, a right click on a worn slot or a grid cell selects the item and opens one beside the
-    /// mouse, where a right click elsewhere goes on to be B. True if the event was the actiontip's.
+    /// The mouse and the details held open: a click while they show lets them go, as does the mouse moving onto another item, a worn
+    /// slot's or a cell's, the user's design (Nov 6, 2026); with none up, a right click on a worn slot or a grid cell pins the item's
+    /// details, where a right click elsewhere goes on to be B. True if the event was the details'.
     /// </summary>
-    private bool TipInput(InputEvent e)
+    private bool DetailsInput(InputEvent e)
     {
         if (!OwnTab || e is not InputEventMouse mouse)
             return false;
         var at = mouse.Position - (Vector2)_origin;
         if (Menu.DetailsPane.Pinned)
         {
-            if (e is InputEventMouseButton { Pressed: true })
+            if (e is InputEventMouseButton { Pressed: true } || e is InputEventMouseMotion && OnAnotherItem(at))
                 Menu.ReleaseDetails();
             return e is InputEventMouseButton;
         }
-        var shown = Menu.TipShown;
-        if (Menu.Tip is { } tip && shown is { } box)
-        {
-            var row = TipChoiceAt(box, tip, at);
-            switch (e)
-            {
-                case InputEventMouseMotion when row is { } hovered:
-                    Menu.PointTip(hovered);
-                    return true;
-                case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } when row is { } chosen:
-                    Menu.PointTip(chosen);
-                    UiScreen.Of(this)?.Click(MenuAction.Accept);
-                    return true;
-                case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left or MouseButton.Right } click:
-                    Menu.CloseTip();
-                    if (click.ButtonIndex == MouseButton.Right)
-                        DetailsAt(at);
-                    return true;
-                default:
-                    return e is InputEventMouseButton;
-            }
-        }
-        // The box stands beside the selected item before the actiontip has the presses: the choice under the mouse reads red, and a
-        // click on it opens the actiontip there and chooses it, as A would.
-        if (shown is { } standing)
-        {
-            var choice = TipChoiceAt(standing, null, at);
-            if (e is InputEventMouseMotion)
-            {
-                if (_hoveredChoice != choice)
-                    QueueRedraw();
-                _hoveredChoice = choice;
-            }
-            else if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } && choice is { } chosen && Menu.OpenTip())
-            {
-                Menu.PointTip(chosen);
-                UiScreen.Of(this)?.Click(MenuAction.Accept);
-                return true;
-            }
-        }
         return e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Right } && DetailsAt(at);
+    }
+
+    /// <summary>
+    /// Whether the mouse is on an item other than the one the details are for: a worn slot but the slot selected, or a grid cell but the
+    /// cursor's while no slot is selected.
+    /// </summary>
+    private bool OnAnotherItem(Vector2 at)
+    {
+        if (_hoveredSlot is { } slot)
+            return Menu.Worn(slot) is not null && slot != Menu.SelectedSlot;
+        return Menu.List == PartyList.Inventory && Menu.Grid && _gridLayout.RowAt(Menu.Inventory, at.X, at.Y) is { } cell
+            && (Menu.SelectedSlot is not null || cell != Menu.Inventory.Cursor);
     }
 
     /// <summary>
@@ -1035,8 +1010,8 @@ public partial class PartyTabView : Control
             Tooltip();
         if (OwnTab && Veil == 0)
             PromptStrip();
-        if (OwnTab && Menu.TipShown is { } shown)
-            ItemBox(shown, Menu.Tip);
+        if (OwnTab && Menu.BoxShown is { } shown)
+            ItemBox(shown);
         if (_drag is { } drag)
             DragArt(drag);
         _overlay.DrawSetTransform(Vector2.Zero);
@@ -1346,7 +1321,8 @@ public partial class PartyTabView : Control
     /// The portraits from the member shown round, their name, and their aspect's and school's icons. As the member
     /// changes (<c>PartyMenu.PortraitsChange</c>, <c>0x8003b3cc</c>), each portrait moves and resizes from its old place
     /// to its new one, through the frames painted into the tab, which stay, drawn in the party's order as the
-    /// original's widgets are. The name crossfades, and the icons where they change.
+    /// original's widgets are, its status icons in its corner going with it (the user's choice, Nov 6, 2026: they faded out and in at
+    /// the new place, which jarred). The name crossfades, and the aspect's and school's icons where they change.
     /// </summary>
     private void Portraits(Vector2I at)
     {
@@ -1356,7 +1332,7 @@ public partial class PartyTabView : Control
         var change = Menu.MemberChange;
         foreach (var slot in order.Order())
         {
-            if (Menu.Portrait(Menu.Party.Slots[slot]!.Entity) is not { } portrait)
+            if (Menu.Party.Slots[slot] is not { } who || Menu.Portrait(who.Entity) is not { } portrait)
                 continue;
             var (to, toSize) = PortraitPlace(order.IndexOf(slot));
             var was = previous?.IndexOf(slot) ?? -1;
@@ -1365,14 +1341,16 @@ public partial class PartyTabView : Control
             var rect = new Rect2(at.X + MenuTween.Value(from.X, to.X, change), at.Y + MenuTween.Value(from.Y, to.Y, change), size, size);
             FramedPortrait(portrait, rect);
             // A hungry or tired member's portrait pulses amber, a starving or overtired one's red (StatusPulse).
-            if (Menu.Party.Slots[slot] is { } who && StatusPulse.Tint(who.Hunger, who.Rest, Time.GetTicksMsec() / 1000f) is { } tint)
+            if (StatusPulse.Tint(who.Hunger, who.Rest, Time.GetTicksMsec() / 1000f) is { } tint)
                 HungerTint(portrait, rect, tint);
+            foreach (var (icon, iconRect, _) in StatusIconsOn(who, rect.Position - (Vector2)at, size))
+                Icon(icon, new Rect2((Vector2)at + iconRect.Position, iconRect.Size), White);
         }
         if (Menu.Previous is { } before)
             Small(before.Name, at.X + NameAt.X, at.Y + NameAt.Y, FadingOut(PartyMenu.TextColor, change), font: NameFont);
         Small(shown.Name, at.X + NameAt.X, at.Y + NameAt.Y, FadingIn(PartyMenu.TextColor, change), font: NameFont);
-        var icons = Icons(shown, order);
-        var old = Menu.Previous is { } member ? Icons(member, previous) : icons;
+        var icons = MemberIcons(shown);
+        var old = Menu.Previous is { } member ? MemberIcons(member) : icons;
         foreach (var (icon, rect, _, alpha) in old.Except(icons))
             Icon(icon, new Rect2((Vector2)at + rect.Position, rect.Size), FadingOut(White with { A = alpha }, change));
         foreach (var (icon, rect, name, alpha) in icons)
@@ -1412,12 +1390,48 @@ public partial class PartyTabView : Control
         i == 0 ? (ShownPortrait, ShownSize) : (OtherPortraits[Math.Min(i - 1, OtherPortraits.Length - 1)], OtherSize);
 
     /// <summary>
-    /// A member's icons, each where it goes from the portraits' frames' corner, with the name the mouse on it shows and its alpha: the
-    /// aspect's and the school's after the bar, the user's choice (Nov 2, 2026), the unschooled's ring lighter; and the status icons,
-    /// hunger's and tiredness's, in the shown portrait's bottom right corner as the trek HUD has them, 6 square, 1 in, overlapping
-    /// by half (the user's design, Nov 5, 2026; <see cref="PartyPortraits.StatusIcons"/>).
+    /// A member's icons as they rest, each where it goes from the portraits' frames' corner, with the name the mouse on it shows and its
+    /// alpha: the aspect's and the school's (<see cref="MemberIcons"/>), and the status icons in every portrait's corner
+    /// (<see cref="StatusIconsOn"/>), which the mouse is tested against.
     /// </summary>
-    private List<(RecordId Icon, Rect2 Rect, string Name, byte Alpha)> Icons(Core.Characters.Character member, IReadOnlyList<int>? order = null)
+    private List<(RecordId Icon, Rect2 Rect, string Name, byte Alpha)> Icons(Core.Characters.Character member)
+    {
+        var icons = MemberIcons(member);
+        var slots = Menu.PortraitOrder.ToList();
+        for (var i = 0; i < slots.Count; i++)
+        {
+            if (Menu.Party.Slots[slots[i]] is not { } who)
+                continue;
+            var (at, size) = PortraitPlace(i);
+            icons.AddRange(StatusIconsOn(who, at, size).Select(s => (s.Icon, s.Rect, s.Name, (byte)255)));
+        }
+        return icons;
+    }
+
+    /// <summary>
+    /// A member's status icons, hunger's and tiredness's, in the bottom right corner of their portrait at a place and size, from the
+    /// portraits' frames' corner, as the trek HUD has them, 6 square, 1 in, overlapping by half (the user's design, Nov 5, 2026;
+    /// <see cref="PartyPortraits.StatusIcons"/>), each with the name the mouse on it shows.
+    /// </summary>
+    private static List<(RecordId Icon, Rect2 Rect, string Name)> StatusIconsOn(Core.Characters.Character who, Vector2 at, float size)
+    {
+        var icons = new List<(RecordId, Rect2, string)>();
+        var status = PartyPortraits.StatusIcons(who.Hunger, who.Rest);
+        for (var n = 0; n < status.Count; n++)
+        {
+            var left = at.X + size - PartyPortraits.IconInset - PartyPortraits.IconSize - (status.Count - 1 - n) * (PartyPortraits.IconSize / 2f);
+            var top = at.Y + size - PartyPortraits.IconInset - PartyPortraits.IconSize;
+            var name = HungerDisplay.Icons.Contains(status[n]) ? HungerDisplay.Tooltip(who.Hunger)! : RestDisplay.Tooltip(who.Rest)!;
+            icons.Add((status[n], new Rect2(left, top, PartyPortraits.IconSize, PartyPortraits.IconSize), name));
+        }
+        return icons;
+    }
+
+    /// <summary>
+    /// A member's aspect's and school's icons, each where it goes from the portraits' frames' corner, with the name the mouse on it shows
+    /// and its alpha: after the bar, the user's choice (Nov 2, 2026), the unschooled's ring lighter.
+    /// </summary>
+    private List<(RecordId Icon, Rect2 Rect, string Name, byte Alpha)> MemberIcons(Core.Characters.Character member)
     {
         var icons = new List<(RecordId, Rect2, string, byte)>();
         if (!OriginalLook)
@@ -1447,22 +1461,6 @@ public partial class PartyTabView : Control
             }
             if (MenuImages.SchoolIcon(member.School) is { } school)
                 icons.Add((school, new Rect2(x, OriginalIconsAt.Y, _ui.Size(school).X, _ui.Size(school).Y), $"School of {member.School}", 255));
-        }
-        // The status icons in every portrait's corner, the shown member's and the others', in either look (the user's choice, Nov 5, 2026).
-        var slots = (order ?? Menu.PortraitOrder).ToList();
-        for (var i = 0; i < slots.Count; i++)
-        {
-            if (Menu.Party.Slots[slots[i]] is not { } who)
-                continue;
-            var (at, size) = PortraitPlace(i);
-            var status = PartyPortraits.StatusIcons(who.Hunger, who.Rest);
-            for (var n = 0; n < status.Count; n++)
-            {
-                var left = at.X + size - PartyPortraits.IconInset - PartyPortraits.IconSize - (status.Count - 1 - n) * (PartyPortraits.IconSize / 2f);
-                var top = at.Y + size - PartyPortraits.IconInset - PartyPortraits.IconSize;
-                var name = HungerDisplay.Icons.Contains(status[n]) ? HungerDisplay.Tooltip(who.Hunger)! : RestDisplay.Tooltip(who.Rest)!;
-                icons.Add((status[n], new Rect2(left, top, PartyPortraits.IconSize, PartyPortraits.IconSize), name, 255));
-            }
         }
         return icons;
     }
@@ -1747,7 +1745,9 @@ public partial class PartyTabView : Control
     /// The grid's foot, the user's design (Nov 2, 2026): "Total Inventory" and how many items the party carries on the left, and on the
     /// right, where the quick toggle for what's worn was, the grid's filter and order, the user's choice (Nov 3, 2026): "Show All" and
     /// "Sort Type", each a label and its choice in red ink, which a click or A with the stick on it steps on (<see cref="PartyMenu.Filter"/>,
-    /// <see cref="PartyMenu.Sort"/>), the one the stick is on outlined in red; or, with a slot's fitting items, which slot.
+    /// <see cref="PartyMenu.Sort"/>), and after them a trash, the user's design (Nov 6, 2026), which starts choosing items to drop and
+    /// reads in red ink while it's on (<see cref="PartyMenu.Discarding"/>); the one the stick is on outlined in red; or, with a slot's
+    /// fitting items, which slot.
     /// </summary>
     private void InventoryFoot(GridLayout grid)
     {
@@ -1765,28 +1765,64 @@ public partial class PartyTabView : Control
         {
             var fits = $"{FitsLabel} {PartyMenu.SlotName(slot)}";
             Small(fits, b.Left + grid.Columns * grid.Cell - font.ExactWidth(fits), middle - font.Middle, UiPainter.RedInk, font: font);
-            Button(FullInventoryButton(font, grid), SeeFullInventory, font, _hoveredFoot);
+            Button(FullInventoryButton(font, grid), SeeFullInventory, font, _hoveredFoot is not null);
             return;
         }
         var controls = FootControls(font, grid);
         for (var i = 0; i < controls.Count; i++)
         {
             var (rect, label, value) = controls[i];
-            Small(label, rect.Position.X, middle - font.Middle, PartyMenu.TextColor, font: font);
-            Small(value, rect.Position.X + font.ExactWidth(label) + FootLabelGap, middle - font.Middle, UiPainter.RedInk, font: font);
+            if (i == PartyMenu.FootTrash)
+                TrashIcon(rect, Menu.Discarding || _hoveredFoot == i ? UiPainter.RedInk : UiPainter.Ink);
+            else
+            {
+                Small(label, rect.Position.X, middle - font.Middle, PartyMenu.TextColor, font: font);
+                Small(value, rect.Position.X + font.ExactWidth(label) + FootLabelGap, middle - font.Middle, UiPainter.RedInk, font: font);
+            }
             if (Menu.Focus == PartyFocus.Foot && Menu.FootChoice == i)
                 _canvas.DrawRect(rect.Grow(1), _ui.Tint(UiPainter.RedInk), false, FootOutline);
         }
     }
 
-    /// <summary>The filter's and the order's places under the grid, right-aligned at its edge, each its label and its choice.</summary>
+    /// <summary>
+    /// The trash under the grid, in an ink: the game's own art if the plugins have one (<c>acre:image/ui_trash</c>), else a can drawn in
+    /// lines, a lid with a handle over a body tapering to its foot, with two lines down it.
+    /// </summary>
+    private void TrashIcon(Rect2 rect, Rgba ink)
+    {
+        if (UiImages.Art(TrashArt) is not null)
+        {
+            Art(TrashArt, rect, ink);
+            return;
+        }
+        var color = _ui.Tint(ink);
+        var (x, y, w, h) = (rect.Position.X, rect.Position.Y, rect.Size.X, rect.Size.Y);
+        _canvas.DrawRect(new Rect2(x + w * 0.35f, y, w * 0.3f, TrashLine * 2), color);
+        _canvas.DrawLine(new Vector2(x, y + TrashLine * 2.5f), new Vector2(x + w, y + TrashLine * 2.5f), color, TrashLine, true);
+        _canvas.DrawPolyline(
+            [new(x + w * 0.12f, y + TrashLine * 4), new(x + w * 0.2f, y + h), new(x + w * 0.8f, y + h), new(x + w * 0.88f, y + TrashLine * 4)],
+            color, TrashLine, true);
+        foreach (var share in new[] { 0.4f, 0.6f })
+            _canvas.DrawLine(new Vector2(x + w * share, y + TrashLine * 6), new Vector2(x + w * share, y + h - TrashLine * 2), color, TrashLine * 0.8f, true);
+    }
+
+    /// <summary>The trash's art, which the plugins may give; how big it's drawn, square; and its lines' thickness.</summary>
+    private const string TrashArt = "ui_trash";
+
+    private const float TrashSize = 6, TrashLine = 0.45f;
+
+    /// <summary>
+    /// The controls' places under the grid, right-aligned at its edge: the trash last, and before it the order and the filter, each its
+    /// label and its choice (<see cref="PartyMenu.FootFilter"/>, <see cref="PartyMenu.FootSort"/>, <see cref="PartyMenu.FootTrash"/>).
+    /// </summary>
     private List<(Rect2 Rect, string Label, string Value)> FootControls(UiFont font, GridLayout grid)
     {
         var b = grid.Bounds;
         var middle = b.Top + PartyMenu.InventoryGrid.Lines * grid.Cell + FootMiddle;
         (string Label, string Value)[] parts = [(ShowLabel, Menu.Filter.ToString()), (SortLabel, Menu.Sort.ToString())];
         float right = b.Left + grid.Columns * grid.Cell;
-        var controls = new List<(Rect2, string, string)>();
+        var controls = new List<(Rect2, string, string)> { (new Rect2(right - TrashSize, middle - TrashSize / 2, TrashSize, TrashSize), "", "") };
+        right -= TrashSize + FootControlGap;
         for (var i = parts.Length - 1; i >= 0; i--)
         {
             var width = font.ExactWidth(parts[i].Label) + FootLabelGap + font.ExactWidth(parts[i].Value);
@@ -1800,10 +1836,13 @@ public partial class PartyTabView : Control
     private Rect2 FullInventoryButton(UiFont font, GridLayout grid) =>
         new(grid.Bounds.Left, grid.Bounds.Top + grid.Lines * grid.Cell + (grid.Cell - ButtonHeight) / 2 - 1, font.ExactWidth(SeeFullInventory) + 2 * ButtonSide, ButtonHeight);
 
-    /// <summary>Whether the mouse is on the See Full Inventory button, which then reads in red ink.</summary>
-    private bool _hoveredFoot;
+    /// <summary>The control under the grid the mouse is on (<see cref="FootControlAt"/>), which then reads in red ink, or null.</summary>
+    private int? _hoveredFoot;
 
-    /// <summary>The control under the grid at a point in the frame, the filter 0 and the order 1, or with a slot's items the See Full Inventory button 0, or null.</summary>
+    /// <summary>
+    /// The control under the grid at a point in the frame, the filter 0, the order 1 and the trash 2, or with a slot's items the See Full
+    /// Inventory button 0, or null.
+    /// </summary>
     private int? FootControlAt(Vector2 at)
     {
         if (Menu.Fitting is not null)
@@ -1923,12 +1962,21 @@ public partial class PartyTabView : Control
                 Small(text, x + grid.Cell - CellInset - count.ExactWidth(text), foot - count.Capitals / 2 - count.Middle, BarText,
                     BarShadow, count);
             }
+            // An item chosen to drop is under a wash of red ink, with the red square round it (the user's design, Nov 6, 2026).
+            if (Menu.IsDiscard(row))
+            {
+                _canvas.DrawRect(new Rect2(x + 0.5f, y + 0.5f, grid.Cell - 1, grid.Cell - 1), _ui.Tint(DiscardWash));
+                Art(Selected, new Rect2(x - 1, y - 1, grid.Cell + 2, grid.Cell + 2));
+            }
             if (i == list.Cursor && Menu.Focus == PartyFocus.List && Menu.CursorShows
                 || _drag is { From: { Slot: null } from } && from.Row.Instance == row.Instance)
                 Art(Selected, new Rect2(x - 1, y - 1, grid.Cell + 2, grid.Cell + 2));
         }
         ScrollBar(grid, list);
     }
+
+    /// <summary>The wash of red ink over a cell chosen to drop.</summary>
+    private static readonly Rgba DiscardWash = UiPainter.RedInk with { A = 70 };
 
     /// <summary>
     /// A list's arrows, which say it has rows hidden, in the original's look; in the port's, the original's arrows gone, the user's
@@ -2033,8 +2081,8 @@ public partial class PartyTabView : Control
     /// <summary>
     /// The hover's card at a point, kept inside the frame: the item's name in the main face, larger; under it in small text what it is
     /// and why the member can't use it in red; then, dimmer, what the mouse can do with it: "Double Click or Drag to Equip" (or
-    /// Unequip; "Double Click to Drink", Eat or Read), "Right Click to See Details" where it has any, and "Shift + Left Click to Drop"
-    /// where it can be dropped.
+    /// Unequip; "Double Click to Drink", Eat or Read) and "Right Click to See Details" where it has any; while items are being chosen to
+    /// drop, "Click to Select" or Unselect, or that it can't be dropped, in red.
     /// </summary>
     private void HoverCard(InventoryRow row, float left, float top)
     {
@@ -2042,22 +2090,27 @@ public partial class PartyTabView : Control
         var name = _ui.Main.Sized(BoxNameText);
         var small = _ui.Slim.Sized(BoxText);
         var lines = CardLines(card).ToList();
-        var help = PartyMenu.TextColor with { A = 170 };
-        var verb = Menu.ActionOf(row) switch
+        var help = HelpInk;
+        if (Menu.Discarding)
         {
-            ActionTipChoice.Equip => "Double Click or Drag to Equip",
-            ActionTipChoice.Unequip => "Double Click or Drag to Unequip",
-            ActionTipChoice.Drink => "Double Click to Drink",
-            ActionTipChoice.Eat => "Double Click to Eat",
-            ActionTipChoice.Read => "Double Click to Read",
-            _ => null,
-        };
-        if (verb is not null)
-            lines.Add((verb, help));
+            lines.Add(Menu.CanDrop(row) ? (Menu.IsDiscard(row) ? "Click to Unselect" : "Click to Select", help) : (CannotDrop, UiPainter.RedInk));
+        }
+        else
+        {
+            var verb = Menu.ActionOf(row) switch
+            {
+                ItemAction.Equip => "Double Click or Drag to Equip",
+                ItemAction.Unequip => "Double Click or Drag to Unequip",
+                ItemAction.Drink => "Double Click to Drink",
+                ItemAction.Eat => "Double Click to Eat",
+                ItemAction.Read => "Double Click to Read",
+                _ => null,
+            };
+            if (verb is not null)
+                lines.Add((verb, help));
+        }
         if (Menu.HasDetails(row))
             lines.Add(("Right Click to See Details", help));
-        if (Menu.CanDrop(row))
-            lines.Add(("Shift + Left Click to Drop", help));
         var width = lines.Select(l => small.ExactWidth(l.Text)).Append(name.ExactWidth(card.Name)).Max() + 2 * TipSide;
         var height = SlipEnds + name.Capitals + CardGap + lines.Count * BoxLinePitch + TipEnds;
         var rect = new Rect2(Math.Clamp(left, 4, FrameWidth - 4 - width), Math.Clamp(top, 4, FrameHeight - 4 - height), width, height);
@@ -2080,34 +2133,37 @@ public partial class PartyTabView : Control
     private const float TipText = 3, TipPitch = 6.5f, TipSide = 4, TipEnds = 2.5f;
 
     /// <summary>
-    /// The item box, the user's design (Nov 5, 2026; <see cref="PartyMenu.TipShown"/>): on one slip beside the selected item, the worn
-    /// slot's or the grid's cell's, or beside where a right click opened it, kept inside the frame: the item's name in the main face,
-    /// larger; under it in small text what it is and why the member can't use it in red ink; then what can be done with it as buttons
-    /// in a row, each on its own slip with an ink border, the actiontip's cursor's in red ink while the actiontip has the presses
-    /// (<paramref name="tip"/>), else the one under the mouse.
+    /// The item box, the user's design (Nov 5 and 6, 2026; <see cref="PartyMenu.BoxShown"/>): on one slip beside the selected item, the
+    /// worn slot's or the grid's cell's, kept inside the frame: the item's name in the main face, larger; under it in small text what it
+    /// is and why the member can't use it in red ink; then, dimmer, which buttons do what with it, "A to Equip", "Y to See Details", as the
+    /// hover says what the mouse does, in place of buttons to click, which a controller can't.
     /// </summary>
-    private void ItemBox((InventoryRow Row, ItemCard Card, IReadOnlyList<ActionTipChoice> Choices) shown, ActionTip? tip)
+    private void ItemBox((InventoryRow Row, ItemCard Card, IReadOnlyList<MenuPrompt> Help) shown)
     {
-        var (rect, buttons) = BoxRect(shown, tip);
+        var rect = BoxRect(shown);
         var name = _ui.Main.Sized(BoxNameText);
         var small = _ui.Slim.Sized(BoxText);
-        var font = _ui.Slim.Sized(ButtonText);
         _ui.Slip(_canvas, rect);
         var x = rect.Position.X + TipSide;
         var y = rect.Position.Y + SlipEnds;
         Small(shown.Card.Name, x, y + name.Capitals / 2 - name.Middle, UiPainter.Ink, font: name);
         y += name.Capitals + CardGap;
-        foreach (var (text, color) in CardLines(shown.Card))
+        foreach (var (text, color) in CardLines(shown.Card).Concat(HelpLines(shown.Help)))
         {
             Small(text, x, y + small.Capitals / 2 - small.Middle, color, font: small);
             y += BoxLinePitch;
         }
-        for (var i = 0; i < shown.Choices.Count; i++)
-        {
-            var current = tip is not null ? i == tip.Choices.Cursor : i == _hoveredChoice;
-            Button(buttons[i], ActionTip.Label(shown.Choices[i]), font, current);
-        }
     }
+
+    /// <summary>The box's help lines, "A to Equip", in the dimmer ink the hover's are in.</summary>
+    private static IEnumerable<(string Text, Rgba Color)> HelpLines(IReadOnlyList<MenuPrompt> help) =>
+        help.Select(h => ($"{h.Keys} to {h.Label}", HelpInk));
+
+    /// <summary>The ink the hover's and the box's help lines are in, dimmer than the card's.</summary>
+    private static readonly Rgba HelpInk = PartyMenu.TextColor with { A = 170 };
+
+    /// <summary>What the hover says of an item that can't be dropped while items are being chosen to drop.</summary>
+    private const string CannotDrop = "Can't be dropped";
 
     /// <summary>A button: a slip with an ink border, its label centred, in red ink when it's the one under the stick or the mouse.</summary>
     private void Button(Rect2 rect, string label, UiFont font, bool hot)
@@ -2127,18 +2183,14 @@ public partial class PartyTabView : Control
             yield return (warning, UiPainter.RedInk);
     }
 
-    /// <summary>Where the item box's slip is in the frame, and where each of its buttons is.</summary>
-    private (Rect2 Rect, IReadOnlyList<Rect2> Buttons) BoxRect((InventoryRow Row, ItemCard Card, IReadOnlyList<ActionTipChoice> Choices) shown, ActionTip? tip)
+    /// <summary>Where the item box's slip is in the frame: beside the slot selected or the cursor's cell, kept inside the frame.</summary>
+    private Rect2 BoxRect((InventoryRow Row, ItemCard Card, IReadOnlyList<MenuPrompt> Help) shown)
     {
         var name = _ui.Main.Sized(BoxNameText);
         var small = _ui.Slim.Sized(BoxText);
-        var font = _ui.Slim.Sized(ButtonText);
-        var lines = CardLines(shown.Card).ToList();
-        var widths = shown.Choices.Select(c => font.ExactWidth(ActionTip.Label(c)) + 2 * ButtonSide).ToList();
-        var row = widths.Count > 0 ? widths.Sum() + (widths.Count - 1) * ButtonGap : 0;
-        var width = lines.Select(l => small.ExactWidth(l.Text)).Append(name.ExactWidth(shown.Card.Name)).Append(row).Max() + 2 * TipSide;
-        var cardHeight = SlipEnds + name.Capitals + CardGap + lines.Count * BoxLinePitch;
-        var height = cardHeight + (widths.Count > 0 ? ButtonGap + ButtonHeight : 0) + TipEnds;
+        var lines = CardLines(shown.Card).Concat(HelpLines(shown.Help)).ToList();
+        var width = lines.Select(l => small.ExactWidth(l.Text)).Append(name.ExactWidth(shown.Card.Name)).Max() + 2 * TipSide;
+        var height = SlipEnds + name.Capitals + CardGap + lines.Count * BoxLinePitch + TipEnds;
         Vector2 at;
         if (Menu.SelectedSlot is { } slot)
             at = new Vector2(SlotRect(slot).End.X + 1, SlotRect(slot).Position.Y);
@@ -2147,35 +2199,14 @@ public partial class PartyTabView : Control
             var (x, y) = _gridLayout.CellAt(Menu.Inventory.Cursor - Menu.Inventory.First);
             at = new Vector2(x + _gridLayout.Cell + 1, y);
         }
-        var rect = new Rect2(Math.Clamp(at.X, 4, FrameWidth - 4 - width), Math.Clamp(at.Y, 4, FrameHeight - 4 - height), width, height);
-        var buttons = new List<Rect2>();
-        var left = rect.Position.X + TipSide;
-        var top = rect.Position.Y + cardHeight + ButtonGap;
-        foreach (var w in widths)
-        {
-            buttons.Add(new Rect2(left, top, w, ButtonHeight));
-            left += w + ButtonGap;
-        }
-        return (rect, buttons);
-    }
-
-    /// <summary>The item box's button under a point in the frame, or null.</summary>
-    private int? TipChoiceAt((InventoryRow Row, ItemCard Card, IReadOnlyList<ActionTipChoice> Choices) shown, ActionTip? tip, Vector2 at)
-    {
-        var (_, buttons) = BoxRect(shown, tip);
-        for (var i = 0; i < buttons.Count; i++)
-        {
-            if (buttons[i].Grow(0.5f).HasPoint(at))
-                return i;
-        }
-        return null;
+        return new Rect2(Math.Clamp(at.X, 4, FrameWidth - 4 - width), Math.Clamp(at.Y, 4, FrameHeight - 4 - height), width, height);
     }
 
     /// <summary>
-    /// The item box's text: the name's capitals this tall in the main face, the lines' this tall and this far apart; its buttons this
-    /// tall, with this much beside a label and this much between them; and the name on hover this tall, smaller than the stats card's.
+    /// The item box's text: the name's capitals this tall in the main face, the lines' this tall and this far apart; a button, the See
+    /// Full Inventory's, this tall with this much beside its label; and the name on hover this tall, smaller than the stats card's.
     /// </summary>
-    private const float BoxNameText = 4.4f, BoxText = 2.6f, BoxLinePitch = 3.6f, ButtonText = 2.6f, ButtonHeight = 5.5f, ButtonSide = 2.5f, ButtonGap = 2, HoverText = 2.3f;
+    private const float BoxNameText = 4.4f, BoxText = 2.6f, BoxLinePitch = 3.6f, ButtonHeight = 5.5f, ButtonSide = 2.5f, HoverText = 2.3f;
 
     /// <summary>
     /// A name on a little slip of paper, centred across <paramref name="middle"/>, its foot at <paramref name="foot"/>, kept inside the

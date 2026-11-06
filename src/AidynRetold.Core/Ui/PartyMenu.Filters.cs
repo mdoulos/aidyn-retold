@@ -42,8 +42,11 @@ public sealed partial class PartyMenu
     /// <summary>The order the grid shows it in.</summary>
     public InventorySort Sort { get; private set; }
 
-    /// <summary>The control under the grid the stick is on (<see cref="PartyFocus.Foot"/>): 0 the filter, 1 the order.</summary>
+    /// <summary>The control under the grid the stick is on (<see cref="PartyFocus.Foot"/>): 0 the filter, 1 the order, 2 the trash.</summary>
     public int FootChoice { get; private set; }
+
+    /// <summary>The controls under the grid: the filter, the order and the trash (<see cref="FootChoice"/>).</summary>
+    public const int FootFilter = 0, FootSort = 1, FootTrash = 2, FootCount = 3;
 
     /// <summary>The kinds each filter of a kind shows.</summary>
     private static readonly Dictionary<InventoryFilter, ItemKind[]> FilterKinds = new()
@@ -100,7 +103,10 @@ public sealed partial class PartyMenu
         Inventory.Point(0);
     }
 
-    /// <summary>A click on one of the controls under the grid, or A with the stick on it: steps it on.</summary>
+    /// <summary>
+    /// A click on one of the controls under the grid, or A with the stick on it: steps the filter or the order on, or the trash starts
+    /// choosing items to drop, and ends it (<see cref="Discarding"/>).
+    /// </summary>
     public void ChooseFoot(int choice, int by = 1)
     {
         if (HasPopup)
@@ -113,14 +119,25 @@ public sealed partial class PartyMenu
         }
         if (!HasFoot)
             return;
-        FootChoice = Math.Clamp(choice, 0, 1);
-        if (FootChoice == 0)
-            CycleFilter(by);
-        else
-            CycleSort(by);
+        FootChoice = Math.Clamp(choice, 0, FootCount - 1);
+        switch (FootChoice)
+        {
+            case FootFilter:
+                CycleFilter(by);
+                break;
+            case FootSort:
+                CycleSort(by);
+                break;
+            default:
+                if (Discarding)
+                    StopDiscarding();
+                else
+                    StartDiscarding();
+                break;
+        }
     }
 
-    /// <summary>Whether the grid has its filter and order under it, which the stick can step down onto: not while it shows what fits a slot.</summary>
+    /// <summary>Whether the grid has its filter, order and trash under it, which the stick can step down onto: not while it shows what fits a slot.</summary>
     private bool HasFoot => Spatial && List == PartyList.Inventory && Fitting is null;
 
     /// <summary>A step of the stick on the controls under the grid: left and right between them, and up back onto the grid.</summary>
@@ -129,9 +146,10 @@ public sealed partial class PartyMenu
         if (down < 0)
             _focus = PartyFocus.List;
         else if (across != 0)
-            FootChoice = Math.Clamp(FootChoice + across, 0, 1);
+            FootChoice = Math.Clamp(FootChoice + across, 0, FootCount - 1);
     }
 
-    /// <summary>The prompts with the stick on the controls under the grid.</summary>
-    private void FootPrompts(Action<string, string[]> add) => add("Change", [GameControls.MenuAccept]);
+    /// <summary>The prompts with the stick on the controls under the grid: Change on the filter and the order, Drop Items or Done on the trash.</summary>
+    private void FootPrompts(Action<string, string[]> add) =>
+        add(FootChoice == FootTrash ? Discarding ? "Done" : "Drop Items" : "Change", [GameControls.MenuAccept]);
 }

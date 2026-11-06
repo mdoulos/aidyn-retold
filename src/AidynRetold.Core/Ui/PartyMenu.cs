@@ -126,7 +126,7 @@ public sealed partial class PartyMenu : IPartyWindow
     /// </summary>
     void IPartyWindow.Sideways(int direction)
     {
-        if (_aim is null && StepSpatially(direction, 0))
+        if (LetGoPinned() || _aim is null && StepSpatially(direction, 0))
             return;
         ChangeList(-direction);
     }
@@ -241,12 +241,13 @@ public sealed partial class PartyMenu : IPartyWindow
     {
         var aim = _memberAim;
         _memberAim = null;
-        if (HasPopup || Changing && OriginalLook)
+        if (LetGoPinned() || HasPopup || Changing && OriginalLook)
             return;
         var order = Enumerable.Range(0, Party.MaxSize).Where(i => Party.Slots.ElementAtOrDefault(i) is not null).ToList();
         if (order.Count < 2)
             return;
         Settle();
+        StopDiscarding();
         var at = order.IndexOf(Member);
         if (!Spatial)
             SelectedSlot = null;
@@ -277,11 +278,12 @@ public sealed partial class PartyMenu : IPartyWindow
     {
         var aim = _aim;
         _aim = null;
-        if (HasPopup || Slide is not null && OriginalLook)
+        if (LetGoPinned() || HasPopup || Slide is not null && OriginalLook)
             return;
         Slide = null;
         SelectedSlot = null;
         Picking = null;
+        StopDiscarding();
         if (_focus == PartyFocus.Foot)
             _focus = PartyFocus.List;
         var lists = (among ?? Enum.GetValues<PartyList>()).ToList();
@@ -302,16 +304,11 @@ public sealed partial class PartyMenu : IPartyWindow
         SyncFitting();
     }
 
-    /// <summary>Moves the cursor of the popup or the actiontip, or of the list showing.</summary>
+    /// <summary>Moves the cursor of the popup, or of the list showing; lets the details go if they're held open (<see cref="LetGoPinned"/>).</summary>
     public void MoveCursor(int by)
     {
-        if (Message is not null || DetailsPane.Showing)
+        if (LetGoPinned() || Message is not null || DetailsPane.Showing)
             return;
-        if (Tip is { } tip)
-        {
-            tip.Choices.Move(by);
-            return;
-        }
         if (Crafting is { } crafting)
         {
             if (crafting.Fade.IsOpen)
@@ -352,10 +349,16 @@ public sealed partial class PartyMenu : IPartyWindow
 
     /// <summary>
     /// The first press on the grid's hidden cursor from a key or a controller, which only shows it, as the stick, A, C-down or C-up would
-    /// otherwise move from, or use, an item the player never saw selected. True if it was taken.
+    /// otherwise move from, or use, an item the player never saw selected. True if it was taken. Never a press the mouse made: a click on
+    /// a tab or a portrait aims it (<see cref="AimAt"/>, <see cref="AimAtMember"/>), and a double click moves the cursor quietly first
+    /// (<see cref="Point"/>); those presses swallowed left the tabs unclickable (fixed Nov 6, 2026).
     /// </summary>
     public bool ShowCursor(MenuAction action)
     {
+        var clicked = _quietClick;
+        _quietClick = false;
+        if (clicked || _aim is not null || _memberAim is not null)
+            return false;
         if (CursorShows || List != PartyList.Inventory || !Grid || HasPopup || Focus != PartyFocus.List || Slide is not null
             || action is not (MenuAction.Up or MenuAction.Down or MenuAction.Left or MenuAction.Right or MenuAction.Accept
                 or MenuAction.Details or MenuAction.Appraise))
@@ -363,6 +366,9 @@ public sealed partial class PartyMenu : IPartyWindow
         Pointing = false;
         return true;
     }
+
+    /// <summary>Whether a click moved the cursor quietly for the press it makes next, which is then the mouse's, not a key's.</summary>
+    private bool _quietClick;
 
     /// <summary>
     /// Scrolls the inventory's grid by lines, as the mouse's wheel does, rather than moving the cursor. A cursor a click put on a cell
@@ -387,8 +393,9 @@ public sealed partial class PartyMenu : IPartyWindow
     /// </summary>
     public void Point(int row, bool quietly = false)
     {
-        if (Message is not null || DetailsPane.Showing || Tip is not null)
+        if (Message is not null || DetailsPane.Showing)
             return;
+        _quietClick = quietly;
         // A click on the grid of what fits the slot selected chooses for it.
         if (Spatial && List == PartyList.Inventory && SelectedSlot is { } fitting)
             Picking = fitting;

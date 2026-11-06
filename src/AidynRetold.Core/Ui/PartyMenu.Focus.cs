@@ -227,8 +227,8 @@ public sealed partial class PartyMenu
 
     /// <summary>
     /// The buttons along the tab's foot and what each does now, the user's choice (Nov 3, 2026): A named for what it does with what's
-    /// selected, the details, Appraise's actiontip, the member and Back; or a popup's own. None in the original's look, nor without
-    /// <see cref="KeyName"/>.
+    /// selected, Appraise's Unequip on a worn slot, the details, the member and Back; or a popup's own; or, while items are being chosen
+    /// to drop, Select or Unselect and Done. None in the original's look, nor without <see cref="KeyName"/>.
     /// </summary>
     public IReadOnlyList<MenuPrompt> Prompts
     {
@@ -244,10 +244,18 @@ public sealed partial class PartyMenu
             else if (DetailsPane.Showing)
             {
             }
-            else if (Tip is not null || Crafting is not null)
+            else if (Crafting is not null)
             {
                 Add("Choose", GameControls.MenuAccept);
                 Add("Back", GameControls.MenuBack);
+            }
+            else if (Discarding)
+            {
+                if (Focus == PartyFocus.Foot)
+                    FootPrompts(Add);
+                else if (BoxRow() is { } row && CanDrop(row))
+                    Add(IsDiscard(row) ? "Unselect" : "Select", GameControls.MenuAccept);
+                Add("Done", GameControls.MenuBack);
             }
             else
             {
@@ -260,22 +268,18 @@ public sealed partial class PartyMenu
                         FootPrompts(Add);
                         break;
                     case PartyFocus.Slots:
-                        // A on a slot chooses what goes in it (Picking).
+                        // A on a slot chooses what goes in it (Picking); Appraise takes off what's in it.
                         Add(Worn(SelectedSlot!.Value) is null ? "Choose" : "Change", GameControls.MenuAccept);
+                        if (Worn(SelectedSlot!.Value) is not null)
+                            Add("Unequip", GameControls.MenuAppraise);
                         if (Details() is not null)
                             Add("Details", GameControls.MenuDetails);
-                        if (TipRow() is not null)
-                            Add("Actions", GameControls.MenuAppraise);
                         break;
-                    case PartyFocus.List when TipRow() is { } row && CursorShows:
-                        var action = ActionFor(row);
-                        var details = Details() is not null;
-                        if (action is { } named)
-                            Add(ActionTip.Label(named), GameControls.MenuAccept);
-                        if (details)
+                    case PartyFocus.List when BoxRow() is { } row && CursorShows:
+                        if (ActionFor(row) is { } named)
+                            Add(named.Label(), GameControls.MenuAccept);
+                        if (Details() is not null)
                             Add("Details", GameControls.MenuDetails);
-                        if (action is not null || details)
-                            Add("Actions", GameControls.MenuAppraise);
                         break;
                     case PartyFocus.List when List == PartyList.Skills && Combat is null && Skills.Current is { } skill && skill.Skill.IsSkill
                         && (Skill)skill.Skill.Slot is Skill.Alchemist or Skill.Mechanic or Skill.Healer:
@@ -294,11 +298,22 @@ public sealed partial class PartyMenu
 
             void Add(string label, params string[] controls)
             {
-                var names = controls.Select(c => KeyName(c)).OfType<string>().ToList();
-                if (names.Count == controls.Length)
-                    prompts.Add(new MenuPrompt(string.Join("/", names), label));
+                if (Prompt(label, controls) is { } prompt)
+                    prompts.Add(prompt);
             }
         }
+    }
+
+    /// <summary>
+    /// A prompt for a label and the controls that do it, each named on the device in use (<see cref="KeyName"/>), two joined with a
+    /// slash; null if any has no button there, or without <see cref="KeyName"/>.
+    /// </summary>
+    private MenuPrompt? Prompt(string label, params string[] controls)
+    {
+        if (KeyName is null)
+            return null;
+        var names = controls.Select(c => KeyName(c)).OfType<string>().ToList();
+        return names.Count == controls.Length ? new MenuPrompt(string.Join("/", names), label) : null;
     }
 
     /// <summary>

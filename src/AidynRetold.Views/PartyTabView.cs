@@ -65,11 +65,11 @@ public partial class PartyTabView : Control
     private static readonly Vector2I OriginalSliderAt = new(126, 207);
     /// <summary>
     /// The other members' small portraits, one a slot but the shown member's: the original's three at x 49, 78 and 107, 24 square; the
-    /// port's four at 43, 64, 85 and 106, 20 square, 21 apart, for a party of five, which end at 126 inside the header's piece (the user's
-    /// choice, Nov 5, 2026).
+    /// port's four at 43, 66, 88 and 111, 20 square with gaps of 2 or 3, for a party of five, the last ending at 131 under the level's
+    /// right edge (the user's choice, Nov 5, 2026).
     /// </summary>
     private static readonly Vector2I[] OriginalOthers = [new(49, 17), new(78, 17), new(107, 17)],
-        PortOthers = [.. Enumerable.Range(0, Core.Characters.Party.MaxSize - 1).Select(i => new Vector2I(43 + i * 21, 17))];
+        PortOthers = [new(43, 17), new(66, 17), new(88, 17), new(111, 17)];
 
     private Vector2I[] OtherPortraits => OriginalLook ? OriginalOthers : PortOthers;
 
@@ -1328,8 +1328,8 @@ public partial class PartyTabView : Control
         if (Menu.Previous is { } before)
             _ui.Text(_canvas, NameFont, before.Name, at.X + NameAt.X, at.Y + NameAt.Y, FadingOut(PartyMenu.TextColor, change));
         _ui.Text(_canvas, NameFont, shown.Name, at.X + NameAt.X, at.Y + NameAt.Y, FadingIn(PartyMenu.TextColor, change));
-        var icons = Icons(shown);
-        var old = Menu.Previous is { } member ? Icons(member) : icons;
+        var icons = Icons(shown, order);
+        var old = Menu.Previous is { } member ? Icons(member, previous) : icons;
         foreach (var (icon, rect, _, alpha) in old.Except(icons))
             Icon(icon, new Rect2((Vector2)at + rect.Position, rect.Size), FadingOut(White with { A = alpha }, change));
         foreach (var (icon, rect, name, alpha) in icons)
@@ -1374,7 +1374,7 @@ public partial class PartyTabView : Control
     /// hunger's and tiredness's, in the shown portrait's bottom right corner as the trek HUD has them, 6 square, 1 in, overlapping
     /// by half (the user's design, Nov 5, 2026; <see cref="PartyPortraits.StatusIcons"/>).
     /// </summary>
-    private List<(RecordId Icon, Rect2 Rect, string Name, byte Alpha)> Icons(Core.Characters.Character member)
+    private List<(RecordId Icon, Rect2 Rect, string Name, byte Alpha)> Icons(Core.Characters.Character member, IReadOnlyList<int>? order = null)
     {
         var icons = new List<(RecordId, Rect2, string, byte)>();
         if (!OriginalLook)
@@ -1405,14 +1405,21 @@ public partial class PartyTabView : Control
             if (MenuImages.SchoolIcon(member.School) is { } school)
                 icons.Add((school, new Rect2(x, OriginalIconsAt.Y, _ui.Size(school).X, _ui.Size(school).Y), $"School of {member.School}", 255));
         }
-        // The status icons in the shown portrait's corner, in either look.
-        var status = PartyPortraits.StatusIcons(member.Hunger, member.Rest);
-        for (var n = 0; n < status.Count; n++)
+        // The status icons in every portrait's corner, the shown member's and the others', in either look (the user's choice, Nov 5, 2026).
+        var slots = (order ?? Menu.PortraitOrder).ToList();
+        for (var i = 0; i < slots.Count; i++)
         {
-            var left = ShownPortrait.X + ShownSize - PartyPortraits.IconInset - PartyPortraits.IconSize - (status.Count - 1 - n) * (PartyPortraits.IconSize / 2f);
-            var top = ShownPortrait.Y + ShownSize - PartyPortraits.IconInset - PartyPortraits.IconSize;
-            var name = HungerDisplay.Icons.Contains(status[n]) ? HungerDisplay.Tooltip(member.Hunger)! : RestDisplay.Tooltip(member.Rest)!;
-            icons.Add((status[n], new Rect2(left, top, PartyPortraits.IconSize, PartyPortraits.IconSize), name, 255));
+            if (Menu.Party.Slots[slots[i]] is not { } who)
+                continue;
+            var (at, size) = PortraitPlace(i);
+            var status = PartyPortraits.StatusIcons(who.Hunger, who.Rest);
+            for (var n = 0; n < status.Count; n++)
+            {
+                var left = at.X + size - PartyPortraits.IconInset - PartyPortraits.IconSize - (status.Count - 1 - n) * (PartyPortraits.IconSize / 2f);
+                var top = at.Y + size - PartyPortraits.IconInset - PartyPortraits.IconSize;
+                var name = HungerDisplay.Icons.Contains(status[n]) ? HungerDisplay.Tooltip(who.Hunger)! : RestDisplay.Tooltip(who.Rest)!;
+                icons.Add((status[n], new Rect2(left, top, PartyPortraits.IconSize, PartyPortraits.IconSize), name, 255));
+            }
         }
         return icons;
     }
@@ -1472,8 +1479,20 @@ public partial class PartyTabView : Control
         for (var i = 0; i < 3 && dx[i] < right; i++)
         {
             var share = Math.Min(1, (right - dx[i]) / (dx[i + 1] - dx[i]));
-            _canvas.DrawTextureRectRegion(texture, new Rect2(dx[i], rect.Position.Y, (dx[i + 1] - dx[i]) * share, rect.Size.Y),
-                new Rect2(sx[i] * texels, 0, (sx[i + 1] - sx[i]) * texels * share, texture.GetHeight()), _ui.Tint(White));
+            var drawn = (dx[i + 1] - dx[i]) * share;
+            if (i < 2)
+            {
+                _canvas.DrawTextureRectRegion(texture, new Rect2(dx[i], rect.Position.Y, drawn, rect.Size.Y),
+                    new Rect2(sx[i] * texels, 0, (sx[i + 1] - sx[i]) * texels * share, texture.GetHeight()), _ui.Tint(White));
+                continue;
+            }
+            // The right end is the left end mirrored, plain and round like it, the user's choice (Nov 5, 2026), in place of the art's
+            // flourish: the art flipped, its last BarEnd of pixels, from their start, as far as the cut at right goes.
+            if (UiImages.ArtMirrored(name) is { } mirrored)
+            {
+                _canvas.DrawTextureRectRegion(mirrored, new Rect2(dx[i], rect.Position.Y, drawn, rect.Size.Y),
+                    new Rect2(mirrored.GetWidth() - BarEnd * texels, 0, BarEnd * share * texels, mirrored.GetHeight()), _ui.Tint(White));
+            }
         }
     }
 
@@ -1971,7 +1990,7 @@ public partial class PartyTabView : Control
         var (rect, buttons) = BoxRect(shown, tip);
         var name = _ui.Main.Sized(BoxNameText);
         var small = _ui.Slim.Sized(BoxText);
-        var font = _ui.Slim.Sized(TipText);
+        var font = _ui.Slim.Sized(ButtonText);
         _ui.Slip(_canvas, rect);
         var x = rect.Position.X + TipSide;
         var y = rect.Position.Y + SlipEnds;
@@ -2012,7 +2031,7 @@ public partial class PartyTabView : Control
     {
         var name = _ui.Main.Sized(BoxNameText);
         var small = _ui.Slim.Sized(BoxText);
-        var font = _ui.Slim.Sized(TipText);
+        var font = _ui.Slim.Sized(ButtonText);
         var lines = CardLines(shown.Card).ToList();
         var widths = shown.Choices.Select(c => font.ExactWidth(ActionTip.Label(c)) + 2 * ButtonSide).ToList();
         var row = widths.Count > 0 ? widths.Sum() + (widths.Count - 1) * ButtonGap : 0;
@@ -2057,7 +2076,7 @@ public partial class PartyTabView : Control
     /// The item box's text: the name's capitals this tall in the main face, the lines' this tall and this far apart; its buttons this
     /// tall, with this much beside a label and this much between them; and the name on hover this tall, smaller than the stats card's.
     /// </summary>
-    private const float BoxNameText = 4.4f, BoxText = 2.6f, BoxLinePitch = 3.6f, ButtonHeight = 6.5f, ButtonSide = 2.5f, ButtonGap = 2, HoverText = 2.3f;
+    private const float BoxNameText = 4.4f, BoxText = 2.6f, BoxLinePitch = 3.6f, ButtonText = 2.6f, ButtonHeight = 5.5f, ButtonSide = 2.5f, ButtonGap = 2, HoverText = 2.3f;
 
     /// <summary>
     /// A name on a little slip of paper, centred across <paramref name="middle"/>, its foot at <paramref name="foot"/>, kept inside the

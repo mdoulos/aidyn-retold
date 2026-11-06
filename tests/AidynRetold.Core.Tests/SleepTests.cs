@@ -201,10 +201,11 @@ public class SleepTests
         var low = portraits.Draw([new HudMember(face, Health: 0.2f)], 1).ToList();
         Assert.Equal(PartyPortraits.BarLow, low.Last(s => s.Image == PartyPortraits.Pixel).Color);
 
-        // Starving or Overtired takes hit points, and the bar flashes red over its whole width, slowly; Hungry and Tired don't.
+        // Starving or Overtired takes hit points, and the fill lifts toward white over its own length, slowly; Hungry and Tired don't.
         var draining = portraits.Draw([new HudMember(face, HungerState.Starving, Health: 0.5f)], 1).Where(s => s.Image == PartyPortraits.Pixel).ToList();
         Assert.Equal(3, draining.Count);
-        Assert.Equal((26f, 2f), draining[2].Size!.Value);
+        Assert.Equal((13f, 2f), draining[2].Size!.Value);
+        Assert.Equal((255, 255, 255), (draining[2].Color.R, draining[2].Color.G, draining[2].Color.B));
         Assert.Equal(PartyPortraits.DrainTint(HungerState.Starving, RestState.Rested, 14 / 30f), draining[2].Color);
         Assert.True(draining[2].Color.A > 0);
         Assert.Equal(2, portraits.Draw([new HudMember(face, HungerState.Hungry, RestState.Tired, 0.5f)], 1).Count(s => s.Image == PartyPortraits.Pixel));

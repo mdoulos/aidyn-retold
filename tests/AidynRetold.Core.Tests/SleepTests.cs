@@ -93,6 +93,52 @@ public class SleepTests
     }
 
     [Fact]
+    public void StarvingAndOvertiredEachCostAHitPointAnHourOfTrekDownToAFloor()
+    {
+        var member = Member();
+        var max = member.MaxHp;
+        member.AgeEffects(Days(3));
+        Assert.Equal((HungerState.Starving, RestState.Overtired), (member.Hunger, member.Rest));
+        Assert.Equal(max, member.Hp);
+
+        member.Starve(GameClock.Hour);
+        Assert.Equal(max - 2, member.Hp);
+        member.Starve(GameClock.Hour / 2);
+        Assert.Equal(max - 2, member.Hp);
+        member.Starve(GameClock.Hour / 2);
+        Assert.Equal(max - 4, member.Hp);
+
+        // Never below a tenth of the maximum, however long.
+        member.Starve(100UL * GameClock.Day);
+        Assert.Equal(Character.StarveFloor(max), member.Hp);
+        Assert.Equal(Math.Max(1, max / 10), member.Hp);
+        Assert.False(member.IsDead);
+
+        // Slept, only Starving costs; fed too, nothing does, and the part of an hour is forgotten.
+        member.Heal(max);
+        member.Sleep();
+        member.Starve(GameClock.Hour);
+        Assert.Equal(max - 1, member.Hp);
+        member.Starve(GameClock.Hour / 2);
+        member.Eat(3);
+        member.Starve(GameClock.Hour / 2);
+        member.Starve(GameClock.Hour);
+        Assert.Equal(max - 1, member.Hp);
+    }
+
+    [Fact]
+    public void CampingDoesntCostTheStarvingHitPoints()
+    {
+        var party = new Party(ItemData.Catalog(Apple));
+        var member = Member();
+        party.Add(member);
+        member.AgeEffects(Days(3));
+        var hp = member.Hp;
+        party.CampHeal(0f, 24_000, new Rng.Lcg());
+        Assert.Equal(hp, member.Hp);
+    }
+
+    [Fact]
     public void WithNoFoodInThePluginsNoOneTires()
     {
         var member = Character.Create(Characters.Alaron(), Characters.Rules, _ => Characters.Fireball);

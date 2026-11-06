@@ -78,4 +78,40 @@ public sealed partial class Character
         var since = SinceFell + units;
         SetSatiety(Satiety - (int)Math.Min(since / FallEvery, (ulong)SatietyMost), since % FallEvery);
     }
+
+    /// <summary>
+    /// What Starving and Overtired each cost in hit points a game hour of trek (the user's design, Nov 5, 2026), and the floor they
+    /// can't take a member below, a tenth of the maximum, at least 1: they never kill.
+    /// </summary>
+    public const int StarveLoss = 1;
+
+    /// <inheritdoc cref="StarveLoss"/>
+    public static int StarveFloor(int maxHp) => Math.Max(1, maxHp / 10);
+
+    // Trek's time toward the next whole hour of starving.
+    private ulong _starveSince;
+
+    /// <summary>
+    /// Trek's time passing for a member, <paramref name="units"/> of the clock's (<c>GameState.PassTime</c>), not a camp's or a rest's:
+    /// each whole game hour costs <see cref="StarveLoss"/> hit points while Starving and as many again while Overtired, Stamina's first
+    /// then Endurance's (<see cref="DrainStamina"/>), down to <see cref="StarveFloor"/> and no further. Fed and rested, the part of an
+    /// hour is forgotten.
+    /// </summary>
+    public void Starve(ulong units)
+    {
+        if (units == 0 || IsDead || !Rules.Magic.HasFood)
+            return;
+        var hourly = (Hunger == HungerState.Starving ? StarveLoss : 0) + (Rest == RestState.Overtired ? StarveLoss : 0);
+        if (hourly == 0)
+        {
+            _starveSince = 0;
+            return;
+        }
+        _starveSince += units;
+        var hours = (int)Math.Min(_starveSince / GameClock.Hour, 255);
+        _starveSince %= GameClock.Hour;
+        var take = Math.Min(hours * hourly, Hp - StarveFloor(MaxHp));
+        if (take > 0)
+            DrainStamina(take);
+    }
 }

@@ -380,7 +380,7 @@ public partial class PartyTabView : Control
         if (what == NotificationResized)
             QueueRedraw();
         else if (what == NotificationMouseExit)
-            (_hoveredTab, _hoveredIcon) = (null, null);
+            (_hoveredTab, _hoveredIcon, _hoveredCell) = (null, null, null);
     }
 
     /// <summary>
@@ -403,7 +403,10 @@ public partial class PartyTabView : Control
             _hoveredTab = TabAt(mouse.Position) is { } tab && HasTab(PartyMenu.Tabs[tab]) ? tab : null;
             _hoveredSlot = SlotAt(mouse.Position);
             _hoveredIcon = IconAt(mouse.Position);
-            _hoveredCell = null;
+            // The cell under the mouse is found again as it moves (Hover); a button's press or release leaves it, so a click on a cell
+            // keeps its card up.
+            if (@event is InputEventMouseMotion)
+                _hoveredCell = null;
         }
         if (TipInput(@event) || DragInput(@event))
         {
@@ -914,10 +917,23 @@ public partial class PartyTabView : Control
         var details = Window.Details();
         if (details is null)
             return;
+        // On the tab itself, in the port's look, the details take the silhouette's place: its sheet, as big and where it is, the user's
+        // choice (Nov 5, 2026). The windows' details stay on their paper, with their own parts.
+        if (OwnTab && !OriginalLook)
+        {
+            Begin(_detailsLayer, _origin);
+            _ui.Slip(_canvas, EquipmentSheet, sheet: UiPainter.LargeSheet);
+            Details(details, DetailsArea, _ui.Slim);
+            return;
+        }
         Begin(_detailsLayer, _origin + new Vector2I(0, Drop));
         Paper();
         Details(details, ClassicDetails, _ui.Slim);
     }
+
+    /// <summary>Where the details go on the equipment's sheet in the port's look: inside it by the cards' inset.</summary>
+    private static readonly ScreenRect DetailsArea = new((int)(EquipmentSheet.Position.X + CardInset), (int)(EquipmentSheet.Position.Y + CardInset),
+        (int)(EquipmentSheet.End.X - CardInset), (int)(EquipmentSheet.End.Y - CardInset));
 
     /// <summary>
     /// Over the popup and the details: the veil, and the messages and popups at the screen's centre. The veil is the tab's own image with its painted layout covered by plain parchment (<see cref="PlainPatches"/>),
@@ -2192,9 +2208,10 @@ public partial class PartyTabView : Control
         var y = area.Top;
         if (details.Icon is { } icon)
         {
-            // The icon, and the name level with its foot.
-            var size = _ui.Size(icon);
-            _ui.Image(_canvas, icon, area.Left, y);
+            // The icon, and the name level with its foot. The game's own pictures, a food's, are drawn at the original's item icons' size,
+            // the shared potion's, not their own.
+            var size = icon.Namespace == MenuImages.OwnNamespace ? _ui.Size(MenuImages.Potion) : _ui.Size(icon);
+            _ui.Image(_canvas, icon, area.Left, y, size);
             y += size.Y + 2;
             if (details.Title is { } title)
             {

@@ -283,7 +283,11 @@ public sealed class GameState : IScriptWorld
         Clock.Step(ticks);
         var frame = _effectFrame.Tick(ticks) > 0;
         foreach (var member in Party.Members)
+        {
             member.AgeEffects(ticks, frame, Clock.Date.PartOfDay, Random.Combat);
+            // Starving and Overtired cost hit points in trek alone, the remade game's (Character.Starve).
+            member.Starve((ulong)Math.Max(ticks, 0) * GameClock.DaySpeed);
+        }
         NoteTossed(Party.Inventory.Age((ulong)Math.Max(ticks, 0) * GameClock.DaySpeed));
         for (var i = 0; i < ticks; i++)
             Weather.Tick(Clock.Date.PartOfDay, Clock.Date.Season, Terrain(Weather.Terrain), Random.World, Random.Cosmetic);

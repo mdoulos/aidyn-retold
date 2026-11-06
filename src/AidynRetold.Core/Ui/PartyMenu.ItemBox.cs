@@ -22,7 +22,8 @@ public sealed partial class PartyMenu
     /// <summary>
     /// Which buttons do what with an item, for the box to say, each named on the device in use (<see cref="KeyName"/>): A's action with
     /// it, or on a worn slot Change for A and Unequip for Appraise; the details where it has any; and while items are being chosen to
-    /// drop (<see cref="Discarding"/>), Select or Unselect. None without <see cref="KeyName"/>.
+    /// drop (<see cref="Discarding"/>), Select or Select One More for A and Unselect or Unselect One for Appraise
+    /// (<see cref="DiscardHelp"/>). None without <see cref="KeyName"/>.
     /// </summary>
     public IReadOnlyList<MenuPrompt> ItemHelp(InventoryRow row)
     {
@@ -31,8 +32,7 @@ public sealed partial class PartyMenu
             return help;
         if (Discarding)
         {
-            if (CanDrop(row))
-                Add(IsDiscard(row) ? "Unselect" : "Select", GameControls.MenuAccept);
+            DiscardHelp(row, Add);
             return help;
         }
         if (Spatial && SelectedSlot is { } slot && Worn(slot) is not null)
@@ -70,9 +70,12 @@ public sealed partial class PartyMenu
 
     /// <summary>
     /// The menus' Appraise on the tab, the user's design (Nov 6, 2026): takes off what's worn in the silhouette's slot selected, in the
-    /// port's look, where A on the slot chooses what goes in it; in the original's look A takes it off. True if it did.
+    /// port's look, where A on the slot chooses what goes in it; in the original's look A takes it off. While items are being chosen to
+    /// drop, takes one of the cursor's stack back from them (<see cref="RemoveDiscard"/>). True if it did.
     /// </summary>
-    bool IPartyWindow.Appraise() => Unequip();
+    bool IPartyWindow.Appraise() => Discarding
+        ? !HasPopup && List == PartyList.Inventory && Inventory.Current is { } row && RemoveDiscard(row)
+        : Unequip();
 
     /// <summary>Takes off what's worn in the slot selected, in the port's look. True if there was something to take off.</summary>
     public bool Unequip()

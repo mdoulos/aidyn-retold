@@ -304,10 +304,13 @@ public sealed partial class PartyMenu : IPartyWindow
         SyncFitting();
     }
 
-    /// <summary>Moves the cursor of the popup, or of the list showing; lets the details go if they're held open (<see cref="LetGoPinned"/>).</summary>
+    /// <summary>
+    /// Moves the cursor of the trash's question or the popup, or of the list showing; lets the details go if they're held open
+    /// (<see cref="LetGoPinned"/>).
+    /// </summary>
     public void MoveCursor(int by)
     {
-        if (LetGoPinned() || Message is not null || DetailsPane.Showing)
+        if (Overlay.MoveCursor(by) || LetGoPinned() || Message is not null || DetailsPane.Showing)
             return;
         if (Crafting is { } crafting)
         {

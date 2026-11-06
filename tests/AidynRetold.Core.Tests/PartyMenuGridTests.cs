@@ -1,6 +1,7 @@
 using AidynRetold.Core.Characters;
 using AidynRetold.Core.Items;
 using AidynRetold.Core.Ui;
+using AidynRetold.Plugins;
 using AidynRetold.Plugins.Records;
 
 namespace AidynRetold.Core.Tests;
@@ -304,8 +305,9 @@ public class PartyMenuGridTests
     }
 
     /// <summary>
-    /// The trash under the grid starts choosing items to drop: A on a cell, or a click, chooses it or lets it go, any number; B, the trash
-    /// again or the list changing ends it, letting them all go. What can't be dropped isn't chosen.
+    /// The trash under the grid starts choosing items to drop: A on a cell, or a click, chooses it, and Appraise, or Shift and a click,
+    /// lets it go, any number; B, the trash again with nothing chosen, or the list changing ends it, letting them all go. What can't be
+    /// dropped isn't chosen.
     /// </summary>
     [Fact]
     public void TheTrashUnderTheGridChoosesItemsToDrop()
@@ -319,12 +321,18 @@ public class PartyMenuGridTests
         menu.Point(2);
         menu.Accept();
         Assert.True(menu.IsDiscard(menu.Inventory.Rows[2]));
-        Assert.Contains(new MenuPrompt("A", "Unselect"), menu.Prompts);
+        Assert.Equal(1, menu.DiscardCount(menu.Inventory.Rows[2]));
+        Assert.Contains(new MenuPrompt("X", "Unselect"), menu.Prompts);
+        Assert.DoesNotContain(new MenuPrompt("A", "Select"), menu.Prompts);
         Assert.Contains(new MenuPrompt("B", "Done"), menu.Prompts);
-        Assert.True(menu.ToggleDiscard(menu.Inventory.Rows[3]));
-        Assert.Equal(2, menu.Discards.Count);
+        // One of a lone item is the whole of it: A again chooses no more.
         menu.Accept();
+        Assert.Equal(1, menu.DiscardCount(menu.Inventory.Rows[2]));
+        Assert.True(menu.AddDiscard(menu.Inventory.Rows[3]));
+        Assert.Equal(2, menu.Discards.Count);
+        Assert.True(((IPartyWindow)menu).Appraise());
         Assert.False(menu.IsDiscard(menu.Inventory.Rows[2]));
+        Assert.False(menu.RemoveDiscard(menu.Inventory.Rows[2]));
         Assert.True(menu.Back());
         Assert.False(menu.Discarding);
         Assert.Empty(menu.Discards);
@@ -337,6 +345,96 @@ public class PartyMenuGridTests
         menu.ChooseFoot(PartyMenu.FootTrash);
         Assert.False(menu.Discarding);
     }
+
+    /// <summary>
+    /// A stack is chosen a unit at a time, up to the whole stack, and let go a unit at a time; the trash with items chosen asks whether to
+    /// drop them, naming one item, some of one stack, some of one kind or some items, with the cursor on No; B or No takes the question
+    /// down with nothing dropped, and Yes drops them and ends choosing.
+    /// </summary>
+    [Fact]
+    public void TheTrashAsksBeforeItDropsWhatIsChosen()
+    {
+        // Three potions, stacked, among three of the things.
+        var potion = ItemData.NewItem(60, ItemKind.Potion) with { Name = "Healing Potion" };
+        var party = TradeData.PartyOf(ItemData.CatalogWith(TradeData.Rules(40), [Sword, potion, .. Things]), null, [PotionData.Member("Alaron", 0, null)]);
+        foreach (var thing in Things.Take(3))
+            Assert.True(party.Inventory.Add(thing.Id));
+        Assert.True(party.Inventory.Add(potion.Id, 3));
+        var menu = new PartyMenu(party, new MenuText([]), _ => null, _ => null) { Grid = true, KeyName = Keys };
+        menu.ChooseFoot(PartyMenu.FootTrash);
+        var potions = menu.Inventory.Rows.Single(r => r.Item.Id == potion.Id);
+        menu.Point(RowOf(potion.Id));
+
+        menu.Accept();
+        Assert.Equal("Are you sure you want to drop Healing Potion?", menu.DropQuestion());
+        Assert.Contains(new MenuPrompt("A", "Select One More"), menu.Prompts);
+        menu.Accept();
+        Assert.Equal(2, menu.DiscardCount(potions));
+        Assert.Equal("Are you sure you want to drop 2 Healing Potions?", menu.DropQuestion());
+        Assert.Contains(new MenuPrompt("X", "Unselect One"), menu.Prompts);
+        menu.Accept();
+        menu.Accept();
+        Assert.Equal(3, menu.DiscardCount(potions));
+        Assert.True(menu.RemoveDiscard(potions));
+        Assert.Equal(2, menu.DiscardCount(potions));
+
+        // Two of the things with them: a mix of kinds; the things alone, all of one kind.
+        Assert.True(menu.AddDiscard(menu.Inventory.Rows[RowOf(Things[0].Id)]));
+        Assert.True(menu.AddDiscard(menu.Inventory.Rows[RowOf(Things[1].Id)]));
+        Assert.Equal("Are you sure you want to drop 4 items?", menu.DropQuestion());
+        Assert.True(menu.RemoveDiscard(potions));
+        Assert.True(menu.RemoveDiscard(potions));
+        Assert.Equal("Are you sure you want to drop 2 items?", menu.DropQuestion());
+
+        // The trash asks; B takes the question down, and the choice stays.
+        menu.ChooseFoot(PartyMenu.FootTrash);
+        Assert.NotNull(menu.DropChoice);
+        Assert.Equal(1, menu.DropChoice!.Choices.Cursor);
+        Assert.Contains(new MenuPrompt("B", "Cancel"), menu.Prompts);
+        Assert.True(menu.Back());
+        Assert.Null(menu.DropChoice);
+        Assert.True(menu.Discarding);
+        Assert.Equal(2, menu.Discards.Count);
+        // No, chosen, does the same.
+        menu.ChooseFoot(PartyMenu.FootTrash);
+        menu.Accept();
+        Assert.Null(menu.DropChoice);
+        Assert.Equal(2, menu.Discards.Count);
+        // Yes drops them.
+        menu.ChooseFoot(PartyMenu.FootTrash);
+        menu.MoveCursor(-1);
+        Assert.Equal(0, menu.DropChoice!.Choices.Cursor);
+        menu.Accept();
+        Assert.Null(menu.DropChoice);
+        Assert.False(menu.Discarding);
+        Assert.False(party.Inventory.Has(Things[0].Id));
+        Assert.False(party.Inventory.Has(Things[1].Id));
+        Assert.Equal(3, party.Inventory.Count(potion.Id));
+        Assert.Equal(2, menu.Inventory.Rows.Count);
+
+        // Some of a stack leaves the rest.
+        menu.ChooseFoot(PartyMenu.FootTrash);
+        menu.Point(RowOf(potion.Id));
+        menu.Accept();
+        menu.Accept();
+        menu.ChooseFoot(PartyMenu.FootTrash);
+        menu.MoveCursor(-1);
+        menu.Accept();
+        Assert.Equal(1, party.Inventory.Count(potion.Id));
+
+        int RowOf(RecordId id) => menu.Inventory.Rows.Select((r, i) => (r, i)).First(p => p.r.Item.Id == id).i;
+    }
+
+    /// <summary>An item's name for more than one: most take an s, some es or ies, and armor, mail and food by the piece stay as they are.</summary>
+    [Theory]
+    [InlineData("Healing Potion", "Healing Potions")]
+    [InlineData("Torch", "Torches")]
+    [InlineData("Berry", "Berries")]
+    [InlineData("Key", "Keys")]
+    [InlineData("Leather Armor", "Leather Armor")]
+    [InlineData("Chain Mail", "Chain Mail")]
+    [InlineData("Fish", "Fish")]
+    public void AnItemsNameHasAPlural(string name, string plural) => Assert.Equal(plural, PartyMenu.Plural(name));
 
     /// <summary>A controller's names for the menus' buttons, as the Controls page gives them.</summary>
     private static string? Keys(string control) => control switch

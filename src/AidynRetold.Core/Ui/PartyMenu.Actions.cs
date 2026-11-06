@@ -108,13 +108,15 @@ public sealed partial class PartyMenu
     }
 
     /// <summary>
-    /// A: closes a message or the details held open, chooses in a popup, chooses an item to drop while they're being chosen, or uses the
-    /// cursor's row, or the worn item in the silhouette's slot selected.
+    /// A: closes a message or the details held open, answers the trash's question or chooses in a popup, chooses an item to drop, or one
+    /// more of its stack, while they're being chosen, or uses the cursor's row, or the worn item in the silhouette's slot selected.
     /// </summary>
     public void Accept()
     {
         if (Message is not null)
             CloseMessage();
+        else if (Overlay.Choice is { } question)
+            AnswerDrop(question);
         else if (DetailsPane.Showing)
         {
             if (DetailsPane.Pinned)
@@ -132,7 +134,7 @@ public sealed partial class PartyMenu
         else if (Discarding)
         {
             if (List == PartyList.Inventory && Inventory.Current is { } chosen)
-                ToggleDiscard(chosen);
+                AddDiscard(chosen);
         }
         // In the port's look A on a slot goes onto the grid of what fits it to choose one (Picking).
         else if (SelectedSlot is { } slot && Spatial)
@@ -159,14 +161,16 @@ public sealed partial class PartyMenu
     }
 
     /// <summary>
-    /// B: closes the message or the details held open, fades the popup out (<c>MenuPopup.OnB</c>, <c>0x80055e10</c>), or ends choosing
-    /// items to drop; in the port's look, with the stick off the list, takes it back onto the list. False if there's none and the
-    /// details don't show, so B closes the menu.
+    /// B: closes the message or the details held open, takes the trash's question down with nothing dropped, fades the popup out
+    /// (<c>MenuPopup.OnB</c>, <c>0x80055e10</c>), or ends choosing items to drop; in the port's look, with the stick off the list, takes
+    /// it back onto the list. False if there's none and the details don't show, so B closes the menu.
     /// </summary>
     public bool Back()
     {
         if (Message is not null)
             CloseMessage();
+        else if (Overlay.Choice is not null)
+            Overlay.CloseChoice();
         else if (DetailsPane.Pinned)
             ReleaseDetails();
         else if (OpenCraftingPopup is { } crafting)

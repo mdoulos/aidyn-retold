@@ -105,7 +105,7 @@ public sealed partial class PartyMenu
 
     /// <summary>
     /// A click on one of the controls under the grid, or A with the stick on it: steps the filter or the order on, or the trash starts
-    /// choosing items to drop, and ends it (<see cref="Discarding"/>).
+    /// choosing items to drop, asks whether to drop those chosen, or ends choosing with none (<see cref="PressTrash"/>).
     /// </summary>
     public void ChooseFoot(int choice, int by = 1)
     {
@@ -129,10 +129,7 @@ public sealed partial class PartyMenu
                 CycleSort(by);
                 break;
             default:
-                if (Discarding)
-                    StopDiscarding();
-                else
-                    StartDiscarding();
+                PressTrash();
                 break;
         }
     }
@@ -149,7 +146,10 @@ public sealed partial class PartyMenu
             FootChoice = Math.Clamp(FootChoice + across, 0, FootCount - 1);
     }
 
-    /// <summary>The prompts with the stick on the controls under the grid: Change on the filter and the order, Drop Items or Done on the trash.</summary>
+    /// <summary>
+    /// The prompts with the stick on the controls under the grid: Change on the filter and the order; on the trash, Drop Items, then Drop
+    /// with items chosen or Done with none.
+    /// </summary>
     private void FootPrompts(Action<string, string[]> add) =>
-        add(FootChoice == FootTrash ? Discarding ? "Done" : "Drop Items" : "Change", [GameControls.MenuAccept]);
+        add(FootChoice == FootTrash ? Discarding ? _discards.Count > 0 ? "Drop" : "Done" : "Drop Items" : "Change", [GameControls.MenuAccept]);
 }

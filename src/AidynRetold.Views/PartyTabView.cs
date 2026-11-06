@@ -30,8 +30,8 @@ public partial class PartyTabView : Control
     /// <summary>The shown member's portrait's place in the frames' piece: the original's (4, 4); the port's a third up, the user's eye (Nov 6, 2026).</summary>
     private Vector2 ShownPortrait => OriginalLook ? new(4, 4) : new(4, 3.7f);
 
-    /// <summary>The name's place: the original's at x 51, beside its 40 portrait; the port's at 42.5, over the small portraits' left edge.</summary>
-    private Vector2 NameAt => OriginalLook ? new(51, 6) : new(42.5f, 6);
+    /// <summary>The name's place: the original's at x 51, beside its 40 portrait; the port's over the small portraits' left edge.</summary>
+    private Vector2 NameAt => OriginalLook ? new(51, 6) : new(FirstOther, 6);
 
     /// <summary>The member's name, a heading, larger than the menus' text; the slim font at its own size in the original's layout.</summary>
     private UiFont NameFont => OriginalLook ? _ui.Slim : _ui.Slim.Sized(UiPainter.HeadingText);
@@ -66,11 +66,18 @@ public partial class PartyTabView : Control
     private static readonly Vector2I OriginalSliderAt = new(126, 207);
     /// <summary>
     /// The other members' small portraits, one a slot but the shown member's: the original's three at x 49, 78 and 107, 24 square; the
-    /// port's four from x 42.5, 20 square with even gaps of 2.83, for a party of five, the last ending at 131 under the level's right
-    /// edge (the user's eye, Nov 5 and 6, 2026).
+    /// port's four from x 41, 3 after the large portrait, 20 square with even gaps of 2.83, for a party of five, the last ending at
+    /// 129.5 (the user's eye, Nov 5 and 6, 2026: from 42.5, the last ending at 131 under the level's right edge, until the gap after
+    /// the large portrait closed by 1.5 on Nov 6).
     /// </summary>
     private static readonly Vector2[] OriginalOthers = [new(49, 17), new(78, 17), new(107, 17)],
-        PortOthers = [.. Enumerable.Range(0, Core.Characters.Party.MaxSize - 1).Select(i => new Vector2(42.5f + i * (131 - 42.5f - 20) / (Core.Characters.Party.MaxSize - 2), 17))];
+        PortOthers = [.. Enumerable.Range(0, Core.Characters.Party.MaxSize - 1).Select(i => new Vector2(FirstOther + i * OtherPitch, 17))];
+
+    /// <summary>The port's first small portrait's left edge, which the name is over too, and how far apart the small portraits are, 20 and a gap of 2.83.</summary>
+    private const float FirstOther = 41, OtherPitch = (131 - 42.5f - 20) / (Core.Characters.Party.MaxSize - 2);
+
+    /// <summary>The port's aspect's and school's icons' right edge, where the last small portrait ended until Nov 6, 2026, kept as the icons' edge.</summary>
+    private const float IconsRight = 131;
 
     private Vector2[] OtherPortraits => OriginalLook ? OriginalOthers : PortOthers;
 
@@ -86,8 +93,9 @@ public partial class PartyTabView : Control
     /// stretched between them (<see cref="ThreeSlice"/>); the brown track and the red fill (ui_bar_brown, ui_bar_red) under
     /// it, sliced alike, the red cut to the share of hit points left across the frame's opening. The hit points are on it.
     /// </summary>
-    // Up under the portraits and across to just before the school's icon, the user's choice (Nov 5, 2026): from x 22 to 134 at y 62.
-    private static readonly Rect2 BarFrame = BarFrom(PortraitPiece.Position.X + 4, 137.2f, 62, 11);
+    // Up under the portraits and across to just before the school's icon, the user's choice (Nov 5, 2026): from x 22 to 137.2 at y 62,
+    // then 2 nearer the icon, to 139.2, the user's eye (Nov 6, 2026).
+    private static readonly Rect2 BarFrame = BarFrom(PortraitPiece.Position.X + 4, 139.2f, 62, 11);
 
     /// <summary>The bar frame's rectangle with its drawn left edge, <see cref="BarArtLeft"/> into its art, at a point across.</summary>
     private static Rect2 BarFrom(float left, float right, float top, float height)
@@ -458,6 +466,28 @@ public partial class PartyTabView : Control
             AcceptEvent();
             return;
         }
+        // A question over choices, the trash's, takes the mouse as the stick: hovering points at a choice, and clicking one chooses it.
+        if (Window.Overlay.Choice is { } question)
+        {
+            var screen = (Vector2I)Size;
+            if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } chose)
+            {
+                if (_ui.ChoiceAt(screen, question, chose.Position) is { } answer)
+                {
+                    question.Choices.Point(answer);
+                    UiScreen.Of(this)?.Click(MenuAction.Accept);
+                }
+                AcceptEvent();
+                return;
+            }
+            if (@event is InputEventMouseMotion over && _ui.ChoiceAt(screen, question, over.Position) is { } pointed)
+            {
+                question.Choices.Point(pointed);
+                QueueRedraw();
+                AcceptEvent();
+                return;
+            }
+        }
         if (DetailsInput(@event) || DragInput(@event))
         {
             AcceptEvent();
@@ -530,8 +560,8 @@ public partial class PartyTabView : Control
             return;
         }
         // A click on a cell selects nothing, the user's design (Nov 6, 2026): a double click uses the item, as A does, the cursor moved
-        // there quietly; while items are being chosen to drop a click chooses the cell's or lets it go; a list's row a click still
-        // selects. Anywhere else a click does nothing.
+        // there quietly; while items are being chosen to drop a click chooses the cell's, or one more of its stack, and Shift and a
+        // click takes one back; a list's row a click still selects. Anywhere else a click does nothing.
         if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } click)
         {
             if (OwnTab && Menu.List == PartyList.Inventory && Menu.Grid && Menu.Crafting is null)
@@ -540,7 +570,12 @@ public partial class PartyTabView : Control
                 if (_gridLayout.RowAt(Menu.Inventory, at.X, at.Y) is { } cell && Menu.Inventory.Rows.ElementAtOrDefault(cell) is { } row)
                 {
                     if (Menu.Discarding)
-                        Menu.ToggleDiscard(row);
+                    {
+                        if (click.ShiftPressed)
+                            Menu.RemoveDiscard(row);
+                        else
+                            Menu.AddDiscard(row);
+                    }
                     else if (click.DoubleClick)
                     {
                         Menu.Point(cell, quietly: true);
@@ -1436,8 +1471,8 @@ public partial class PartyTabView : Control
         var icons = new List<(RecordId, Rect2, string, byte)>();
         if (!OriginalLook)
         {
-            // The port's: the aspect's right edge under the last small portrait's, the school's before it, the user's choice (Nov 2, 2026).
-            var right = (float)OtherPortraits[^1].X + OtherSize;
+            // The port's: the aspect's right edge at IconsRight, the school's before it, the user's choice (Nov 2, 2026).
+            var right = IconsRight;
             if (MenuImages.AspectIcon(member.Aspect) is { } ownAspect)
             {
                 right -= IconSize;
@@ -1962,11 +1997,18 @@ public partial class PartyTabView : Control
                 Small(text, x + grid.Cell - CellInset - count.ExactWidth(text), foot - count.Capitals / 2 - count.Middle, BarText,
                     BarShadow, count);
             }
-            // An item chosen to drop is under a wash of red ink, with the red square round it (the user's design, Nov 6, 2026).
-            if (Menu.IsDiscard(row))
+            // An item chosen to drop is under a wash of red ink, with the red square round it, and from a stack, how many of it in red in
+            // the top right corner, "-2" (the user's design, Nov 6, 2026); one of a lone item says nothing.
+            if (Menu.DiscardCount(row) is > 0 and var chosen)
             {
                 _canvas.DrawRect(new Rect2(x + 0.5f, y + 0.5f, grid.Cell - 1, grid.Cell - 1), _ui.Tint(DiscardWash));
                 Art(Selected, new Rect2(x - 1, y - 1, grid.Cell + 2, grid.Cell + 2));
+                if (row.Quantity > 1)
+                {
+                    var text = $"-{Num(chosen)}";
+                    Small(text, x + grid.Cell - CellInset - count.ExactWidth(text), y + CellInset + count.Capitals / 2 - count.Middle, UiPainter.RedInk,
+                        font: count);
+                }
             }
             if (i == list.Cursor && Menu.Focus == PartyFocus.List && Menu.CursorShows
                 || _drag is { From: { Slot: null } from } && from.Row.Instance == row.Instance)
@@ -2080,20 +2122,27 @@ public partial class PartyTabView : Control
 
     /// <summary>
     /// The hover's card at a point, kept inside the frame: the item's name in the main face, larger; under it in small text what it is
-    /// and why the member can't use it in red; then, dimmer, what the mouse can do with it: "Double Click or Drag to Equip" (or
-    /// Unequip; "Double Click to Drink", Eat or Read) and "Right Click to See Details" where it has any; while items are being chosen to
-    /// drop, "Click to Select" or Unselect, or that it can't be dropped, in red.
+    /// and why the member can't use it in red; then, dimmer and smaller, what the mouse can do with it: "Double Click or Drag to Equip"
+    /// (or Unequip; "Double Click to Drink", Eat or Read) and "Right Click to See Details" where it has any; while items are being chosen
+    /// to drop, "Click to Select" or "Click to Select One More" and "Shift + Click to Unselect" or "Shift + Click to Unselect One", or
+    /// that it can't be dropped, in red.
     /// </summary>
     private void HoverCard(InventoryRow row, float left, float top)
     {
         var card = Menu.Card(row);
-        var name = _ui.Main.Sized(BoxNameText);
-        var small = _ui.Slim.Sized(BoxText);
         var lines = CardLines(card).ToList();
-        var help = HelpInk;
         if (Menu.Discarding)
         {
-            lines.Add(Menu.CanDrop(row) ? (Menu.IsDiscard(row) ? "Click to Unselect" : "Click to Select", help) : (CannotDrop, UiPainter.RedInk));
+            if (!Menu.CanDrop(row))
+                lines.Add(new(CannotDrop, UiPainter.RedInk));
+            else
+            {
+                var chosen = Menu.DiscardCount(row);
+                if (chosen < row.Quantity)
+                    lines.Add(new(chosen == 0 ? "Click to Select" : "Click to Select One More", HelpInk, Help: true));
+                if (chosen > 0)
+                    lines.Add(new(chosen > 1 ? "Shift + Click to Unselect One" : "Shift + Click to Unselect", HelpInk, Help: true));
+            }
         }
         else
         {
@@ -2107,22 +2156,56 @@ public partial class PartyTabView : Control
                 _ => null,
             };
             if (verb is not null)
-                lines.Add((verb, help));
+                lines.Add(new(verb, HelpInk, Help: true));
         }
         if (Menu.HasDetails(row))
-            lines.Add(("Right Click to See Details", help));
-        var width = lines.Select(l => small.ExactWidth(l.Text)).Append(name.ExactWidth(card.Name)).Max() + 2 * TipSide;
-        var height = SlipEnds + name.Capitals + CardGap + lines.Count * BoxLinePitch + TipEnds;
+            lines.Add(new("Right Click to See Details", HelpInk, Help: true));
+        var (width, height) = BoxSize(card.Name, lines);
         var rect = new Rect2(Math.Clamp(left, 4, FrameWidth - 4 - width), Math.Clamp(top, 4, FrameHeight - 4 - height), width, height);
+        DrawBox(rect, card.Name, lines);
+    }
+
+    /// <summary>A line of the item box or the hover's card under the name: a card's, or a help line, which is smaller and stands apart.</summary>
+    private readonly record struct BoxLine(string Text, Rgba Color, bool Help = false);
+
+    /// <summary>
+    /// How big a box of a name over lines is: the widest of them and the sides, and the name, its gap, the card's lines at their pitch,
+    /// the gap before the help lines and those at theirs, between the slip's ends.
+    /// </summary>
+    private (float Width, float Height) BoxSize(string name, IReadOnlyList<BoxLine> lines)
+    {
+        var face = _ui.Main.Sized(BoxNameText);
+        var small = _ui.Slim.Sized(BoxText);
+        var help = _ui.Slim.Sized(BoxHelpText);
+        var width = lines.Select(l => (l.Help ? help : small).ExactWidth(l.Text)).Append(face.ExactWidth(name)).Max() + 2 * TipSide;
+        var cards = lines.Count(l => !l.Help);
+        var helps = lines.Count - cards;
+        var height = SlipEnds + face.Capitals + BoxNameGap + cards * BoxLinePitch + (helps > 0 ? BoxHelpGap + helps * BoxHelpPitch : 0) + TipEnds;
+        return (width, height);
+    }
+
+    /// <summary>A box's slip and its text: the name, the card's lines, then the help lines after their gap, each centred on its line.</summary>
+    private void DrawBox(Rect2 rect, string name, IReadOnlyList<BoxLine> lines)
+    {
+        var face = _ui.Main.Sized(BoxNameText);
+        var small = _ui.Slim.Sized(BoxText);
+        var help = _ui.Slim.Sized(BoxHelpText);
         _ui.Slip(_canvas, rect);
         var x = rect.Position.X + TipSide;
         var y = rect.Position.Y + SlipEnds;
-        Small(card.Name, x, y + name.Capitals / 2 - name.Middle, UiPainter.Ink, font: name);
-        y += name.Capitals + CardGap;
-        foreach (var (text, color) in lines)
+        Small(name, x, y + face.Capitals / 2 - face.Middle, UiPainter.Ink, font: face);
+        y += face.Capitals + BoxNameGap;
+        var helping = false;
+        foreach (var (text, color, isHelp) in lines)
         {
-            Small(text, x, y + small.Capitals / 2 - small.Middle, color, font: small);
-            y += BoxLinePitch;
+            if (isHelp && !helping)
+            {
+                helping = true;
+                y += BoxHelpGap;
+            }
+            var font = isHelp ? help : small;
+            Small(text, x, y + font.Capitals / 2 - font.Middle, color, font: font);
+            y += isHelp ? BoxHelpPitch : BoxLinePitch;
         }
     }
 
@@ -2138,26 +2221,12 @@ public partial class PartyTabView : Control
     /// is and why the member can't use it in red ink; then, dimmer, which buttons do what with it, "A to Equip", "Y to See Details", as the
     /// hover says what the mouse does, in place of buttons to click, which a controller can't.
     /// </summary>
-    private void ItemBox((InventoryRow Row, ItemCard Card, IReadOnlyList<MenuPrompt> Help) shown)
-    {
-        var rect = BoxRect(shown);
-        var name = _ui.Main.Sized(BoxNameText);
-        var small = _ui.Slim.Sized(BoxText);
-        _ui.Slip(_canvas, rect);
-        var x = rect.Position.X + TipSide;
-        var y = rect.Position.Y + SlipEnds;
-        Small(shown.Card.Name, x, y + name.Capitals / 2 - name.Middle, UiPainter.Ink, font: name);
-        y += name.Capitals + CardGap;
-        foreach (var (text, color) in CardLines(shown.Card).Concat(HelpLines(shown.Help)))
-        {
-            Small(text, x, y + small.Capitals / 2 - small.Middle, color, font: small);
-            y += BoxLinePitch;
-        }
-    }
+    private void ItemBox((InventoryRow Row, ItemCard Card, IReadOnlyList<MenuPrompt> Help) shown) =>
+        DrawBox(BoxRect(shown), shown.Card.Name, BoxLines(shown));
 
-    /// <summary>The box's help lines, "A to Equip", in the dimmer ink the hover's are in.</summary>
-    private static IEnumerable<(string Text, Rgba Color)> HelpLines(IReadOnlyList<MenuPrompt> help) =>
-        help.Select(h => ($"{h.Keys} to {h.Label}", HelpInk));
+    /// <summary>The box's lines: the card's, then its help lines, "A to Equip", in the dimmer ink the hover's are in.</summary>
+    private static List<BoxLine> BoxLines((InventoryRow Row, ItemCard Card, IReadOnlyList<MenuPrompt> Help) shown) =>
+        [.. CardLines(shown.Card), .. shown.Help.Select(h => new BoxLine($"{h.Keys} to {h.Label}", HelpInk, Help: true))];
 
     /// <summary>The ink the hover's and the box's help lines are in, dimmer than the card's.</summary>
     private static readonly Rgba HelpInk = PartyMenu.TextColor with { A = 170 };
@@ -2175,22 +2244,18 @@ public partial class PartyTabView : Control
     }
 
     /// <summary>The card's lines under the name: what the item is in ink, and why the member can't use it in red.</summary>
-    private static IEnumerable<(string Text, Rgba Color)> CardLines(ItemCard card)
+    private static IEnumerable<BoxLine> CardLines(ItemCard card)
     {
         if (card.About is { } about)
-            yield return (about, PartyMenu.TextColor);
+            yield return new(about, PartyMenu.TextColor);
         if (card.Warning is { } warning)
-            yield return (warning, UiPainter.RedInk);
+            yield return new(warning, UiPainter.RedInk);
     }
 
     /// <summary>Where the item box's slip is in the frame: beside the slot selected or the cursor's cell, kept inside the frame.</summary>
     private Rect2 BoxRect((InventoryRow Row, ItemCard Card, IReadOnlyList<MenuPrompt> Help) shown)
     {
-        var name = _ui.Main.Sized(BoxNameText);
-        var small = _ui.Slim.Sized(BoxText);
-        var lines = CardLines(shown.Card).Concat(HelpLines(shown.Help)).ToList();
-        var width = lines.Select(l => small.ExactWidth(l.Text)).Append(name.ExactWidth(shown.Card.Name)).Max() + 2 * TipSide;
-        var height = SlipEnds + name.Capitals + CardGap + lines.Count * BoxLinePitch + TipEnds;
+        var (width, height) = BoxSize(shown.Card.Name, BoxLines(shown));
         Vector2 at;
         if (Menu.SelectedSlot is { } slot)
             at = new Vector2(SlotRect(slot).End.X + 1, SlotRect(slot).Position.Y);
@@ -2203,10 +2268,13 @@ public partial class PartyTabView : Control
     }
 
     /// <summary>
-    /// The item box's text: the name's capitals this tall in the main face, the lines' this tall and this far apart; a button, the See
-    /// Full Inventory's, this tall with this much beside its label; and the name on hover this tall, smaller than the stats card's.
+    /// The item box's and the hover's text, the user's eye (Nov 6, 2026): the name's capitals this tall in the main face (4.4 until Nov
+    /// 6), this far over the card's lines (the card's gap, 4.6, less 1), which are this tall and this far apart; the help lines this far
+    /// under them, this tall (the card's lines' size less 0.6) and this far apart; a button, the See Full Inventory's, this tall with this
+    /// much beside its label; and the name on hover this tall, smaller than the stats card's.
     /// </summary>
-    private const float BoxNameText = 4.4f, BoxText = 2.6f, BoxLinePitch = 3.6f, ButtonHeight = 5.5f, ButtonSide = 2.5f, HoverText = 2.3f;
+    private const float BoxNameText = 4, BoxNameGap = 3.6f, BoxText = 2.6f, BoxLinePitch = 3.6f, BoxHelpGap = 1, BoxHelpText = 2, BoxHelpPitch = 3,
+        ButtonHeight = 5.5f, ButtonSide = 2.5f, HoverText = 2.3f;
 
     /// <summary>
     /// A name on a little slip of paper, centred across <paramref name="middle"/>, its foot at <paramref name="foot"/>, kept inside the

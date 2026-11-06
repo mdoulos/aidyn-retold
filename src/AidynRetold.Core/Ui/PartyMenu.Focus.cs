@@ -239,6 +239,11 @@ public sealed partial class PartyMenu
             var prompts = new List<MenuPrompt>();
             if (Message is not null)
                 Add("OK", GameControls.MenuAccept);
+            else if (Overlay.Choice is not null)
+            {
+                Add("Choose", GameControls.MenuAccept);
+                Add("Cancel", GameControls.MenuBack);
+            }
             else if (DetailsPane.Pinned)
                 Add("Close", GameControls.MenuBack);
             else if (DetailsPane.Showing)
@@ -253,8 +258,8 @@ public sealed partial class PartyMenu
             {
                 if (Focus == PartyFocus.Foot)
                     FootPrompts(Add);
-                else if (BoxRow() is { } row && CanDrop(row))
-                    Add(IsDiscard(row) ? "Unselect" : "Select", GameControls.MenuAccept);
+                else if (BoxRow() is { } row)
+                    DiscardHelp(row, Add);
                 Add("Done", GameControls.MenuBack);
             }
             else

@@ -127,6 +127,12 @@ public sealed record SaveCharacter(RecordId Entity)
     /// <summary>Trained less damage (<c>CharStats.health</c>).</summary>
     public required SaveStats Current { get; init; }
 
+    /// <summary>
+    /// Under the remade game's hit points, where a point of Endurance is two, whether one of the current Endurance's two is lost
+    /// (<c>Character.HalfPoint</c>). False in an older save, and under the original's rule.
+    /// </summary>
+    public bool HalfPoint { get; init; }
+
     /// <summary>Base skill levels. One the entity can never learn stays so, whatever this says.</summary>
     public SkillLevels Skills { get; init; } = new();
 

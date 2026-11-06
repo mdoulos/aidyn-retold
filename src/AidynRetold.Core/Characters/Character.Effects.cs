@@ -242,7 +242,8 @@ public sealed partial class Character
     }
 
     /// <summary>
-    /// Takes damage: the Level's points first, then as <see cref="DrainStamina"/> (<c>Character.TakeDamage</c>, <c>0x8006EB8C</c>).
+    /// Takes damage: the Level's points first, then as <see cref="DrainStamina"/> (<c>Character.TakeDamage</c>, <c>0x8006EB8C</c>);
+    /// under the remade rule, where the Level counts for nothing, as <see cref="DrainStamina"/> alone.
     /// A blow that kills is undone by a Cheat Death on it, which heals twice its margin and ends. Otherwise the dead lose their
     /// spells' effects, if they're in a battle, and their potions'.
     /// </summary>
@@ -252,14 +253,19 @@ public sealed partial class Character
     {
         // A hit ends a Troubadour's performance (0x80066100): session 9 ports it.
         amount = (short)amount;
-        var level = Stats.Modified(Stat.Level);
-        if (level >= amount)
+        if (EnduranceTwice)
+            DrainStamina(amount);
+        else
         {
-            Stats.ChangeCurrent(Stat.Level, -amount);
-            return false;
+            var level = Stats.Modified(Stat.Level);
+            if (level >= amount)
+            {
+                Stats.ChangeCurrent(Stat.Level, -amount);
+                return false;
+            }
+            Stats.ChangeCurrent(Stat.Level, -level);
+            DrainStamina((short)(amount - level));
         }
-        Stats.ChangeCurrent(Stat.Level, -level);
-        DrainStamina((short)(amount - level));
         if (!IsDead)
             return false;
         if (Effects.FirstOrDefault(e => e.Effects.Any(x => x is CheatDeathEffect)) is { } cheat)
@@ -272,8 +278,10 @@ public sealed partial class Character
         // 0x80071E28: if taking them off brought it back, it's put back at 0.
         if (!IsDead)
         {
-            foreach (var stat in (ReadOnlySpan<Stat>)[Stat.Endurance, Stat.Stamina, Stat.Level])
+            Stat[] counted = EnduranceTwice ? [Stat.Endurance, Stat.Stamina] : [Stat.Endurance, Stat.Stamina, Stat.Level];
+            foreach (var stat in counted)
                 Stats.ChangeCurrent(stat, -Stats.Modified(stat));
+            HalfPoint = false;
         }
         return false;
     }

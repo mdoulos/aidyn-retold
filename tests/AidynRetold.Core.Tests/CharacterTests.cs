@@ -128,6 +128,112 @@ public class CharacterTests
         Assert.Equal(0, alaron.Stats.Current(Stat.Endurance));
     }
 
+    /// <summary>The remade game's rule: hit points are Endurance twice and Stamina (the user's design, Nov 6, 2026).</summary>
+    private static readonly CharacterRules RetoldRules = new(Characters.Rules.Stats, Characters.Rules.Skills,
+        Characters.Rules.Progression with { HitPoints = HitPointRule.EnduranceTwiceAndStamina })
+    {
+        Magic = MagicData.Rules,
+    };
+
+    /// <summary>Alaron under the remade rule: 15 Endurance and 30 Stamina, so 60 hit points.</summary>
+    private static Character RetoldAlaron(int level = 5) => Character.Create(Characters.Alaron(level), RetoldRules, _ => Characters.Fireball);
+
+    [Fact]
+    public void TheRemadeHitPointsAreEnduranceTwiceAndStaminaWithoutTheLevel()
+    {
+        var alaron = RetoldAlaron();
+
+        Assert.Equal(15 * 2 + 30, alaron.MaxHp);
+        Assert.Equal(alaron.MaxHp, alaron.Hp);
+        Assert.Equal(30, alaron.StaminaPoints);
+        Assert.Equal(5, alaron.Level);
+
+        // A level gained raises nothing but the Level.
+        alaron.AddExp(1_000_000);
+        Assert.True(alaron.Level > 5);
+        Assert.Equal(60, alaron.MaxHp);
+    }
+
+    [Fact]
+    public void TheRemadeDamageTakesStaminaThenEnduranceAtTwoAPoint()
+    {
+        var alaron = RetoldAlaron();
+
+        alaron.TakeDamage(3);
+        Assert.Equal((5, 27, 15), (alaron.Stats.Modified(Stat.Level), alaron.Stats.Modified(Stat.Stamina), alaron.Stats.Modified(Stat.Endurance)));
+        Assert.Equal(57, alaron.Hp);
+
+        // 28 more: Stamina's 27 and one of Endurance's: the half point, the stat still reading 15.
+        alaron.TakeDamage(28);
+        Assert.Equal((5, 0, 15), (alaron.Stats.Modified(Stat.Level), alaron.Stats.Modified(Stat.Stamina), alaron.Stats.Modified(Stat.Endurance)));
+        Assert.True(alaron.HalfPoint);
+        Assert.Equal(29, alaron.Hp);
+        Assert.Equal(0, alaron.StaminaPoints);
+
+        // One more takes the point itself.
+        alaron.TakeDamage(1);
+        Assert.Equal(14, alaron.Stats.Modified(Stat.Endurance));
+        Assert.False(alaron.HalfPoint);
+        Assert.Equal(28, alaron.Hp);
+
+        alaron.TakeDamage(100);
+        Assert.True(alaron.IsDead);
+        Assert.Equal((5, 0, 0), (alaron.Stats.Modified(Stat.Level), alaron.Stats.Modified(Stat.Stamina), alaron.Stats.Current(Stat.Endurance)));
+        Assert.False(alaron.HalfPoint);
+    }
+
+    [Fact]
+    public void TheRemadeHealingRestoresEnduranceTheHalfPointFirstThenStamina()
+    {
+        var alaron = RetoldAlaron();
+        // Stamina's 30 and 5 of Endurance's: 12 and a half points left of it.
+        alaron.TakeDamage(35);
+        Assert.Equal((0, 13), (alaron.Stats.Modified(Stat.Stamina), alaron.Stats.Modified(Stat.Endurance)));
+        Assert.True(alaron.HalfPoint);
+        Assert.Equal(25, alaron.Hp);
+
+        alaron.Heal(1);
+        Assert.Equal(13, alaron.Stats.Modified(Stat.Endurance));
+        Assert.False(alaron.HalfPoint);
+        Assert.Equal(26, alaron.Hp);
+
+        alaron.Heal(7);
+        Assert.Equal((3, 15), (alaron.Stats.Modified(Stat.Stamina), alaron.Stats.Modified(Stat.Endurance)));
+        Assert.Equal(33, alaron.Hp);
+
+        alaron.Heal(100);
+        Assert.Equal(alaron.MaxHp, alaron.Hp);
+
+        // Camping heals half the maximum, 30, of what's missing.
+        alaron.TakeDamage(35);
+        alaron.CampHeal(0.5f);
+        Assert.Equal(55, alaron.Hp);
+    }
+
+    [Fact]
+    public void TheRemadeSkillCostsSpendStaminaThenEnduranceAtTwoAPoint()
+    {
+        var alaron = RetoldAlaron();
+
+        alaron.DrainStamina(33);
+
+        Assert.Equal((5, 0, 14), (alaron.Stats.Modified(Stat.Level), alaron.Stats.Modified(Stat.Stamina), alaron.Stats.Modified(Stat.Endurance)));
+        Assert.True(alaron.HalfPoint);
+        Assert.Equal(27, alaron.Hp);
+    }
+
+    [Fact]
+    public void ASaveKeepsTheHalfPoint()
+    {
+        var alaron = RetoldAlaron();
+        alaron.TakeDamage(31);
+        Assert.True(alaron.HalfPoint);
+
+        var saved = CharacterSaves.Save(alaron);
+        Assert.True(saved.HalfPoint);
+        Assert.False(CharacterSaves.Save(RetoldAlaron()).HalfPoint);
+    }
+
     [Fact]
     public void SkillsSpendStaminaThenEnduranceButNeverTheLevel()
     {

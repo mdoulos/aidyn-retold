@@ -22,6 +22,10 @@ remodel in [graphics](graphics.md#models), his armor in [armor](armor.md), and t
 - **Each member has a hidden satiety**, 1 to 12, in bands of three: Starving, Hungry, Fed and Well Fed. Food adds one to three points, time takes one off every eight game hours, and Well Fed, which shows, stops them eating until it falls.
 - **Members grow hungry.** Two game days without eating anything, a member is Hungry, −2 to Intelligence, Willpower, Dexterity and Strength; three days, Starving, −5. Eating anything feeds them. Hit points aren't touched, and no stat goes below 1. It shows as an icon by the aspect's and school's and a pulse over the portrait ([ui](ui.md#the-party-tab), [characters](../systems/characters.md#hunger)).
 
+## Hit points
+
+- **Hit points are Endurance twice and Stamina.** The original adds Endurance, Stamina and the Level, three numbers to carry in the head, and the Level's share shows nowhere; Retold's are Endurance × 2 + Stamina, so 20 Endurance and 30 Stamina are 70, for monsters too. Damage takes Stamina first, then Endurance at two a point; healing restores Endurance, then Stamina; the Level never takes damage, and a level gained raises nothing but the Level. The Party tab's bar shows Stamina's share in a lighter red at its right end, so what's left in the plain red is Endurance's ([characters](../systems/characters.md#stats-skills-and-experience), [ui](ui.md#the-party-tab)). The original game alone keeps the original's rule: the ACRE plugin sets it (`aidyn:progression/0`'s `hitPoints`).
+
 ## The party
 
 - **The party holds five**, the original's four and one more, since more companions are coming ([characters](../systems/characters.md#the-party)). The joining scripts and the "no room" prompt behave as they did, counting five as full. The trek HUD's frames, the Party tab's small portraits and the save screen's portraits make room for the fifth; a save written back into a Controller Pak can't hold one.

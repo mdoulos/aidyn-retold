@@ -312,7 +312,21 @@ public sealed record SkillRecord(RecordId Id, string Name, string? Description, 
 /// What every award of experience is multiplied by, and then truncated (<c>Entity::AddExp</c>). The
 /// original's 1.5 is why beating an entity gives 75 per point of its record's reward byte.
 /// </param>
-public sealed record ProgressionRecord(RecordId Id, IReadOnlyList<int> Levels, float ExpAward, TrainingPrices Training);
+/// <param name="HitPoints">How hit points are made of the stats; the original's rule where a plugin says nothing.</param>
+public sealed record ProgressionRecord(RecordId Id, IReadOnlyList<int> Levels, float ExpAward, TrainingPrices Training,
+    HitPointRule HitPoints = HitPointRule.EnduranceStaminaAndLevel);
+
+/// <summary>How a character's hit points are made of its stats (<see cref="ProgressionRecord.HitPoints"/>).</summary>
+public enum HitPointRule
+{
+    /// <summary>The original's: Endurance, Stamina and the Level summed; damage takes the Level's points first.</summary>
+    EnduranceStaminaAndLevel,
+    /// <summary>
+    /// The remade game's, the user's design (Nov 6, 2026): Endurance twice and Stamina, the Level left out, so 20 Endurance and 30
+    /// Stamina are 70; damage takes Stamina first, then Endurance at two a point.
+    /// </summary>
+    EnduranceTwiceAndStamina,
+}
 
 /// <summary>
 /// What training costs (<c>WidgetSkillTrain</c>, <c>WidgetSpellTrain</c>, <c>WidgetStatTrain</c>).

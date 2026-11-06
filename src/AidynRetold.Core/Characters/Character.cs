@@ -30,11 +30,18 @@ public enum SpellLearnability
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Hit points</b> are Endurance, Stamina and Level together: the maximum counts their base values
-/// (<c>Entity::getHPMax</c>), and the current their modified ones, up to the maximum
+/// <b>Hit points</b> are, under the original's rule (<see cref="HitPointRule.EnduranceStaminaAndLevel"/>), Endurance, Stamina and Level
+/// together: the maximum counts their base values (<c>Entity::getHPMax</c>), and the current their modified ones, up to the maximum
 /// (<c>getHPCurrent</c>). Both are bytes. Damage takes the Level's points first, then Stamina's, then
 /// Endurance's (<c>Entity::DamageToLevel</c>, <c>DecreaseHP</c>); healing restores Endurance first,
 /// then Stamina, then Level (<c>Entity::addHP</c>). Skills and spells spend Stamina's points.
+/// </para>
+/// <para>
+/// Under the remade game's rule (<see cref="HitPointRule.EnduranceTwiceAndStamina"/>, the user's design, Nov 6, 2026: three stats
+/// summed were too much to carry in the head, and the Level's part showed nowhere), they're Endurance twice and Stamina, the Level
+/// left out: 20 Endurance and 30 Stamina are 70. Damage takes Stamina's points first, then Endurance's at two a point, an odd loss
+/// leaving one of a point's two lost (<see cref="HalfPoint"/>) and the stat's own point going at the second; healing restores Endurance
+/// first, the half point first of all, then Stamina. The Level never takes damage.
 /// </para>
 /// <para>
 /// What it has equipped is its <see cref="Equipment"/>, which changes the sheet as items go on and off.
@@ -187,17 +194,45 @@ public sealed partial class Character
     /// <summary>Its level, from its base Level stat.</summary>
     public int Level => Stats.Base(Stat.Level);
 
-    /// <summary>Base Endurance, Stamina and Level, as a byte (<c>Entity::getHPMax</c>).</summary>
-    public int MaxHp => (byte)(Stats.Base(Stat.Endurance) + Stats.Base(Stat.Stamina) + Stats.Base(Stat.Level));
+    /// <summary>How the hit points are made of the stats, the plugins' rule (<see cref="ProgressionRecord.HitPoints"/>).</summary>
+    public HitPointRule HitPoints => Rules.Progression.HitPoints;
 
-    /// <summary>Modified Endurance, Stamina and Level, as a byte, up to <see cref="MaxHp"/> (<c>Entity::getHPCurrent</c>).</summary>
-    public int Hp => Math.Min((byte)(Stats.Modified(Stat.Endurance) + Stats.Modified(Stat.Stamina) + Stats.Modified(Stat.Level)), MaxHp);
+    /// <summary>Whether the hit points are the remade game's, Endurance twice and Stamina.</summary>
+    private bool EnduranceTwice => HitPoints == HitPointRule.EnduranceTwiceAndStamina;
+
+    /// <summary>
+    /// The maximum: base Endurance, Stamina and Level, as a byte (<c>Entity::getHPMax</c>); or, under the remade rule, base Endurance
+    /// twice and Stamina.
+    /// </summary>
+    public int MaxHp => EnduranceTwice
+        ? Stats.Base(Stat.Endurance) * 2 + Stats.Base(Stat.Stamina)
+        : (byte)(Stats.Base(Stat.Endurance) + Stats.Base(Stat.Stamina) + Stats.Base(Stat.Level));
+
+    /// <summary>
+    /// The current: modified Endurance, Stamina and Level, as a byte, up to <see cref="MaxHp"/> (<c>Entity::getHPCurrent</c>); or, under
+    /// the remade rule, Endurance's points (<see cref="EndurancePoints"/>) and modified Stamina.
+    /// </summary>
+    public int Hp => Math.Min(EnduranceTwice
+        ? Math.Max(0, EndurancePoints + Stats.Modified(Stat.Stamina))
+        : (byte)(Stats.Modified(Stat.Endurance) + Stats.Modified(Stat.Stamina) + Stats.Modified(Stat.Level)), MaxHp);
+
+    /// <summary>The part of the hit points that is Stamina's, which the Party tab's bar shows in its own colour.</summary>
+    public int StaminaPoints => Math.Min(Stats.Modified(Stat.Stamina), Hp);
+
+    /// <summary>
+    /// Under the remade rule, whether one of the two hit points the current Endurance's last point is worth is lost: an odd loss into
+    /// Endurance takes it, and the stat's point itself goes at the next. Saved.
+    /// </summary>
+    public bool HalfPoint { get; internal set; }
+
+    /// <summary>Under the remade rule, the hit points Endurance is worth now: twice its modified value, less the half point.</summary>
+    private int EndurancePoints => Stats.Modified(Stat.Endurance) * 2 - (HalfPoint ? 1 : 0);
 
     public bool IsDead => Hp == 0;
 
     /// <summary>
-    /// Takes Stamina's points, then Endurance's for what's left (<c>Entity::DecreaseHP</c>). What
-    /// skills cost, and the rest of damage once the Level's points are gone.
+    /// Takes Stamina's points, then Endurance's for what's left (<c>Entity::DecreaseHP</c>), at two a point under the remade rule
+    /// (<see cref="TakeEndurancePoints"/>). What skills cost, and the rest of damage once the Level's points are gone.
     /// </summary>
     public void DrainStamina(int amount)
     {
@@ -212,18 +247,52 @@ public sealed partial class Character
         Stats.ChangeCurrent(Stat.Stamina, -stamina);
         if (amount <= 0)
             return;
+        if (EnduranceTwice)
+        {
+            TakeEndurancePoints(amount);
+            return;
+        }
         var endurance = Stats.Modified(Stat.Endurance);
         Stats.ChangeCurrent(Stat.Endurance, endurance < amount ? -endurance : -amount);
     }
 
+    /// <summary>Under the remade rule, takes hit points from Endurance, two a point, down to none: an odd loss leaves the half point.</summary>
+    private void TakeEndurancePoints(int amount) => SetEndurancePoints(Math.Max(0, EndurancePoints - amount));
+
+    /// <summary>Puts Endurance's hit points at <paramref name="points"/>: the stat at half of them rounded up, and the half point for an odd count.</summary>
+    private void SetEndurancePoints(int points)
+    {
+        var endurance = Stats.Modified(Stat.Endurance);
+        HalfPoint = points % 2 == 1;
+        Stats.ChangeCurrent(Stat.Endurance, (points + 1) / 2 - endurance);
+    }
+
+    /// <summary>
+    /// Under the remade rule, heals Endurance's hit points up to twice its base, two a point, the half point first of all; what's left
+    /// over is for Stamina.
+    /// </summary>
+    private uint HealEndurancePoints(uint left)
+    {
+        var points = EndurancePoints;
+        var full = Stats.Base(Stat.Endurance) * 2;
+        if (left == 0 || points >= full)
+            return left;
+        var healed = Math.Min(left, (uint)(full - points));
+        SetEndurancePoints(points + (int)healed);
+        return left - healed;
+    }
+
     /// <summary>
     /// Heals <paramref name="amount"/> points: Endurance up to its base first, then Stamina, then the
-    /// Level (<c>Entity::addHP</c>).
+    /// Level (<c>Entity::addHP</c>); under the remade rule, Endurance at two a point (<see cref="HealEndurancePoints"/>), then Stamina.
     /// </summary>
     public void Heal(int amount)
     {
         var left = (uint)(ushort)amount;
-        foreach (var stat in (ReadOnlySpan<Stat>)[Stat.Endurance, Stat.Stamina, Stat.Level])
+        if (EnduranceTwice)
+            left = HealEndurancePoints(left);
+        Stat[] order = EnduranceTwice ? [Stat.Stamina] : [Stat.Endurance, Stat.Stamina, Stat.Level];
+        foreach (var stat in order)
         {
             if (left == 0)
                 return;

@@ -3,14 +3,20 @@ using AidynRetold.Plugins;
 
 namespace AidynRetold.Core.Ui;
 
-/// <summary>The header's numbers as they stood, which a change crossfades from: the hit points, their maximum and the level.</summary>
-public readonly record struct HeaderNumbers(int Hp, int MaxHp, int Level)
+/// <summary>
+/// The header's numbers as they stood, which a change crossfades from: the hit points, their maximum, the level, and how many of the
+/// hit points are Stamina's, which the bar shows in a lighter red at its right end.
+/// </summary>
+public readonly record struct HeaderNumbers(int Hp, int MaxHp, int Level, int Stamina = 0)
 {
     /// <summary>A member's, or none's, all 0.</summary>
-    public static HeaderNumbers Of(Character? member) => member is null ? default : new(member.Hp, member.MaxHp, member.Level);
+    public static HeaderNumbers Of(Character? member) => member is null ? default : new(member.Hp, member.MaxHp, member.Level, member.StaminaPoints);
 
     /// <summary>The share of the bar these hit points fill, of <paramref name="width"/>.</summary>
     public int Bar(int width) => PartyMenu.HealthBar(Hp, MaxHp, width);
+
+    /// <summary>The share of the bar Stamina's hit points fill, the right end of <see cref="Bar"/>.</summary>
+    public int StaminaBar(int width) => PartyMenu.HealthBar(Stamina, MaxHp, width);
 }
 
 public sealed partial class PartyMenu

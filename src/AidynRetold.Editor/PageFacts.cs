@@ -75,6 +75,7 @@ public static class PageFacts
         {
             ["levels"] = new(Help: "The experience each level starts at, level 0 first."),
             ["expAward"] = new(Help: "What every award of experience is multiplied by."),
+            ["hitPoints"] = new(Help: "How hit points are made of the stats: the original's Endurance, Stamina and Level summed, or Endurance twice and Stamina."),
             ["training"] = new(Help: "What training costs and allows."),
             ["training.firstLevelGold"] = new(Help: "What a skill's first level costs in gold.", Max: 65535),
             ["training.goldPerLevel"] = new(Help: "What each level after it adds to the price.", Max: 65535),

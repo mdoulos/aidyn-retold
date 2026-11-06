@@ -70,6 +70,7 @@ public sealed class CharacterSaves(PluginSet plugins, CharacterRules rules, Item
             SpendableExp = member.SpendableExp,
             Trained = SaveStats.From([.. stats.Select(member.Stats.Trained)]),
             Current = SaveStats.From([.. stats.Select(member.Stats.Current)]),
+            HalfPoint = member.HalfPoint,
             Skills = skills,
             WeaponSkills = weaponSkills,
             ShieldSkill = shieldSkill,
@@ -133,6 +134,7 @@ public sealed class CharacterSaves(PluginSet plugins, CharacterRules rules, Item
             character.TrueName = trueName;
         character.TotalExp = saved.TotalExp;
         character.SpendableExp = saved.SpendableExp;
+        character.HalfPoint = saved.HalfPoint;
 
         var equipment = character.Equipment;
         if (Instance(saved.Armor) is { } armor)

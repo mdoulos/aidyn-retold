@@ -108,7 +108,7 @@ Redesigned, the user's design. Original brings back the original's layout ([ui](
 
 
 
-- **Two sheets and a page.** At the left, a sheet with the portraits, the name, "Level n", the hit points bar with "hp / max" in it, and
+- **Two sheets and a page.** At the left, a sheet with the portraits, the name, "Level n", the hit points bar with "hp / max" in it, Stamina's share of them a lighter red at its right end ([characters](characters.md#hit-points)), and
 
   the aspect's and school's icons with their names on hover; under it the silhouette, on a figure for a man, a large man or a woman, with
 

@@ -116,6 +116,9 @@ public partial class PartyTabView : Control
     /// <summary>How finely the bar's share of hit points is taken, as a width it's measured across.</summary>
     private const int BarPrecision = 1000;
 
+    /// <summary>The wash over Stamina's end of the red, white at this alpha, which lightens it.</summary>
+    private static readonly Rgba StaminaWash = new(255, 255, 255, 90);
+
     /// <summary>How tall the hit points' capitals are on the bar.</summary>
     private const float HitPointsText = 3;
 
@@ -1528,12 +1531,25 @@ public partial class PartyTabView : Control
         var shown = Menu.Shown!;
         var change = Menu.NumbersChange;
         var share = Menu.HealthBar(BarPrecision);
+        var stamina = Menu.Numbers.StaminaBar(BarPrecision);
         if (Menu.PreviousNumbers is { } before)
+        {
             share = MenuTween.Value(before.Bar(BarPrecision), share, change);
+            stamina = MenuTween.Value(before.StaminaBar(BarPrecision), stamina, change);
+        }
         ThreeSlice(BarTrackArt, BarFrame);
         // The red from its left end under the frame to the share across the opening, its ragged end cut off straight.
+        var opening = BarOpening;
         if (share > 0)
-            ThreeSlice(BarFillArt, BarFrame, BarOpening.Position.X + BarOpening.Size.X * share / BarPrecision);
+            ThreeSlice(BarFillArt, BarFrame, opening.Position.X + opening.Size.X * share / BarPrecision);
+        // Stamina's hit points are the red's right end, washed to a lighter red, the user's design (Nov 6, 2026): as Stamina drains the
+        // lighter end shrinks, and what's left in the plain red is Endurance's.
+        if (stamina > 0)
+        {
+            var from = opening.Position.X + opening.Size.X * Math.Max(0, share - stamina) / BarPrecision;
+            var to = opening.Position.X + opening.Size.X * share / BarPrecision;
+            _canvas.DrawRect(new Rect2(from, opening.Position.Y, to - from, opening.Size.Y), _ui.Tint(StaminaWash));
+        }
         ThreeSlice(BarFrameArt, BarFrame);
         if (Menu.PreviousNumbers is { } was)
             Numbers(was, FadingOut(White, change).A);

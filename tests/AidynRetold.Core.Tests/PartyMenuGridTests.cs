@@ -89,26 +89,27 @@ public class PartyMenuGridTests
     {
         var (menu, _) = Menu(showWorn: false);
         IPartyWindow window = menu;
-        Assert.Equal((6, 36), (menu.Inventory.Columns, menu.Inventory.Visible));
+        Assert.Equal((5, 25), (menu.Inventory.Columns, menu.Inventory.Visible));
 
-        // Six to a line (Nov 6, 2026; seven before): down from the second cell is the eighth, right runs to the line's end and stops.
+        // Five to a line (Nov 6, 2026; seven, then six, before): down from the second cell is the seventh, right runs to the line's end
+        // and stops.
         window.Sideways(1);
         window.MoveCursor(1);
-        Assert.Equal(7, menu.Inventory.Cursor);
+        Assert.Equal(6, menu.Inventory.Cursor);
         for (var i = 0; i < 6; i++)
             window.Sideways(1);
-        Assert.Equal((PartyList.Inventory, 11, PartyFocus.List), (menu.List, menu.Inventory.Cursor, menu.Focus));
+        Assert.Equal((PartyList.Inventory, 9, PartyFocus.List), (menu.List, menu.Inventory.Cursor, menu.Focus));
         window.MoveCursor(1);
-        Assert.Equal((17, PartyFocus.List), (menu.Inventory.Cursor, menu.Focus));
-        // The line below is short of the column, so onto its last row; then off the grid's foot.
+        Assert.Equal((14, PartyFocus.List), (menu.Inventory.Cursor, menu.Focus));
         window.MoveCursor(1);
         Assert.Equal((19, PartyFocus.List), (menu.Inventory.Cursor, menu.Focus));
+        // The last line: down goes off the grid's foot.
         window.MoveCursor(1);
         Assert.Equal((19, PartyFocus.Foot), (menu.Inventory.Cursor, menu.Focus));
         window.MoveCursor(-1);
         Assert.Equal(PartyFocus.List, menu.Focus);
 
-        menu.Point(6);
+        menu.Point(5);
         window.Sideways(-1);
         Assert.Equal(PartyFocus.Slots, menu.Focus);
         Assert.NotNull(menu.SelectedSlot);

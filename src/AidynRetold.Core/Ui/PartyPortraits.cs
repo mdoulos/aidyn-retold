@@ -29,16 +29,19 @@ public sealed class PartyPortraits
     public const int Down = 240, Up = 184, Step = 4;
 
     /// <summary>
-    /// How far apart the frames stand: the original's four 38 apart; five 32 apart, overlapping by 9.6, so they clear the sundial and
-    /// the compass on a 4:3 screen, the portraits 2 apart.
+    /// How far apart the frames stand on a screen <paramref name="width"/> wide in the HUD's units: the original's 38, as far as the
+    /// room between the sundial and the compass allows, which hold their sides, so five are pulled in to 32 apart on a 4:3 screen
+    /// (320 wide) and stand 38 apart as the original's four did on a wider one (the user's choice, Nov 5, 2026).
     /// </summary>
-    public static readonly int FramePitch = Party.MaxSize > 4 ? 32 : 38;
+    public static int FramePitch(int width = 320) => Math.Min(38, (width - 190) / 4);
 
     /// <summary>
-    /// The frames' left edges, one a party slot, centred on the screen's 160 as the original's four were (at 84, 122, 160 and 198):
-    /// 75, 107, 139, 171 and 203 for five. Each portrait is 6 inside its frame, both ways.
+    /// The frames' left edges on a screen <paramref name="width"/> wide, one a party slot, centred on 160 of the HUD's 320 as the
+    /// original's four were (at 84, 122, 160 and 198), the HUD then centring them on the screen: 75, 107, 139, 171 and 203 for five
+    /// on a 4:3 screen, 63 to 215 on a wider. Each portrait is 6 inside its frame, both ways.
     /// </summary>
-    public static readonly int[] FrameX = [.. Enumerable.Range(0, Party.MaxSize).Select(i => 160 - ((Party.MaxSize - 1) * FramePitch + 42) / 2 + i * FramePitch)];
+    public static int[] FrameX(int width = 320) =>
+        [.. Enumerable.Range(0, Party.MaxSize).Select(i => 160 - ((Party.MaxSize - 1) * FramePitch(width) + 42) / 2 + i * FramePitch(width))];
 
     public const float FrameScale = 0.8f, PortraitScale = 0.75f;
     public const int PortraitInset = 6;
@@ -56,6 +59,24 @@ public sealed class PartyPortraits
 
     /// <summary>Below a third of the health the bar is red rather than green.</summary>
     public const float LowHealth = 1f / 3;
+
+    /// <summary>
+    /// The bar's red flash while Starving or Overtired takes hit points (<c>Character.Starve</c>), the user's design (Nov 5, 2026): a
+    /// pulse every 4 seconds, slower than the portrait's, rising to this much red over the whole bar. Hungry and Tired take none, and
+    /// flash nothing.
+    /// </summary>
+    public const float DrainPeriod = 4f, DrainPeak = 0.75f;
+
+    public static readonly Rgba Drain = new(232, 52, 40, 255);
+
+    /// <summary>The red over the bar <paramref name="seconds"/> into the pulse while hit points drain, or null while they don't.</summary>
+    public static Rgba? DrainTint(HungerState hunger, RestState rest, float seconds)
+    {
+        if (hunger != HungerState.Starving && rest != RestState.Overtired)
+            return null;
+        var phase = 0.5f - 0.5f * MathF.Cos(2 * MathF.PI * (seconds % DrainPeriod) / DrainPeriod);
+        return Drain with { A = (byte)(255 * DrainPeak * phase) };
+    }
 
     /// <summary>Whether they're up, or on their way up.</summary>
     public bool Shown { get; set; } = true;
@@ -92,21 +113,23 @@ public sealed class PartyPortraits
     /// <paramref name="brightness"/>, with the bar and the icons over a portrait that needs them. An empty slot keeps its frame; a dead member looks the same.
     /// </summary>
     /// <param name="members">Each slot's member, or null for an empty slot.</param>
-    public IEnumerable<HudSprite> Draw(IReadOnlyList<HudMember?> members, float brightness)
+    /// <param name="width">The screen's width in the HUD's units, which the frames' spacing follows (<see cref="FramePitch"/>).</param>
+    public IEnumerable<HudSprite> Draw(IReadOnlyList<HudMember?> members, float brightness, int width = 320)
     {
         if (Top >= Down)
             yield break;
+        var frames = FrameX(width);
         var glow = HudSprite.Times(new Rgba(255, 255, 255, 128), brightness);
-        foreach (var x in FrameX)
+        foreach (var x in frames)
             yield return new HudSprite(Frame, x, Top, FrameScale, glow) { Original = true };
         // The original never sets the portraits' blue, which keeps the frames' blend and is dimmed again.
         var portrait = glow with { B = ColorBytes.Single(glow.B * brightness) };
         var white = HudSprite.Times(new Rgba(255, 255, 255, 255), brightness);
-        for (var i = 0; i < Math.Min(members.Count, FrameX.Length); i++)
+        for (var i = 0; i < Math.Min(members.Count, frames.Length); i++)
         {
             if (members[i] is not { } member)
                 continue;
-            float left = FrameX[i] + PortraitInset, top = Top + PortraitInset;
+            float left = frames[i] + PortraitInset, top = Top + PortraitInset;
             if (member.Portrait is { } image)
             {
                 yield return new HudSprite(image, left, top, PortraitScale, portrait);
@@ -117,11 +140,13 @@ public sealed class PartyPortraits
             if (hurt)
             {
                 var health = Math.Clamp(member.Health, 0, 1);
-                var width = PortraitSize - 2 * BarInset;
+                var barWidth = PortraitSize - 2 * BarInset;
                 var y = top + PortraitSize - BarInset - BarHeight;
-                yield return new HudSprite(Pixel, left + BarInset, y, 1, HudSprite.Times(BarBacking, brightness), (width, BarHeight));
+                yield return new HudSprite(Pixel, left + BarInset, y, 1, HudSprite.Times(BarBacking, brightness), (barWidth, BarHeight));
                 if (health > 0)
-                    yield return new HudSprite(Pixel, left + BarInset, y, 1, HudSprite.Times(health < LowHealth ? BarLow : BarFill, brightness), (width * health, BarHeight));
+                    yield return new HudSprite(Pixel, left + BarInset, y, 1, HudSprite.Times(health < LowHealth ? BarLow : BarFill, brightness), (barWidth * health, BarHeight));
+                if (DrainTint(member.Hunger, member.Rest, _pulseFrames / 30f) is { } drain)
+                    yield return new HudSprite(Pixel, left + BarInset, y, 1, HudSprite.Times(drain, brightness), (barWidth, BarHeight));
             }
             // The icons sit in the corner, as far from the right as from the bottom, and above the bar while it shows.
             var icons = StatusIcons(member.Hunger, member.Rest);

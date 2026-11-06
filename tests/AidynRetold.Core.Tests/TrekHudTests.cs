@@ -98,7 +98,9 @@ public class TrekHudTests
         // A frame a slot even for empty ones, five centred where the original's four were and 32 apart, then the one portrait, 30 square
         // at (81, 190): the capture has the original's at (90, 190), 6 inside the first of four frames at x 84, 38 apart.
         Assert.Equal(Party.MaxSize, sprites.Count(s => s.Image == PartyPortraits.Frame));
-        Assert.Equal([75, 107, 139, 171, 203], PartyPortraits.FrameX);
+        Assert.Equal([75, 107, 139, 171, 203], PartyPortraits.FrameX());
+        // On a wider screen they stand 38 apart as the original's four did.
+        Assert.Equal([63, 101, 139, 177, 215], PartyPortraits.FrameX(640));
         var portrait = sprites.Single(s => s.Image == face);
         Assert.Equal((81f, 190f, 0.75f), (portrait.X, portrait.Y, portrait.Scale));
         Assert.Equal(new Rgba(255, 255, 255, 128), portrait.Color);

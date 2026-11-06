@@ -24,5 +24,5 @@ public sealed class ActionTip(IReadOnlyList<ActionTipChoice> choices)
     public MenuList<ActionTipChoice> Choices { get; } = new(choices);
 
     /// <summary>A choice's label.</summary>
-    public static string Label(ActionTipChoice choice) => choice.ToString();
+    public static string Label(ActionTipChoice choice) => choice == ActionTipChoice.Details ? "Show Details" : choice.ToString();
 }

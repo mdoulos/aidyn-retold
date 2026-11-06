@@ -97,8 +97,10 @@ public sealed partial class PartyMenu
             case ItemKind.Scroll when item.Bonuses.Spell is { } carried && _spells(carried.Spell) is { } spell:
                 about.Add(spell.Name);
                 break;
-            case ItemKind.Potion:
-                about.Add(Potions.IsFlask(item) ? "Flask" : "Potion");
+            case ItemKind.Potion or ItemKind.Food:
+                // Not "Potion" or "Flask", which the name says: what it does, shortly, the user's choice (Nov 5, 2026).
+                if (EffectsSummary(member, item) is { } summary)
+                    about.Add(summary);
                 break;
             default:
                 if (item.Protection != 0)
@@ -115,6 +117,51 @@ public sealed partial class PartyMenu
             return new ItemCard(item.Name, about.Count > 0 ? string.Join(", ", about) : null);
         return new ItemCard(item.Name, about.Count > 0 ? string.Join(", ", about) : null, Refusal(member, item));
     }
+
+    /// <summary>
+    /// What a potion's or a food's effects do, shortly, the user's choice (Nov 5, 2026): "+3 Stealth", "Heals 15–25%", "+8 Stamina",
+    /// "Restores Stamina", "+6 vs. Elemental", "Cures", a flask's "Damage"; null with none it can say.
+    /// </summary>
+    private string? EffectsSummary(Character member, Item item)
+    {
+        if (item.Gear?.Effects is not { Count: > 0 } effects)
+            return null;
+        var parts = new List<string>();
+        foreach (var effect in effects)
+        {
+            switch (effect)
+            {
+                case StatEffect stat:
+                    parts.Add($"{Signed(stat.Amount.At(0))} {member.Rules[StatId.FromRecord(stat.Stat)].Name}");
+                    break;
+                case SkillEffect skill:
+                    parts.Add($"{Signed(skill.Amount.At(0))} {member.Rules[SkillId.FromRecord(skill.Skill)].Name}");
+                    break;
+                case ProtectionEffect protection:
+                    parts.Add($"{Signed(protection.Amount.At(0))} Protection");
+                    break;
+                case WardEffect ward:
+                    parts.Add($"{Signed(ward.Amount.At(0))} vs. {ward.School}");
+                    break;
+                case HealEffect heal:
+                    parts.Add(heal.Low == heal.High ? $"Heals {Num(heal.Low)}%" : $"Heals {Num(heal.Low)}–{Num(heal.High)}%");
+                    break;
+                case StaminaEffect stamina:
+                    parts.Add(stamina.ToBase ? "Restores Stamina" : $"{Signed(stamina.Amount.At(0))} Stamina");
+                    break;
+                case CureEffect:
+                    parts.Add("Cures");
+                    break;
+                case DamageEffect or BlastEffect:
+                    if (!parts.Contains("Damage"))
+                        parts.Add("Damage");
+                    break;
+            }
+        }
+        return parts.Count > 0 ? string.Join(", ", parts) : null;
+    }
+
+    private static string Signed(int value) => (value > 0 ? "+" : "") + Num(value);
 
     private static string Num(int value) => value.ToString(CultureInfo.InvariantCulture);
 }

@@ -103,7 +103,15 @@ public sealed partial class PartyMenu
     /// <summary>A click on one of the controls under the grid, or A with the stick on it: steps it on.</summary>
     public void ChooseFoot(int choice, int by = 1)
     {
-        if (HasPopup || !HasFoot)
+        if (HasPopup)
+            return;
+        // With a slot's fitting items, the one control under the grid is the way back to the whole inventory.
+        if (Fitting is not null)
+        {
+            ClearFitting();
+            return;
+        }
+        if (!HasFoot)
             return;
         FootChoice = Math.Clamp(choice, 0, 1);
         if (FootChoice == 0)

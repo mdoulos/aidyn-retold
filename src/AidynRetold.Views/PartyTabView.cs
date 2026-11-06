@@ -29,8 +29,8 @@ public partial class PartyTabView : Control
 
     private static readonly Vector2I ShownPortrait = new(4, 4);
 
-    /// <summary>The name's place: the original's at x 51, beside its 40 portrait; the port's at 47, beside its 36.</summary>
-    private Vector2I NameAt => OriginalLook ? new(51, 6) : new(47, 6);
+    /// <summary>The name's place: the original's at x 51, beside its 40 portrait; the port's at 43, over the small portraits' left edge.</summary>
+    private Vector2I NameAt => OriginalLook ? new(51, 6) : new(43, 6);
 
     /// <summary>The member's name, a heading, larger than the menus' text; the slim font at its own size in the original's layout.</summary>
     private UiFont NameFont => OriginalLook ? _ui.Slim : _ui.Slim.Sized(UiPainter.HeadingText);
@@ -65,16 +65,16 @@ public partial class PartyTabView : Control
     private static readonly Vector2I OriginalSliderAt = new(126, 207);
     /// <summary>
     /// The other members' small portraits, one a slot but the shown member's: the original's three at x 49, 78 and 107, 24 square; the
-    /// port's four at 45, 67, 89 and 111, 20 square, 22 apart, for a party of five, which end at 131 inside the header's piece (the user's
+    /// port's four at 43, 64, 85 and 106, 20 square, 21 apart, for a party of five, which end at 126 inside the header's piece (the user's
     /// choice, Nov 5, 2026).
     /// </summary>
     private static readonly Vector2I[] OriginalOthers = [new(49, 17), new(78, 17), new(107, 17)],
-        PortOthers = [.. Enumerable.Range(0, Core.Characters.Party.MaxSize - 1).Select(i => new Vector2I(45 + i * 22, 17))];
+        PortOthers = [.. Enumerable.Range(0, Core.Characters.Party.MaxSize - 1).Select(i => new Vector2I(43 + i * 21, 17))];
 
     private Vector2I[] OtherPortraits => OriginalLook ? OriginalOthers : PortOthers;
 
-    /// <summary>The shown member's portrait, the original's 40 square and the port's 36; the others' the original's 24 and the port's 20.</summary>
-    private int ShownSize => OriginalLook ? 40 : 36;
+    /// <summary>The shown member's portrait, the original's 40 square and the port's 34; the others' the original's 24 and the port's 20.</summary>
+    private int ShownSize => OriginalLook ? 40 : 34;
 
     private int OtherSize => OriginalLook ? 24 : 20;
 
@@ -85,7 +85,8 @@ public partial class PartyTabView : Control
     /// stretched between them (<see cref="ThreeSlice"/>); the brown track and the red fill (ui_bar_brown, ui_bar_red) under
     /// it, sliced alike, the red cut to the share of hit points left across the frame's opening. The hit points are on it.
     /// </summary>
-    private static readonly Rect2 BarFrame = BarFrom(PortraitPiece.Position.X + ShownPortrait.X, 121, 66.5f, 11);
+    // Up under the portraits and across to just before the school's icon, the user's choice (Nov 5, 2026): from x 22 to 134 at y 62.
+    private static readonly Rect2 BarFrame = BarFrom(PortraitPiece.Position.X + ShownPortrait.X, 134, 62, 11);
 
     /// <summary>The bar frame's rectangle with its drawn left edge, <see cref="BarArtLeft"/> into its art, at a point across.</summary>
     private static Rect2 BarFrom(float left, float right, float top, float height)
@@ -128,7 +129,8 @@ public partial class PartyTabView : Control
     /// How big the aspect's and school's icons are drawn, a quarter smaller than the original's 10, and how far apart, the user's choice
     /// (Nov 2, 2026); their top, from the portraits' frames' corner, so their middle is the bar's.
     /// </summary>
-    private const float IconSize = 7.5f, IconGap = 1, IconsTop = 46.25f;
+    // The icons level with the bar's middle, the user's choice (Nov 5, 2026).
+    private const float IconSize = 7.5f, IconGap = 1, IconsTop = 41.75f;
 
     /// <summary>The level's right edge, under the small portraits' right edge, and the gold's, at the list's.</summary>
     private const int LevelRight = 149;
@@ -425,6 +427,12 @@ public partial class PartyTabView : Control
             // keeps its card up.
             if (@event is InputEventMouseMotion)
                 _hoveredCell = null;
+            var onFoot = OwnTab && Menu.Fitting is not null && FootControlAt(mouse.Position - (Vector2)_origin) is not null;
+            if (onFoot != _hoveredFoot)
+            {
+                _hoveredFoot = onFoot;
+                QueueRedraw();
+            }
         }
         if (TipInput(@event) || DragInput(@event))
         {
@@ -433,7 +441,7 @@ public partial class PartyTabView : Control
         }
         // A click on the filter or the order under the grid steps it on.
         if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } footClick && OwnTab && !OriginalLook
-            && Menu.List == PartyList.Inventory && Menu.Grid && Menu.Slide is null && !Menu.HasPopup && Menu.Fitting is null
+            && Menu.List == PartyList.Inventory && Menu.Grid && Menu.Slide is null && !Menu.HasPopup
             && FootControlAt(footClick.Position - (Vector2)_origin) is { } choice)
         {
             Menu.ChooseFoot(choice);
@@ -473,6 +481,14 @@ public partial class PartyTabView : Control
         // the stick waits.
         if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } && _hoveredTab is { } clicked)
         {
+            // The Inventory tab clicked while the grid shows what fits a slot shows the whole inventory again, the user's design (Nov 5, 2026).
+            if (PartyMenu.Tabs[clicked] == PartyList.Inventory && Menu.List == PartyList.Inventory && Menu.Fitting is not null)
+            {
+                Menu.ClearFitting();
+                QueueRedraw();
+                AcceptEvent();
+                return;
+            }
             var step = PartyMenu.StepToTab(PartyMenu.TabOf(Menu.List), clicked);
             if (step != 0)
             {
@@ -799,23 +815,10 @@ public partial class PartyTabView : Control
     }
 
     /// <summary>Where an icon of <see cref="Icons"/> is in the frame.</summary>
-    private Rect2 IconRect((RecordId Icon, float X, string Name) icon) =>
-        new(PortraitPiece.Position + new Vector2(icon.X, IconsY), OriginalLook ? _ui.Size(icon.Icon) : new Vector2(IconSize, IconSize));
+    private Rect2 IconRect((RecordId Icon, Rect2 Rect, string Name, byte Alpha) icon) => new((Vector2)PortraitPiece.Position + icon.Rect.Position, icon.Rect.Size);
 
-    /// <summary>How far down the portraits' frames the aspect's and school's icons are.</summary>
-    private float IconsY => OriginalLook ? OriginalIconsAt.Y : IconsTop;
-
-    /// <summary>An aspect's or school's icon at a place in the frame: the original's own size in its look, else <see cref="IconSize"/>.</summary>
-    private void Icon(RecordId icon, float x, float y, Rgba? color)
-    {
-        // Hunger's and tiredness's icons have no original's size, so they're drawn at the original's icons', 10 square.
-        if (OriginalLook && (HungerDisplay.Icons.Contains(icon) || RestDisplay.Icons.Contains(icon)))
-            _ui.Image(_canvas, icon, new Rect2(x, y, OriginalHungerIcon, OriginalHungerIcon), color);
-        else if (OriginalLook)
-            _ui.Image(_canvas, icon, (int)x, (int)y, color: color);
-        else
-            _ui.Image(_canvas, icon, new Rect2(x, y, IconSize, IconSize), color);
-    }
+    /// <summary>An icon over its rectangle in the frame, at a colour.</summary>
+    private void Icon(RecordId icon, Rect2 rect, Rgba? color) => _ui.Image(_canvas, icon, rect, color);
 
     /// <summary>Where a slot of the silhouette is in the frame.</summary>
     private Rect2 SlotRect(EquipmentSlot slot) =>
@@ -1327,11 +1330,10 @@ public partial class PartyTabView : Control
         _ui.Text(_canvas, NameFont, shown.Name, at.X + NameAt.X, at.Y + NameAt.Y, FadingIn(PartyMenu.TextColor, change));
         var icons = Icons(shown);
         var old = Menu.Previous is { } member ? Icons(member) : icons;
-        var iconsY = IconsY;
-        foreach (var (icon, x, _) in old.Except(icons))
-            Icon(icon, at.X + x, at.Y + iconsY, FadingOut(White, change));
-        foreach (var (icon, x, name) in icons)
-            Icon(icon, at.X + x, at.Y + iconsY, old.Contains((icon, x, name)) ? null : FadingIn(White, change));
+        foreach (var (icon, rect, _, alpha) in old.Except(icons))
+            Icon(icon, new Rect2((Vector2)at + rect.Position, rect.Size), FadingOut(White with { A = alpha }, change));
+        foreach (var (icon, rect, name, alpha) in icons)
+            Icon(icon, new Rect2((Vector2)at + rect.Position, rect.Size), old.Contains((icon, rect, name, alpha)) ? White with { A = alpha } : FadingIn(White with { A = alpha }, change));
     }
 
     /// <summary>
@@ -1367,12 +1369,14 @@ public partial class PartyTabView : Control
         i == 0 ? (ShownPortrait, ShownSize) : (OtherPortraits[Math.Min(i - 1, OtherPortraits.Length - 1)], OtherSize);
 
     /// <summary>
-    /// A member's aspect's and school's icons after the bar, 4 apart, where they go across, and the names the mouse on one shows, the
-    /// user's choice (Nov 2, 2026).
+    /// A member's icons, each where it goes from the portraits' frames' corner, with the name the mouse on it shows and its alpha: the
+    /// aspect's and the school's after the bar, the user's choice (Nov 2, 2026), the unschooled's ring lighter; and the status icons,
+    /// hunger's and tiredness's, in the shown portrait's bottom right corner as the trek HUD has them, 6 square, 1 in, overlapping
+    /// by half (the user's design, Nov 5, 2026; <see cref="PartyPortraits.StatusIcons"/>).
     /// </summary>
-    private List<(RecordId Icon, float X, string Name)> Icons(Core.Characters.Character member)
+    private List<(RecordId Icon, Rect2 Rect, string Name, byte Alpha)> Icons(Core.Characters.Character member)
     {
-        var icons = new List<(RecordId, float, string)>();
+        var icons = new List<(RecordId, Rect2, string, byte)>();
         if (!OriginalLook)
         {
             // The port's: the aspect's right edge under the last small portrait's, the school's before it, the user's choice (Nov 2, 2026).
@@ -1380,53 +1384,41 @@ public partial class PartyTabView : Control
             if (MenuImages.AspectIcon(member.Aspect) is { } ownAspect)
             {
                 right -= IconSize;
-                icons.Add((ownAspect, right, $"{member.Aspect} Aspect"));
+                icons.Add((ownAspect, new Rect2(right, IconsTop, IconSize, IconSize), $"{member.Aspect} Aspect", 255));
                 right -= IconGap;
             }
-            // The unschooled have an icon of their own in the port's look, the user's (Nov 5, 2026).
+            // The unschooled have an icon of their own in the port's look, the user's (Nov 5, 2026), at a lighter alpha.
+            right -= IconSize;
             if (MenuImages.SchoolIcon(member.School) is { } ownSchool)
-            {
-                right -= IconSize;
-                icons.Add((ownSchool, right, $"School of {member.School}"));
-                right -= IconGap;
-            }
+                icons.Add((ownSchool, new Rect2(right, IconsTop, IconSize, IconSize), $"School of {member.School}", 255));
             else
+                icons.Add((MenuImages.UnschooledIcon, new Rect2(right, IconsTop, IconSize, IconSize), "No school of magic", UnschooledAlpha));
+        }
+        else
+        {
+            float x = OriginalIconsAt.X;
+            if (MenuImages.AspectIcon(member.Aspect) is { } aspect)
             {
-                right -= IconSize;
-                icons.Add((MenuImages.UnschooledIcon, right, "No school of magic"));
-                right -= IconGap;
+                icons.Add((aspect, new Rect2(x, OriginalIconsAt.Y, _ui.Size(aspect).X, _ui.Size(aspect).Y), $"{member.Aspect} Aspect", 255));
+                x += _ui.Size(aspect).X + OriginalIconGap;
             }
-            // Hunger's and tiredness's, before them, the user's design (Nov 4 and 5, 2026).
-            if (HungerDisplay.StatusIcon(member.Hunger) is { } hunger)
-            {
-                right -= IconSize;
-                icons.Add((hunger, right, HungerDisplay.Tooltip(member.Hunger)!));
-                right -= IconGap;
-            }
-            if (RestDisplay.StatusIcon(member.Rest) is { } tired)
-                icons.Add((tired, right - IconSize, RestDisplay.Tooltip(member.Rest)!));
-            return icons;
+            if (MenuImages.SchoolIcon(member.School) is { } school)
+                icons.Add((school, new Rect2(x, OriginalIconsAt.Y, _ui.Size(school).X, _ui.Size(school).Y), $"School of {member.School}", 255));
         }
-        float x = OriginalIconsAt.X;
-        if (MenuImages.AspectIcon(member.Aspect) is { } aspect)
+        // The status icons in the shown portrait's corner, in either look.
+        var status = PartyPortraits.StatusIcons(member.Hunger, member.Rest);
+        for (var n = 0; n < status.Count; n++)
         {
-            icons.Add((aspect, x, $"{member.Aspect} Aspect"));
-            x += _ui.Size(aspect).X + OriginalIconGap;
+            var left = ShownPortrait.X + ShownSize - PartyPortraits.IconInset - PartyPortraits.IconSize - (status.Count - 1 - n) * (PartyPortraits.IconSize / 2f);
+            var top = ShownPortrait.Y + ShownSize - PartyPortraits.IconInset - PartyPortraits.IconSize;
+            var name = HungerDisplay.Icons.Contains(status[n]) ? HungerDisplay.Tooltip(member.Hunger)! : RestDisplay.Tooltip(member.Rest)!;
+            icons.Add((status[n], new Rect2(left, top, PartyPortraits.IconSize, PartyPortraits.IconSize), name, 255));
         }
-        if (MenuImages.SchoolIcon(member.School) is { } school)
-        {
-            icons.Add((school, x, $"School of {member.School}"));
-            x += _ui.Size(school).X + OriginalIconGap;
-        }
-        if (HungerDisplay.StatusIcon(member.Hunger) is { } hungry)
-        {
-            icons.Add((hungry, x, HungerDisplay.Tooltip(member.Hunger)!));
-            x += OriginalHungerIcon + OriginalIconGap;
-        }
-        if (RestDisplay.StatusIcon(member.Rest) is { } sleepy)
-            icons.Add((sleepy, x, RestDisplay.Tooltip(member.Rest)!));
         return icons;
     }
+
+    /// <summary>The unschooled's ring is drawn lighter than the schools', the user's choice (Nov 5, 2026).</summary>
+    private const byte UnschooledAlpha = 110;
 
     private static readonly Rgba White = new(255, 255, 255, 255);
 
@@ -1711,16 +1703,19 @@ public partial class PartyTabView : Control
     {
         var font = _ui.Slim.Sized(FootText);
         var b = grid.Bounds;
-        var middle = b.Top + grid.Lines * grid.Cell + FootMiddle;
-        var total = $"{TotalInventory} {Num(Menu.CarriedCount)}";
+        // The foot keeps its line under the whole grid's; a slot's shorter grid leaves the line above it to the button.
+        var middle = b.Top + PartyMenu.InventoryGrid.Lines * grid.Cell + FootMiddle;
+        var total = $"{TotalInventory}: {Num(Menu.CarriedCount)}";
         Small(total, b.Left, middle - font.Middle, PartyMenu.TextColor, font: font);
         if (OriginalLook)
             return;
-        // The grid showing what fits a slot says which, where the filter and order are.
+        // The grid showing what fits a slot says which, where the filter and order are, and offers the whole inventory back on a button
+        // in the line the grid gave up (PartyMenu.FittingGrid), the user's design (Nov 5, 2026).
         if (Menu.Fitting is { } slot)
         {
             var fits = $"{FitsLabel} {PartyMenu.SlotName(slot)}";
             Small(fits, b.Left + grid.Columns * grid.Cell - font.ExactWidth(fits), middle - font.Middle, UiPainter.RedInk, font: font);
+            Button(FullInventoryButton(font, grid), SeeFullInventory, font, _hoveredFoot);
             return;
         }
         var controls = FootControls(font, grid);
@@ -1738,7 +1733,7 @@ public partial class PartyTabView : Control
     private List<(Rect2 Rect, string Label, string Value)> FootControls(UiFont font, GridLayout grid)
     {
         var b = grid.Bounds;
-        var middle = b.Top + grid.Lines * grid.Cell + FootMiddle;
+        var middle = b.Top + PartyMenu.InventoryGrid.Lines * grid.Cell + FootMiddle;
         (string Label, string Value)[] parts = [(ShowLabel, Menu.Filter.ToString()), (SortLabel, Menu.Sort.ToString())];
         float right = b.Left + grid.Columns * grid.Cell;
         var controls = new List<(Rect2, string, string)>();
@@ -1751,10 +1746,19 @@ public partial class PartyTabView : Control
         return controls;
     }
 
-    /// <summary>The control under the grid at a point in the frame, the filter 0 and the order 1, or null.</summary>
+    /// <summary>The See Full Inventory button's place: in the line under the shortened grid, at its left, the user's design (Nov 5, 2026).</summary>
+    private Rect2 FullInventoryButton(UiFont font, GridLayout grid) =>
+        new(grid.Bounds.Left, grid.Bounds.Top + grid.Lines * grid.Cell + (grid.Cell - ButtonHeight) / 2 - 1, font.ExactWidth(SeeFullInventory) + 2 * ButtonSide, ButtonHeight);
+
+    /// <summary>Whether the mouse is on the See Full Inventory button, which then reads in red ink.</summary>
+    private bool _hoveredFoot;
+
+    /// <summary>The control under the grid at a point in the frame, the filter 0 and the order 1, or with a slot's items the See Full Inventory button 0, or null.</summary>
     private int? FootControlAt(Vector2 at)
     {
-        var controls = FootControls(_ui.Slim.Sized(FootText), PartyMenu.InventoryGrid);
+        if (Menu.Fitting is not null)
+            return FullInventoryButton(_ui.Slim.Sized(FootText), Menu.CurrentGrid).Grow(0.5f).HasPoint(at) ? 0 : null;
+        var controls = FootControls(_ui.Slim.Sized(FootText), Menu.CurrentGrid);
         for (var i = 0; i < controls.Count; i++)
         {
             if (controls[i].Rect.Grow(1).HasPoint(at))
@@ -1770,7 +1774,7 @@ public partial class PartyTabView : Control
     private const float FootText = 3.4f, FootMiddle = 8.5f, FootRow = 7, FootLabelGap = 1.5f, FootControlGap = 6, FootOutline = 0.4f;
 
     private const string TotalInventory = "Total Inventory", FitsLabel = "Fits the", ShowLabel = "Show", SortLabel = "Sort",
-        NothingFits = "Nothing to put here", NothingHere = "Nothing here";
+        NothingFits = "Nothing to put here", NothingHere = "Nothing here", SeeFullInventory = "See Full Inventory";
 
     /// <summary>A member's figure, by their entity's record.</summary>
     private Figure FigureOf(Core.Characters.Character member)
@@ -1927,12 +1931,25 @@ public partial class PartyTabView : Control
         }
         if (!OwnTab || Menu.Slide is not null || Window.HasPopup || Menu.Crafting is not null)
             return;
-        // An empty slot names what it takes; a worn item's and a carried item's cards are the item box's (ItemBox), the user's choice
-        // (Nov 5, 2026), which stands when the item is selected, not on hover.
-        if ((Menu.Pointing ? _hoveredSlot : _hoveredSlot ?? Menu.SelectedSlot) is { } slot && Menu.Worn(slot) is null && !OriginalLook)
+        // The mouse on an item shows its name alone, tiny, the user's choice (Nov 5, 2026): the card and the actions are the item box's,
+        // which stands beside the selected item. An empty slot names what it takes.
+        if ((Menu.Pointing ? _hoveredSlot : _hoveredSlot ?? Menu.SelectedSlot) is { } slot && !OriginalLook)
         {
             var rect = SlotRect(slot);
-            NameSlip(PartyMenu.SlotName(slot), rect.Position.X + rect.Size.X / 2, rect.Position.Y - 1);
+            if (Menu.Worn(slot) is { } worn)
+            {
+                if (Menu.Pointing && Menu.SelectedSlot != slot)
+                    NameSlip(worn.Item.Name, rect.Position.X + rect.Size.X / 2, rect.Position.Y - 1, tiny: true);
+            }
+            else
+                NameSlip(PartyMenu.SlotName(slot), rect.Position.X + rect.Size.X / 2, rect.Position.Y - 1);
+        }
+        else if (Menu.Pointing && Menu.List == PartyList.Inventory && Menu.Grid && _hoveredCell is { } cell
+            && Menu.Inventory.Rows.ElementAtOrDefault(cell) is { } row && !(cell == Menu.Inventory.Cursor && Menu.CursorShows)
+            && cell >= Menu.Inventory.First && cell < Menu.Inventory.First + _gridLayout.Visible)
+        {
+            var (x, y) = _gridLayout.CellAt(cell - Menu.Inventory.First);
+            NameSlip(row.Item.Name, x + _gridLayout.Cell / 2f, y - 1, y + _gridLayout.Cell + 1, tiny: true);
         }
     }
 
@@ -1944,15 +1961,16 @@ public partial class PartyTabView : Control
 
     /// <summary>
     /// The item box, the user's design (Nov 5, 2026; <see cref="PartyMenu.TipShown"/>): on one slip beside the selected item, the worn
-    /// slot's or the grid's cell's, or beside where a right click opened it, kept inside the frame: the item's card, its name and in
-    /// smaller text what it is and why the member can't use it in red ink; then what can be done with it, the actiontip's choices, the
-    /// cursor's in red ink while the actiontip has the presses (<paramref name="tip"/>), else the one under the mouse.
+    /// slot's or the grid's cell's, or beside where a right click opened it, kept inside the frame: the item's name in the main face,
+    /// larger; under it in small text what it is and why the member can't use it in red ink; then what can be done with it as buttons
+    /// in a row, each on its own slip with an ink border, the actiontip's cursor's in red ink while the actiontip has the presses
+    /// (<paramref name="tip"/>), else the one under the mouse.
     /// </summary>
     private void ItemBox((InventoryRow Row, ItemCard Card, IReadOnlyList<ActionTipChoice> Choices) shown, ActionTip? tip)
     {
-        var (rect, choicesTop) = BoxRect(shown, tip);
-        var name = _ui.Slim.Sized(NameText);
-        var small = _ui.Slim.Sized(CardText);
+        var (rect, buttons) = BoxRect(shown, tip);
+        var name = _ui.Main.Sized(BoxNameText);
+        var small = _ui.Slim.Sized(BoxText);
         var font = _ui.Slim.Sized(TipText);
         _ui.Slip(_canvas, rect);
         var x = rect.Position.X + TipSide;
@@ -1962,14 +1980,22 @@ public partial class PartyTabView : Control
         foreach (var (text, color) in CardLines(shown.Card))
         {
             Small(text, x, y + small.Capitals / 2 - small.Middle, color, font: small);
-            y += CardLinePitch;
+            y += BoxLinePitch;
         }
         for (var i = 0; i < shown.Choices.Count; i++)
         {
-            var middle = choicesTop + TipPitch * (i + 0.5f);
             var current = tip is not null ? i == tip.Choices.Cursor : i == _hoveredChoice;
-            Small(ActionTip.Label(shown.Choices[i]), x, middle - font.Middle, current ? UiPainter.RedInk : UiPainter.Ink, font: font);
+            Button(buttons[i], ActionTip.Label(shown.Choices[i]), font, current);
         }
+    }
+
+    /// <summary>A button: a slip with an ink border, its label centred, in red ink when it's the one under the stick or the mouse.</summary>
+    private void Button(Rect2 rect, string label, UiFont font, bool hot)
+    {
+        _ui.Slip(_canvas, rect, sheet: UiPainter.TooltipSheet);
+        var ink = hot ? UiPainter.RedInk : UiPainter.Ink;
+        _canvas.DrawRect(rect, _ui.Tint(ink), false, FootOutline);
+        Small(label, rect.Position.X + (rect.Size.X - font.ExactWidth(label)) / 2, rect.Position.Y + rect.Size.Y / 2 - font.Middle, ink, font: font);
     }
 
     /// <summary>The card's lines under the name: what the item is in ink, and why the member can't use it in red.</summary>
@@ -1981,17 +2007,18 @@ public partial class PartyTabView : Control
             yield return (warning, UiPainter.RedInk);
     }
 
-    /// <summary>Where the item box's slip is in the frame, and where its choices start down it.</summary>
-    private (Rect2 Rect, float ChoicesTop) BoxRect((InventoryRow Row, ItemCard Card, IReadOnlyList<ActionTipChoice> Choices) shown, ActionTip? tip)
+    /// <summary>Where the item box's slip is in the frame, and where each of its buttons is.</summary>
+    private (Rect2 Rect, IReadOnlyList<Rect2> Buttons) BoxRect((InventoryRow Row, ItemCard Card, IReadOnlyList<ActionTipChoice> Choices) shown, ActionTip? tip)
     {
-        var name = _ui.Slim.Sized(NameText);
-        var small = _ui.Slim.Sized(CardText);
+        var name = _ui.Main.Sized(BoxNameText);
+        var small = _ui.Slim.Sized(BoxText);
         var font = _ui.Slim.Sized(TipText);
         var lines = CardLines(shown.Card).ToList();
-        var width = lines.Select(l => small.ExactWidth(l.Text)).Concat(shown.Choices.Select(c => font.ExactWidth(ActionTip.Label(c))))
-            .Append(name.ExactWidth(shown.Card.Name)).Max() + 2 * TipSide;
-        var cardHeight = SlipEnds + name.Capitals + CardGap + lines.Count * CardLinePitch;
-        var height = cardHeight + (shown.Choices.Count > 0 ? TipEnds + shown.Choices.Count * TipPitch : 0) + TipEnds;
+        var widths = shown.Choices.Select(c => font.ExactWidth(ActionTip.Label(c)) + 2 * ButtonSide).ToList();
+        var row = widths.Count > 0 ? widths.Sum() + (widths.Count - 1) * ButtonGap : 0;
+        var width = lines.Select(l => small.ExactWidth(l.Text)).Append(name.ExactWidth(shown.Card.Name)).Append(row).Max() + 2 * TipSide;
+        var cardHeight = SlipEnds + name.Capitals + CardGap + lines.Count * BoxLinePitch;
+        var height = cardHeight + (widths.Count > 0 ? ButtonGap + ButtonHeight : 0) + TipEnds;
         Vector2 at;
         if (tip is not null && _tipAt is { } opened && opened.Tip == tip)
             at = opened.At + new Vector2(1, 1);
@@ -2003,25 +2030,42 @@ public partial class PartyTabView : Control
             at = new Vector2(x + _gridLayout.Cell + 1, y);
         }
         var rect = new Rect2(Math.Clamp(at.X, 4, FrameWidth - 4 - width), Math.Clamp(at.Y, 4, FrameHeight - 4 - height), width, height);
-        return (rect, rect.Position.Y + cardHeight + TipEnds);
+        var buttons = new List<Rect2>();
+        var left = rect.Position.X + TipSide;
+        var top = rect.Position.Y + cardHeight + ButtonGap;
+        foreach (var w in widths)
+        {
+            buttons.Add(new Rect2(left, top, w, ButtonHeight));
+            left += w + ButtonGap;
+        }
+        return (rect, buttons);
     }
 
-    /// <summary>The item box's choice under a point in the frame, or null.</summary>
+    /// <summary>The item box's button under a point in the frame, or null.</summary>
     private int? TipChoiceAt((InventoryRow Row, ItemCard Card, IReadOnlyList<ActionTipChoice> Choices) shown, ActionTip? tip, Vector2 at)
     {
-        var (rect, choicesTop) = BoxRect(shown, tip);
-        if (!rect.HasPoint(at) || at.Y < choicesTop || shown.Choices.Count == 0)
-            return null;
-        return Math.Clamp((int)((at.Y - choicesTop) / TipPitch), 0, shown.Choices.Count - 1);
+        var (_, buttons) = BoxRect(shown, tip);
+        for (var i = 0; i < buttons.Count; i++)
+        {
+            if (buttons[i].Grow(0.5f).HasPoint(at))
+                return i;
+        }
+        return null;
     }
+
+    /// <summary>
+    /// The item box's text: the name's capitals this tall in the main face, the lines' this tall and this far apart; its buttons this
+    /// tall, with this much beside a label and this much between them; and the name on hover this tall, smaller than the stats card's.
+    /// </summary>
+    private const float BoxNameText = 4.4f, BoxText = 2.6f, BoxLinePitch = 3.6f, ButtonHeight = 6.5f, ButtonSide = 2.5f, ButtonGap = 2, HoverText = 2.3f;
 
     /// <summary>
     /// A name on a little slip of paper, centred across <paramref name="middle"/>, its foot at <paramref name="foot"/>, kept inside the
     /// frame; or with its top at <paramref name="below"/> where over would reach the tabs above the pages.
     /// </summary>
-    private void NameSlip(string name, float middle, float foot, float? below = null)
+    private void NameSlip(string name, float middle, float foot, float? below = null, bool tiny = false)
     {
-        var font = _ui.Slim.Sized(NameText);
+        var font = _ui.Slim.Sized(tiny ? HoverText : NameText);
         var width = font.ExactWidth(name);
         var height = font.Capitals + 2 * SlipEnds;
         var left = Math.Clamp(middle - width / 2 - SlipSide, 4, FrameWidth - 4 - width - 2 * SlipSide);
@@ -2069,7 +2113,7 @@ public partial class PartyTabView : Control
         switch (shown)
         {
             case PartyList.Inventory when Menu.Grid:
-                var grid = PartyMenu.InventoryGrid.Shifted(shift);
+                var grid = Menu.CurrentGrid.Shifted(shift);
                 if (shown == Menu.List)
                     _gridLayout = grid;
                 Grid(grid);

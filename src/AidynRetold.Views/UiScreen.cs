@@ -148,6 +148,11 @@ public partial class UiScreen : Control
     {
         if (what == NotificationResized || what == NotificationEnterTree)
             Fit();
+        else if (what == NotificationMouseExit && _mouseIn)
+        {
+            _viewport.NotifyMouseExited();
+            _mouseIn = false;
+        }
     }
 
     /// <summary>
@@ -207,6 +212,9 @@ public partial class UiScreen : Control
         return (local - rect.Position) / rect.Size * (Vector2)CanvasSize;
     }
 
+    /// <summary>Whether the viewport has been told the mouse is over it, which it's told once, as it warns of more.</summary>
+    private bool _mouseIn;
+
     public override void _GuiInput(InputEvent @event)
     {
         if (@event is not InputEventMouse mouse)
@@ -245,7 +253,11 @@ public partial class UiScreen : Control
         // under the mouse, and a motion event pushed to it reaches no control (a button's finds its control itself). Told, it does.
         if (copy is InputEventMouseMotion)
         {
-            _viewport.NotifyMouseEntered();
+            if (!_mouseIn)
+            {
+                _viewport.NotifyMouseEntered();
+                _mouseIn = true;
+            }
             _viewport.UpdateMouseCursorState();
         }
         _viewport.PushInput(copy, true);

@@ -119,7 +119,7 @@ public sealed class TrekHud
         var corner = Minimap.Showing ? Minimap.Draw(brightness) : outdoors ? Compass.Draw(look, brightness) : [];
         var down = height - 240;
         return Shift(Sundial.Draw(game.Clock.Time, brightness, SunAndMoon), 0, down)
-            .Concat(Shift(Portraits.Draw(members, brightness), (width - 320) / 2, down))
+            .Concat(Shift(Portraits.Draw(members, brightness, width), (width - 320) / 2, down))
             .Concat(Shift(corner, width - 320, down));
     }
 

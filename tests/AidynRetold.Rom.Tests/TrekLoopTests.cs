@@ -448,8 +448,8 @@ public sealed class TrekLoopTests(Na10Import fixture)
         Assert.Equal((561f, 289f), wide.Where(s => s.Image == AidynRetold.Core.Ui.Sundial.Ring).Select(s => (s.X, s.Y)).Last());
         for (var i = 0; i < 2 * 14; i++)
             trek.Tick(Still);
-        // The first frame keeps its place from the centre on a wider screen: (640 - 320) / 2 + 75 (the original's four had it at 84).
-        Assert.Equal(235f, trek.Hud.Draw(trek.Game, true, new Vector2(0, -1), 1, 640, 360).First(s => s.Image == AidynRetold.Core.Ui.PartyPortraits.Frame).X);
+        // The first frame keeps its place from the centre on a wider screen, where five stand 38 apart: (640 - 320) / 2 + 63 (the original's four had it at 84).
+        Assert.Equal(223f, trek.Hud.Draw(trek.Game, true, new Vector2(0, -1), 1, 640, 360).First(s => s.Image == AidynRetold.Core.Ui.PartyPortraits.Frame).X);
     }
 
     /// <summary>

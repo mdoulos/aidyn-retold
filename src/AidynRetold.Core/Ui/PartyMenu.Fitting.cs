@@ -47,7 +47,34 @@ public sealed partial class PartyMenu
         if (_rowsFitting is null)
             _wholeCursor = Inventory.Cursor;
         Refresh();
+        if (Grid)
+            CurrentGrid.Apply(Inventory);
         Inventory.Point(_rowsFitting is null ? _wholeCursor : 0);
+    }
+
+    /// <summary>
+    /// The grid as it stands: the whole inventory's (<see cref="InventoryGrid"/>), or with a slot's fitting items one line shorter
+    /// (<see cref="FittingGrid"/>), leaving room under it for the way back to the whole, the user's design (Nov 5, 2026).
+    /// </summary>
+    public GridLayout CurrentGrid => Fitting is null ? InventoryGrid : FittingGrid;
+
+    /// <summary>The grid a line shorter, for a slot's fitting items.</summary>
+    public static GridLayout FittingGrid => InventoryGrid with
+    {
+        Bounds = new ScreenRect(InventoryGrid.Bounds.Left, InventoryGrid.Bounds.Top, InventoryGrid.Bounds.Right, InventoryGrid.Bounds.Bottom - InventoryGrid.Cell),
+    };
+
+    /// <summary>
+    /// Shows the whole inventory again, the slot unselected and the stick back on the grid: the Inventory tab clicked while it shows
+    /// what fits a slot, or the See Full Inventory button under the grid (the user's design, Nov 5, 2026).
+    /// </summary>
+    public void ClearFitting()
+    {
+        if (Fitting is null)
+            return;
+        SelectedSlot = null;
+        Picking = null;
+        _focus = PartyFocus.List;
     }
 
     /// <summary>

@@ -52,7 +52,7 @@ public sealed partial class PartyMenu
         {
             field = value;
             if (value)
-                InventoryGrid.Apply(Inventory);
+                CurrentGrid.Apply(Inventory);
             else
                 (Inventory.Columns, Inventory.Visible) = (1, LayoutOf(PartyList.Inventory).Visible);
             // The grid's rows are the port's (GridRows), the list's the original's.

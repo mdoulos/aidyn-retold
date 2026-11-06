@@ -17,16 +17,35 @@ public sealed partial class PartyMenu
     {
         if (HasPopup || OriginalLook || TipRow() is not { } row)
             return false;
-        List<ActionTipChoice> choices = [];
-        if (ActionFor(row) is { } action)
-            choices.Add(action);
-        if (Details() is not null)
-            choices.Add(ActionTipChoice.Details);
+        var choices = ChoicesFor(row);
         if (choices.Count == 0)
             return false;
         Tip = new ActionTip(choices);
         return true;
     }
+
+    /// <summary>What the actiontip offers for a row: what A does with it, if anything, and Details where the item has any.</summary>
+    private IReadOnlyList<ActionTipChoice> ChoicesFor(InventoryRow row)
+    {
+        List<ActionTipChoice> choices = [];
+        if (ActionFor(row) is { } action)
+            choices.Add(action);
+        if (Details() is not null)
+            choices.Add(ActionTipChoice.Details);
+        return choices;
+    }
+
+    /// <summary>
+    /// The item box, the user's design (Nov 5, 2026): the selected item, the worn one in the silhouette's slot selected or the inventory
+    /// cursor's while the cursor shows (a key's, or a click's), with its card (<see cref="Card"/>) and what can be done with it
+    /// (<see cref="ChoicesFor"/>), as one box beside it; null with nothing selected, a popup or the crafting up, a member sliding in, or
+    /// in the original's look. It stands whenever an item is selected, in place of a slip on hover; R, or a right click, gives its
+    /// choices the presses (<see cref="Tip"/>), and a click on one chooses it.
+    /// </summary>
+    public (InventoryRow Row, ItemCard Card, IReadOnlyList<ActionTipChoice> Choices)? TipShown =>
+        OriginalLook || Overlay.HasPopup || Crafting is not null || Slide is not null || TipRow() is not { } row
+            || (SelectedSlot is null && !CursorShows) ? null
+        : (row, Card(row), ChoicesFor(row));
 
     /// <summary>Closes the actiontip.</summary>
     public void CloseTip() => Tip = null;

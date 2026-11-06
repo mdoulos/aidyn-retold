@@ -49,8 +49,8 @@ public sealed class PartyPortraits
     /// <summary>The health bar: 2 high along the portrait's bottom, 2 in from each side, over a dark backing.</summary>
     public const int BarHeight = 2, BarInset = 2;
 
-    /// <summary>The status icons: 8 square, 2 in from the portrait's right and bottom, each next one half an icon further left.</summary>
-    public const int IconSize = 8, IconInset = 2;
+    /// <summary>The status icons: 6 square, 1 in from the portrait's right and bottom, each next one half an icon further left.</summary>
+    public const int IconSize = 6, IconInset = 1;
 
     public static readonly Rgba BarBacking = new(0, 0, 0, 160), BarFill = new(96, 208, 96, 255), BarLow = new(224, 48, 40, 255);
 

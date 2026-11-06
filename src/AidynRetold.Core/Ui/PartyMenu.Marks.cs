@@ -13,33 +13,27 @@ public enum ItemMark
 
     /// <summary>The member can't put it on, or learn its spell.</summary>
     Unusable,
-
-    /// <summary>It would be better than what the member wears in its place.</summary>
-    Upgrade,
 }
 
 /// <summary>
-/// What the slip over an item says in the port's look (<see cref="PartyMenu.Card"/>): its name, a line of what it is, and why the member
-/// shown can't use it, or what it would be better than.
+/// What the item box says of an item in the port's look (<see cref="PartyMenu.Card"/>): its name, a line of what it is, and why the member
+/// shown can't use it. Whether it's better than what's worn is the player's to judge, the user's choice (Nov 5, 2026).
 /// </summary>
-public sealed record ItemCard(string Name, string? About = null, string? Warning = null, string? Better = null);
+public sealed record ItemCard(string Name, string? About = null, string? Warning = null);
 
 /// <summary>
-/// Marks on the grid's items for the member shown, in the port's look, the user's choice (Nov 3, 2026): what they can't use, dimmed with
-/// a red cross, and what would be better than what they wear, with a green arrow; and the card over an item, which says why.
+/// Marks on the grid's items for the member shown, in the port's look, the user's choice (Nov 3 and 5, 2026): what they can't use, under a
+/// grey box with its icon faded; and the item's card, which says why.
 /// </summary>
 public sealed partial class PartyMenu
 {
     /// <summary>
     /// How an item stands with the member shown: <see cref="ItemMark.Unusable"/> if they can't put it on, or for a scroll they'd read,
-    /// learn its spell; <see cref="ItemMark.Upgrade"/> if it would be better than what they wear in its place (<see cref="BetterThan"/>),
-    /// but only while the item is <paramref name="selected"/>, under the cursor or the mouse, or a slot it fits is selected
-    /// (<see cref="Fitting"/>), the user's choice (Nov 5, 2026), so the grid isn't strewn with arrows; none for what's worn, potions and
-    /// the rest.
+    /// learn its spell; none for what's worn, potions and the rest. Nothing marks what would be better than what they wear, the user's
+    /// choice (Nov 5, 2026): that's theirs to judge.
     /// </summary>
-    public ItemMark Mark(InventoryRow row, bool selected = false) => Shown is not { } member || row.Wearer is not null ? ItemMark.None
+    public ItemMark Mark(InventoryRow row) => Shown is not { } member || row.Wearer is not null ? ItemMark.None
         : Refusal(member, row.Item) is not null ? ItemMark.Unusable
-        : (selected || Fitting is { } slot && Fits(row.Item, slot)) && BetterThan(member, row.Item) is not null ? ItemMark.Upgrade
         : ItemMark.None;
 
     /// <summary>
@@ -76,39 +70,9 @@ public sealed partial class PartyMenu
     }
 
     /// <summary>
-    /// What a usable item would be better than, if it would: a weapon with more damage, or as much and more to hit, than the one wielded;
-    /// armor with more protection; a shield with more defense and protection; a helmet, cloak, gloves, boots or belt with more protection
-    /// and damage than the one worn. What it'd go in is the slot being chosen for, else what it would replace. Empty where nothing is
-    /// worn there; null if it isn't better, or for rings, amulets, wands, scrolls and the rest, whose worth isn't one number.
-    /// </summary>
-    private string? BetterThan(Character member, Item item)
-    {
-        var worn = Picking is { } slot ? Worn(slot)?.Item : item.Kind switch
-        {
-            ItemKind.Weapon => member.Equipment.Weapon?.Item,
-            ItemKind.Armor => member.Equipment.Armor?.Item,
-            ItemKind.Shield => member.Equipment.Shield?.Item,
-            _ => member.Equipment.Gear.OfType<ItemInstance>().FirstOrDefault(g => g.Item.Kind == item.Kind)?.Item,
-        };
-        (int, int)? Worth(Item what) => what.Kind switch
-        {
-            ItemKind.Weapon => (what.Weapon!.Damage, what.Weapon.Hit),
-            ItemKind.Armor => (what.Armor!.Protection, 0),
-            ItemKind.Shield => (what.Shield!.Defense + what.Shield.Protection, 0),
-            ItemKind.Helmet or ItemKind.Cloak or ItemKind.Gloves or ItemKind.Boots or ItemKind.Belt => (what.Protection + what.Damage, 0),
-            _ => null,
-        };
-        if (Worth(item) is not { } worth || worth == (0, 0))
-            return null;
-        if (worn is null)
-            return "";
-        return Worth(worn) is { } was && (worth.Item1 > was.Item1 || worth.Item1 == was.Item1 && worth.Item2 > was.Item2) ? worn.Name : null;
-    }
-
-    /// <summary>
     /// The card over an item, in the port's look: its name; a line of what it is, a weapon's skill, damage and to-hit, armor's
     /// protection, a shield's defense, gear's protection, damage and stat bonus, a scroll's spell; why the member shown can't use it,
-    /// in red; or what it would be better than, in green. Just the name for what's worn.
+    /// in red. Just the name for what's worn.
     /// </summary>
     public ItemCard Card(InventoryRow row)
     {
@@ -149,14 +113,7 @@ public sealed partial class PartyMenu
             about.Add(Spoilage.Describe(left));
         if (row.Wearer is not null)
             return new ItemCard(item.Name, about.Count > 0 ? string.Join(", ", about) : null);
-        var warning = Refusal(member, item);
-        var better = warning is null ? BetterThan(member, item) : null;
-        return new ItemCard(item.Name, about.Count > 0 ? string.Join(", ", about) : null, warning, better switch
-        {
-            null => null,
-            "" => "Nothing worn in its place",
-            _ => $"Better than {better}",
-        });
+        return new ItemCard(item.Name, about.Count > 0 ? string.Join(", ", about) : null, Refusal(member, item));
     }
 
     private static string Num(int value) => value.ToString(CultureInfo.InvariantCulture);

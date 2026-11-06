@@ -27,7 +27,10 @@ public partial class PartyTabView : Control
     /// <summary>The portraits' frames, as the original paints them into <c>0x00D9</c>. DollMenuPortraits puts each portrait 2 inside its frame.</summary>
     private static readonly Rect2I PortraitPiece = new(18, 22, 134, 46);
 
-    private static readonly Vector2I ShownPortrait = new(4, 4), NameAt = new(51, 6);
+    private static readonly Vector2I ShownPortrait = new(4, 4);
+
+    /// <summary>The name's place: the original's at x 51, beside its 40 portrait; the port's at 47, beside its 36.</summary>
+    private Vector2I NameAt => OriginalLook ? new(51, 6) : new(47, 6);
 
     /// <summary>The member's name, a heading, larger than the menus' text; the slim font at its own size in the original's layout.</summary>
     private UiFont NameFont => OriginalLook ? _ui.Slim : _ui.Slim.Sized(UiPainter.HeadingText);
@@ -60,9 +63,20 @@ public partial class PartyTabView : Control
 
     /// <summary>The arrow under the knotwork.</summary>
     private static readonly Vector2I OriginalSliderAt = new(126, 207);
-    /// <summary>The other members' small portraits, one a slot but the shown member's, 22 square: four at 25 apart for a party of five, from x 49 to 146 on the sheet (the original's four had three at 29 apart, 24 square).</summary>
-    private static readonly Vector2I[] OtherPortraits = [.. Enumerable.Range(0, Core.Characters.Party.MaxSize - 1).Select(i => new Vector2I(49 + i * 25, 17))];
-    private const int ShownSize = 40, OtherSize = 22;
+    /// <summary>
+    /// The other members' small portraits, one a slot but the shown member's: the original's three at x 49, 78 and 107, 24 square; the
+    /// port's four at 45, 67, 89 and 111, 20 square, 22 apart, for a party of five, which end at 131 inside the header's piece (the user's
+    /// choice, Nov 5, 2026).
+    /// </summary>
+    private static readonly Vector2I[] OriginalOthers = [new(49, 17), new(78, 17), new(107, 17)],
+        PortOthers = [.. Enumerable.Range(0, Core.Characters.Party.MaxSize - 1).Select(i => new Vector2I(45 + i * 22, 17))];
+
+    private Vector2I[] OtherPortraits => OriginalLook ? OriginalOthers : PortOthers;
+
+    /// <summary>The shown member's portrait, the original's 40 square and the port's 36; the others' the original's 24 and the port's 20.</summary>
+    private int ShownSize => OriginalLook ? 40 : 36;
+
+    private int OtherSize => OriginalLook ? 24 : 20;
 
     /// <summary>
     /// The hit points bar beside the aspect's and school's icons and as tall as they are, the user's art and the user's choice (Nov 2,
@@ -288,6 +302,9 @@ public partial class PartyTabView : Control
     private int? _hoveredIcon;
     /// <summary>The actiontip a right click opened and where in the frame, which it opens beside; the stick's opens by its item.</summary>
     private (ActionTip Tip, Vector2 At)? _tipAt;
+
+    /// <summary>The item box's choice under the mouse while the actiontip hasn't the presses, drawn in red ink, or null.</summary>
+    private int? _hoveredChoice;
     /// <summary>Where the inventory's grid was last drawn, which the mouse is tested against, as <see cref="_listLayout"/> is for a list.</summary>
     private GridLayout _gridLayout = PartyMenu.InventoryGrid;
     /// <summary>Where the tab's list was last drawn, which the mouse is tested against: a list sliding in is drawn off its place.</summary>
@@ -622,9 +639,10 @@ public partial class PartyTabView : Control
                 Menu.ReleaseDetails();
             return e is InputEventMouseButton;
         }
-        if (Menu.Tip is { } tip)
+        var shown = Menu.TipShown;
+        if (Menu.Tip is { } tip && shown is { } box)
         {
-            var row = TipChoiceAt(tip, at);
+            var row = TipChoiceAt(box, tip, at);
             switch (e)
             {
                 case InputEventMouseMotion when row is { } hovered:
@@ -641,6 +659,24 @@ public partial class PartyTabView : Control
                     return true;
                 default:
                     return e is InputEventMouseButton;
+            }
+        }
+        // The box stands beside the selected item before the actiontip has the presses: the choice under the mouse reads red, and a
+        // click on it opens the actiontip there and chooses it, as A would.
+        if (shown is { } standing)
+        {
+            var choice = TipChoiceAt(standing, null, at);
+            if (e is InputEventMouseMotion)
+            {
+                if (_hoveredChoice != choice)
+                    QueueRedraw();
+                _hoveredChoice = choice;
+            }
+            else if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } && choice is { } chosen && Menu.OpenTip())
+            {
+                Menu.PointTip(chosen);
+                UiScreen.Of(this)?.Click(MenuAction.Accept);
+                return true;
             }
         }
         return e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Right } && OpenTipAt(at);
@@ -953,8 +989,8 @@ public partial class PartyTabView : Control
             Tooltip();
         if (OwnTab && Veil == 0)
             PromptStrip();
-        if (OwnTab && Menu.Tip is { } tip)
-            ActionTipBox(tip);
+        if (OwnTab && Menu.TipShown is { } shown)
+            ItemBox(shown, Menu.Tip);
         if (_drag is { } drag)
             DragArt(drag);
         _overlay.DrawSetTransform(Vector2.Zero);
@@ -1327,7 +1363,7 @@ public partial class PartyTabView : Control
     }
 
     /// <summary>Where the portrait so far round the party from the member shown goes, from the frames' corner, and how big it is.</summary>
-    private static (Vector2I At, int Size) PortraitPlace(int i) =>
+    private (Vector2I At, int Size) PortraitPlace(int i) =>
         i == 0 ? (ShownPortrait, ShownSize) : (OtherPortraits[Math.Min(i - 1, OtherPortraits.Length - 1)], OtherSize);
 
     /// <summary>
@@ -1776,35 +1812,17 @@ public partial class PartyTabView : Control
     /// <summary>How much of a grid's cell its item's icon takes across, inside its box's inner line: 12 of the original's 18.</summary>
     private const float GridIcon = 12f / 18;
 
-    /// <summary>The box over an unusable item's cell, grey at half alpha; and a mark's size and its lines' thickness.</summary>
+    /// <summary>The box over an unusable item's cell, grey at half alpha.</summary>
     private static readonly Rgba UnusableBox = new(128, 128, 128, 128);
-
-    private const float MarkSize = 3.2f, MarkLine = 0.55f;
 
     /// <summary>The food clock's size in a cell (<see cref="FoodClock"/>).</summary>
     private const float ClockSize = 4.2f;
-
-    /// <summary>A cell's mark from its top left: a red cross for what can't be used, a green arrow up for what would be better.</summary>
-    private void MarkArt(ItemMark mark, float x, float y)
-    {
-        const float s = MarkSize;
-        if (mark == ItemMark.Unusable)
-        {
-            var red = _ui.Tint(UiPainter.RedInk);
-            _canvas.DrawLine(new Vector2(x, y), new Vector2(x + s, y + s), red, MarkLine, true);
-            _canvas.DrawLine(new Vector2(x + s, y), new Vector2(x, y + s), red, MarkLine, true);
-            return;
-        }
-        var green = _ui.Tint(MenuDetailsBuilder.Gain);
-        _canvas.DrawColoredPolygon([new Vector2(x + s / 2, y), new Vector2(x + s, y + s * 0.55f), new Vector2(x, y + s * 0.55f)], green);
-        _canvas.DrawLine(new Vector2(x + s / 2, y + s * 0.5f), new Vector2(x + s / 2, y + s), green, MarkLine * 1.6f, true);
-    }
 
     /// <summary>
     /// The inventory's grid (<see cref="PartyMenu.InventoryGrid"/>), the user's design (Nov 2, 2026): a cell for each of its rows in
     /// view, a stack or a worn item, the user's box with the item's icon in it, its count in the bottom right corner where there's more
     /// than one, and on a worn item the wearer's portrait small in the top left; the cursor's cell in the user's red square; and the
-    /// arrows where lines are hidden above or below. The items' names show on a slip over the cursor's cell (<see cref="Tooltip"/>).
+    /// arrows where lines are hidden above or below. The cursor's item has its box beside it (<see cref="ItemBox"/>).
     /// </summary>
     private void Grid(GridLayout grid)
     {
@@ -1827,16 +1845,12 @@ public partial class PartyTabView : Control
             Art(SlotBox, new Rect2(x + 0.5f, y + 0.5f, grid.Cell - 1, grid.Cell - 1), row.Wearer is null ? White : WornBox);
             var icon = grid.Cell * GridIcon;
             // What the member shown can't use is under a grey box at half alpha, its icon over the box at half saturation, the user's
-            // choice (Nov 5, 2026); what would be better than what they wear has a green arrow in the top right corner, while it's under
-            // the cursor or the mouse or a slot it fits is selected (PartyMenu.Mark).
-            var selected = i == list.Cursor && Menu.Focus == PartyFocus.List || _hoveredCell == i;
-            var mark = OriginalLook ? ItemMark.None : Menu.Mark(row, selected);
+            // choice (Nov 5, 2026). Nothing marks what would be better than what they wear: that's theirs to judge.
+            var mark = OriginalLook ? ItemMark.None : Menu.Mark(row);
             if (mark == ItemMark.Unusable)
                 _canvas.DrawRect(new Rect2(x + 0.5f, y + 0.5f, grid.Cell - 1, grid.Cell - 1), _ui.Tint(UnusableBox));
             _ui.Image(_canvas, Menu.ItemIcon(row.Item), new Rect2(x + (grid.Cell - icon) / 2, y + (grid.Cell - icon) / 2, icon, icon),
                 desaturated: mark == ItemMark.Unusable);
-            if (mark == ItemMark.Upgrade)
-                MarkArt(mark, x + grid.Cell - CellInset - MarkSize, y + CellInset);
             if (row.Wearer is { } wearer && Menu.Party.Slots[wearer] is { } who && Menu.Portrait(who.Entity) is { } portrait)
             {
                 // In the bottom left, the count being in the bottom right.
@@ -1913,94 +1927,73 @@ public partial class PartyTabView : Control
         }
         if (!OwnTab || Menu.Slide is not null || Window.HasPopup || Menu.Crafting is not null)
             return;
-        var grid = Menu.List == PartyList.Inventory && Menu.Grid;
-        var pointing = Menu.Pointing;
-        // A slot shows what's worn in it, or, empty, what it takes.
-        if ((pointing ? _hoveredSlot : _hoveredSlot ?? Menu.SelectedSlot) is { } slot && (Menu.Worn(slot) is not null || !OriginalLook))
+        // An empty slot names what it takes; a worn item's and a carried item's cards are the item box's (ItemBox), the user's choice
+        // (Nov 5, 2026), which stands when the item is selected, not on hover.
+        if ((Menu.Pointing ? _hoveredSlot : _hoveredSlot ?? Menu.SelectedSlot) is { } slot && Menu.Worn(slot) is null && !OriginalLook)
         {
             var rect = SlotRect(slot);
-            if (Menu.Worn(slot) is { } worn)
-                CardSlip(Menu.Card(new InventoryRow(worn, 1, Menu.Member)), rect.Position.X + rect.Size.X / 2, rect.Position.Y - 1);
-            else
-                NameSlip(PartyMenu.SlotName(slot), rect.Position.X + rect.Size.X / 2, rect.Position.Y - 1);
-        }
-        else if (grid && (pointing ? _hoveredCell : Menu.Focus == PartyFocus.List ? Menu.Inventory.Cursor : null) is { } cell
-            && Menu.Inventory.Rows.ElementAtOrDefault(cell) is { } row
-            && cell >= Menu.Inventory.First && cell < Menu.Inventory.First + _gridLayout.Visible)
-        {
-            var (x, y) = _gridLayout.CellAt(cell - Menu.Inventory.First);
-            CardSlip(Menu.Card(row), x + _gridLayout.Cell / 2f, y - 1, y + _gridLayout.Cell + 1);
+            NameSlip(PartyMenu.SlotName(slot), rect.Position.X + rect.Size.X / 2, rect.Position.Y - 1);
         }
     }
 
-    /// <summary>
-    /// An item's card on a slip over it, the user's choice (Nov 3, 2026), where the slip had only its name (<see cref="PartyMenu.Card"/>):
-    /// the name, then in smaller text what it is, why the member can't use it in red ink, or what it would be better than in green, as
-    /// it has them; over the item, or under it where over would reach the tabs.
-    /// </summary>
-    private void CardSlip(ItemCard card, float middle, float foot, float? below = null)
-    {
-        var name = _ui.Slim.Sized(NameText);
-        var small = _ui.Slim.Sized(CardText);
-        var lines = new List<(string Text, Rgba Color)>();
-        if (card.About is { } about)
-            lines.Add((about, PartyMenu.TextColor));
-        if (card.Warning is { } warning)
-            lines.Add((warning, UiPainter.RedInk));
-        if (card.Better is { } better)
-            lines.Add((better, MenuDetailsBuilder.Gain));
-        var width = lines.Select(l => small.ExactWidth(l.Text)).Append(name.ExactWidth(card.Name)).Max();
-        var first = SlipEnds + name.Capitals / 2;
-        var height = first + (lines.Count > 0 ? CardGap + (lines.Count - 1) * CardLinePitch + small.Capitals / 2 : name.Capitals / 2) + SlipEnds;
-        var left = Math.Clamp(middle - width / 2 - SlipSide, 4, FrameWidth - 4 - width - 2 * SlipSide);
-        var top = below is { } under && foot - height < PageRect.Position.Y ? under : foot - height;
-        _ui.Slip(_canvas, new Rect2(left, top, width + 2 * SlipSide, height), sheet: UiPainter.TooltipSheet);
-        Small(card.Name, left + SlipSide, top + first - name.Middle, UiPainter.Ink, font: name);
-        var y = top + first + CardGap;
-        foreach (var (text, color) in lines)
-        {
-            Small(text, left + SlipSide, y - small.Middle, color, font: small);
-            y += CardLinePitch;
-        }
-    }
-
-    /// <summary>A card's lines under the name: their capitals' height, the first's middle this far under the name's, and the rest this far apart.</summary>
+    /// <summary>The slips' text sizes and insets: a name's and a card's lines', the paper's ends and sides, and the gap and pitch of a card's lines.</summary>
     private const float CardText = 3, CardGap = 4.6f, CardLinePitch = 4;
-
-    /// <summary>
-    /// How tall a name's capitals are on its slip, half the menus' text, the user's choice (Nov 2, 2026), and how far the slip reaches
-    /// past it at the sides and above and below it.
-    /// </summary>
     private const float NameText = UiPainter.StandardText / 2 * 1.25f, SlipSide = 3, SlipEnds = 2;
 
-    /// <summary>The actiontip's choices: their capitals this tall, this far apart, and the slip this far past them at the sides and ends.</summary>
     private const float TipText = 3, TipPitch = 6.5f, TipSide = 4, TipEnds = 2.5f;
 
     /// <summary>
-    /// The actiontip: its choices on a slip, the cursor's in red ink, beside where the right click opened it, or with the stick's beside its
-    /// item, the worn slot or the grid's cell, kept inside the frame.
+    /// The item box, the user's design (Nov 5, 2026; <see cref="PartyMenu.TipShown"/>): on one slip beside the selected item, the worn
+    /// slot's or the grid's cell's, or beside where a right click opened it, kept inside the frame: the item's card, its name and in
+    /// smaller text what it is and why the member can't use it in red ink; then what can be done with it, the actiontip's choices, the
+    /// cursor's in red ink while the actiontip has the presses (<paramref name="tip"/>), else the one under the mouse.
     /// </summary>
-    private void ActionTipBox(ActionTip tip)
+    private void ItemBox((InventoryRow Row, ItemCard Card, IReadOnlyList<ActionTipChoice> Choices) shown, ActionTip? tip)
     {
+        var (rect, choicesTop) = BoxRect(shown, tip);
+        var name = _ui.Slim.Sized(NameText);
+        var small = _ui.Slim.Sized(CardText);
         var font = _ui.Slim.Sized(TipText);
-        var rect = TipRect(tip);
         _ui.Slip(_canvas, rect);
-        for (var i = 0; i < tip.Choices.Rows.Count; i++)
+        var x = rect.Position.X + TipSide;
+        var y = rect.Position.Y + SlipEnds;
+        Small(shown.Card.Name, x, y + name.Capitals / 2 - name.Middle, UiPainter.Ink, font: name);
+        y += name.Capitals + CardGap;
+        foreach (var (text, color) in CardLines(shown.Card))
         {
-            var middle = rect.Position.Y + TipEnds + TipPitch * (i + 0.5f);
-            Small(ActionTip.Label(tip.Choices.Rows[i]), rect.Position.X + TipSide, middle - font.Middle,
-                i == tip.Choices.Cursor ? UiPainter.RedInk : UiPainter.Ink, font: font);
+            Small(text, x, y + small.Capitals / 2 - small.Middle, color, font: small);
+            y += CardLinePitch;
+        }
+        for (var i = 0; i < shown.Choices.Count; i++)
+        {
+            var middle = choicesTop + TipPitch * (i + 0.5f);
+            var current = tip is not null ? i == tip.Choices.Cursor : i == _hoveredChoice;
+            Small(ActionTip.Label(shown.Choices[i]), x, middle - font.Middle, current ? UiPainter.RedInk : UiPainter.Ink, font: font);
         }
     }
 
-    /// <summary>Where the actiontip's slip is in the frame.</summary>
-    private Rect2 TipRect(ActionTip tip)
+    /// <summary>The card's lines under the name: what the item is in ink, and why the member can't use it in red.</summary>
+    private static IEnumerable<(string Text, Rgba Color)> CardLines(ItemCard card)
     {
+        if (card.About is { } about)
+            yield return (about, PartyMenu.TextColor);
+        if (card.Warning is { } warning)
+            yield return (warning, UiPainter.RedInk);
+    }
+
+    /// <summary>Where the item box's slip is in the frame, and where its choices start down it.</summary>
+    private (Rect2 Rect, float ChoicesTop) BoxRect((InventoryRow Row, ItemCard Card, IReadOnlyList<ActionTipChoice> Choices) shown, ActionTip? tip)
+    {
+        var name = _ui.Slim.Sized(NameText);
+        var small = _ui.Slim.Sized(CardText);
         var font = _ui.Slim.Sized(TipText);
-        var width = tip.Choices.Rows.Select(c => font.ExactWidth(ActionTip.Label(c))).DefaultIfEmpty(0).Max() + 2 * TipSide;
-        var height = tip.Choices.Rows.Count * TipPitch + 2 * TipEnds;
+        var lines = CardLines(shown.Card).ToList();
+        var width = lines.Select(l => small.ExactWidth(l.Text)).Concat(shown.Choices.Select(c => font.ExactWidth(ActionTip.Label(c))))
+            .Append(name.ExactWidth(shown.Card.Name)).Max() + 2 * TipSide;
+        var cardHeight = SlipEnds + name.Capitals + CardGap + lines.Count * CardLinePitch;
+        var height = cardHeight + (shown.Choices.Count > 0 ? TipEnds + shown.Choices.Count * TipPitch : 0) + TipEnds;
         Vector2 at;
-        if (_tipAt is { } opened && opened.Tip == tip)
+        if (tip is not null && _tipAt is { } opened && opened.Tip == tip)
             at = opened.At + new Vector2(1, 1);
         else if (Menu.SelectedSlot is { } slot)
             at = new Vector2(SlotRect(slot).End.X + 1, SlotRect(slot).Position.Y);
@@ -2009,16 +2002,17 @@ public partial class PartyTabView : Control
             var (x, y) = _gridLayout.CellAt(Menu.Inventory.Cursor - Menu.Inventory.First);
             at = new Vector2(x + _gridLayout.Cell + 1, y);
         }
-        return new Rect2(Math.Clamp(at.X, 4, FrameWidth - 4 - width), Math.Clamp(at.Y, 4, FrameHeight - 4 - height), width, height);
+        var rect = new Rect2(Math.Clamp(at.X, 4, FrameWidth - 4 - width), Math.Clamp(at.Y, 4, FrameHeight - 4 - height), width, height);
+        return (rect, rect.Position.Y + cardHeight + TipEnds);
     }
 
-    /// <summary>The actiontip's choice under a point in the frame, or null.</summary>
-    private int? TipChoiceAt(ActionTip tip, Vector2 at)
+    /// <summary>The item box's choice under a point in the frame, or null.</summary>
+    private int? TipChoiceAt((InventoryRow Row, ItemCard Card, IReadOnlyList<ActionTipChoice> Choices) shown, ActionTip? tip, Vector2 at)
     {
-        var rect = TipRect(tip);
-        if (!rect.HasPoint(at))
+        var (rect, choicesTop) = BoxRect(shown, tip);
+        if (!rect.HasPoint(at) || at.Y < choicesTop || shown.Choices.Count == 0)
             return null;
-        return Math.Clamp((int)((at.Y - rect.Position.Y - TipEnds) / TipPitch), 0, tip.Choices.Rows.Count - 1);
+        return Math.Clamp((int)((at.Y - choicesTop) / TipPitch), 0, shown.Choices.Count - 1);
     }
 
     /// <summary>

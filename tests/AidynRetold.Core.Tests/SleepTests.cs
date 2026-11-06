@@ -201,18 +201,18 @@ public class SleepTests
         var low = portraits.Draw([new HudMember(face, Health: 0.2f)], 1).ToList();
         Assert.Equal(PartyPortraits.BarLow, low.Last(s => s.Image == PartyPortraits.Pixel).Color);
 
-        // Tired: its icon in the bottom right corner, 8 square and 2 in from the right and the bottom, and the pulse over the portrait.
+        // Tired: its icon in the bottom right corner, 6 square and 1 in from the right and the bottom, and the pulse over the portrait.
         var tired = portraits.Draw([new HudMember(face, Rest: RestState.Tired)], 1).ToList();
         var icon = tired.Single(s => s.Image == RestDisplay.TiredIcon);
-        Assert.Equal((101f, 210f, (8f, 8f)), (icon.X, icon.Y, icon.Size!.Value));
+        Assert.Equal((104f, 213f, (6f, 6f)), (icon.X, icon.Y, icon.Size!.Value));
         Assert.Equal(2, tired.Count(s => s.Image == face));
 
         // Starving and Tired: hunger's icon first, then tiredness's half an icon on; hurt too, both above the bar.
         var both = portraits.Draw([new HudMember(face, HungerState.Starving, RestState.Tired, 0.5f)], 1).ToList();
         var starving = both.Single(s => s.Image == HungerDisplay.StarvingIcon);
         var sleepy = both.Single(s => s.Image == RestDisplay.TiredIcon);
-        Assert.Equal((97f, 207f), (starving.X, starving.Y));
-        Assert.Equal((101f, 207f), (sleepy.X, sleepy.Y));
+        Assert.Equal((101f, 210f), (starving.X, starving.Y));
+        Assert.Equal((104f, 210f), (sleepy.X, sleepy.Y));
         // Well Fed shows no icon on the HUD: nothing pulses.
         Assert.DoesNotContain(portraits.Draw([new HudMember(face, HungerState.WellFed)], 1), s => HungerDisplay.Icons.Contains(s.Image));
     }

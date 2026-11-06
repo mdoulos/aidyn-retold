@@ -102,7 +102,7 @@ public partial class PartyTabView : Control
     private const float BarArtWidth = 850, BarArtHeight = 200, BarArtLeft = 65, BarEnd = 140, BarOpeningLeft = 93, BarOpeningRight = 753,
         BarOpeningTop = 63, BarOpeningBottom = 139;
 
-    private const string BarFrameArt = "ui_bar_frame_asymmetrical", BarFillArt = "ui_bar_red", BarTrackArt = "ui_bar_brown";
+    private const string BarFrameArt = "ui_bar_frame", BarFillArt = "ui_bar_red", BarTrackArt = "ui_bar_brown";
 
     /// <summary>How finely the bar's share of hit points is taken, as a width it's measured across.</summary>
     private const int BarPrecision = 1000;
@@ -1479,20 +1479,8 @@ public partial class PartyTabView : Control
         for (var i = 0; i < 3 && dx[i] < right; i++)
         {
             var share = Math.Min(1, (right - dx[i]) / (dx[i + 1] - dx[i]));
-            var drawn = (dx[i + 1] - dx[i]) * share;
-            if (i < 2)
-            {
-                _canvas.DrawTextureRectRegion(texture, new Rect2(dx[i], rect.Position.Y, drawn, rect.Size.Y),
-                    new Rect2(sx[i] * texels, 0, (sx[i + 1] - sx[i]) * texels * share, texture.GetHeight()), _ui.Tint(White));
-                continue;
-            }
-            // The right end is the left end mirrored, plain and round like it, the user's choice (Nov 5, 2026), in place of the art's
-            // flourish: the art flipped, its last BarEnd of pixels, from their start, as far as the cut at right goes.
-            if (UiImages.ArtMirrored(name) is { } mirrored)
-            {
-                _canvas.DrawTextureRectRegion(mirrored, new Rect2(dx[i], rect.Position.Y, drawn, rect.Size.Y),
-                    new Rect2(mirrored.GetWidth() - BarEnd * texels, 0, BarEnd * share * texels, mirrored.GetHeight()), _ui.Tint(White));
-            }
+            _canvas.DrawTextureRectRegion(texture, new Rect2(dx[i], rect.Position.Y, (dx[i + 1] - dx[i]) * share, rect.Size.Y),
+                new Rect2(sx[i] * texels, 0, (sx[i + 1] - sx[i]) * texels * share, texture.GetHeight()), _ui.Tint(White));
         }
     }
 

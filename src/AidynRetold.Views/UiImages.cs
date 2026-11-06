@@ -271,25 +271,17 @@ public sealed class UiImages
     /// A piece of the game's own UI art by its key (<c>ui_gold</c>, <see cref="OwnArtPng"/>), loaded once. It's drawn far smaller
     /// than it's painted, so it's mipmapped and filtered, as the parchment is. Null if no plugin has it or it can't be read.
     /// </summary>
-    public static Texture2D? Art(string key) => Art(key, mirrored: false);
-
-    /// <summary>The game's own art flipped left to right, made once: the bar's left end drawn as its right (<c>PartyTabView.ThreeSlice</c>).</summary>
-    public static Texture2D? ArtMirrored(string key) => Art(key, mirrored: true);
-
-    private static Texture2D? Art(string key, bool mirrored)
+    public static Texture2D? Art(string key)
     {
-        var cacheKey = mirrored ? key + "|mirrored" : key;
-        if (OwnTextures.TryGetValue(cacheKey, out var texture))
+        if (OwnTextures.TryGetValue(key, out var texture))
             return texture;
         if (ArtImage(key).Image?.Duplicate() is Image image)
         {
-            if (mirrored)
-                image.FlipX();
             // Mipmapped by coverage, so the smaller sizes don't pale its edges toward the clear pixels' white or darken them toward
             // their black or grey.
             texture = new CanvasTexture { DiffuseTexture = ImageTexture.CreateFromImage(Png.Mipmapped(image)), TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps };
         }
-        return OwnTextures[cacheKey] = texture;
+        return OwnTextures[key] = texture;
     }
 
     private static readonly Dictionary<string, (Image? Image, Rect2 Paper)> OwnImages = [];

@@ -82,7 +82,7 @@ public sealed class PartyMemberTests(Na10Import fixture)
 
         Assert.True(game.AddMember(Godric));
 
-        Assert.Equal([GameState.Alaron, Godric, null, null], game.Party.Slots.Select(m => m?.Entity));
+        Assert.Equal([GameState.Alaron, Godric, null, null, null], game.Party.Slots.Select(m => m?.Entity));
         Assert.True(IsSet(game, 90));
         Assert.False(IsSet(game, 686));
         // Their died flag is the battle's.
@@ -116,7 +116,8 @@ public sealed class PartyMemberTests(Na10Import fixture)
     [Fact]
     public void AFullPartyTakesNoOneAndChangesNothing()
     {
-        var game = PartyOf(Rheda, Brenna, Sholeh);
+        // Full at the remade game's five (Nov 5, 2026).
+        var game = PartyOf(Rheda, Brenna, Sholeh, Entity(0x024A));
         SetFlag(game, 686, true);
         var members = game.Party.Slots.Select(m => m?.Entity).ToList();
         var stacks = Stacks(game);
@@ -124,7 +125,7 @@ public sealed class PartyMemberTests(Na10Import fixture)
 
         Assert.False(game.AddMember(Godric));
 
-        Assert.Equal(4, game.Party.Count);
+        Assert.Equal(5, game.Party.Count);
         Assert.Equal(members, game.Party.Slots.Select(m => m?.Entity));
         Assert.Equal(stacks, Stacks(game));
         Assert.Equal(flags, game.Save().Flags);
@@ -151,11 +152,11 @@ public sealed class PartyMemberTests(Na10Import fixture)
     [Fact]
     public void WithAFullPartyAMemberAlreadyInItIsRefusedTooForTheFullCheckComesFirst()
     {
-        var game = PartyOf(Godric, Rheda, Brenna);
+        var game = PartyOf(Godric, Rheda, Brenna, Sholeh);
 
         Assert.False(game.AddMember(Godric));
 
-        Assert.Equal(4, game.Party.Count);
+        Assert.Equal(5, game.Party.Count);
         Assert.True(IsSet(game, 90));
     }
 
@@ -224,7 +225,7 @@ public sealed class PartyMemberTests(Na10Import fixture)
         foreach (var (item, n) in Count(worn))
             Assert.Equal(before.GetValueOrDefault(item) + n, after.GetValueOrDefault(item));
         Assert.Empty(Worn(abrecan));
-        Assert.Equal([GameState.Alaron, Rheda, Brenna, null], game.Party.Slots.Select(m => m?.Entity));
+        Assert.Equal([GameState.Alaron, Rheda, Brenna, null, null], game.Party.Slots.Select(m => m?.Entity));
         Assert.False(IsSet(game, 89));
         Assert.True(IsSet(game, 685));
     }

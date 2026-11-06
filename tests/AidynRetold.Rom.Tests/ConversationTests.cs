@@ -631,7 +631,8 @@ public sealed class ConversationTests(Na10Import fixture)
     public void ARecruitWhoCantJoinBecauseThePartyIsFullDoesntTakeTheWanderersBodyAway()
     {
         var s = Make(ConversationPlugins.Joins);
-        foreach (var member in new[] { 0x024C, 0x0243, 0x024D })
+        // Four more fill the remade game's five (Nov 5, 2026).
+        foreach (var member in new[] { 0x024C, 0x0243, 0x024D, 0x024A })
             Assert.True(s.Game.AddMember(RecordId.Hex(RecordTypes.Entity, member)));
         var conversation = s.Talk();
 
@@ -640,7 +641,7 @@ public sealed class ConversationTests(Na10Import fixture)
         // Trahern's AddMember was refused, so the script says no one joined.
         Assert.False(conversation.Runner.Ending!.PartnerJoined);
         Assert.False(s.Game.Party.Contains(ConversationPlugins.Trahern));
-        Assert.Equal(4, s.Game.Party.Count);
+        Assert.Equal(5, s.Game.Party.Count);
         conversation.End(s.Wanderers, s.Camera);
         Assert.Contains(s.Wanderer, s.Wanderers.All);
     }

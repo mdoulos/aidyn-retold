@@ -29,10 +29,16 @@ public sealed class PartyPortraits
     public const int Down = 240, Up = 184, Step = 4;
 
     /// <summary>
-    /// The frames' left edges, 38 apart, one a party slot, centred on the screen's 160 as the original's four were (at 84, 122, 160
-    /// and 198): 63, 101, 139, 177 and 215 for five. Each portrait is 6 inside its frame, both ways.
+    /// How far apart the frames stand: the original's four 38 apart; five 32 apart, overlapping by 9.6, so they clear the sundial and
+    /// the compass on a 4:3 screen, the portraits 2 apart.
     /// </summary>
-    public static readonly int[] FrameX = [.. Enumerable.Range(0, Party.MaxSize).Select(i => 160 - ((Party.MaxSize - 1) * 38 + 42) / 2 + i * 38)];
+    public static readonly int FramePitch = Party.MaxSize > 4 ? 32 : 38;
+
+    /// <summary>
+    /// The frames' left edges, one a party slot, centred on the screen's 160 as the original's four were (at 84, 122, 160 and 198):
+    /// 75, 107, 139, 171 and 203 for five. Each portrait is 6 inside its frame, both ways.
+    /// </summary>
+    public static readonly int[] FrameX = [.. Enumerable.Range(0, Party.MaxSize).Select(i => 160 - ((Party.MaxSize - 1) * FramePitch + 42) / 2 + i * FramePitch)];
 
     public const float FrameScale = 0.8f, PortraitScale = 0.75f;
     public const int PortraitInset = 6;

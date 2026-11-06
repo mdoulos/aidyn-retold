@@ -24,6 +24,7 @@ remodel in [graphics](graphics.md#models), his armor in [armor](armor.md), and t
 
 ## The party
 
+- **The party holds five**, the original's four and one more, since more companions are coming ([characters](../systems/characters.md#the-party)). The joining scripts and the "no room" prompt behave as they did, counting five as full. The trek HUD's frames, the Party tab's small portraits and the save screen's portraits make room for the fifth; a save written back into a Controller Pak can't hold one.
 - **A True Name is kept per member**, as a mod's trigger can give anyone one; the original's comes from the record and, for Alaron, flag
   590 ([saves](../systems/saves.md#the-format)).
 - **The sheets of members who left** are kept only for those the original keeps, Abrecan, Arturo, Becan, Godric and Keelin, and a kept sheet

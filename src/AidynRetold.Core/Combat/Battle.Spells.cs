@@ -32,8 +32,9 @@ public sealed partial class Battle
     /// <summary>The held menu that's open (states 22 and 23), or null.</summary>
     public CombatMenu? Menu { get; private set; }
 
-    // The rows the menus last ended on, by party slot (CombatMenu.SpellCursors, 0x800E3180, and ItemCursors, 0x800E3190); -1 for none.
-    private readonly int[] _spellCursors = [-1, -1, -1, -1], _itemCursors = [-1, -1, -1, -1];
+    // The rows the menus last ended on, by party slot (CombatMenu.SpellCursors, 0x800E3180, and ItemCursors, 0x800E3190, the original's
+    // four; one a slot here, the guests' too); -1 for none.
+    private readonly int[] _spellCursors = [.. Enumerable.Repeat(-1, SlotCount)], _itemCursors = [.. Enumerable.Repeat(-1, SlotCount)];
 
     /// <summary>The spells' and potions' visuals (<c>combatspellvisuals.cpp</c>), which the runtime draws.</summary>
     public SpellFx Fx => _fx ??= new SpellFx(Game?.Clock, Game?.Rules.Magic.Record) { Cue = Cue };

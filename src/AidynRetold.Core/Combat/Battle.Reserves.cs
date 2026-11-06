@@ -81,7 +81,7 @@ public sealed partial class Battle
             _problems.Add($"{Arena.Map.Id} has no spawn {name}, where the original stops (FindReferencePointName).");
         var cell = CellOf(point);
         var reach = look.Radius * look.Scale;
-        if (!Grid.IsOccupied((int)cell.X, (int)cell.Y, footprint) && Clear(cell, reach))
+        if (!Grid.IsOccupied((int)cell.X, (int)cell.Y, footprint) && ClearOf(cell, reach))
             return (cell, direction);
         var enemySide = CollisionByte != AmbushByte;
         for (var set = 0; set < SpawnSets; set++)
@@ -93,14 +93,16 @@ public sealed partial class Battle
                     if (Arena.Point(SpawnPoint(good, set, l)) is not { } at)
                         continue;
                     var p = new Vector2(at.Position.X, at.Position.Z);
-                    if (!Grid.IsOccupied(ArenaGrid.CellOf(p.X), ArenaGrid.CellOf(p.Y), footprint) && Clear(p, reach))
+                    if (!Grid.IsOccupied(ArenaGrid.CellOf(p.X), ArenaGrid.CellOf(p.Y), footprint) && ClearOf(p, reach))
                         return (CellOf(at), direction);
                 }
             }
         }
         return (cell, direction);
 
-        bool Clear(Vector2 at, float radius) => Combatants.All(c =>
-            c.Freed || Vector2.Distance(new Vector2(c.Body.Sphere.Position.X - Origin.X, c.Body.Sphere.Position.Z - Origin.Z), at) > c.Body.ScaledRadius + radius);
     }
+
+    /// <summary>Whether no body stands within its radius and <paramref name="radius"/> of a cell (<c>0x8005D474</c>).</summary>
+    private bool ClearOf(Vector2 at, float radius) => Combatants.All(c =>
+        c.Freed || Vector2.Distance(new Vector2(c.Body.Sphere.Position.X - Origin.X, c.Body.Sphere.Position.Z - Origin.Z), at) > c.Body.ScaledRadius + radius);
 }

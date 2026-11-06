@@ -112,6 +112,8 @@ public sealed class MemberCheckpointTests(Na10Import fixture)
         var godric = Entity(0x0248);
         var sheet = checkpoint.Kept.Single(k => k.Id == 0x0248);
         Assert.Equal(4, game.Party.Count);
+        // A fifth fills the remade game's party (Nov 5, 2026): a rat, who keeps no sheet, so Godric's is the one restored.
+        Assert.True(game.AddMember(Entity(0x026E)));
         Assert.False(game.AddMember(godric));
 
         game.RemoveMember(game.Party.Slots[3]!.Entity);

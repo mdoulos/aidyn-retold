@@ -334,7 +334,8 @@ public sealed partial class Battle
         var sheet = c.Sheet;
         if (TroubadourBonus != 0)
         {
-            var performer = Enumerable.Range(0, Math.Min(4, SlotCount)).Select(i => _slots[i]).FirstOrDefault(p => p is { Performing: true });
+            // The original looks through its four party slots; here the party's side, however many.
+            var performer = Enumerable.Range(0, Math.Min(PartySize, SlotCount)).Select(i => _slots[i]).FirstOrDefault(p => p is { Performing: true });
             SayBoth(performer is null ? FailsToPerformLine : PerformingLine, (performer ?? c).Sheet.Name);
             State = CombatState.Turn;
             return;

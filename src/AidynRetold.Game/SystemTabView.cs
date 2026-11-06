@@ -57,7 +57,8 @@ public partial class SystemTabView : Control
     // WidgetContPakData and ControllerPakSliders: the title, the screenshot stretched to 104 × 78, the portraits,
     // the arrow, the name and the time played, and the actions.
     private static readonly Vector2I SavesTitle = new(132, 24), Screenshot = new(73, 52), ScreenshotSize = new(104, 78);
-    private static readonly int[] PortraitColumns = [73, 128, 183, 238];
+    // One column a party slot, 40 wide: the original's four at 73, 128, 183 and 238, 55 apart; five at 46 apart, centred the same.
+    private static readonly int[] PortraitColumns = [.. Enumerable.Range(0, Core.Characters.Party.MaxSize).Select(i => 160 - ((Core.Characters.Party.MaxSize - 1) * 46 + 40) / 2 + i * 46)];
     private const int PortraitTop = 133, PortraitSize = 40;
     private static readonly Vector2I SlotArrow = new(183, 101), SlotName = new(183, 111), SlotHours = new(183, 122), SaveActions = new(237, 180);
 

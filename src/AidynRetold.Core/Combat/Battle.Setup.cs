@@ -111,7 +111,7 @@ public sealed partial class Battle
         if (ally is { } sholeh && Game.Recruit(sholeh) is { } allySheet)
         {
             var spare = ArmFromList(allySheet, Game.Items);
-            GiveAi(Add(slot, allySheet, hostile: false, party: true, letter: 3, roll), spare);
+            GiveAi(Add(slot, allySheet, hostile: false, party: true, letter: 3, roll, findFree: true), spare);
             slot++;
         }
         PartySize = slot;
@@ -321,12 +321,50 @@ public sealed partial class Battle
     /// its cell the spawn's, truncated; its footprint twice its scaled radius, rounded, at least 1, taken on the grid; its
     /// facing by its direction, its body heading that way; and its body made a unit up at the cell and set down.
     /// </summary>
-    private Combatant Add(int slot, Character sheet, bool hostile, bool party, int letter, int roll)
+    private Combatant Add(int slot, Character sheet, bool hostile, bool party, int letter, int roll, bool findFree = false)
     {
         var (name, point, direction) = Spawn(party, reserve: false, letter, roll, Game.Random.Combat);
-        if (point is null)
-            _problems.Add($"{Arena.Map.Id} has no spawn {name}, where the original stops (FindReferencePointName).");
-        return Make(slot, sheet, hostile, party, CellOf(point), direction);
+        var look = sheet.Record.Body ?? NoBody;
+        var footprint = Footprint(look);
+        var cell = CellOf(point);
+        // The original's four a side have a letter each. A fifth member, a guest, or the fifth and later enemies of a bigger field have
+        // none, and the ally, whose d a fourth member may hold already, can't share it: they take the first free and clear point,
+        // their own side's sets from their own, then the other side's, with no draw spent (the remade game's, Nov 5, 2026). The
+        // original's four stand where they stood, whatever stands there.
+        if (point is null || letter >= OnField || findFree && (Grid.IsOccupied((int)cell.X, (int)cell.Y, footprint) || !ClearOf(cell, look.Radius * look.Scale)))
+        {
+            if (FreeSpawn(name, footprint, look) is { } free)
+                cell = free;
+            else if (point is null)
+                _problems.Add($"{Arena.Map.Id} has no spawn {name}, where the original stops (FindReferencePointName).");
+        }
+        return Make(slot, sheet, hostile, party, cell, direction);
+    }
+
+    /// <summary>
+    /// The first free and clear spawn point for a combatant starting where its own point, <paramref name="name"/>, can't take it: its
+    /// side's sets from its own then the rest, letters a–d, then the other side's; or null if the arena has none free.
+    /// </summary>
+    private Vector2? FreeSpawn(string name, int footprint, EntityBody look)
+    {
+        var good = name.StartsWith("good", StringComparison.Ordinal);
+        var own = name.Length >= 2 ? name[^2] - '0' : 0;
+        var reach = look.Radius * look.Scale;
+        foreach (var side in (ReadOnlySpan<bool>)[good, !good])
+        {
+            foreach (var set in Enumerable.Range(0, SpawnSets).OrderBy(s => s == own ? 0 : 1))
+            {
+                for (var l = 0; l < OnField; l++)
+                {
+                    if (Arena.Point(SpawnPoint(side, set, l)) is not { } at)
+                        continue;
+                    var p = new Vector2(at.Position.X, at.Position.Z);
+                    if (!Grid.IsOccupied(ArenaGrid.CellOf(p.X), ArenaGrid.CellOf(p.Y), footprint) && ClearOf(p, reach))
+                        return CellOf(at);
+                }
+            }
+        }
+        return null;
     }
 
     /// <summary>A spawn's cell: its X and Z truncated, or the zone engine's point for one the arena lacks.</summary>

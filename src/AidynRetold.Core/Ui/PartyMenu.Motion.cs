@@ -5,10 +5,18 @@ namespace AidynRetold.Core.Ui;
 
 /// <summary>
 /// The header's numbers as they stood, which a change crossfades from: the hit points, their maximum, the level, and how many of the
-/// hit points are Stamina's, which the bar shows in a lighter red at its right end.
+/// hit points are Stamina's, which the bar shows in a lighter red at its right end once it splits (<see cref="BarSplits"/>).
 /// </summary>
 public readonly record struct HeaderNumbers(int Hp, int MaxHp, int Level, int Stamina = 0)
 {
+    /// <summary>
+    /// Whether the bar splits into Stamina's lighter red at its right end and Endurance's darker red, the user's design (Nov 6, 2026):
+    /// only once the hit points are under three quarters of their maximum and Stamina's points are fewer than the rest's, Endurance's
+    /// (and the Level's under the original's rule). Otherwise the bar is one plain red: a split that showed always jarred, Stamina being
+    /// half the bar or more as a rule.
+    /// </summary>
+    public bool BarSplits => Hp * 4 < MaxHp * 3 && Stamina * 2 < Hp;
+
     /// <summary>A member's, or none's, all 0.</summary>
     public static HeaderNumbers Of(Character? member) => member is null ? default : new(member.Hp, member.MaxHp, member.Level, member.StaminaPoints);
 

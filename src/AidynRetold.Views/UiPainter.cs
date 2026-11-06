@@ -316,11 +316,19 @@ public sealed class UiPainter
             Images.DrawPanel(canvas, Images.Around(band));
             return;
         }
-        var paper = new Rect2(band.Left - SlipSide, band.Top - SlipTop, band.Right - band.Left + 2 * SlipSide, band.Bottom - band.Top + SlipTop + SlipFoot);
+        var paper = Paper(band);
         Slip(canvas, paper);
-        if (question && UiImages.Art(Seal) is { } seal)
-            canvas.DrawTextureRect(seal, new Rect2(paper.End.X - SealSize * 0.7f, paper.Position.Y - SealSize * 0.3f, SealSize, SealSize), false, White);
+        // A question's seal: the cancel's red X with the mouse in use, which a click presses B through (OnQuestionCancel), else the plain one.
+        if (question && UiImages.Art(Pointing ? CancelSeal : Seal) is { } seal)
+            canvas.DrawTextureRect(seal, SealRect(paper), false, White);
     }
+
+    /// <summary>A slip's paper round a box's band: <see cref="SlipSide"/> past it at the sides, <see cref="SlipTop"/> above and <see cref="SlipFoot"/> below.</summary>
+    private static Rect2 Paper(ScreenRect band) =>
+        new(band.Left - SlipSide, band.Top - SlipTop, band.Right - band.Left + 2 * SlipSide, band.Bottom - band.Top + SlipTop + SlipFoot);
+
+    /// <summary>Where a seal hangs over a paper's top right corner, <see cref="SealSize"/> square: three tenths of it past the paper's right edge and above its top.</summary>
+    private static Rect2 SealRect(Rect2 paper) => new(paper.End.X - SealSize * 0.7f, paper.Position.Y - SealSize * 0.3f, SealSize, SealSize);
 
     /// <summary>
     /// How far a slip's paper reaches past its text's band at the sides, the top and the foot, clear of its torn edges, the foot further
@@ -329,6 +337,28 @@ public sealed class UiPainter
     private const float SlipSide = 6, SlipTop = 4, SlipFoot = 5, SealSize = 18;
 
     private const string Seal = "ui_wax_seal";
+
+    /// <summary>
+    /// The cancel's seal, a red X in wax, the user's art and design (Nov 6, 2026): on a question's slip in the plain seal's place while the
+    /// mouse is in use (<see cref="Pointing"/>), and in the Party tab's top right corner wherever B cancels (<c>PartyTabView.CancelRect</c>);
+    /// a click on it presses B.
+    /// </summary>
+    public const string CancelSeal = "ui_wax_cancel";
+
+    /// <summary>Whether the mouse is in use with a cancel to press (<c>PartyMenu.CancelShows</c>), which the view sets: a question's seal is then the cancel's.</summary>
+    public bool Pointing { get; set; }
+
+    /// <summary>
+    /// Whether a point on the screen is on the seal of the question that's up, the cancel's or the plain one, which a click presses B
+    /// through either way: the click is the mouse's, whichever device was last used (<see cref="Pointing"/> lags it a frame).
+    /// </summary>
+    public bool OnQuestionCancel(Vector2I screen, MenuChoice choice, Vector2 at)
+    {
+        if (!Slips)
+            return false;
+        var (left, top, right, choicesTop) = ChoiceLayout(screen, choice.Text, choice.Width, choice.Gap, choice.Choices.Rows.Count);
+        return SealRect(Paper(new ScreenRect(left, top, right, choicesTop + choice.Choices.Rows.Count * Main.LineHeight))).HasPoint(at);
+    }
 
     /// <summary>
     /// The sheets of parchment, the user's art (Nov 2, 2026), each drawn for its use, its colour and border to match the menu's

@@ -66,7 +66,7 @@ them ([ui](../systems/ui.md#options)).
 
 - **Loose sheets of parchment** in place of the original's feathered black boxes: popups, messages, questions, names and details, each with a
 
-  soft shadow, and a wax seal on a question that must be answered. Original draws the boxes ([ui](../systems/ui.md#the-ports-layout)).
+  soft shadow, and a wax seal on a question that must be answered; with the mouse the seal is a red X that cancels, and the same X stands in the Party tab's top right corner wherever Backspace or B would cancel, close or go back, for a click. Original draws the boxes ([ui](../systems/ui.md#the-ports-layout)).
 
 - **A message has Close**, for the mouse, and a question's answers take clicks ([ui](../systems/ui.md#the-ports-layout)).
 
@@ -108,7 +108,7 @@ Redesigned, the user's design. Original brings back the original's layout ([ui](
 
 
 
-- **Two sheets and a page.** At the left, a sheet with the portraits, the name, "Level n", the hit points bar with "hp / max" in it, Stamina's share of them a lighter red at its right end ([characters](characters.md#hit-points)), and
+- **Two sheets and a page.** At the left, a sheet with the portraits, the name, "Level n", the hit points bar with "hp / max" in it, which splits into Stamina's lighter red at its right end and Endurance's darker red only once the member is under three quarters with fewer Stamina points than Endurance's left ([characters](characters.md#hit-points)), and
 
   the aspect's and school's icons with their names on hover; under it the silhouette, on a figure for a man, a large man or a woman, with
 

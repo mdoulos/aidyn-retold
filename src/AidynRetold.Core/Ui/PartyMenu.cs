@@ -69,8 +69,8 @@ public sealed partial class PartyMenu : IPartyWindow
     /// <summary>How far a list slides as the stick changes it: across the port's list's frame, or the original's 140.</summary>
     public int SlideDistance => OriginalLook ? OriginalListDistance : ListDistance;
 
-    /// <summary>A list's place and its rows' pitch: 11 for the stats, 13 for the rest, so the lists show 12 rows.</summary>
-    public static ListLayout Layout(PartyList list) => new(ListBounds, list == PartyList.Stats ? StatPitch : 13);
+    /// <summary>A list's place and its rows' pitch in the port's look: the inventory's 13, the rest's <see cref="ListPitch"/>, 5.</summary>
+    public static ListLayout Layout(PartyList list) => new(ListBounds, list == PartyList.Inventory ? 13 : ListPitch);
 
     /// <summary>The colour of a row, and of the header's numbers.</summary>
     public static readonly Rgba TextColor = MenuDetailsBuilder.TextColor;

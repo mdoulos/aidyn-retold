@@ -8,6 +8,13 @@ public sealed partial class PartyMenu
     public const int StatPitch = 11, ExperienceGap = 4, ExperiencePitch = 11;
 
     /// <summary>
+    /// The port's Stats, Skills and Spells rows' pitch, the user's choice (Nov 6, 2026): text with capitals 3 tall about 2 apart, as dense
+    /// as the equipment card's, where the rows were the original's 13 and 11 apart in the menus' text; the experience lines follow at it.
+    /// The inventory's list, the shops' and the loot's, keeps the original's 13 for its icons.
+    /// </summary>
+    public const int ListPitch = 5;
+
+    /// <summary>
     /// The tabs over the list, left to right, the user's design (Nov 2, 2026): the inventory, the stats, the skills and the spells, a
     /// tab for each of the original's four lists. The stick steps through them as it did the lists, which is this order wrapping round.
     /// </summary>
@@ -22,8 +29,11 @@ public sealed partial class PartyMenu
     /// </summary>
     public static int StepToTab(int from, int to) => Math.Sign(to - from);
 
-    /// <summary>Where on the stats list, from its top, the experience lines are: 4 under its rows.</summary>
-    public int ExperienceAt => Stats.Rows.Count * StatPitch + ExperienceGap;
+    /// <summary>Where on the stats list, from its top, the experience lines are: 4 under its rows, at the look's pitch.</summary>
+    public int ExperienceAt => Stats.Rows.Count * (OriginalLook ? StatPitch : ListPitch) + ExperienceGap;
+
+    /// <summary>How far apart the experience lines are: the original's 11, or the port's rows' pitch.</summary>
+    public int ExperienceRowPitch => OriginalLook ? ExperiencePitch : ListPitch;
 
     /// <summary>The tab a click aimed the next stick press at, or null for the next or the one before.</summary>
     private PartyList? _aim;

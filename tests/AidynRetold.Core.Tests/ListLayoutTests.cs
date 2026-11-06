@@ -27,17 +27,29 @@ public class ListLayoutTests(BarterPlugins fixture) : IClassFixture<BarterPlugin
         return Menu(party);
     }
 
-    /// <summary>The lists are 156 tall: twelve rows of 13, or the stats' fourteen of 11.</summary>
+    /// <summary>The lists are 156 tall: the inventory's twelve rows of 13, and the port's thirty-one of 5 for the rest (Nov 6, 2026).</summary>
     [Fact]
     public void TheTabsListsShowTheRowsTheirBoundsHold()
     {
         var menu = FullInventory();
 
         Assert.Equal(12, menu.Inventory.Visible);
-        Assert.Equal(12, menu.Spells.Visible);
-        Assert.Equal((14, 12), (menu.Stats.Visible, menu.Skills.Visible));
-        Assert.Equal((12, 13), (PartyMenu.Layout(PartyList.Skills).Visible, PartyMenu.Layout(PartyList.Skills).RowHeight));
-        Assert.Equal(11, PartyMenu.Layout(PartyList.Stats).RowHeight);
+        Assert.Equal(31, menu.Spells.Visible);
+        Assert.Equal((31, 31), (menu.Stats.Visible, menu.Skills.Visible));
+        Assert.Equal((31, 5), (PartyMenu.Layout(PartyList.Skills).Visible, PartyMenu.Layout(PartyList.Skills).RowHeight));
+        Assert.Equal((PartyMenu.ListPitch, 13), (PartyMenu.Layout(PartyList.Stats).RowHeight, PartyMenu.Layout(PartyList.Inventory).RowHeight));
+    }
+
+    /// <summary>The original look keeps the original's lists, 104 tall: eight rows of 13, or the stats' nine of 11, with the experience lines 11 apart.</summary>
+    [Fact]
+    public void TheOriginalLookKeepsTheOriginalsRows()
+    {
+        var menu = FullInventory();
+        menu.OriginalLook = true;
+
+        Assert.Equal((8, 9, 8), (menu.Spells.Visible, menu.Stats.Visible, menu.Skills.Visible));
+        Assert.Equal((11, 13), (menu.LayoutOf(PartyList.Stats).RowHeight, menu.LayoutOf(PartyList.Skills).RowHeight));
+        Assert.Equal((menu.Stats.Rows.Count * PartyMenu.StatPitch + PartyMenu.ExperienceGap, PartyMenu.ExperiencePitch), (menu.ExperienceAt, menu.ExperienceRowPitch));
     }
 
     /// <summary>With no view drawn, a long list scrolls to keep the cursor in sight and wraps to the last page going up.</summary>

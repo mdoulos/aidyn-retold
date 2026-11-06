@@ -324,7 +324,7 @@ public class PartyMenuGridTests
         Assert.Equal(1, menu.DiscardCount(menu.Inventory.Rows[2]));
         Assert.Contains(new MenuPrompt("X", "Unselect"), menu.Prompts);
         Assert.DoesNotContain(new MenuPrompt("A", "Select"), menu.Prompts);
-        Assert.Contains(new MenuPrompt("B", "Done"), menu.Prompts);
+        Assert.Contains(new MenuPrompt("B", "Done", Cancels: true), menu.Prompts);
         // One of a lone item is the whole of it: A again chooses no more.
         menu.Accept();
         Assert.Equal(1, menu.DiscardCount(menu.Inventory.Rows[2]));
@@ -390,7 +390,7 @@ public class PartyMenuGridTests
         menu.ChooseFoot(PartyMenu.FootTrash);
         Assert.NotNull(menu.DropChoice);
         Assert.Equal(1, menu.DropChoice!.Choices.Cursor);
-        Assert.Contains(new MenuPrompt("B", "Cancel"), menu.Prompts);
+        Assert.Contains(new MenuPrompt("B", "Cancel", Cancels: true), menu.Prompts);
         Assert.True(menu.Back());
         Assert.Null(menu.DropChoice);
         Assert.True(menu.Discarding);
@@ -580,11 +580,29 @@ public class PartyMenuGridTests
         var (menu, _) = Menu(showWorn: false);
         menu.KeyName = Keys;
 
-        Assert.Equal([new MenuPrompt("B", "Close")], menu.Prompts);
+        Assert.Equal([new MenuPrompt("B", "Close", Cancels: true)], menu.Prompts);
         menu.SelectSlot(EquipmentSlot.Weapon);
-        Assert.Equal([new MenuPrompt("A", "Change"), new MenuPrompt("X", "Unequip"), new MenuPrompt("Y", "Details"), new MenuPrompt("B", "Back")],
+        Assert.Equal([new MenuPrompt("A", "Change"), new MenuPrompt("X", "Unequip"), new MenuPrompt("Y", "Details"), new MenuPrompt("B", "Back", Cancels: true)],
             menu.Prompts);
         menu.OriginalLook = true;
         Assert.Empty(menu.Prompts);
+    }
+
+    /// <summary>
+    /// The cancel's seal shows with the mouse in use wherever a prompt is B's, Close here, and not with a key or a controller, which have
+    /// B, nor in the original's look (the user's design, Nov 6, 2026).
+    /// </summary>
+    [Fact]
+    public void TheCancelSealShowsWithTheMouseWhereBCancels()
+    {
+        var (menu, _) = Menu(showWorn: false);
+        menu.KeyName = Keys;
+
+        Assert.False(menu.CancelShows);
+        menu.Pointing = true;
+        Assert.True(menu.CancelShows);
+        Assert.Contains(menu.Prompts, p => p.Cancels && p.Label == "Close");
+        menu.OriginalLook = true;
+        Assert.False(menu.CancelShows);
     }
 }

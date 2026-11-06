@@ -91,9 +91,9 @@ public class PartyMenuTabsTests
     public void TheListsShowTwelveRowsAndTheStatsTheirOwn()
     {
         var menu = Menu();
-        Assert.Equal((12, 12, 12), (menu.Inventory.Visible, menu.Skills.Visible, menu.Spells.Visible));
+        Assert.Equal((12, 31, 31), (menu.Inventory.Visible, menu.Skills.Visible, menu.Spells.Visible));
         Assert.Equal(PartyMenu.Layout(PartyList.Stats).Visible, menu.Stats.Visible);
-        Assert.Equal(menu.Stats.Rows.Count * PartyMenu.StatPitch + PartyMenu.ExperienceGap, menu.ExperienceAt);
+        Assert.Equal((menu.Stats.Rows.Count * PartyMenu.ListPitch + PartyMenu.ExperienceGap, PartyMenu.ListPitch), (menu.ExperienceAt, menu.ExperienceRowPitch));
     }
 
     /// <summary>The post-battle window's three lists are three tabs, the stick stepping through them as through the tab's.</summary>

@@ -30,6 +30,17 @@ public partial class PartyTabView : Control
     /// <summary>The shown member's portrait's place in the frames' piece: the original's (4, 4); the port's a third up, the user's eye (Nov 6, 2026).</summary>
     private Vector2 ShownPortrait => OriginalLook ? new(4, 4) : new(4, 3.7f);
 
+    /// <summary>
+    /// The portraits' frames' corner, which the header's content is placed from: the original's piece's, or the port's <see cref="HeaderRise"/>
+    /// higher, the user's eye (Nov 6, 2026), the content up with its sheet's foot and the equipment sheet's head.
+    /// </summary>
+    private Vector2I PortraitsAt => OriginalLook ? PortraitPiece.Position : PortHeader;
+
+    private static readonly Vector2I PortHeader = new(PortraitPiece.Position.X, PortraitPiece.Position.Y - HeaderRise);
+
+    /// <summary>How far up the port's header content, its sheet's foot and the equipment sheet's head went on Nov 6, 2026, the user's eye.</summary>
+    private const int HeaderRise = 6;
+
     /// <summary>The name's place: the original's at x 51, beside its 40 portrait; the port's over the small portraits' left edge.</summary>
     private Vector2 NameAt => OriginalLook ? new(51, 6) : new(FirstOther, 6);
 
@@ -94,8 +105,8 @@ public partial class PartyTabView : Control
     /// it, sliced alike, the red cut to the share of hit points left across the frame's opening. The hit points are on it.
     /// </summary>
     // Up under the portraits and across to just before the school's icon, the user's choice (Nov 5, 2026): from x 22 to 137.2 at y 62,
-    // then 2 nearer the icon, to 139.2, the user's eye (Nov 6, 2026).
-    private static readonly Rect2 BarFrame = BarFrom(PortraitPiece.Position.X + 4, 139.2f, 62, 11);
+    // then 2 nearer the icon, to 139.2, and up 6 with the header's content, to y 56, the user's eye (Nov 6, 2026).
+    private static readonly Rect2 BarFrame = BarFrom(PortraitPiece.Position.X + 4, 139.2f, 62 - HeaderRise, 11);
 
     /// <summary>The bar frame's rectangle with its drawn left edge, <see cref="BarArtLeft"/> into its art, at a point across.</summary>
     private static Rect2 BarFrom(float left, float right, float top, float height)
@@ -116,8 +127,11 @@ public partial class PartyTabView : Control
     /// <summary>How finely the bar's share of hit points is taken, as a width it's measured across.</summary>
     private const int BarPrecision = 1000;
 
-    /// <summary>The wash over Stamina's end of the red, white at this alpha, which lightens it.</summary>
-    private static readonly Rgba StaminaWash = new(255, 255, 255, 90);
+    /// <summary>
+    /// The washes over the red once the bar splits (<see cref="HeaderNumbers.BarSplits"/>): white at this alpha over Stamina's end,
+    /// which lightens it, and black at this over Endurance's, which darkens it a little.
+    /// </summary>
+    private static readonly Rgba StaminaWash = new(255, 255, 255, 90), EnduranceShade = new(0, 0, 0, 40);
 
     /// <summary>How tall the hit points' capitals are on the bar.</summary>
     private const float HitPointsText = 3;
@@ -159,8 +173,9 @@ public partial class PartyTabView : Control
     /// none overlapping: the portraits with the name, the level, the bar and the aspect's and school's icons on one, the silhouette
     /// with its slots on another under it; the page (<see cref="PageRect"/>) beside them. The gold's is snug round it (<see cref="GoldBox"/>).
     /// </summary>
-    // The header's sheet 1.6 shorter at its foot and the equipment's 1.6 taller at its head, the user's eye (Nov 6, 2026).
-    private static readonly Rect2 HeaderSheet = new(15.5f, 19, 138, 57.9f), EquipmentSheet = new(15.5f, 79.9f, 138.5f, 143.6f);
+    // The header's sheet 1.6 shorter at its foot and the equipment's 1.6 taller at its head, then the header's foot and the equipment's head
+    // up 6 more with the header's content (HeaderRise) and the equipment's foot 0.1 lower, the user's eye (Nov 6, 2026).
+    private static readonly Rect2 HeaderSheet = new(15.5f, 19, 138, 57.9f - HeaderRise), EquipmentSheet = new(15.5f, 79.9f - HeaderRise, 138.5f, 143.6f + HeaderRise + 0.1f);
 
     /// <summary>
     /// How far each portrait's square sheet reaches past the portrait, cut to the sheet's outline (<see cref="UiImages.CutTo"/>), so a
@@ -475,7 +490,10 @@ public partial class PartyTabView : Control
             var screen = (Vector2I)Size;
             if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } chose)
             {
-                if (_ui.ChoiceAt(screen, question, chose.Position) is { } answer)
+                // The cancel's seal on the slip presses B (the user's design, Nov 6, 2026).
+                if (_ui.OnQuestionCancel(screen, question, chose.Position))
+                    UiScreen.Of(this)?.Click(MenuAction.Back);
+                else if (_ui.ChoiceAt(screen, question, chose.Position) is { } answer)
                 {
                     question.Choices.Point(answer);
                     UiScreen.Of(this)?.Click(MenuAction.Accept);
@@ -490,6 +508,14 @@ public partial class PartyTabView : Control
                 AcceptEvent();
                 return;
             }
+        }
+        // The cancel's seal in the frame's corner: a click on it presses B, Cancel, Close, Back or Done (the user's design, Nov 6, 2026).
+        if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } cancel && CancelTakes
+            && CancelRect.HasPoint(cancel.Position - (Vector2)_origin))
+        {
+            UiScreen.Of(this)?.Click(MenuAction.Back);
+            AcceptEvent();
+            return;
         }
         if (DetailsInput(@event) || DragInput(@event))
         {
@@ -690,7 +716,7 @@ public partial class PartyTabView : Control
             Menu.DropOnSlot(from.Row, slot);
         else if (MemberAt(point) is { } member)
             Menu.DropOnMember(from.Row, member);
-        else if (new Rect2((Vector2)PortraitPiece.Position + ShownPortrait, ShownSize, ShownSize).HasPoint(at))
+        else if (new Rect2((Vector2)PortraitsAt + ShownPortrait, ShownSize, ShownSize).HasPoint(at))
             Menu.DropOnMember(from.Row, Menu.Member);
     }
 
@@ -828,7 +854,7 @@ public partial class PartyTabView : Control
     {
         if (Menu.Shown is null)
             return null;
-        var at = point - (Vector2)_origin - (Vector2)PortraitPiece.Position;
+        var at = point - (Vector2)_origin - (Vector2)PortraitsAt;
         var order = Menu.PortraitOrder;
         for (var i = 1; i < order.Count; i++)
         {
@@ -871,7 +897,7 @@ public partial class PartyTabView : Control
     }
 
     /// <summary>Where an icon of <see cref="Icons"/> is in the frame.</summary>
-    private Rect2 IconRect((RecordId Icon, Rect2 Rect, string Name, byte Alpha) icon) => new((Vector2)PortraitPiece.Position + icon.Rect.Position, icon.Rect.Size);
+    private Rect2 IconRect((RecordId Icon, Rect2 Rect, string Name, byte Alpha) icon) => new((Vector2)PortraitsAt + icon.Rect.Position, icon.Rect.Size);
 
     /// <summary>An icon over its rectangle in the frame, at a colour.</summary>
     private void Icon(RecordId icon, Rect2 rect, Rgba? color) => _ui.Image(_canvas, icon, rect, color);
@@ -939,7 +965,7 @@ public partial class PartyTabView : Control
         // The barter, training and post-battle states: the header here, and the window's own parts on their layer (DrawWindow).
         _ui.Tab(_canvas, PauseTab.Party, PlainPatches, plain: !OriginalLook);
         _ui.Slip(_canvas, HeaderSheet, sheet: UiPainter.WideSheet);
-        Portraits(PortraitPiece.Position);
+        Portraits(PortraitsAt);
         Health();
     }
 
@@ -1052,9 +1078,30 @@ public partial class PartyTabView : Control
             ItemBox(shown);
         if (_drag is { } drag)
             DragArt(drag);
+        if (CancelShows)
+            Art(UiPainter.CancelSeal, CancelRect);
         _overlay.DrawSetTransform(Vector2.Zero);
+        _ui.Pointing = OwnTab && Menu.CancelShows;
         Popups();
     }
+
+    /// <summary>
+    /// The cancel's seal, the user's design and art (Nov 6, 2026; <see cref="PartyMenu.CancelShows"/>, <see cref="UiPainter.CancelSeal"/>): a
+    /// red X in wax in the frame's top right corner, over the gold, while the mouse is in use and a prompt is B's, Cancel, Close, Back or
+    /// Done; a click on it presses B. A question's hangs on its slip instead, in the plain seal's place (<see cref="UiPainter.OnQuestionCancel"/>),
+    /// and none is in the corner while one is up. Not as the tab slides away, with the prompts.
+    /// </summary>
+    private static readonly Rect2 CancelRect = new(FrameWidth - CancelSize - 1, 9, CancelSize, CancelSize);
+
+    private const float CancelSize = 13;
+
+    private bool CancelShows => CancelTakes && Menu.Pointing;
+
+    /// <summary>
+    /// Whether a click in the seal's corner presses B: as the seal shows, but whichever device was last used, as the click is the mouse's
+    /// and the tab learns of the mouse a frame later (<see cref="PartyMenu.Pointing"/>, which the pause menu lays the tab out with).
+    /// </summary>
+    private bool CancelTakes => OwnTab && Veil == 0 && Window.Overlay.Choice is null && Menu.CancelPrompted;
 
     /// <summary>The plain parchment, the header, the silhouette's slots in their column, the tabs and the arrow under the gap between the columns.</summary>
     private void DrawTab()
@@ -1063,7 +1110,7 @@ public partial class PartyTabView : Control
         {
             // The tab's image, its frames painted in, the header on it, the silhouette, and the arrow under the knotwork.
             _ui.Tab(_canvas, PauseTab.Party, PlainPatches);
-            Portraits(PortraitPiece.Position);
+            Portraits(PortraitsAt);
             Health();
             Silhouette(OriginalSilhouette);
             _ui.Image(_canvas, Menu.Combat is not null ? MenuImages.SliderLeft : MenuImages.SliderBoth, OriginalSliderAt.X, OriginalSliderAt.Y,
@@ -1073,7 +1120,7 @@ public partial class PartyTabView : Control
         _ui.Tab(_canvas, PauseTab.Party, PlainPatches, plain: true);
         _ui.Slip(_canvas, EquipmentSheet, sheet: UiPainter.LargeSheet);
         _ui.Slip(_canvas, HeaderSheet, sheet: UiPainter.WideSheet);
-        Portraits(PortraitPiece.Position);
+        Portraits(PortraitsAt);
         Health();
         Silhouette(SilhouetteAt);
         CardStats();
@@ -1530,25 +1577,32 @@ public partial class PartyTabView : Control
         }
         var shown = Menu.Shown!;
         var change = Menu.NumbersChange;
-        var share = Menu.HealthBar(BarPrecision);
-        var stamina = Menu.Numbers.StaminaBar(BarPrecision);
+        var numbers = Menu.Numbers;
+        var share = numbers.Bar(BarPrecision);
+        var stamina = numbers.StaminaBar(BarPrecision);
+        var split = numbers.BarSplits ? 1f : 0f;
         if (Menu.PreviousNumbers is { } before)
         {
             share = MenuTween.Value(before.Bar(BarPrecision), share, change);
             stamina = MenuTween.Value(before.StaminaBar(BarPrecision), stamina, change);
+            split = MenuTween.Value(before.BarSplits ? 1f : 0f, split, change);
         }
         ThreeSlice(BarTrackArt, BarFrame);
         // The red from its left end under the frame to the share across the opening, its ragged end cut off straight.
         var opening = BarOpening;
+        var end = opening.Position.X + opening.Size.X * share / BarPrecision;
         if (share > 0)
-            ThreeSlice(BarFillArt, BarFrame, opening.Position.X + opening.Size.X * share / BarPrecision);
-        // Stamina's hit points are the red's right end, washed to a lighter red, the user's design (Nov 6, 2026): as Stamina drains the
-        // lighter end shrinks, and what's left in the plain red is Endurance's.
-        if (stamina > 0)
+            ThreeSlice(BarFillArt, BarFrame, end);
+        // One plain red until it splits (HeaderNumbers.BarSplits), the user's design (Nov 6, 2026): then Stamina's hit points are its
+        // right end washed to a lighter red and Endurance's the rest shaded darker, so as Stamina drains the lighter end shrinks and what's
+        // left in the darker red is Endurance's. The split fades in and out with the numbers' change.
+        if (split > 0 && share > 0)
         {
-            var from = opening.Position.X + opening.Size.X * Math.Max(0, share - stamina) / BarPrecision;
-            var to = opening.Position.X + opening.Size.X * share / BarPrecision;
-            _canvas.DrawRect(new Rect2(from, opening.Position.Y, to - from, opening.Size.Y), _ui.Tint(StaminaWash));
+            var boundary = opening.Position.X + opening.Size.X * Math.Max(0, share - stamina) / BarPrecision;
+            _canvas.DrawRect(new Rect2(opening.Position.X, opening.Position.Y, boundary - opening.Position.X, opening.Size.Y),
+                _ui.Tint(EnduranceShade with { A = (byte)(EnduranceShade.A * split) }));
+            if (end > boundary)
+                _canvas.DrawRect(new Rect2(boundary, opening.Position.Y, end - boundary, opening.Size.Y), _ui.Tint(StaminaWash with { A = (byte)(StaminaWash.A * split) }));
         }
         ThreeSlice(BarFrameArt, BarFrame);
         if (Menu.PreviousNumbers is { } was)
@@ -1617,7 +1671,7 @@ public partial class PartyTabView : Control
             BarShadow with { A = (byte)(BarShadow.A * a / 255) }, small);
         var level = $"{LevelLabel} {Num(numbers.Level)}";
         // Level with the name's foot.
-        var nameFoot = PortraitPiece.Position.Y + NameAt.Y + NameFont.Middle + NameFont.Capitals / 2;
+        var nameFoot = PortraitsAt.Y + NameAt.Y + NameFont.Middle + NameFont.Capitals / 2;
         Small(level, LevelRight - SmallWidth(level), nameFoot - slim.Capitals / 2 - slim.Middle, PartyMenu.TextColor with { A = a });
     }
 
@@ -1712,7 +1766,7 @@ public partial class PartyTabView : Control
     {
         var font = _ui.Slim.Sized(NameText);
         var right = EquipmentSheet.End.X - CardInset;
-        var top = EquipmentSheet.Position.Y + CardInset;
+        var top = CardStatsTop;
         // The names spelled out in a column, the user's choice (Nov 2, 2026), where they were their first three letters, and the totals
         // right-aligned at the card's edge. What the item under the stick or the mouse would change shows as the total now, an arrow and
         // what it would be, green where it rises and red where it falls, the user's choice (Nov 3, 2026).
@@ -1762,6 +1816,9 @@ public partial class PartyTabView : Control
 
     /// <summary>How far in from the equipment card's paper its corners' text is, and how far apart the stats are.</summary>
     private const float CardInset = 5, CardPitch = 4.5f;
+
+    /// <summary>Where the stats' column starts: the inset under where the sheet's head was before it grew 6 up (Nov 6, 2026), so the stats stayed.</summary>
+    private static readonly float CardStatsTop = EquipmentSheet.Position.Y + HeaderRise + CardInset;
 
     /// <summary>The arrow between a stat's total and what an item would make it: its width, its gaps either side and its line.</summary>
     private const float ArrowWidth = 1.1f, ArrowGap = 1, ArrowLine = 0.4f;
@@ -1824,7 +1881,7 @@ public partial class PartyTabView : Control
         {
             var (rect, label, value) = controls[i];
             if (i == PartyMenu.FootTrash)
-                TrashIcon(rect, Menu.Discarding || _hoveredFoot == i ? UiPainter.RedInk : UiPainter.Ink);
+                TrashIcon(rect, Menu.Discarding || _hoveredFoot == i);
             else
             {
                 Small(label, rect.Position.X, middle - font.Middle, PartyMenu.TextColor, font: font);
@@ -1836,17 +1893,18 @@ public partial class PartyTabView : Control
     }
 
     /// <summary>
-    /// The trash under the grid, in an ink: the game's own art if the plugins have one (<c>acre:image/ui_trash</c>), else a can drawn in
-    /// lines, a lid with a handle over a body tapering to its foot, with two lines down it.
+    /// The trash under the grid: the user's art, a bucket with a fish bone and an apple core (<c>acre:image/ui_trash</c>, Nov 6, 2026), in
+    /// its own colours, flushed red while it's on or the mouse is on it (<paramref name="hot"/>) as the foot's red ink is; without the art,
+    /// a can drawn in ink lines, a lid with a handle over a body tapering to its foot, with two lines down it.
     /// </summary>
-    private void TrashIcon(Rect2 rect, Rgba ink)
+    private void TrashIcon(Rect2 rect, bool hot)
     {
         if (UiImages.Art(TrashArt) is not null)
         {
-            Art(TrashArt, rect, ink);
+            Art(TrashArt, rect, hot ? TrashHot : White);
             return;
         }
-        var color = _ui.Tint(ink);
+        var color = _ui.Tint(hot ? UiPainter.RedInk : UiPainter.Ink);
         var (x, y, w, h) = (rect.Position.X, rect.Position.Y, rect.Size.X, rect.Size.Y);
         _canvas.DrawRect(new Rect2(x + w * 0.35f, y, w * 0.3f, TrashLine * 2), color);
         _canvas.DrawLine(new Vector2(x, y + TrashLine * 2.5f), new Vector2(x + w, y + TrashLine * 2.5f), color, TrashLine, true);
@@ -1857,10 +1915,13 @@ public partial class PartyTabView : Control
             _canvas.DrawLine(new Vector2(x + w * share, y + TrashLine * 6), new Vector2(x + w * share, y + h - TrashLine * 2), color, TrashLine * 0.8f, true);
     }
 
-    /// <summary>The trash's art, which the plugins may give; how big it's drawn, square; and its lines' thickness.</summary>
+    /// <summary>The trash's art, which the plugins may give; how big it's drawn, square (6 until the art, Nov 6, 2026); and the lines' thickness.</summary>
     private const string TrashArt = "ui_trash";
 
-    private const float TrashSize = 6, TrashLine = 0.45f;
+    private const float TrashSize = 8, TrashLine = 0.45f;
+
+    /// <summary>What the trash's art is drawn times while it's hot, which flushes its tan red.</summary>
+    private static readonly Rgba TrashHot = new(255, 110, 100, 255);
 
     /// <summary>
     /// The controls' places under the grid, right-aligned at its edge: the trash last, and before it the order and the filter, each its
@@ -2225,11 +2286,10 @@ public partial class PartyTabView : Control
         }
     }
 
-    /// <summary>The slips' text sizes and insets: a name's and a card's lines', the paper's ends and sides, and the gap and pitch of a card's lines.</summary>
-    private const float CardText = 3, CardGap = 4.6f, CardLinePitch = 4;
+    /// <summary>The slips' text sizes and insets: a name's, a name slip's sides and ends, and a box's sides and ends.</summary>
     private const float NameText = UiPainter.StandardText / 2 * 1.25f, SlipSide = 3, SlipEnds = 2;
 
-    private const float TipText = 3, TipPitch = 6.5f, TipSide = 4, TipEnds = 2.5f;
+    private const float TipSide = 4, TipEnds = 2.5f;
 
     /// <summary>
     /// The item box, the user's design (Nov 5 and 6, 2026; <see cref="PartyMenu.BoxShown"/>): on one slip beside the selected item, the
@@ -2284,12 +2344,13 @@ public partial class PartyTabView : Control
     }
 
     /// <summary>
-    /// The item box's and the hover's text, the user's eye (Nov 6, 2026): the name's capitals this tall in the main face (4.4 until Nov
-    /// 6), this far over the card's lines (the card's gap, 4.6, less 1), which are this tall and this far apart; the help lines this far
-    /// under them, this tall (the card's lines' size less 0.6) and this far apart; a button, the See Full Inventory's, this tall with this
-    /// much beside its label; and the name on hover this tall, smaller than the stats card's.
+    /// The item box's and the hover's text, the user's eye (Nov 6, 2026): the name's capitals this tall in the main face (4.4, then 4,
+    /// until Nov 6), this far over the card's lines (the card's gap, 4.6, less 1, then 1, as the gap still read too large), which are this
+    /// tall and this far apart; the help lines this far under them (1 until Nov 6), this tall (the card's lines' size less 0.6) and this
+    /// far apart; a button, the See Full Inventory's, this tall with this much beside its label; and the name on hover this tall, smaller
+    /// than the stats card's.
     /// </summary>
-    private const float BoxNameText = 4, BoxNameGap = 3.6f, BoxText = 2.6f, BoxLinePitch = 3.6f, BoxHelpGap = 1, BoxHelpText = 2, BoxHelpPitch = 3,
+    private const float BoxNameText = 3, BoxNameGap = 1, BoxText = 2.6f, BoxLinePitch = 3.6f, BoxHelpGap = 2, BoxHelpText = 2, BoxHelpPitch = 3,
         ButtonHeight = 5.5f, ButtonSide = 2.5f, HoverText = 2.3f;
 
     /// <summary>
@@ -2331,6 +2392,9 @@ public partial class PartyTabView : Control
         if (shown == Menu.List)
             _listLayout = layout;
         var highlight = cursor ?? Menu.HighlightNow;
+        // The port's Stats, Skills and Spells rows are in smaller text, centred down rows of PartyMenu.ListPitch (ListText, RowTextDrop).
+        if (!OriginalLook && shown != PartyList.Inventory)
+            font = font.Sized(ListText);
         if (OriginalLook)
         {
             // The original's list has its title over it, 70 into it and 20 above.
@@ -2368,12 +2432,12 @@ public partial class PartyTabView : Control
         }
     }
 
-    /// <summary>The stats' rows (<c>SMStatItem</c>), 11 apart, and 4 under them the experience lines.</summary>
+    /// <summary>The stats' rows (<c>SMStatItem</c>), 11 apart in the original's look and 5 in the port's, and 4 under them the experience lines.</summary>
     private void StatRows(ListLayout layout, UiFont font, Rgba highlight)
     {
         _ui.List(Menu.Stats, layout, PartyMenu.TextColor, highlight, (row, top, c) => StatRowAt(row, layout, top, font, c));
         ListArrows(Menu.Stats, layout);
-        ExperienceLinesAt(layout, layout.Bounds.Top + Menu.ExperienceAt, font, _ => true);
+        ExperienceLinesAt(layout, layout.Bounds.Top + Menu.ExperienceAt + RowTextDrop(layout, font), font, _ => true);
     }
 
     /// <summary>A stat's row (<c>SMStatItem</c>): its name, its base value, and what gear and spells add when it isn't 0.</summary>
@@ -2381,10 +2445,29 @@ public partial class PartyTabView : Control
     {
         var b = layout.Bounds;
         var x = b.Left;
-        OneLine(font, row.Name, x, top, b.Right, color);
-        _ui.Text(_canvas, font, Num(row.Value), x + Columns.Value, top, b, PartyMenu.TextColor);
+        var y = top + RowTextDrop(layout, font);
+        OneLine(font, row.Name, x, y, b.Right, color);
+        _ui.Text(_canvas, font, Num(row.Value), x + Columns.Value, y, b, PartyMenu.TextColor);
         if (row.Change != 0)
-            _ui.Text(_canvas, font, Change(row.Change), x + Columns.Change, top, b, row.Change < 0 ? MenuDetailsBuilder.Loss : MenuDetailsBuilder.Gain);
+            _ui.Text(_canvas, font, Change(row.Change), x + Columns.Change, y, b, row.Change < 0 ? MenuDetailsBuilder.Loss : MenuDetailsBuilder.Gain);
+    }
+
+    /// <summary>
+    /// The port's Stats, Skills and Spells rows' text, the user's choice (Nov 6, 2026): its capitals this tall, centred down rows of
+    /// <see cref="PartyMenu.ListPitch"/>, and a row's icons this big, where the original's rows have the menus' text and the icons' own size.
+    /// </summary>
+    private const float ListText = 3, ListIcon = 4.5f;
+
+    /// <summary>How far down from a row's top its text is drawn so its capitals' middle is the row's: none in the original's look.</summary>
+    private int RowTextDrop(ListLayout layout, UiFont font) => OriginalLook ? 0 : (int)MathF.Round(layout.RowHeight / 2f - font.Middle);
+
+    /// <summary>A row's icon from its left: the original's at its own size at the row's top; the port's <see cref="ListIcon"/> square, centred down the row.</summary>
+    private void RowIcon(RecordId icon, int x, int top, ListLayout layout)
+    {
+        if (OriginalLook)
+            _ui.Image(_canvas, icon, x, top);
+        else
+            _ui.Image(_canvas, icon, new Rect2(x, top + (layout.RowHeight - ListIcon) / 2f, ListIcon, ListIcon));
     }
 
     /// <summary>
@@ -2406,7 +2489,7 @@ public partial class PartyTabView : Control
                 _ui.Text(_canvas, font, label, b.Left, top, b, PartyMenu.TextColor);
                 _ui.Text(_canvas, font, value, valueX, top, b, PartyMenu.TextColor);
             }
-            top += PartyMenu.ExperiencePitch;
+            top += Menu.ExperienceRowPitch;
         }
     }
 
@@ -2425,11 +2508,12 @@ public partial class PartyTabView : Control
         var b = layout.Bounds;
         var x = b.Left;
         if (row.Icon is { } icon)
-            _ui.Image(_canvas, icon, x, top);
-        OneLine(font, row.Name, x + 12, top, b.Right, color);
-        _ui.Text(_canvas, font, Num(row.Value), x + Columns.Value, top, b, PartyMenu.TextColor);
+            RowIcon(icon, x, top, layout);
+        var y = top + RowTextDrop(layout, font);
+        OneLine(font, row.Name, x + 12, y, b.Right, color);
+        _ui.Text(_canvas, font, Num(row.Value), x + Columns.Value, y, b, PartyMenu.TextColor);
         if (row.Change != 0)
-            _ui.Text(_canvas, font, Change(row.Change), x + Columns.SkillChange, top, b, row.Change < 0 ? MenuDetailsBuilder.Loss : MenuDetailsBuilder.Gain);
+            _ui.Text(_canvas, font, Change(row.Change), x + Columns.SkillChange, y, b, row.Change < 0 ? MenuDetailsBuilder.Loss : MenuDetailsBuilder.Gain);
     }
 
     /// <summary>
@@ -2446,10 +2530,11 @@ public partial class PartyTabView : Control
             foreach (var (icon, dx) in new[] { (row.Aspect, 0), (row.School, 12), (row.Symbol, 24) })
             {
                 if (icon is { } i)
-                    _ui.Image(_canvas, i, x + dx, top);
+                    RowIcon(i, x + dx, top, layout);
             }
-            _ui.Text(_canvas, font, Num(row.Rank), x + Columns.Rank, top, b, color);
-            OneLine(font, row.Name, x + Columns.SpellName, top, b.Right, c);
+            var y = top + RowTextDrop(layout, font);
+            _ui.Text(_canvas, font, Num(row.Rank), x + Columns.Rank, y, b, color);
+            OneLine(font, row.Name, x + Columns.SpellName, y, b.Right, c);
         });
         ListArrows(list, layout);
     }

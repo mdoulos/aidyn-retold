@@ -18,7 +18,8 @@ public enum PartyFocus
 
 /// <summary>A button and what it does now, along the Party tab's foot (<see cref="PartyMenu.Prompts"/>).</summary>
 /// <param name="Keys">The button's name on the device in use, "Space" or "A", or two joined, "Q/E".</param>
-public sealed record MenuPrompt(string Keys, string Label);
+/// <param name="Cancels">Whether it's B's, Cancel, Close, Back or Done, which the cancel's seal presses with the mouse (<see cref="PartyMenu.CancelShows"/>).</param>
+public sealed record MenuPrompt(string Keys, string Label, bool Cancels = false);
 
 /// <summary>
 /// The stick on the Party tab in the port's look, the user's choice (Nov 3, 2026): it goes to what's that way on the tab, and stops at
@@ -304,10 +305,20 @@ public sealed partial class PartyMenu
             void Add(string label, params string[] controls)
             {
                 if (Prompt(label, controls) is { } prompt)
-                    prompts.Add(prompt);
+                    prompts.Add(prompt with { Cancels = controls.Contains(GameControls.MenuBack) });
             }
         }
     }
+
+    /// <summary>
+    /// Whether the cancel's seal shows, the user's design (Nov 6, 2026): with the mouse in use, wherever B cancels, closes, goes back or
+    /// is done, which the prompts say (<see cref="MenuPrompt.Cancels"/>), a red X in wax stands in the top right corner, of a question's
+    /// slip or of the frame, and a click on it presses B. A key or a controller shows none, having B.
+    /// </summary>
+    public bool CancelShows => Pointing && CancelPrompted;
+
+    /// <summary>Whether a prompt is B's now (<see cref="MenuPrompt.Cancels"/>), which a click on the seal's place presses whichever device was last used, the click being the mouse's.</summary>
+    public bool CancelPrompted => Prompts.Any(p => p.Cancels);
 
     /// <summary>
     /// A prompt for a label and the controls that do it, each named on the device in use (<see cref="KeyName"/>), two joined with a

@@ -76,11 +76,14 @@ public sealed class UiPainter
     public UiImages Images { get; }
 
     /// <summary>
-    /// How tall the capitals of most of the menus' text are, in the frame's pixels, the user's choice (Nov 2, 2026): the size the
-    /// Party tab's level was drawn at, the slim font's 7 at 0.6, which reads better on a fine screen than the fonts' own size, kept
-    /// as large as it was for the console's pixels. A heading's are larger, and a tab's caption's smaller.
+    /// The menus' four text sizes, how tall capitals are drawn in the frame's pixels, a 4:3 ladder, the user's choice (Nov 6, 2026;
+    /// thirteen sizes had grown one tweak at a time): Heading, the member's name; Standard, most of the menus' text, the size the Party
+    /// tab's level was first drawn at (Nov 2, 2026), the slim font's 7 at 0.6, which reads better on a fine screen than the fonts' own
+    /// size, kept as large as it was for the console's pixels; Small, the tabs' captions, the gold, the grid's foot, the prompts, the
+    /// Stats, Skills and Spells rows and an item box's name; and Fine, the counts, the bar's hit points, a box's lines and the names on
+    /// slips. Every piece of the menus' text is one of these.
     /// </summary>
-    public const float StandardText = 4.2f, HeadingText = 5.6f, CaptionText = 2.94f;
+    public const float HeadingText = 5.6f, StandardText = 4.2f, SmallText = 3.2f, FineText = 2.4f;
 
     /// <summary>
     /// How tall <see cref="Main"/>'s and <see cref="Slim"/>'s capitals are drawn, in the frame's pixels: <see cref="StandardText"/>
@@ -221,7 +224,7 @@ public sealed class UiPainter
         if (!closes)
             return;
         var button = CloseRect(screen, message);
-        var font = Main.Sized(CloseText);
+        var font = Main.Sized(SmallText);
         Text(canvas, font, CloseLabel, button.Position.X + CloseInset, (int)MathF.Round(button.Position.Y + button.Size.Y / 2 - font.Middle), RedInk);
     }
 
@@ -231,7 +234,7 @@ public sealed class UiPainter
     /// </summary>
     public const string CloseLabel = "Close";
 
-    private const float CloseText = 3.4f, CloseRow = 7, CloseInset = 2;
+    private const float CloseRow = 7, CloseInset = 2;
 
     /// <summary>How wide and tall a menu's message's text is, before a Close button.</summary>
     private (int Width, int Height) MessageSize(MenuMessage message)
@@ -248,7 +251,7 @@ public sealed class UiPainter
         var (width, height) = MessageSize(message);
         var x0 = (screen.X - width) / 2;
         var y0 = (screen.Y - (height + (int)CloseRow)) / 2;
-        var label = Main.Sized(CloseText).ExactWidth(CloseLabel) + 2 * CloseInset;
+        var label = Main.Sized(SmallText).ExactWidth(CloseLabel) + 2 * CloseInset;
         return new Rect2(x0 + 4 + width - label + CloseInset, y0 + height, label, CloseRow);
     }
 

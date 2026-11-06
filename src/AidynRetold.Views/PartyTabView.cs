@@ -150,9 +150,6 @@ public partial class PartyTabView : Control
     /// </summary>
     private static readonly Rgba StaminaWash = new(255, 255, 255, 90), EnduranceShade = new(0, 0, 0, 40);
 
-    /// <summary>How tall the hit points' capitals are on the bar: 3 less three tenths, the user's eye (Nov 6, 2026).</summary>
-    private const float HitPointsText = 2.1f;
-
     /// <summary>The bar frame's opening, where it's drawn, which the hit points are centred in and the red fills.</summary>
     private static Rect2 BarOpening
     {
@@ -232,7 +229,7 @@ public partial class PartyTabView : Control
     /// The gold's box, smaller, the user's choice (Nov 2, 2026): the purse this big, a pixel before the amount, whose capitals are this
     /// tall; the sheet this tall, reaching this far past them either side, its right edge at the page's.
     /// </summary>
-    private const float PurseSize = 10, PurseGap = 1, GoldText = 3.4f, GoldHeight = 14, GoldInset = 3.5f;
+    private const float PurseSize = 10, PurseGap = 1, GoldHeight = 14, GoldInset = 3.5f;
 
     /// <summary>How far down the tabs the gold's middle is, level with the tabs' middles.</summary>
     private const float GoldMiddle = 12;
@@ -1155,7 +1152,7 @@ public partial class PartyTabView : Control
         var prompts = Menu.Prompts;
         if (prompts.Count == 0)
             return;
-        var font = _ui.Slim.Sized(PromptText);
+        var font = _ui.Slim.Sized(UiPainter.SmallText);
         var widths = prompts.Select(p => font.ExactWidth(p.Keys) + PromptKeyGap + font.ExactWidth(p.Label)).ToList();
         var x = (HeaderSheet.Position.X + PageRect.End.X) / 2 - (widths.Sum() + PromptGap * (prompts.Count - 1)) / 2;
         for (var i = 0; i < prompts.Count; i++)
@@ -1168,7 +1165,7 @@ public partial class PartyTabView : Control
     }
 
     /// <summary>The prompts' capitals' height, their middle down the frame, and the gaps after a button's name and between prompts.</summary>
-    private const float PromptText = 3.2f, PromptMiddle = 229, PromptKeyGap = 1.5f, PromptGap = 6;
+    private const float PromptMiddle = 229, PromptKeyGap = 1.5f, PromptGap = 6;
 
     /// <summary>
     /// The right column's page and its tabs, the user's design (Nov 2, 2026): a loose leaf of parchment the list is on, and a paper tab
@@ -1217,7 +1214,7 @@ public partial class PartyTabView : Control
         }
 
         // The gold, after a purse, on a sheet of its own after the tabs.
-        var font = _ui.Slim.Sized(GoldText);
+        var font = _ui.Slim.Sized(UiPainter.SmallText);
         var gold = Num(Menu.Party.Gold);
         var box = GoldBox(font.ExactWidth(gold));
         var middle = box.Position.Y + box.Size.Y / 2;
@@ -1289,12 +1286,12 @@ public partial class PartyTabView : Control
     private const float PageEdge = 1, TabEdge = 0.8f;
 
     /// <summary>
-    /// A tab's caption, the slim font at <see cref="UiPainter.CaptionText"/>, its capitals' top 0.5 under its icon, centred, and
+    /// A tab's caption, the slim font at <see cref="UiPainter.SmallText"/>, its capitals' top 0.5 under its icon, centred, and
     /// squeezed across to stay <see cref="CaptionInset"/> in from the tab's sides.
     /// </summary>
     private void Caption(string text, Rect2 tab, Rgba color)
     {
-        var font = _ui.Slim.Sized(UiPainter.CaptionText);
+        var font = _ui.Slim.Sized(UiPainter.SmallText);
         var width = font.ExactWidth(text);
         var squeeze = Math.Min(1, (TabWidth - 2 * CaptionInset) / width);
         var middle = tab.Position.Y + TabIconTop + TabIconSize + 0.5f + font.Capitals / 2;
@@ -1701,7 +1698,7 @@ public partial class PartyTabView : Control
         var hp = $"{Num(numbers.Hp)} / {Num(numbers.MaxHp)}";
         var slim = _ui.Slim;
         // The main face: the slim one at this size was too thin to read, the user's eye (Nov 6, 2026).
-        var small = _ui.Main.Sized(HitPointsText);
+        var small = _ui.Main.Sized(UiPainter.FineText);
         Small(hp, bar.Position.X + (bar.Size.X - small.ExactWidth(hp)) / 2, bar.Position.Y + bar.Size.Y / 2f - small.Middle, BarText with { A = a },
             BarShadow with { A = (byte)(BarShadow.A * a / 255) }, small, bold: true);
         var level = $"{LevelLabel} {Num(numbers.Level)}";
@@ -1804,7 +1801,7 @@ public partial class PartyTabView : Control
     /// </summary>
     private void CardStats()
     {
-        var font = _ui.Slim.Sized(NameText);
+        var font = _ui.Slim.Sized(UiPainter.FineText);
         var right = EquipmentSheet.End.X - CardInset;
         var top = CardStatsTop;
         // The names spelled out in a column, the user's choice (Nov 2, 2026), where they were their first three letters, and the totals
@@ -1902,7 +1899,7 @@ public partial class PartyTabView : Control
     /// </summary>
     private void InventoryFoot(GridLayout grid)
     {
-        var font = _ui.Slim.Sized(FootText);
+        var font = _ui.Slim.Sized(UiPainter.SmallText);
         var b = grid.Bounds;
         // The foot keeps its line under the whole grid's; a slot's shorter grid leaves the line above it to the button.
         var middle = b.Top + PartyMenu.InventoryGrid.Lines * grid.Cell + FootMiddle;
@@ -2001,8 +1998,8 @@ public partial class PartyTabView : Control
     private int? FootControlAt(Vector2 at)
     {
         if (Menu.Fitting is not null)
-            return FullInventoryButton(_ui.Slim.Sized(FootText), Menu.CurrentGrid).Grow(0.5f).HasPoint(at) ? 0 : null;
-        var controls = FootControls(_ui.Slim.Sized(FootText), Menu.CurrentGrid);
+            return FullInventoryButton(_ui.Slim.Sized(UiPainter.SmallText), Menu.CurrentGrid).Grow(0.5f).HasPoint(at) ? 0 : null;
+        var controls = FootControls(_ui.Slim.Sized(UiPainter.SmallText), Menu.CurrentGrid);
         for (var i = 0; i < controls.Count; i++)
         {
             if (controls[i].Rect.Grow(1).HasPoint(at))
@@ -2015,7 +2012,7 @@ public partial class PartyTabView : Control
     /// The grid's foot: its text's capitals this tall, its middle this far under the grid's last line, the row this tall to click, the gap
     /// after a control's label and between the controls, and the outline round the one the stick is on.
     /// </summary>
-    private const float FootText = 3.4f, FootMiddle = 8.5f, FootRow = 7, FootLabelGap = 1.5f, FootControlGap = 6, FootOutline = 0.4f;
+    private const float FootMiddle = 8.5f, FootRow = 7, FootLabelGap = 1.5f, FootControlGap = 6, FootOutline = 0.4f;
 
     private const string TotalInventory = "Total Inventory", FitsLabel = "Fits the", ShowLabel = "Show", SortLabel = "Sort",
         NothingFits = "Nothing to put here", NothingHere = "Nothing here", SeeFullInventory = "See Full Inventory";
@@ -2055,8 +2052,7 @@ public partial class PartyTabView : Control
     /// <summary>The colour a worn item's box is drawn in, a little grey, as it's in use, the user's choice (Nov 2, 2026).</summary>
     private static readonly Rgba WornBox = new(178, 178, 186, 255);
 
-    // The count's capitals 3.6 less three tenths, the user's eye (Nov 6, 2026).
-    private const float CountText = 2.52f, CellInset = 2.5f;
+    private const float CellInset = 2.5f;
 
     /// <summary>How much of a grid's cell its item's icon takes across, inside its box's inner line: 12 of the original's 18.</summary>
     private const float GridIcon = 12f / 18;
@@ -2077,11 +2073,11 @@ public partial class PartyTabView : Control
     {
         var list = Menu.Inventory;
         // The main face, as the bar's text: the slim one at this size was too thin to read, the user's eye (Nov 6, 2026).
-        var count = _ui.Main.Sized(CountText);
+        var count = _ui.Main.Sized(UiPainter.FineText);
         // The grid of what fits a slot or what the filter shows, with nothing in it, says so.
         if (list.Rows.Count == 0 && !OriginalLook)
         {
-            var font = _ui.Slim.Sized(FootText);
+            var font = _ui.Slim.Sized(UiPainter.SmallText);
             var b = grid.Bounds;
             var nothing = Menu.Fitting is not null ? NothingFits : NothingHere;
             Small(nothing, b.Left + (grid.Columns * grid.Cell - font.ExactWidth(nothing)) / 2, b.Top + grid.Cell - font.Middle,
@@ -2224,7 +2220,7 @@ public partial class PartyTabView : Control
             var stamina = member.StaminaPoints;
             var full = member.FullStamina;
             var text = $"Stamina {Num(stamina)} of {Num(full)}, Endurance {Num(member.Hp - stamina)} of {Num(member.MaxHp - full)}";
-            NameSlip(text, BarFrame.Position.X + BarFrame.Size.X / 2, BarFrame.Position.Y - 1, tiny: true);
+            NameSlip(text, BarFrame.Position.X + BarFrame.Size.X / 2, BarFrame.Position.Y - 1);
             return;
         }
         if (!OwnTab || Menu.Slide is not null || Window.HasPopup || Menu.Crafting is not null)
@@ -2306,9 +2302,9 @@ public partial class PartyTabView : Control
     /// </summary>
     private (float Width, float Height) BoxSize(string name, IReadOnlyList<BoxLine> lines)
     {
-        var face = _ui.Main.Sized(BoxNameText);
-        var small = _ui.Slim.Sized(BoxText);
-        var help = _ui.Slim.Sized(BoxHelpText);
+        var face = _ui.Main.Sized(UiPainter.SmallText);
+        var small = _ui.Slim.Sized(UiPainter.FineText);
+        var help = _ui.Slim.Sized(UiPainter.FineText);
         var width = lines.Select(l => (l.Help ? help : small).ExactWidth(l.Text)).Append(face.ExactWidth(name)).Max() + 2 * TipSide;
         var cards = lines.Count(l => !l.Help);
         var helps = lines.Count - cards;
@@ -2319,9 +2315,9 @@ public partial class PartyTabView : Control
     /// <summary>A box's slip and its text: the name, the card's lines, then the help lines after their gap, each centred on its line.</summary>
     private void DrawBox(Rect2 rect, string name, IReadOnlyList<BoxLine> lines)
     {
-        var face = _ui.Main.Sized(BoxNameText);
-        var small = _ui.Slim.Sized(BoxText);
-        var help = _ui.Slim.Sized(BoxHelpText);
+        var face = _ui.Main.Sized(UiPainter.SmallText);
+        var small = _ui.Slim.Sized(UiPainter.FineText);
+        var help = _ui.Slim.Sized(UiPainter.FineText);
         _ui.Slip(_canvas, rect);
         var x = rect.Position.X + TipSide;
         var y = rect.Position.Y + BoxTop;
@@ -2341,8 +2337,8 @@ public partial class PartyTabView : Control
         }
     }
 
-    /// <summary>The slips' text sizes and insets: a name's, a name slip's sides and ends, and a box's sides and ends.</summary>
-    private const float NameText = UiPainter.StandardText / 2 * 1.25f, SlipSide = 3, SlipEnds = 2;
+    /// <summary>The slips' insets: a name slip's sides and ends, and a box's sides and ends.</summary>
+    private const float SlipSide = 3, SlipEnds = 2;
 
     private const float TipSide = 4, TipEnds = 2.5f;
 
@@ -2402,22 +2398,20 @@ public partial class PartyTabView : Control
     }
 
     /// <summary>
-    /// The item box's and the hover's text, the user's eye (Nov 6, 2026): the name's capitals this tall in the main face (4.4, then 4,
-    /// until Nov 6), this far over the card's lines (the card's gap, 4.6, less 1, then 1, as the gap still read too large), which are this
-    /// tall (2.6 until Nov 6, half a unit smaller) and this far apart; the help lines this far under them (1 until Nov 6), this tall (2) and this
-    /// far apart; a button, the See Full Inventory's, this tall with this much beside its label; and the name on hover this tall, smaller
-    /// than the stats card's.
+    /// The item box's and the hover's spacing, the user's eye (Nov 6, 2026): the name, in the main face at the Small size, this far over
+    /// the card's lines (the card's gap, 4.6, less 1, then 1, as the gap still read too large), which are at the Fine size and this far
+    /// apart (3.6 until the sizes' ladder, Nov 6); the help lines this far under them (1 until Nov 6), at the Fine size too and this far
+    /// apart (3 until the ladder); and a button, the See Full Inventory's, this tall with this much beside its label.
     /// </summary>
-    private const float BoxNameText = 3, BoxNameGap = 1, BoxText = 2.1f, BoxLinePitch = 3.6f, BoxHelpGap = 2, BoxHelpText = 2, BoxHelpPitch = 3,
-        ButtonHeight = 5.5f, ButtonSide = 2.5f, HoverText = 2.3f;
+    private const float BoxNameGap = 1, BoxLinePitch = 4, BoxHelpGap = 2, BoxHelpPitch = 3.4f, ButtonHeight = 5.5f, ButtonSide = 2.5f;
 
     /// <summary>
     /// A name on a little slip of paper, centred across <paramref name="middle"/>, its foot at <paramref name="foot"/>, kept inside the
     /// frame; or with its top at <paramref name="below"/> where over would reach the tabs above the pages.
     /// </summary>
-    private void NameSlip(string name, float middle, float foot, float? below = null, bool tiny = false)
+    private void NameSlip(string name, float middle, float foot, float? below = null)
     {
-        var font = _ui.Slim.Sized(tiny ? HoverText : NameText);
+        var font = _ui.Slim.Sized(UiPainter.FineText);
         var width = font.ExactWidth(name);
         var height = font.Capitals + 2 * SlipEnds;
         var left = Math.Clamp(middle - width / 2 - SlipSide, 4, FrameWidth - 4 - width - 2 * SlipSide);
@@ -2450,9 +2444,9 @@ public partial class PartyTabView : Control
         if (shown == Menu.List)
             _listLayout = layout;
         var highlight = cursor ?? Menu.HighlightNow;
-        // The port's Stats, Skills and Spells rows are in smaller text, centred down rows of PartyMenu.ListPitch (ListText, RowTextDrop).
+        // The port's Stats, Skills and Spells rows are in smaller text, centred down rows of PartyMenu.ListPitch (the Small size, RowTextDrop).
         if (!OriginalLook && shown != PartyList.Inventory)
-            font = font.Sized(ListText);
+            font = font.Sized(UiPainter.SmallText);
         if (OriginalLook)
         {
             // The original's list has its title over it, 70 into it and 20 above.
@@ -2511,10 +2505,10 @@ public partial class PartyTabView : Control
     }
 
     /// <summary>
-    /// The port's Stats, Skills and Spells rows' text, the user's choice (Nov 6, 2026): its capitals this tall, centred down rows of
+    /// The port's Stats, Skills and Spells rows' text, the user's choice (Nov 6, 2026): its capitals the Small size, centred down rows of
     /// <see cref="PartyMenu.ListPitch"/>, and a row's icons this big, where the original's rows have the menus' text and the icons' own size.
     /// </summary>
-    private const float ListText = 3, ListIcon = 4.5f;
+    private const float ListIcon = 4.5f;
 
     /// <summary>How far down from a row's top its text is drawn so its capitals' middle is the row's: none in the original's look.</summary>
     private int RowTextDrop(ListLayout layout, UiFont font) => OriginalLook ? 0 : (int)MathF.Round(layout.RowHeight / 2f - font.Middle);

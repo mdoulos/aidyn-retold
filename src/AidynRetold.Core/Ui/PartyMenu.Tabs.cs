@@ -49,7 +49,9 @@ public sealed partial class PartyMenu
     /// 8 to a line, filling the list's frame under the tabs with 9 lines, and scrolling a line at a time past them.
     /// </summary>
     // From x 161 until Nov 6, 2026, then 1 to the right with everything under it, the user's eye.
-    public static readonly GridLayout InventoryGrid = new(new ScreenRect(162, 46, 302, 206), 20, 7);
+    // Cells 23 square, 6 to a line and 6 lines, 36 in view, a trial of fewer, larger cells, the user's choice (Nov 6, 2026; 20 square, 7 to
+    // a line and 8 lines, 56 in view, before, which this goes back to if the trial fails).
+    public static readonly GridLayout InventoryGrid = new(new ScreenRect(162, 46, 302, 206), 23, 6);
 
     /// <summary>
     /// Whether the inventory is the grid (<see cref="InventoryGrid"/>) rather than a list: the Party tab's own, which the pause menu

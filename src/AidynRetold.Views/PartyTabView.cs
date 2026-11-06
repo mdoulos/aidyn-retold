@@ -103,6 +103,9 @@ public partial class PartyTabView : Control
     /// <summary>The port's aspect's and school's icons' right edge, where the last small portrait ended until Nov 6, 2026, kept as the icons' edge.</summary>
     private const float IconsRight = 131 - HeaderShift;
 
+    /// <summary>How much further left of the aspect's icon the school's stands, the user's eye (Nov 6, 2026).</summary>
+    private const float SchoolShift = 0.75f;
+
     private Vector2[] OtherPortraits => OriginalLook ? OriginalOthers : PortOthers;
 
     /// <summary>The shown member's portrait, the original's 40 square and the port's 30.6 (34 less a tenth, the user's eye, Nov 6, 2026); the others' the original's 24 and the port's 20.</summary>
@@ -1559,8 +1562,9 @@ public partial class PartyTabView : Control
                 icons.Add((ownAspect, new Rect2(right, IconsTop, IconSize, IconSize), $"{member.Aspect} Aspect", 255));
                 right -= IconGap;
             }
-            // The unschooled have an icon of their own in the port's look, the user's (Nov 5, 2026), at a lighter alpha.
-            right -= IconSize;
+            // The unschooled have an icon of their own in the port's look, the user's (Nov 5, 2026), at a lighter alpha. The school's
+            // stands 0.75 further left than its gap, the user's eye (Nov 6, 2026).
+            right -= IconSize + SchoolShift;
             if (MenuImages.SchoolIcon(member.School) is { } ownSchool)
                 icons.Add((ownSchool, new Rect2(right, IconsTop, IconSize, IconSize), $"School of {member.School}", 255));
             else

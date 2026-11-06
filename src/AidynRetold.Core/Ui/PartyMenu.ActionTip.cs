@@ -43,9 +43,42 @@ public sealed partial class PartyMenu
     /// choices the presses (<see cref="Tip"/>), and a click on one chooses it.
     /// </summary>
     public (InventoryRow Row, ItemCard Card, IReadOnlyList<ActionTipChoice> Choices)? TipShown =>
-        OriginalLook || Overlay.HasPopup || Crafting is not null || Slide is not null || TipRow() is not { } row
+        OriginalLook || Pointing || Overlay.HasPopup || Crafting is not null || Slide is not null || TipRow() is not { } row
             || (SelectedSlot is null && !CursorShows) ? null
         : (row, Card(row), ChoicesFor(row));
+
+    /// <summary>What A does with a row, named, for the mouse's hover to say (<see cref="ActionFor"/>).</summary>
+    public ActionTipChoice? ActionOf(InventoryRow row) => ActionFor(row);
+
+    /// <summary>Whether the row has details to show.</summary>
+    public bool HasDetails(InventoryRow row) => MenuDetailsBuilder.Item(row.Instance, Shown, _text, _spells, Party.Inventory.Catalog) is not null;
+
+    /// <summary>
+    /// Whether a row can be dropped (<see cref="DropItem"/>): a carried item that's no key item and needn't be taken, out of a
+    /// battle's pause.
+    /// </summary>
+    public bool CanDrop(InventoryRow row) =>
+        row.Wearer is null && row.Item.KeyItem is null && !row.Item.Traits.MustTake && row.Item.Kind != ItemKind.Key && Combat is null;
+
+    /// <summary>The original's refusal, the loot window's, said here too.</summary>
+    public const string CannotDropLine = "You cannot drop that item.";
+
+    /// <summary>
+    /// Drops one of a carried item, gone for good, the user's design (Nov 6, 2026): Shift and a click on it. What's worn, a key item,
+    /// what must be taken, and anything in a battle's pause is refused, with the loot window's line.
+    /// </summary>
+    public void DropItem(InventoryRow row)
+    {
+        if (HasPopup || Message is not null)
+            return;
+        if (!CanDrop(row))
+        {
+            Say(CannotDropLine);
+            return;
+        }
+        Party.Inventory.Take(row.Item.Id);
+        Refresh();
+    }
 
     /// <summary>Closes the actiontip.</summary>
     public void CloseTip() => Tip = null;

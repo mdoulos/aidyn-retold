@@ -119,7 +119,7 @@ public sealed partial class PartyMenu
     }
 
     /// <summary>
-    /// What a potion's or a food's effects do, shortly, the user's choice (Nov 5, 2026): "+3 Stealth", "Heals 15–25%", "+8 Stamina",
+    /// What a potion's or a food's effects do, shortly, the user's choice (Nov 5, 2026): "+3 Stealth", "Heals 15-25%", "+8 Stamina",
     /// "Restores Stamina", "+6 vs. Elemental", "Cures", a flask's "Damage"; null with none it can say.
     /// </summary>
     private string? EffectsSummary(Character member, Item item)
@@ -144,7 +144,7 @@ public sealed partial class PartyMenu
                     parts.Add($"{Signed(ward.Amount.At(0))} vs. {ward.School}");
                     break;
                 case HealEffect heal:
-                    parts.Add(heal.Low == heal.High ? $"Heals {Num(heal.Low)}%" : $"Heals {Num(heal.Low)}–{Num(heal.High)}%");
+                    parts.Add(heal.Low == heal.High ? $"Heals {Num(heal.Low)}%" : $"Heals {Num(heal.Low)}-{Num(heal.High)}%");
                     break;
                 case StaminaEffect stamina:
                     parts.Add(stamina.ToBase ? "Restores Stamina" : $"{Signed(stamina.Amount.At(0))} Stamina");

@@ -377,8 +377,15 @@ public sealed partial class PartyMenu : IPartyWindow
             Inventory.Point(Inventory.First);
     }
 
-    /// <summary>Puts the cursor of the popup, or of the list showing, on a row.</summary>
-    public void Point(int row)
+    /// <summary>Scrolls the grid so that a line is its first, as the scroll bar's handle dragged asks (the user's design, Nov 6, 2026).</summary>
+    public void ScrollGridTo(int line) => ScrollGrid(line - Inventory.First / Math.Max(1, Inventory.Columns));
+
+    /// <summary>
+    /// Puts the cursor of the popup, or of the list showing, on a row; a mouse's click, which shows the cursor
+    /// (<see cref="CursorShows"/>), unless <paramref name="quietly"/>, as a double click or a right click moves it before acting, the
+    /// cursor staying hidden with the mouse in use (the user's design, Nov 6, 2026).
+    /// </summary>
+    public void Point(int row, bool quietly = false)
     {
         if (Message is not null || DetailsPane.Showing || Tip is not null)
             return;
@@ -397,7 +404,7 @@ public sealed partial class PartyMenu : IPartyWindow
         {
             case PartyList.Inventory:
                 Inventory.Point(row);
-                _clicked |= Grid;
+                _clicked |= Grid && !quietly;
                 break;
             case PartyList.Stats: Stats.Point(row); break;
             case PartyList.Skills: Skills.Point(row); break;

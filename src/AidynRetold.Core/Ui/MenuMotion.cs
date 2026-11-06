@@ -51,6 +51,9 @@ public static class MenuTween
 
     /// <summary>A value that far from <paramref name="from"/> to <paramref name="to"/>, truncated as the original's are.</summary>
     public static int Value(int from, int to, float ease) => (int)(from + (to - from) * ease);
+
+    /// <summary>The same between two measures with a fraction, which the port's header lays out by.</summary>
+    public static float Value(float from, float to, float ease) => from + (to - from) * ease;
 }
 
 /// <summary>

@@ -99,7 +99,9 @@ public partial class ConversationBoxView : Control
             Box.Font = _painter.Main.Layout;
             Box.Step();
         }
-        if (Visible && (Box.Layout is { Choices.Count: > 0 } || !Box.LineComplete))
+        // Once a line is complete it's drawn once more if the tick that completed it printed glyphs: the view saw it incomplete before
+        // that tick and complete after, so the last glyph or two of every line went undrawn until Nov 6, 2026.
+        if (Visible && (Box.Layout is { Choices.Count: > 0 } || !Box.LineComplete || Box.RevealedGlyphs != _drawnGlyphs))
             QueueRedraw();
     }
 
@@ -116,11 +118,15 @@ public partial class ConversationBoxView : Control
         // A line still printing shows its first glyphs, and its choices wait for the rest (TextReveal).
         if (layout.Line is { } line)
             Print(line, DialogueBox.LineColor, Box.RevealedGlyphs);
+        _drawnGlyphs = Box.RevealedGlyphs;
         if (!Box.LineComplete)
             return;
         for (var i = 0; i < layout.Choices.Count; i++)
             Print(layout.Choices[i], i == layout.Highlight ? Box.HighlightNow : DialogueBox.ChoiceColor);
     }
+
+    /// <summary>How many of the line's glyphs the last draw printed, so the draw after the one that completes a line still comes.</summary>
+    private int _drawnGlyphs;
 
     private void Print(TextBlock block, Rgba color, int? glyphs = null)
     {

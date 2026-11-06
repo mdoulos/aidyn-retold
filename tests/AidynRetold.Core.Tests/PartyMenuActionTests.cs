@@ -448,7 +448,7 @@ public class PartyMenuActionTests
         var menu = Menu(party);
         menu.OriginalLook = true;
         menu.Random = new ScriptedRandom(RandomFor.Range(15, 25, 20));
-        var before = new HeaderNumbers(0, member.MaxHp, member.Level);
+        var before = new HeaderNumbers(0, member.MaxHp, member.Level, 0, member.FullStamina);
         Assert.Equal(before, menu.Numbers);
 
         PointAt(menu, r => r.Item.Id == PotionId(BasePotion.Healing));

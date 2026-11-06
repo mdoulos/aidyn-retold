@@ -899,6 +899,7 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
     {
         SetTickRate();
         CaptureMouse();
+        DressCursor();
         if (Streamer is not { } chunks || _player is null || _camera is null)
             return;
         // The world goes on being drawn behind the pause menu and a backdrop's page, still: its scenery's actors,

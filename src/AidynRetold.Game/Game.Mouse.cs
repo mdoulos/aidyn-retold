@@ -1,3 +1,5 @@
+using AidynRetold.Core;
+using AidynRetold.Plugins.Records;
 using Godot;
 
 namespace AidynRetold.Game;
@@ -35,6 +37,8 @@ public partial class Game
     public override void _Input(InputEvent e)
     {
         NoteDevice(e);
+        if (e is InputEventMouseButton { ButtonIndex: MouseButton.Left } left)
+            Views.MouseCursors.Pressed = left.Pressed;
         if (_camera is not { MouseLook: true } camera)
             return;
         switch (e)
@@ -90,6 +94,18 @@ public partial class Game
 
     /// <summary>Whether the player is using the mouse (<see cref="Core.Ui.IPauseMenuHost.Pointing"/>): their last input was the mouse.</summary>
     private bool _pointing;
+
+    /// <summary>
+    /// The cursor is Alaron's glove (<see cref="Views.MouseCursors"/>), the user's design (Nov 6, 2026): a metal gauntlet while he wears
+    /// metal gloves (<see cref="Plugins.Records.ItemTraits.Metal"/>, the Plate Gauntlets), leather with any other gloves or none; each
+    /// frame, as the gloves change.
+    /// </summary>
+    private void DressCursor()
+    {
+        var alaron = _session?.Game.Party.Members.FirstOrDefault(m => m.Entity == GameState.Alaron);
+        var metal = alaron?.Equipment.Gear.Any(g => g is { Item: { Kind: ItemKind.Gloves, Traits.Metal: true } }) == true;
+        Views.MouseCursors.Show(metal ? Views.CursorHand.Metal : Views.CursorHand.Leather);
+    }
 
     bool Core.Ui.IPauseMenuHost.Controller => _controller;
 

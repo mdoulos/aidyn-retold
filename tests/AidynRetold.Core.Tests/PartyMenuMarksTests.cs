@@ -25,6 +25,24 @@ public class PartyMenuMarksTests
 
     private static InventoryRow Row(PartyMenu menu, RecordId id) => menu.Inventory.Rows.Single(r => r.Item.Id == id);
 
+    /// <summary>A scroll's card says its spell under its name, unless the spell is named as the scroll is, when it says nothing (Nov 6, 2026).</summary>
+    [Fact]
+    public void AScrollNamedAsItsSpellSaysNothingUnderItsName()
+    {
+        var sameName = MagicData.Spell(0x40, "Item 5", MagicSchool.Elemental, []);
+        var otherName = MagicData.Spell(0x41, "Whitefire", MagicSchool.Elemental, []);
+        var named = ItemData.NewItem(5, ItemKind.Scroll, bonuses: ItemData.CastsSpell(sameName.Id));
+        var other = ItemData.NewItem(6, ItemKind.Scroll, bonuses: ItemData.CastsSpell(otherName.Id));
+        var member = PotionData.Member("Alaron", 0, null);
+        var party = TradeData.PartyOf(ItemData.CatalogWith(TradeData.Rules(40), [named, other]), null, [member]);
+        Assert.True(party.Inventory.Add(named.Id));
+        Assert.True(party.Inventory.Add(other.Id));
+        var spells = new[] { sameName, otherName };
+        var menu = new PartyMenu(party, new MenuText([]), id => spells.FirstOrDefault(s => s.Id == id), _ => null) { Grid = true, ShowWorn = false };
+        Assert.Null(menu.Card(Row(menu, named.Id)).About);
+        Assert.Equal("Whitefire", menu.Card(Row(menu, other.Id)).About);
+    }
+
     /// <summary>
     /// What the member can't put on is marked unusable and its card says why; what would be better than what they wear is marked so
     /// and its card says than what; what's no better is neither.

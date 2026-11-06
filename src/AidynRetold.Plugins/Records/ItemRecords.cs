@@ -266,7 +266,11 @@ public sealed record ItemEnchantment(RecordId Spell, int Level);
 /// unique gear (<c>PartyInventory::AddKeyItem</c>, <c>AddKeyEquipment</c>).
 /// </param>
 /// <param name="MustTake">Loot that holds it can't be left behind (<c>IInventory::HasNoKeyItem</c>).</param>
-public sealed record ItemTraits(bool OwnSlot = false, bool MustTake = false);
+/// <param name="Metal">
+/// A port addition: it's plate, as the Plate Gauntlets are. The mouse cursor is Alaron's glove, a metal gauntlet while he wears metal
+/// gloves and leather otherwise (<c>MouseCursors</c>), the user's design (Nov 6, 2026); the ACRE plugin marks the gauntlets.
+/// </param>
+public sealed record ItemTraits(bool OwnSlot = false, bool MustTake = false, bool Metal = false);
 
 /// <summary>The flags a key item sets (<c>PartyInventory::AddKeyItem2</c>).</summary>
 /// <param name="Held">Set while the party has it, and cleared when the last is taken. A save restores the item from it (<c>LoadKeyItems</c>).</param>

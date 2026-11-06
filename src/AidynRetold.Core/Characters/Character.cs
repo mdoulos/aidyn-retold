@@ -219,6 +219,9 @@ public sealed partial class Character
     /// <summary>The part of the hit points that is Stamina's, which the Party tab's bar shows in its own colour.</summary>
     public int StaminaPoints => Math.Min(Stats.Modified(Stat.Stamina), Hp);
 
+    /// <summary>What Stamina's part of the hit points is when it's full: the stat's base, gear and all. The bar splits under half of it.</summary>
+    public int FullStamina => Stats.Base(Stat.Stamina);
+
     /// <summary>
     /// Under the remade rule, whether one of the two hit points the current Endurance's last point is worth is lost: an odd loss into
     /// Endurance takes it, and the stat's point itself goes at the next. Saved.

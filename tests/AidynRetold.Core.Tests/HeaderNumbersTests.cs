@@ -5,16 +5,20 @@ namespace AidynRetold.Core.Tests;
 public class HeaderNumbersTests
 {
     /// <summary>
-    /// The bar splits into Stamina's lighter red and Endurance's darker only under three quarters of the maximum with Stamina's points
-    /// fewer than the rest's, the user's design (Nov 6, 2026); else it's one red.
+    /// The bar splits into Stamina's lighter red and Endurance's darker only once Stamina's points are under half of its full worth, the
+    /// user's design (Nov 6, 2026), whatever the hit points; else it's one red.
     /// </summary>
     [Theory]
-    [InlineData(100, 100, 50, false)]
-    [InlineData(74, 100, 36, true)]
-    [InlineData(74, 100, 37, false)]
-    [InlineData(75, 100, 10, false)]
-    [InlineData(40, 100, 0, true)]
-    [InlineData(0, 100, 0, false)]
-    public void TheBarSplitsOnlyHurtWithStaminaBelowEndurance(int hp, int maxHp, int stamina, bool splits) =>
-        Assert.Equal(splits, new HeaderNumbers(hp, maxHp, 5, stamina).BarSplits);
+    [InlineData(30, 30, false)]
+    [InlineData(15, 30, false)]
+    [InlineData(14, 30, true)]
+    [InlineData(19, 40, true)]
+    [InlineData(20, 40, false)]
+    [InlineData(0, 30, true)]
+    [InlineData(0, 0, false)]
+    public void TheBarSplitsOnlyWithStaminaUnderHalf(int stamina, int maxStamina, bool splits)
+    {
+        Assert.Equal(splits, new HeaderNumbers(50, 100, 5, stamina, maxStamina).BarSplits);
+        Assert.Equal(splits, new HeaderNumbers(100, 100, 5, stamina, maxStamina).BarSplits);
+    }
 }

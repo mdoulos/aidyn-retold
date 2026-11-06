@@ -7,18 +7,20 @@ namespace AidynRetold.Core.Ui;
 /// The header's numbers as they stood, which a change crossfades from: the hit points, their maximum, the level, and how many of the
 /// hit points are Stamina's, which the bar shows in a lighter red at its right end once it splits (<see cref="BarSplits"/>).
 /// </summary>
-public readonly record struct HeaderNumbers(int Hp, int MaxHp, int Level, int Stamina = 0)
+public readonly record struct HeaderNumbers(int Hp, int MaxHp, int Level, int Stamina = 0, int MaxStamina = 0)
 {
     /// <summary>
-    /// Whether the bar splits into Stamina's lighter red at its right end and Endurance's darker red, the user's design (Nov 6, 2026):
-    /// only once the hit points are under three quarters of their maximum and Stamina's points are fewer than the rest's, Endurance's
-    /// (and the Level's under the original's rule). Otherwise the bar is one plain red: a split that showed always jarred, Stamina being
-    /// half the bar or more as a rule.
+    /// Whether the bar splits into Stamina's lighter red and Endurance's darker red, the user's design (Nov 6, 2026): only once
+    /// Stamina's points are under half of what Stamina is worth full (<see cref="MaxStamina"/>): 19 of 40 splits, 20 doesn't. Otherwise
+    /// the bar is one plain red: a split that showed always jarred, Stamina being half the bar or more as a rule. Stamina's own half is
+    /// the measure, Endurance left out, as Stamina drains first (<see cref="Character.DrainStamina"/>); for an hour the rule was under
+    /// three quarters of the hit points with Stamina's points fewer than Endurance's, which counted Endurance for no reason.
     /// </summary>
-    public bool BarSplits => Hp * 4 < MaxHp * 3 && Stamina * 2 < Hp;
+    public bool BarSplits => Stamina * 2 < MaxStamina;
 
     /// <summary>A member's, or none's, all 0.</summary>
-    public static HeaderNumbers Of(Character? member) => member is null ? default : new(member.Hp, member.MaxHp, member.Level, member.StaminaPoints);
+    public static HeaderNumbers Of(Character? member) =>
+        member is null ? default : new(member.Hp, member.MaxHp, member.Level, member.StaminaPoints, member.FullStamina);
 
     /// <summary>The share of the bar these hit points fill, of <paramref name="width"/>.</summary>
     public int Bar(int width) => PartyMenu.HealthBar(Hp, MaxHp, width);

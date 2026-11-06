@@ -121,6 +121,8 @@ public partial class ItemPanel : PagePanel
             traits.Add("a slot of its own");
         if (item.Traits.MustTake)
             traits.Add("loot can't be left with it");
+        if (item.Traits.Metal)
+            traits.Add("metal, for the cursor");
         if (item.Weapon?.Fixed == true)
             traits.Add("can't be taken off");
         text.AddChild(new Label { Text = string.Join(" · ", traits), ThemeTypeVariation = "DimLabel" });

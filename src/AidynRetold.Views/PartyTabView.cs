@@ -27,8 +27,11 @@ public partial class PartyTabView : Control
     /// <summary>The portraits' frames, as the original paints them into <c>0x00D9</c>. DollMenuPortraits puts each portrait 2 inside its frame.</summary>
     private static readonly Rect2I PortraitPiece = new(18, 22, 134, 46);
 
-    /// <summary>The shown member's portrait's place in the frames' piece: the original's (4, 4); the port's a third up, the user's eye (Nov 6, 2026).</summary>
-    private Vector2 ShownPortrait => OriginalLook ? new(4, 4) : new(4, 3.7f);
+    /// <summary>
+    /// The shown member's portrait's place in the frames' piece: the original's (4, 4); the port's a third up, then 2 down and half a unit
+    /// right, the user's eye (Nov 6, 2026).
+    /// </summary>
+    private Vector2 ShownPortrait => OriginalLook ? new(4, 4) : new(4.5f, 5.7f);
 
     /// <summary>
     /// The portraits' frames' corner, which the header's content is placed from: the original's piece's, or the port's <see cref="HeaderRise"/>
@@ -41,8 +44,11 @@ public partial class PartyTabView : Control
     /// <summary>How far up the port's header content, its sheet's foot and the equipment sheet's head went on Nov 6, 2026, the user's eye.</summary>
     private const int HeaderRise = 6;
 
-    /// <summary>The name's place: the original's at x 51, beside its 40 portrait; the port's over the small portraits' left edge.</summary>
-    private Vector2 NameAt => OriginalLook ? new(51, 6) : new(FirstOther, 6);
+    /// <summary>
+    /// The name's place: the original's at x 51, beside its 40 portrait; the port's over the small portraits' left edge, half a unit down
+    /// and left with them, the user's eye (Nov 6, 2026).
+    /// </summary>
+    private Vector2 NameAt => OriginalLook ? new(51, 6) : new(FirstOther, 6.5f);
 
     /// <summary>The member's name, a heading, larger than the menus' text; the slim font at its own size in the original's layout.</summary>
     private UiFont NameFont => OriginalLook ? _ui.Slim : _ui.Slim.Sized(UiPainter.HeadingText);
@@ -82,10 +88,10 @@ public partial class PartyTabView : Control
     /// the large portrait closed by 1.5 on Nov 6).
     /// </summary>
     private static readonly Vector2[] OriginalOthers = [new(49, 17), new(78, 17), new(107, 17)],
-        PortOthers = [.. Enumerable.Range(0, Core.Characters.Party.MaxSize - 1).Select(i => new Vector2(FirstOther + i * OtherPitch, 17))];
+        PortOthers = [.. Enumerable.Range(0, Core.Characters.Party.MaxSize - 1).Select(i => new Vector2(FirstOther + i * OtherPitch, 17.5f))];
 
     /// <summary>The port's first small portrait's left edge, which the name is over too, and how far apart the small portraits are, 20 and a gap of 2.83.</summary>
-    private const float FirstOther = 41, OtherPitch = (131 - 42.5f - 20) / (Core.Characters.Party.MaxSize - 2);
+    private const float FirstOther = 40.5f, OtherPitch = (131 - 42.5f - 20) / (Core.Characters.Party.MaxSize - 2);
 
     /// <summary>The port's aspect's and school's icons' right edge, where the last small portrait ended until Nov 6, 2026, kept as the icons' edge.</summary>
     private const float IconsRight = 131;
@@ -160,7 +166,7 @@ public partial class PartyTabView : Control
     private const float IconSize = 7.5f, IconGap = 1, IconsTop = 41.75f;
 
     /// <summary>The level's right edge, under the small portraits' right edge, and the gold's, at the list's.</summary>
-    private const int LevelRight = 149;
+    private const float LevelRight = 148.5f;
 
     /// <summary>
     /// The right column's page, the user's design (Nov 2, 2026): a loose sheet of the user's parchment (<see cref="UiPainter.Slip"/>) the
@@ -235,13 +241,16 @@ public partial class PartyTabView : Control
     /// The silhouette's slots' corner, centring them in the column under the bar (<see cref="PartyMenu.SilhouetteCorner"/>). Their places
     /// are the original's, from its silhouette's corner, but the port's boots (<see cref="PartyMenu.SlotPlace"/>).
     /// </summary>
-    private static readonly Vector2I SilhouetteAt = new(PartyMenu.SilhouetteCorner.X, PartyMenu.SilhouetteCorner.Y);
+    private static readonly Vector2 SilhouetteAt = new(PartyMenu.SilhouetteCorner.X, PartyMenu.SilhouetteCorner.Y);
+
+    /// <summary>How far up the equipment card's whole content went on Nov 6, 2026, the user's eye: the slots, the figure, the stats and the experience.</summary>
+    private const float EquipmentRise = 1.5f;
 
     /// <summary>
     /// The figure behind the slots, the user's art (<see cref="Figures"/>): its top and how tall it's drawn, centred under the helmet's
     /// slot, which puts its head under that slot and its feet at the boots'. Its width is the art's shape.
     /// </summary>
-    private const float FigureTop = 82.7f, FigureHeight = 138;
+    private const float FigureTop = 82.7f - EquipmentRise, FigureHeight = 138;
 
     /// <summary>Where a slot is from the silhouette's corner: the original's, but the port's boots.</summary>
     private Vector2I SlotOffset(EquipmentSlot slot)
@@ -451,6 +460,7 @@ public partial class PartyTabView : Control
             // keeps its card up.
             if (@event is InputEventMouseMotion)
                 _hoveredCell = null;
+            MouseDefaultCursorShape = CursorOver(mouse.Position);
             var onFoot = OwnTab && !OriginalLook && Menu.List == PartyList.Inventory && Menu.Grid ? FootControlAt(mouse.Position - (Vector2)_origin) : null;
             if (onFoot != _hoveredFoot)
             {
@@ -665,6 +675,7 @@ public partial class PartyTabView : Control
             case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } press:
                 _drag = null;
                 _press = Menu.HasPopup || Menu.Slide is not null ? null : DragFrom(press.Position) is { } from ? (from, press.Position) : null;
+                MouseDefaultCursorShape = CursorOver(press.Position);
                 return false;
             case InputEventMouseMotion motion when _press is { } pressed && (motion.ButtonMask & MouseButtonMask.Left) != 0:
                 if (_drag is null && (motion.Position - pressed.At).Length() < DragDistance)
@@ -683,6 +694,16 @@ public partial class PartyTabView : Control
         }
         return false;
     }
+
+    /// <summary>
+    /// The cursor's shape over a point on the view, which the cursors' art fills (<see cref="MouseCursors"/>): the fist (Drag) while an
+    /// item is held or dragged, the open hand (PointingHand) over an item that could be dragged, else the pointing finger (Arrow).
+    /// </summary>
+    private CursorShape CursorOver(Vector2 point) =>
+        !OwnTab || OriginalLook ? CursorShape.Arrow
+        : _press is not null || _drag is not null ? CursorShape.Drag
+        : DragFrom(point) is not null ? CursorShape.PointingHand
+        : CursorShape.Arrow;
 
     /// <summary>What a press at a point on the view would drag: a carried item in the grid, or what's worn in a slot.</summary>
     private DragSource? DragFrom(Vector2 point)
@@ -900,7 +921,7 @@ public partial class PartyTabView : Control
         new(SilhouetteCorner.X + SlotOffset(slot).X, SilhouetteCorner.Y + SlotOffset(slot).Y, SlotSize, SlotSize);
 
     /// <summary>The silhouette's slots' corner, the port's or the original's.</summary>
-    private Vector2I SilhouetteCorner => OriginalLook ? OriginalSilhouette : SilhouetteAt;
+    private Vector2 SilhouetteCorner => OriginalLook ? (Vector2)OriginalSilhouette : SilhouetteAt;
 
     /// <summary>Puts the cursor on the tab's list row under a point in the frame, or the crafting popup's while it's open. True if there was a row.</summary>
     private bool PointTabRow(PartyMenu menu, Vector2 at, bool select)
@@ -1641,7 +1662,8 @@ public partial class PartyTabView : Control
         var bar = BarOpening;
         var hp = $"{Num(numbers.Hp)} / {Num(numbers.MaxHp)}";
         var slim = _ui.Slim;
-        var small = slim.Sized(HitPointsText);
+        // The main face: the slim one at this size was too thin to read, the user's eye (Nov 6, 2026).
+        var small = _ui.Main.Sized(HitPointsText);
         Small(hp, bar.Position.X + (bar.Size.X - small.ExactWidth(hp)) / 2, bar.Position.Y + bar.Size.Y / 2f - small.Middle, BarText with { A = a },
             BarShadow with { A = (byte)(BarShadow.A * a / 255) }, small);
         var level = $"{LevelLabel} {Num(numbers.Level)}";
@@ -1655,11 +1677,11 @@ public partial class PartyTabView : Control
     /// over where it's another, and over it the slots, what's worn or each empty slot's image. As the member changes, or an item is
     /// put on or taken off, the slots the core says crossfade (<see cref="PartyMenu.SlotCrossfades"/>) fade from what they showed.
     /// </summary>
-    private void Silhouette(Vector2I at)
+    private void Silhouette(Vector2 at)
     {
         if (OriginalLook)
         {
-            OriginalSilhouetteSlots(at);
+            OriginalSilhouetteSlots((Vector2I)at);
             return;
         }
         var middle = at.X + SlotOffset(EquipmentSlot.Helmet).X + SlotSize / 2f;
@@ -1718,7 +1740,7 @@ public partial class PartyTabView : Control
     /// What a slot of the silhouette shows, its corner at (x, y): a worn item's icon 12 square inside the box's inner line, or the slot's
     /// own image of what it takes, filling the box to its inner line, the user's choice (Nov 2, 2026).
     /// </summary>
-    private void SlotArt(RecordId image, int x, int y, Rgba? color)
+    private void SlotArt(RecordId image, float x, float y, Rgba? color)
     {
         if (MenuImages.EmptySlots.Contains(image))
         {
@@ -1726,7 +1748,7 @@ public partial class PartyTabView : Control
             _ui.Image(_canvas, image, new Rect2(x - 1 + inner, y - 1 + inner, SlotSize + 2 - 2 * inner, SlotSize + 2 - 2 * inner), color);
             return;
         }
-        _ui.Image(_canvas, image, x + SlotInset, y + SlotInset, new Vector2I(BoxedSize, BoxedSize), color);
+        _ui.Image(_canvas, image, new Rect2(x + SlotInset, y + SlotInset, BoxedSize, BoxedSize), color);
     }
 
     /// <summary>How far in the slot's box its inner line ends, a share of its size: 50 of its 512.</summary>
@@ -1780,7 +1802,7 @@ public partial class PartyTabView : Control
         // The labels in a column, the values right-aligned at the card's edge.
         (string Label, string Value)[] lines = [(XpAvailable, exp.Remaining), (TotalXp, exp.Total), (NextLevel, exp.NextLevel)];
         var xpLabelX = right - lines.Max(l => font.ExactWidth(l.Value)) - CardLabelGap - lines.Max(l => font.ExactWidth(l.Label));
-        var lineMiddle = EquipmentSheet.End.Y - CardInset - CardPitch * (lines.Length - 0.5f);
+        var lineMiddle = EquipmentSheet.End.Y - CardInset - EquipmentRise - CardPitch * (lines.Length - 0.5f);
         foreach (var (label, value) in lines)
         {
             Small(label, xpLabelX, lineMiddle - font.Middle, PartyMenu.TextColor, font: font);
@@ -1792,8 +1814,11 @@ public partial class PartyTabView : Control
     /// <summary>How far in from the equipment card's paper its corners' text is, and how far apart the stats are.</summary>
     private const float CardInset = 5, CardPitch = 4.5f;
 
-    /// <summary>Where the stats' column starts: the inset under where the sheet's head was before it grew 6 up (Nov 6, 2026), so the stats stayed.</summary>
-    private static readonly float CardStatsTop = EquipmentSheet.Position.Y + HeaderRise + CardInset;
+    /// <summary>
+    /// Where the stats' column starts: the inset under where the sheet's head was before it grew 6 up (Nov 6, 2026), so the stats stayed,
+    /// less the card's rise.
+    /// </summary>
+    private static readonly float CardStatsTop = EquipmentSheet.Position.Y + HeaderRise + CardInset - EquipmentRise;
 
     /// <summary>The arrow between a stat's total and what an item would make it: its width, its gaps either side and its line.</summary>
     private const float ArrowWidth = 1.1f, ArrowGap = 1, ArrowLine = 0.4f;
@@ -1896,7 +1921,7 @@ public partial class PartyTabView : Control
     private const float TrashSize = 8, TrashLine = 0.45f;
 
     /// <summary>What the trash's art is drawn times while it's hot, which flushes its tan a little red: subtly, the user's eye (Nov 6, 2026).</summary>
-    private static readonly Rgba TrashHot = new(255, 190, 180, 255);
+    private static readonly Rgba TrashHot = new(255, 222, 216, 255);
 
     /// <summary>
     /// The controls' places under the grid, right-aligned at its edge: the trash last, and before it the order and the filter, each its
@@ -2008,7 +2033,8 @@ public partial class PartyTabView : Control
     private void Grid(GridLayout grid)
     {
         var list = Menu.Inventory;
-        var count = _ui.Slim.Sized(CountText);
+        // The main face, as the bar's text: the slim one at this size was too thin to read, the user's eye (Nov 6, 2026).
+        var count = _ui.Main.Sized(CountText);
         // The grid of what fits a slot or what the filter shows, with nothing in it, says so.
         if (list.Rows.Count == 0 && !OriginalLook)
         {
@@ -2325,11 +2351,11 @@ public partial class PartyTabView : Control
     /// <summary>
     /// The item box's and the hover's text, the user's eye (Nov 6, 2026): the name's capitals this tall in the main face (4.4, then 4,
     /// until Nov 6), this far over the card's lines (the card's gap, 4.6, less 1, then 1, as the gap still read too large), which are this
-    /// tall and this far apart; the help lines this far under them (1 until Nov 6), this tall (the card's lines' size less 0.6) and this
+    /// tall (2.6 until Nov 6, half a unit smaller) and this far apart; the help lines this far under them (1 until Nov 6), this tall (2) and this
     /// far apart; a button, the See Full Inventory's, this tall with this much beside its label; and the name on hover this tall, smaller
     /// than the stats card's.
     /// </summary>
-    private const float BoxNameText = 3, BoxNameGap = 1, BoxText = 2.6f, BoxLinePitch = 3.6f, BoxHelpGap = 2, BoxHelpText = 2, BoxHelpPitch = 3,
+    private const float BoxNameText = 3, BoxNameGap = 1, BoxText = 2.1f, BoxLinePitch = 3.6f, BoxHelpGap = 2, BoxHelpText = 2, BoxHelpPitch = 3,
         ButtonHeight = 5.5f, ButtonSide = 2.5f, HoverText = 2.3f;
 
     /// <summary>

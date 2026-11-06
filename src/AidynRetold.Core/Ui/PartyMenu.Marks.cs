@@ -113,9 +113,13 @@ public sealed partial class PartyMenu
             about.Add($"{(bonus.Amount > 0 ? "+" : "")}{Num(bonus.Amount)} {member.Rules[StatId.FromRecord(bonus.Stat)].Name}");
         if (row.Stack?.Left is { } left)
             about.Add(Spoilage.Describe(left));
+        // A line that only says the name again, a scroll's named as its spell, "Aura of Death", says nothing, the user's choice (Nov 6, 2026).
+        var text = about.Count > 0 ? string.Join(", ", about) : null;
+        if (text == item.Name)
+            text = null;
         if (row.Wearer is not null)
-            return new ItemCard(item.Name, about.Count > 0 ? string.Join(", ", about) : null);
-        return new ItemCard(item.Name, about.Count > 0 ? string.Join(", ", about) : null, Refusal(member, item));
+            return new ItemCard(item.Name, text);
+        return new ItemCard(item.Name, text, Refusal(member, item));
     }
 
     /// <summary>

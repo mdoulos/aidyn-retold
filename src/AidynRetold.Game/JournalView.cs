@@ -29,7 +29,7 @@ public partial class JournalView : Control
 
     public JournalView(PluginSet plugins)
     {
-        _ui = new UiPainter(plugins);
+        _ui = new UiPainter(plugins) { TextSize = UiPainter.LargeText };
         Name = "Journal";
         MouseFilter = MouseFilterEnum.Ignore;
     }

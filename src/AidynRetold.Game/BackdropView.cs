@@ -29,7 +29,7 @@ public partial class BackdropView : Control
 
     public BackdropView(PluginSet plugins)
     {
-        _ui = new UiPainter(plugins);
+        _ui = new UiPainter(plugins) { TextSize = UiPainter.LargeText };
         Name = "Backdrop page";
         MouseFilter = MouseFilterEnum.Ignore;
     }

@@ -25,7 +25,7 @@ public partial class CreditsLayer : CanvasLayer
         AddChild(backdrop);
         _screen.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         AddChild(_screen);
-        _view = new CreditsView(new UiPainter(plugins));
+        _view = new CreditsView(new UiPainter(plugins) { TextSize = UiPainter.LargeText });
         _view.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         _screen.Canvas.AddChild(_view);
     }

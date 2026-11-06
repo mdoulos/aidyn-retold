@@ -28,7 +28,7 @@ public partial class TrekPopupView : Control
 
     public TrekPopupView(PluginSet plugins)
     {
-        _ui = new UiPainter(plugins);
+        _ui = new UiPainter(plugins) { TextSize = UiPainter.LargeText };
         Name = "Trek popup";
         MouseFilter = MouseFilterEnum.Ignore;
         SetAnchorsPreset(LayoutPreset.FullRect);

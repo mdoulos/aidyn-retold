@@ -16,7 +16,7 @@ public partial class HudView : Control
 
     public HudView(PluginSet plugins)
     {
-        _ui = new UiPainter(plugins);
+        _ui = new UiPainter(plugins) { TextSize = UiPainter.LargeText };
         Name = "HUD";
         MouseFilter = MouseFilterEnum.Ignore;
         SetAnchorsPreset(LayoutPreset.FullRect);

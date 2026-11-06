@@ -20,7 +20,7 @@ public partial class CombatGuiView : Control
     public CombatGuiView(PluginSet plugins)
     {
         _plugins = plugins;
-        _ui = new UiPainter(plugins);
+        _ui = new UiPainter(plugins) { TextSize = UiPainter.LargeText };
         Name = "Battle screen";
         MouseFilter = MouseFilterEnum.Ignore;
         SetAnchorsPreset(LayoutPreset.FullRect);

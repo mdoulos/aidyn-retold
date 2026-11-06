@@ -39,7 +39,7 @@ public partial class TitleLayer : CanvasLayer
         Visible = false;
         _black.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         AddChild(_black);
-        _view = new TitleView(new UiPainter(plugins), plugins.All<StringsRecord>(RecordTypes.Strings).FirstOrDefault(s => s.Name == "Copyright")?.Lines ?? []);
+        _view = new TitleView(new UiPainter(plugins) { TextSize = UiPainter.LargeText }, plugins.All<StringsRecord>(RecordTypes.Strings).FirstOrDefault(s => s.Name == "Copyright")?.Lines ?? []);
         _view.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         // The logo under the screen, so the menu comes up over it as the original's does.
         _logo = new LogoView(_screen, _view);

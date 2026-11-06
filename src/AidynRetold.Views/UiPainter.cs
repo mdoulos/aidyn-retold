@@ -81,9 +81,11 @@ public sealed class UiPainter
     /// tab's level was first drawn at (Nov 2, 2026), the slim font's 7 at 0.6, which reads better on a fine screen than the fonts' own
     /// size, kept as large as it was for the console's pixels; Small, the tabs' captions, the gold, the grid's foot, the prompts, the
     /// Stats, Skills and Spells rows and an item box's name; and Fine, the counts, the bar's hit points, a box's lines and the names on
-    /// slips. Every piece of the menus' text is one of these.
+    /// slips. Every piece of the menus' text is one of these. Large, the rung above Heading, is the screens outside the menus': the
+    /// conversation box, the journal, backdrops, captions, the credits, the battle screen, trek's popups, the HUD and the title's menu,
+    /// which drew at the faces' own 8 and 7 until Nov 6, 2026, a hair off the rung, the user's choice.
     /// </summary>
-    public const float HeadingText = 5.6f, StandardText = 4.2f, SmallText = 3.2f, FineText = 2.4f;
+    public const float LargeText = 7.5f, HeadingText = 5.6f, StandardText = 4.2f, SmallText = 3.2f, FineText = 2.4f;
 
     /// <summary>
     /// How tall <see cref="Main"/>'s and <see cref="Slim"/>'s capitals are drawn, in the frame's pixels: <see cref="StandardText"/>
@@ -168,7 +170,7 @@ public sealed class UiPainter
         Glyph(canvas, font, glyph, new Rect2(glyph.X, glyph.Y, glyph.Width, glyph.Height), clip, color);
 
     /// <summary>A placed glyph drawn over a rectangle, as a font drawn smaller draws it.</summary>
-    private static void Glyph(CanvasItem canvas, UiFont font, PlacedGlyph glyph, Rect2 rect, Rect2I? clip, Color color)
+    public static void Glyph(CanvasItem canvas, UiFont font, PlacedGlyph glyph, Rect2 rect, Rect2I? clip, Color color)
     {
         var source = new Rect2(glyph.SourceX, glyph.SourceY, glyph.Width, glyph.Height);
         if (font.Face is { } face && face.Draws(glyph.SourceX, glyph.SourceY))

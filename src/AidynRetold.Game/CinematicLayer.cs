@@ -147,7 +147,7 @@ public partial class CinematicLayer : CanvasLayer
 
         public CaptionView(PluginSet plugins)
         {
-            _ui = new UiPainter(plugins);
+            _ui = new UiPainter(plugins) { TextSize = UiPainter.LargeText };
             Name = "Captions";
             MouseFilter = MouseFilterEnum.Ignore;
         }

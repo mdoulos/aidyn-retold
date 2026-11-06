@@ -25,7 +25,7 @@ public partial class ConversationBoxView : Control
     public ConversationBoxView(PluginSet plugins)
     {
         _plugins = plugins;
-        _painter = new UiPainter(plugins);
+        _painter = new UiPainter(plugins) { TextSize = UiPainter.LargeText };
         _images = _painter.Images;
         Name = "Conversation";
         MouseFilter = MouseFilterEnum.Ignore;
@@ -130,9 +130,15 @@ public partial class ConversationBoxView : Control
 
     private void Print(TextBlock block, Rgba color, int? glyphs = null)
     {
+        // The core lays the line out at the face's own size; the glyphs are drawn at the Large size, shrunk toward the block's corner
+        // and moved down the font's drop, as UiPainter.Text draws text smaller (Nov 6, 2026), so the lines end a little short of the box.
         var font = _painter.Main;
+        var (scale, drop) = (font.Scale, font.Drop);
         foreach (var glyph in font.Layout.Print(block.Text, block.X, block.Y, block.Bounds, color).Glyphs.Take(glyphs ?? int.MaxValue))
-            UiPainter.Glyph(this, font, glyph, null, UiPainter.Color8(glyph.Color));
+        {
+            var rect = new Rect2(block.X + (glyph.X - block.X) * scale, block.Y + drop + (glyph.Y - block.Y) * scale, glyph.Width * scale, glyph.Height * scale);
+            UiPainter.Glyph(this, font, glyph, rect, null, UiPainter.Color8(glyph.Color));
+        }
     }
 
     /// <summary>A speaker's portrait, or the code's fallback for one without.</summary>

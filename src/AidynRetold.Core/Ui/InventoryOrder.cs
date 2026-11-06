@@ -18,7 +18,7 @@ public static class InventoryOrder
     private static readonly ItemKind[] KindOrder =
     [
         ItemKind.Potion, ItemKind.Weapon, ItemKind.Wand, ItemKind.Scroll, ItemKind.Amulet, ItemKind.Ring, ItemKind.Helmet,
-        ItemKind.Cloak, ItemKind.Gloves, ItemKind.Boots, ItemKind.Belt, ItemKind.Armor, ItemKind.Shield, ItemKind.Key,
+        ItemKind.Cloak, ItemKind.Gloves, ItemKind.Bracers, ItemKind.Pants, ItemKind.Boots, ItemKind.Belt, ItemKind.Armor, ItemKind.Shield, ItemKind.Key,
         // The remade game's food, before the original's last.
         ItemKind.Food, ItemKind.Misc,
     ];

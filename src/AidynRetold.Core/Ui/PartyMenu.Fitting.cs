@@ -93,6 +93,8 @@ public sealed partial class PartyMenu
         EquipmentSlot.Belt => item.Kind == ItemKind.Belt,
         EquipmentSlot.Boots => item.Kind == ItemKind.Boots,
         EquipmentSlot.Wand => item.Kind == ItemKind.Wand,
+        EquipmentSlot.Pants => item.Kind == ItemKind.Pants,
+        EquipmentSlot.Bracers => item.Kind == ItemKind.Bracers,
         EquipmentSlot.Ring1 or EquipmentSlot.Ring2 => item.Kind == ItemKind.Ring,
         _ => item.Kind == ItemKind.Scroll && item.Bonuses.Spell is not null,
     };

@@ -426,7 +426,7 @@ public class EquipmentTests
 
         Assert.Equal(EquipRefusal.NoRoom, equipment.CanWear(weak));
         Assert.Equal(EquipRefusal.NoRoom, equipment.EquipGear(ItemData.Inst(Helmet(200))));
-        Assert.Equal(12, equipment.GearCount);
+        Assert.Equal(Equipment.GearSlots, equipment.GearCount);
     }
 
     [Fact]
@@ -1174,17 +1174,18 @@ public class PartyItemTests
     }
 
     [Fact]
-    public void AMemberWearsThreeScrollsWithASpellAndTheFourthIsRefused()
+    public void AMemberWearsTwoScrollsWithASpellAndTheThirdIsRefused()
     {
+        // Three until Nov 6, 2026, when the wand took the third scroll's slot.
         var (party, alaron) = Setup();
         foreach (var scroll in Scrolls)
             party.Inventory.Add(scroll.Id);
 
-        Assert.All(Scrolls.Take(3), s => Assert.Equal(EquipRefusal.None, party.Equip(alaron, s.Id)));
-        Assert.Equal(EquipRefusal.NoRoom, party.Equip(alaron, Scrolls[3].Id));
+        Assert.All(Scrolls.Take(2), s => Assert.Equal(EquipRefusal.None, party.Equip(alaron, s.Id)));
+        Assert.Equal(EquipRefusal.NoRoom, party.Equip(alaron, Scrolls[2].Id));
 
-        Assert.Equal(3, alaron.Equipment.GearCount);
-        Assert.True(party.Inventory.Has(Scrolls[3].Id));
+        Assert.Equal(2, alaron.Equipment.GearCount);
+        Assert.True(party.Inventory.Has(Scrolls[2].Id));
     }
 
     [Fact]

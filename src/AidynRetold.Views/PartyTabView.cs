@@ -259,12 +259,9 @@ public partial class PartyTabView : Control
     /// </summary>
     private const float FigureTop = 82.7f - EquipmentRise, FigureHeight = 138;
 
-    /// <summary>Where a slot is from the silhouette's corner: the original's, but the port's boots.</summary>
-    private Vector2I SlotOffset(EquipmentSlot slot)
-    {
-        var (x, y) = PartyMenu.SlotPlace(slot, OriginalLook);
-        return new Vector2I(x, y);
-    }
+    /// <summary>Where a slot is from the silhouette's corner: the port's or the original's, which has none for the port's two slots.</summary>
+    private Vector2I? SlotOffset(EquipmentSlot slot) =>
+        PartyMenu.SlotPlace(slot, OriginalLook) is var (x, y) ? new Vector2I(x, y) : null;
 
     private const int SlotSize = PartyMenu.SlotSize;
 
@@ -767,8 +764,8 @@ public partial class PartyTabView : Control
         {
             foreach (var slot in Enum.GetValues<EquipmentSlot>())
             {
-                if (PartyMenu.Fits(drag.From.Row.Item, slot))
-                    _canvas.DrawRect(SlotRect(slot).Grow(1.5f), green, false, DragOutline);
+                if (PartyMenu.Fits(drag.From.Row.Item, slot) && SlotRect(slot) is { } fits)
+                    _canvas.DrawRect(fits.Grow(1.5f), green, false, DragOutline);
             }
         }
         else
@@ -916,7 +913,7 @@ public partial class PartyTabView : Control
         var at = point - (Vector2)_origin;
         foreach (var slot in Enum.GetValues<EquipmentSlot>())
         {
-            if (SlotRect(slot).HasPoint(at) && (Menu.Worn(slot) is not null || !OriginalLook))
+            if (SlotRect(slot) is { } rect && rect.HasPoint(at) && (Menu.Worn(slot) is not null || !OriginalLook))
                 return slot;
         }
         return null;
@@ -939,9 +936,9 @@ public partial class PartyTabView : Control
     /// <summary>An icon over its rectangle in the frame, at a colour.</summary>
     private void Icon(RecordId icon, Rect2 rect, Rgba? color) => _ui.Image(_canvas, icon, rect, color);
 
-    /// <summary>Where a slot of the silhouette is in the frame.</summary>
-    private Rect2 SlotRect(EquipmentSlot slot) =>
-        new(SilhouetteCorner.X + SlotOffset(slot).X, SilhouetteCorner.Y + SlotOffset(slot).Y, SlotSize, SlotSize);
+    /// <summary>Where a slot of the silhouette is in the frame, or nowhere in the original look for the port's two slots.</summary>
+    private Rect2? SlotRect(EquipmentSlot slot) =>
+        SlotOffset(slot) is { } offset ? new(SilhouetteCorner.X + offset.X, SilhouetteCorner.Y + offset.Y, SlotSize, SlotSize) : null;
 
     /// <summary>The silhouette's slots' corner, the port's or the original's.</summary>
     private Vector2 SilhouetteCorner => OriginalLook ? (Vector2)OriginalSilhouette : SilhouetteAt;
@@ -1721,7 +1718,7 @@ public partial class PartyTabView : Control
             OriginalSilhouetteSlots((Vector2I)at);
             return;
         }
-        var middle = at.X + SlotOffset(EquipmentSlot.Helmet).X + SlotSize / 2f;
+        var middle = at.X + SlotOffset(EquipmentSlot.Helmet)!.Value.X + SlotSize / 2f;
         var figure = FigureOf(Menu.Shown!);
         if (Menu.Previous is { } previous && FigureOf(previous) is var was && was != figure)
         {
@@ -1736,8 +1733,10 @@ public partial class PartyTabView : Control
         var change = Menu.SlotsChange;
         foreach (var slot in Enum.GetValues<EquipmentSlot>())
         {
-            var x = at.X + SlotOffset(slot).X;
-            var y = at.Y + SlotOffset(slot).Y;
+            if (SlotOffset(slot) is not { } offset)
+                continue;
+            var x = at.X + offset.X;
+            var y = at.Y + offset.Y;
             Art(SlotBox, new Rect2(x - 1, y - 1, SlotSize + 2, SlotSize + 2));
             if (Menu.PreviousSlots is { } before && Menu.SlotCrossfades(slot))
             {
@@ -1760,7 +1759,10 @@ public partial class PartyTabView : Control
         var size = new Vector2I(SlotSize, SlotSize);
         foreach (var slot in Enum.GetValues<EquipmentSlot>())
         {
-            var (x, y) = (at.X + SlotOffset(slot).X, at.Y + SlotOffset(slot).Y);
+            // The port's two slots have no frame painted into the original's tab, so they aren't drawn in its look.
+            if (SlotOffset(slot) is not { } offset)
+                continue;
+            var (x, y) = (at.X + offset.X, at.Y + offset.Y);
             if (Menu.PreviousSlots is { } before && Menu.SlotCrossfades(slot))
             {
                 _ui.Image(_canvas, before[(int)slot] ?? MenuImages.EmptySlots[(int)slot], x, y, size, FadingOut(White, change));
@@ -2230,7 +2232,8 @@ public partial class PartyTabView : Control
             return;
         if (_hoveredSlot is { } slot)
         {
-            var rect = SlotRect(slot);
+            // The port's: every slot has a place.
+            var rect = SlotRect(slot)!.Value;
             if (Menu.Worn(slot) is { } worn)
                 HoverCard(new InventoryRow(worn, 1, Menu.Member), rect.End.X + 1, rect.Position.Y);
             else
@@ -2385,7 +2388,7 @@ public partial class PartyTabView : Control
         var (width, height) = BoxSize(shown.Card.Name, BoxLines(shown));
         Vector2 at;
         if (Menu.SelectedSlot is { } slot)
-            at = new Vector2(SlotRect(slot).End.X + 1, SlotRect(slot).Position.Y);
+            at = SlotRect(slot) is { } rect ? new Vector2(rect.End.X + 1, rect.Position.Y) : Vector2.Zero;
         else
         {
             var (x, y) = _gridLayout.CellAt(Menu.Inventory.Cursor - Menu.Inventory.First);

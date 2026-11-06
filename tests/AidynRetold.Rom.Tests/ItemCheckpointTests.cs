@@ -49,7 +49,8 @@ public sealed class ItemCheckpointTests(Na10Import fixture)
 
         foreach (var sheet in checkpoint.Party)
         {
-            Assert.Equal(Equipment.GearSlots, sheet.Gear.Count);
+            // The original's 12; the port's Equipment has one more.
+            Assert.Equal(12, sheet.Gear.Count);
             Assert.Equal(sheet.Gear.Count(g => g is not null), sheet.GearCount);
             Assert.Equal(ItemKind.Weapon, items[TestRoms.ItemId(sheet.Weapon!.Id)].Kind);
             if (sheet.Armor is { } armor)
@@ -80,7 +81,7 @@ public sealed class ItemCheckpointTests(Na10Import fixture)
             character.Equipment.RemoveWeapon();
             character.Equipment.RemoveArmor();
             character.Equipment.RemoveShield();
-            for (var slot = 0; slot < Equipment.GearSlots; slot++)
+            for (var slot = 0; slot < 12; slot++)
                 character.Equipment.RemoveGear(slot);
 
             foreach (var stat in Enum.GetValues<Stat>())

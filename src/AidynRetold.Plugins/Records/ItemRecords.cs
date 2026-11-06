@@ -199,6 +199,13 @@ public enum ItemKind
     /// ingredients by the Cook skill. No ID of the original's has this kind.
     /// </summary>
     Food = 32,
+    /// <summary>The port's legs slot, the user's design (Nov 6, 2026); no item has it yet.</summary>
+    Pants = 33,
+    /// <summary>
+    /// The port's forearms slot, the user's design (Nov 6, 2026): the original's gauntlets and claws, which the ACRE plugin gives this
+    /// kind (<c>records/slots/</c>), where its gloves keep <see cref="Gloves"/>.
+    /// </summary>
+    Bracers = 34,
 }
 
 /// <summary>Weapon classes, which are also the weapon skills (<c>aidyn:weaponskill/0</c>–<c>10</c>).</summary>

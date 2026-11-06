@@ -21,7 +21,7 @@ public enum EquipRefusal
     /// <summary>The character's base Intelligence is below what it needs (error 6).</summary>
     NeedsIntelligence,
     /// <summary>
-    /// All 12 gear slots are full, two rings or three scrolls are worn already, or the inventory can't
+    /// All the gear slots are full (<see cref="Equipment.GearSlots"/>), two rings or two scrolls are worn already, or the inventory can't
     /// take back what it replaces.
     /// </summary>
     NoRoom,
@@ -31,7 +31,7 @@ public enum EquipRefusal
 
 /// <summary>
 /// What a character has equipped (<c>CharSheet</c>'s weapon, armor and <c>CharGear</c>): a weapon,
-/// body armor, a shield, and 12 slots of worn gear. Equipping applies what each does to the sheet, and
+/// body armor, a shield, and the slots of worn gear (<see cref="GearSlots"/>). Equipping applies what each does to the sheet, and
 /// taking it off undoes it (<c>Entity::ApplyEquipment</c>).
 /// </summary>
 /// <remarks>
@@ -53,11 +53,15 @@ public enum EquipRefusal
 /// </remarks>
 public sealed class Equipment
 {
-    /// <summary>How many pieces of gear a character can wear (<c>GEARTOTAL</c>).</summary>
-    public const int GearSlots = 12;
+    /// <summary>
+    /// How many pieces of gear a character can wear: the original's 12 (<c>GEARTOTAL</c>) and one more for the port's two slots, the
+    /// pants' and the bracers', less the third scroll's (<see cref="Ui.EquipmentSlot"/>, the user's design, Nov 6, 2026): a helmet, an amulet,
+    /// a cloak, a belt, pants, gloves, bracers, boots, a wand, two rings and two scrolls.
+    /// </summary>
+    public const int GearSlots = 13;
 
-    /// <summary>How many rings and scrolls can be worn.</summary>
-    public const int Rings = 2, Scrolls = 3;
+    /// <summary>How many rings and scrolls can be worn: two scrolls where the original wore three, the wand taking the third's slot (Nov 6, 2026).</summary>
+    public const int Rings = 2, Scrolls = 2;
 
     private readonly Character _owner;
     private readonly ItemInstance?[] _gear = new ItemInstance?[GearSlots];
@@ -71,7 +75,7 @@ public sealed class Equipment
 
     public ItemInstance? Shield { get; private set; }
 
-    /// <summary>The 12 gear slots. One taken off leaves a gap, which the next piece fills.</summary>
+    /// <summary>The gear slots. One taken off leaves a gap, which the next piece fills.</summary>
     public IReadOnlyList<ItemInstance?> Gear => _gear;
 
     /// <summary>

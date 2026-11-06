@@ -78,8 +78,11 @@ public static class MenuImages
     /// the slot is empty (<c>gItemSlotBorg8Indecies</c>).
     /// </summary>
     public static readonly IReadOnlyList<RecordId> EmptySlots =
-        [.. new[] { 0x3601, 0x35F8, 0x35FA, 0x35F9, 0x35F3, 0x35F7, 0x35F4, 0x35F5, 0x35F6, 0x35FF, 0x3600, 0x35FB, 0x35FC, 0x35FD, 0x35FE }
-            .Select(Image)];
+    [
+        .. new[] { 0x3601, 0x35F8, 0x35FA, 0x35F9, 0x35F3, 0x35F7, 0x35F4, 0x35F5, 0x35F6, 0x35FF, 0x3600, 0x35FB, 0x35FC, 0x35FD }.Select(Image),
+        // The port's two slots, the remake's own art (the ACRE plugin's; stand-ins drawn by script until the user draws them, Nov 6, 2026).
+        RecordId.Parse($"{OwnNamespace}:image/slot_pants"), RecordId.Parse($"{OwnNamespace}:image/slot_bracers"),
+    ];
 
     /// <summary>Lunar's and Solar's icons (<c>getAspectIcon</c>). An item or spell of no aspect has none.</summary>
     /// <summary>The aspect's icon as the menus draw it, or none while aspects are off (<see cref="Aspects.Enabled"/>).</summary>
@@ -199,5 +202,11 @@ public enum EquipmentSlot
     Ring2,
     Scroll1,
     Scroll2,
-    Scroll3,
+    /// <summary>The port's, the user's design (Nov 6, 2026): the legs, under the belt. The original has no slot or item for it.</summary>
+    Pants,
+    /// <summary>
+    /// The port's, the user's design (Nov 6, 2026): the forearms, where the original's wand slot was (the wand took the third scroll's
+    /// place, so two scrolls are worn). Gauntlets and claws go here, and gloves alone on the hands (<c>ItemKind.Bracers</c>).
+    /// </summary>
+    Bracers,
 }

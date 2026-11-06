@@ -385,7 +385,7 @@ public partial class EntityPage : EditPage
     private sealed record Slot(string Label, Func<RecordId?> Get, Action<RecordId?> Set, Func<Character, Item, bool> Allows, string Hidden);
 
     /// <summary>The gear kinds a party member has a slot for, one each.</summary>
-    private static readonly ItemKind[] GearKinds = [ItemKind.Helmet, ItemKind.Cloak, ItemKind.Gloves, ItemKind.Ring, ItemKind.Wand, ItemKind.Belt, ItemKind.Boots, ItemKind.Amulet, ItemKind.Scroll];
+    private static readonly ItemKind[] GearKinds = [ItemKind.Helmet, ItemKind.Cloak, ItemKind.Gloves, ItemKind.Bracers, ItemKind.Pants, ItemKind.Ring, ItemKind.Wand, ItemKind.Belt, ItemKind.Boots, ItemKind.Amulet, ItemKind.Scroll];
 
     private string SlotsHelp() => _entity.Kind == EntityKind.Party
         ? "What it wears as it joins, and the weapons it brings into the inventory. Each slot picks from what its skills and stats let it carry."

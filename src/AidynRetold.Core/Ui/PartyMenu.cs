@@ -214,7 +214,8 @@ public sealed partial class PartyMenu : IPartyWindow
             EquipmentSlot.Wand => Nth(ItemKind.Wand, 0),
             EquipmentSlot.Scroll1 => Nth(ItemKind.Scroll, 0),
             EquipmentSlot.Scroll2 => Nth(ItemKind.Scroll, 1),
-            EquipmentSlot.Scroll3 => Nth(ItemKind.Scroll, 2),
+            EquipmentSlot.Pants => Nth(ItemKind.Pants, 0),
+            EquipmentSlot.Bracers => Nth(ItemKind.Bracers, 0),
             _ => null,
         };
 

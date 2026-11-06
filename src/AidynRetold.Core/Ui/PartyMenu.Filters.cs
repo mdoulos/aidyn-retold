@@ -52,7 +52,7 @@ public sealed partial class PartyMenu
     private static readonly Dictionary<InventoryFilter, ItemKind[]> FilterKinds = new()
     {
         [InventoryFilter.Weapons] = [ItemKind.Weapon],
-        [InventoryFilter.Armor] = [ItemKind.Armor, ItemKind.Shield, ItemKind.Helmet, ItemKind.Cloak, ItemKind.Gloves, ItemKind.Boots, ItemKind.Belt],
+        [InventoryFilter.Armor] = [ItemKind.Armor, ItemKind.Shield, ItemKind.Helmet, ItemKind.Cloak, ItemKind.Gloves, ItemKind.Bracers, ItemKind.Pants, ItemKind.Boots, ItemKind.Belt],
         [InventoryFilter.Accessories] = [ItemKind.Ring, ItemKind.Amulet, ItemKind.Wand],
         [InventoryFilter.Potions] = [ItemKind.Potion],
         [InventoryFilter.Scrolls] = [ItemKind.Scroll],

@@ -127,7 +127,7 @@ In the port, the throw rolls the `blast` dice of every thrown potion's record, i
 
 - **Worn enchantments** go on with the armor, shield or gear (`Character.PutOnEnchantment`, from `Equipment`), never running down, and come off with it (the first of the spell's that never runs down). A dispel can take one off until the battle's end puts it back. Only three exist: the Haste Amulet (Haste 1), the Boots of Speed (Haste 5) and the Ring of Healing (Photosynthesis 1, margin 1).
 - **Charges** go only from wands and scrolls worn as gear; the spells of weapons, armor, shields and other gear never run out. Nothing recharges them (`Party.RechargeItems`, `0x80078D5C`, is empty). Batteries are [items](items.md#equipment)'.
-- **Resistances** on the body armor, shield, weapon and the 12 gear slots count with the character's own (`Equipment.Resistances`).
+- **Resistances** on the body armor, shield, weapon and the 13 gear slots count with the character's own (`Equipment.Resistances`).
 
 ## The AI's values
 

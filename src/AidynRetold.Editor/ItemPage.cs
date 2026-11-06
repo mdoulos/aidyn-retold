@@ -17,7 +17,7 @@ namespace AidynRetold.Editor;
 public partial class ItemPage : ItemEditPage
 {
     private static readonly ItemKind[] Worn =
-        [ItemKind.Helmet, ItemKind.Cloak, ItemKind.Gloves, ItemKind.Ring, ItemKind.Wand, ItemKind.Belt, ItemKind.Boots, ItemKind.Amulet];
+        [ItemKind.Helmet, ItemKind.Cloak, ItemKind.Gloves, ItemKind.Bracers, ItemKind.Pants, ItemKind.Ring, ItemKind.Wand, ItemKind.Belt, ItemKind.Boots, ItemKind.Amulet];
 
     private readonly ItemRecord _record;
 

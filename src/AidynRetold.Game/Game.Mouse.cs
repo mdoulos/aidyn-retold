@@ -97,8 +97,8 @@ public partial class Game
 
     /// <summary>
     /// The cursor is Alaron's glove (<see cref="Views.MouseCursors"/>), the user's design (Nov 6, 2026): a metal gauntlet while he wears
-    /// metal gloves (<see cref="Plugins.Records.ItemTraits.Metal"/>, the Plate Gauntlets), leather with any other gloves or none; each
-    /// frame, as the gloves change.
+    /// anything metal on his arms (<see cref="Plugins.Records.ItemTraits.Metal"/>, the Plate Gauntlets, bracers since Nov 6, 2026),
+    /// leather otherwise; each frame, as his gear changes.
     /// </summary>
     private void DressCursor()
     {
@@ -106,7 +106,7 @@ public partial class Game
         if (_session?.MenuOpen != true)
             Views.MouseCursors.Over = Views.CursorPose.Point;
         var alaron = _session?.Game.Party.Members.FirstOrDefault(m => m.Entity == GameState.Alaron);
-        var metal = alaron?.Equipment.Gear.Any(g => g is { Item: { Kind: ItemKind.Gloves, Traits.Metal: true } }) == true;
+        var metal = alaron?.Equipment.Gear.Any(g => g is { Item.Traits.Metal: true }) == true;
         Views.MouseCursors.Show(metal ? Views.CursorHand.Metal : Views.CursorHand.Leather);
     }
 

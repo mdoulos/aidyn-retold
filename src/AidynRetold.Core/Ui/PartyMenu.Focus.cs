@@ -35,33 +35,41 @@ public sealed partial class PartyMenu
     public static readonly (float X, float Y) SilhouetteCorner = (22, 82);
 
     /// <summary>
-    /// Each slot's place from the silhouette's corner, by <see cref="EquipmentSlot"/> (<c>DollEquipmentMenu::SetSlotCoords</c>). The
-    /// shield's is level with the first scroll's, as its frame painted into <c>0x00D9</c> is and the user's captures show.
+    /// Each of the original's slots' place from the silhouette's corner, by <see cref="EquipmentSlot"/>
+    /// (<c>DollEquipmentMenu::SetSlotCoords</c>), the third scroll's, (90, 85), gone with the slot. The shield's is level with the first
+    /// scroll's, as its frame painted into <c>0x00D9</c> is and the user's captures show. The port's two slots have no place here: the
+    /// original look has no frame for them and doesn't draw them.
     /// </summary>
     public static readonly IReadOnlyList<(int X, int Y)> OriginalSlotPlaces =
     [
         (10, 47), (10, 66), (10, 85), (40, 2), (40, 24), (30, 43), (50, 43), (40, 62),
-        (40, 120), (70, 47), (70, 66), (70, 85), (90, 47), (90, 66), (90, 85),
+        (40, 120), (70, 47), (90, 47), (70, 85), (90, 66), (90, 85),
     ];
 
     /// <summary>
-    /// The boots' place in the port's layout, higher than the original's 120 down, so the slots and the figure fit between the lines the
-    /// user drew across the silhouette's sheet (Nov 2, 2026), at about y 85 and 218.
+    /// Each slot's place in the port's layout, by <see cref="EquipmentSlot"/>, the user's design (Nov 2 and 6, 2026): the original's, but
+    /// the boots 114 down, not 120, so the slots and the figure fit between the lines the user drew across the sheet at about y 85 and
+    /// 218; the wand in the top scroll's place, (90, 47), with two scrolls under it; the pants under the belt, (40, 81); and the bracers
+    /// where the wand was, (70, 66).
     /// </summary>
-    public static readonly (int X, int Y) PortBoots = (40, 114);
+    public static readonly IReadOnlyList<(int X, int Y)> PortSlotPlaces =
+    [
+        (10, 47), (10, 66), (10, 85), (40, 2), (40, 24), (30, 43), (50, 43), (40, 62),
+        (40, 114), (70, 47), (90, 47), (70, 85), (90, 66), (90, 85), (40, 81), (70, 66),
+    ];
 
     /// <summary>How wide and tall a slot of the silhouette is.</summary>
     public const int SlotSize = 16;
 
-    /// <summary>A slot's place from the silhouette's corner: the original's, but the port's boots.</summary>
-    public static (int X, int Y) SlotPlace(EquipmentSlot slot, bool originalLook) =>
-        !originalLook && slot == EquipmentSlot.Boots ? PortBoots : OriginalSlotPlaces[(int)slot];
+    /// <summary>A slot's place from the silhouette's corner: the port's, or the original's, which has none for the port's two slots.</summary>
+    public static (int X, int Y)? SlotPlace(EquipmentSlot slot, bool originalLook) =>
+        !originalLook ? PortSlotPlaces[(int)slot] : (int)slot < OriginalSlotPlaces.Count ? OriginalSlotPlaces[(int)slot] : null;
 
     /// <summary>What an empty slot takes, named on its slip.</summary>
     public static string SlotName(EquipmentSlot slot) => slot switch
     {
         EquipmentSlot.Ring1 or EquipmentSlot.Ring2 => "Ring",
-        EquipmentSlot.Scroll1 or EquipmentSlot.Scroll2 or EquipmentSlot.Scroll3 => "Scroll",
+        EquipmentSlot.Scroll1 or EquipmentSlot.Scroll2 => "Scroll",
         _ => slot.ToString(),
     };
 
@@ -183,7 +191,7 @@ public sealed partial class PartyMenu
     /// <summary>A slot's middle in the frame, in the port's layout.</summary>
     private static (float X, float Y) SlotMiddle(EquipmentSlot slot)
     {
-        var (x, y) = SlotPlace(slot, originalLook: false);
+        var (x, y) = PortSlotPlaces[(int)slot];
         return (SilhouetteCorner.X + x + SlotSize / 2f, SilhouetteCorner.Y + y + SlotSize / 2f);
     }
 

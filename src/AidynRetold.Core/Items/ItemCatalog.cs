@@ -88,7 +88,7 @@ public sealed class Item
 
     /// <summary>Whether it's worn in the gear slots rather than as the weapon, armor or shield.</summary>
     public bool IsGear => Kind is ItemKind.Helmet or ItemKind.Cloak or ItemKind.Gloves or ItemKind.Ring or ItemKind.Wand
-        or ItemKind.Belt or ItemKind.Boots or ItemKind.Amulet or ItemKind.Scroll;
+        or ItemKind.Belt or ItemKind.Boots or ItemKind.Amulet or ItemKind.Scroll or ItemKind.Pants or ItemKind.Bracers;
 
     internal static readonly RecordId StaminaStat = StatId.Record(Stat.Stamina);
 

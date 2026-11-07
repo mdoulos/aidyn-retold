@@ -88,8 +88,24 @@ public partial class WorldTabView : Control
             new ScreenRect(SeasonName.X, SeasonName.Y, SeasonRight, FrameHeight), WorldMenu.TextColor);
         _ui.Image(this, MenuImages.Today, Menu.Today.X, Menu.Today.Y, new Vector2I(TodaySize, TodaySize));
         var cursor = Active ? Menu.Pulse.Now(PartyMenu.HighlightFrom, PartyMenu.HighlightColor) : WorldMenu.TextColor;
-        _ui.Image(this, MenuImages.CampTitle, Camp.X, Camp.Y, color: Menu.Cursor == WorldChoice.Camp ? cursor : WorldMenu.TextColor);
-        _ui.Image(this, MenuImages.JournalTitle, Journal.X, Journal.Y, color: Menu.Cursor == WorldChoice.Journal ? cursor : WorldMenu.TextColor);
+        if (Menu.OriginalLook)
+        {
+            _ui.Image(this, MenuImages.CampTitle, Camp.X, Camp.Y, color: Menu.Cursor == WorldChoice.Camp ? cursor : WorldMenu.TextColor);
+            _ui.Image(this, MenuImages.JournalTitle, Journal.X, Journal.Y, color: Menu.Cursor == WorldChoice.Journal ? cursor : WorldMenu.TextColor);
+        }
+        else
+        {
+            // The port's: the words in the main face at the Large size, the user's choice (Nov 6, 2026), each with its capitals' top where
+            // its image's top is and its right end at the Journal image's, so they stand where the original's title images do.
+            var font = _ui.Main.Sized(UiPainter.LargeText);
+            var right = Journal.X + _ui.Size(MenuImages.JournalTitle).X;
+            Title("Camp", WorldChoice.Camp, Camp.Y);
+            Title("Journal", WorldChoice.Journal, Journal.Y);
+
+            void Title(string text, WorldChoice choice, int top) =>
+                _ui.Text(this, font, text, right - font.ExactWidth(text), top - (int)MathF.Round(font.Middle - font.Capitals / 2),
+                    Menu.Cursor == choice ? cursor : WorldMenu.TextColor);
+        }
         if (Veil > 0)
             _ui.Tab(this, PauseTab.World, PlainPatches, new Rgba(255, 255, 255, (byte)(Veil * 255)), plain: true);
         DrawSetTransform(Vector2.Zero);

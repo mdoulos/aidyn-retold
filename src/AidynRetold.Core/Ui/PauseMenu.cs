@@ -95,6 +95,9 @@ public sealed class PauseMenu
     private void Lay(PartyMenu party)
     {
         party.OriginalLook = OriginalLook;
+        // The World tab's menu is made after the first laying, as the menu opens.
+        if (World is not null)
+            World.OriginalLook = OriginalLook;
         if (party.Grid == OriginalLook)
             party.Grid = !OriginalLook;
         party.Pointing = _host.Pointing && !OriginalLook;
@@ -298,6 +301,7 @@ public sealed class PauseMenu
         var (place, outdoors) = _where();
         World = new WorldMenu(_game.Plugins, _game,
             place, outdoors);
+        World.OriginalLook = OriginalLook;
         Tab = tab;
         Position = (float)tab;
         TabsLocked = tabsLocked;

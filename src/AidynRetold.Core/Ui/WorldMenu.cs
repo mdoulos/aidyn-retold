@@ -30,6 +30,9 @@ public sealed class WorldMenu
     public const int MarkerSteps = 10;
 
     public static readonly Rgba TextColor = PartyMenu.TextColor;
+
+    /// <summary>Whether the tab looks as the original's does (<see cref="PauseMenu"/> sets it): Camp and Journal are its title images, else text.</summary>
+    public bool OriginalLook { get; set; }
     /// <summary>The ring's colour at the top of its pulse, from black.</summary>
     public static readonly Rgba MarkerColor = new(165, 158, 255, 255);
 

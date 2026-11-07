@@ -218,6 +218,26 @@ Redesigned, the user's design. Original brings back the original's layout ([ui](
 
 
 
+## The camp screen
+
+Camping is a screen in Retold where the original cuts to a scene ([world](world.md#camping)); everything on it is Retold's
+([camping](../systems/camping.md#the-camp-screen)).
+
+- **The picture pans**: the fire centred while the party talks, then up over a second to the picture's foot for the menu, and back as
+  a talk comes again.
+- **The menu is a band of the pause menu's scroll**: a strip of parchment between two of its rollers, which rises from below and unrolls
+  as the Party tab's scroll does, the rollers fading in as they stand up, and rolls up before Rest, Break camp or a talk.
+- **Five tabs down its left**, Camp, Food, Potions, Weapons and Armor, each with an icon, on slips that run under the content's paper;
+  the tab showing is joined to the paper as one sheet. Food, Potions and Armor are the Cook's, the Alchemist's and the Mechanic's
+  recipes; Weapons is empty for now.
+- **The cursor is on the tabs or in the content**: up and down change the tab, right or A goes into it, left or B comes back out, and B
+  on the tabs breaks camp. The mouse lights a tab and opens it only on a click, as the pause menu's tabs.
+- **The Camp tab shows the party**: each member's name and level over their portrait, framed as the Party tab's are and pulsing with
+  hunger or tiredness; the Party tab's hit points bar, with the points on it and split into Stamina and Endurance by the same rule; the
+  statuses stacked in badges with their names, the one place they're not icons in a row; and along the foot where the party is, how
+  much it carries and Rest with its hours. The mouse over a bar or a badge shows what the Party tab's do.
+- **The pause menu opens over the camp**, its World tab's Camp dimmed: "The party is already camped."
+
 ## Books and help pages
 
 

@@ -135,7 +135,7 @@ public sealed class ImportTests(Na10Import fixture)
         Assert.Equal((50f, 0f), (set.Get<TerrainRecord>(RecordId.Parse("aidyn:terrain/10")).Camp, set.Get<TerrainRecord>(RecordId.Parse("aidyn:terrain/19")).Camp));
         var camping = set.Get<CampingRecord>(RecordId.Parse("aidyn:camping/0"));
         Assert.Equal(8, camping.Scenes.Count);
-        Assert.Contains(set.Get<MapRecord>(camping.Campsite).Objects, o => o is DialogueObject);
+        Assert.Contains(set.Get<MapRecord>(camping.Campsite!.Value).Objects, o => o is DialogueObject);
 
         // The minimaps: eight map sets', every piece's image imported and every rule's piece one of its own.
         var minimaps = set.All<MinimapRecord>(RecordTypes.Minimap).ToList();

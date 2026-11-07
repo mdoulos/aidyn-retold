@@ -151,6 +151,9 @@ public sealed class GameSession
     private SoundHandle _campLoopHandle;
     private float _campLoopVolume, _campLoopLevel;
 
+    /// <summary>Trek's music as the camp opened, which comes back as it closes (<see cref="CampsiteRecord.Music"/>).</summary>
+    private RecordId? _musicBeforeCamp;
+
     /// <summary>How many ticks the campsite's loop fades in and out over: a second.</summary>
     public const int CampLoopFadeTicks = 60;
 
@@ -1052,6 +1055,9 @@ public sealed class GameSession
         // Where the party is, for the Camp tab: the place that names the chunk (PlaceRecord), else the campsite's name, capitalised.
         var location = Location ?? (site is { Name.Length: > 0 } ? char.ToUpperInvariant(site.Name[0]) + site.Name[1..] : "");
         Camp = new Ui.CampMenu(Game.Party, site, arrangement, offers, recipes, Game.Camping.RestHours, Game.Random.World) { Seed = seed, Location = location };
+        // Trek's music stops under the camp, the user's choice (Nov 7, 2026): the campsite's own plays in the music's volume, none yet.
+        _musicBeforeCamp = Zone.Audio.Music;
+        Zone.Audio.Music = site?.Music;
         Send(new Transition.OpenCamp(Camp));
         // The camp opens on the party's talk, the user's design (Nov 7, 2026): the night's conversation in the box over the picture,
         // the rows coming once it's over. With none to tell, the rows come at once.
@@ -1221,6 +1227,9 @@ public sealed class GameSession
     /// <summary>The camp screen closes (<see cref="Transition.CloseCamp"/>), trek's world still where it was under it.</summary>
     private void CloseCamp(CampChoice choice)
     {
+        // Trek's music again, from its start, unless something has asked for other music since, as a story scene's stage will.
+        if (Zone.Audio.Music == Camp?.Site?.Music)
+            Zone.Audio.Music = _musicBeforeCamp;
         Camp = null;
         Send(new Transition.CloseCamp(choice));
     }

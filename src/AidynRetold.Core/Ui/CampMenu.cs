@@ -172,16 +172,27 @@ public sealed class CampMenu
     /// <summary>
     /// A member's statuses for the Camp tab's badges, the one place they're stacked in a column with their names rather than icons in
     /// a row, the user's design (Nov 7, 2026): hunger's while Hungry or Starving, then tiredness's while Tired or Overtired, each with its
-    /// HUD icon and its name.
+    /// HUD icon, its name and what its hover says, as the Party tab's icon's does.
     /// </summary>
-    public static IReadOnlyList<(RecordId Icon, string Name)> Badges(Character member)
+    public static IReadOnlyList<(RecordId Icon, string Name, string Tooltip)> Badges(Character member)
     {
-        var badges = new List<(RecordId, string)>();
+        var badges = new List<(RecordId, string, string)>();
         if (StatusPulse.Rank(member.Hunger) > 0 && HungerDisplay.StatusIcon(member.Hunger) is { } hungry)
-            badges.Add((hungry, member.Hunger.ToString()));
+            badges.Add((hungry, member.Hunger.ToString(), HungerDisplay.Tooltip(member.Hunger) ?? member.Hunger.ToString()));
         if (RestDisplay.StatusIcon(member.Rest) is { } tired)
-            badges.Add((tired, member.Rest.ToString()));
+            badges.Add((tired, member.Rest.ToString(), RestDisplay.Tooltip(member.Rest) ?? member.Rest.ToString()));
         return badges;
+    }
+
+    /// <summary>
+    /// What the hover over a member's hit points bar says, as the Party tab's bar's does: Stamina's points of the hit points and the
+    /// rest's, Endurance's, each of what it's worth full.
+    /// </summary>
+    public static string BarTooltip(Character member)
+    {
+        var stamina = member.StaminaPoints;
+        var full = member.FullStamina;
+        return string.Format(CultureInfo.InvariantCulture, "Stamina {0} of {1}, Endurance {2} of {3}", stamina, full, member.Hp - stamina, member.MaxHp - full);
     }
 
     /// <summary>The tab showing.</summary>

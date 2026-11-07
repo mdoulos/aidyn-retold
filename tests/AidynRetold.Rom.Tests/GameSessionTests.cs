@@ -316,14 +316,14 @@ public sealed partial class GameSessionTests(Na10Import fixture)
         Assert.Equal(fight with { Source = BattleSource.Wanderer, Ambush = true, CollisionByte = 0 }, ambush);
 
         // A camp ambush where the player stands, in G14 (terrain 0): the terrain's two kinds at the party's level's tier, its least
-        // and most theirs summed, and no fleeing. Two of the Gwernia recruits make ambushes possible; each camp that isn't one heals and cues the scene.
+        // and most theirs summed, and no fleeing. Two of the Gwernia recruits make ambushes possible; a camp that isn't one opens the camp screen.
         var (camping, campHost) = Start("G14", 40, 40);
         foreach (var joined in new[] { 89, 90 })
             camping.Game.Flags.TrySet(RecordId.Decimal(RecordTypes.Flag, joined), true);
         // A seed whose d100 is 1 ambushes whatever the chance.
         var seed = Enumerable.Range(0, 10000).Select(s => (uint)s * 2654435761u).First(s => new Lcg(s).RollD(1, 100) == 1);
         camping.Game.Random.World.Seed = seed;
-        Assert.Equal(CampOutcome.Ambushed, camping.Trek.Camp());
+        Assert.Equal(CampOutcome.Ambushed, camping.Trek.BeginCamp());
         var camp = camping.Trek.CuedBattle!;
         var g14 = new ChunkRef(RecordId.Decimal(RecordTypes.MapSet, 0), 7, 14);
         Assert.Equal((BattleSource.Camp, g14, 0, null, true, false), (camp.Source, camp.Place, camp.Terrain, camp.Party, camp.Ambush, camp.CanFlee));
@@ -863,10 +863,13 @@ public sealed partial class GameSessionTests(Na10Import fixture)
     [Fact]
     public void TheMenusExitsCampOrStartTheHelpMenu()
     {
-        var (session, host) = Start("G14", 40, 40);
-        session.MenuClosed(PauseExit.Camp);
-        Assert.IsType<Transition.Camp>(host.Transitions[^1]);
+        // Camp opens the camp screen, the remade game's, where the terrain allows camping and no ambush comes.
+        var (camping, campHost) = Start("G14", 40, 40);
+        camping.MenuClosed(PauseExit.Camp);
+        Assert.IsType<Transition.OpenCamp>(campHost.Transitions.Last(t => t is Transition.OpenCamp or Transition.Camp));
+        Assert.Equal(GameMode.Camp, camping.Mode);
 
+        var (session, _) = Start("G14", 40, 40);
         session.MenuClosed(PauseExit.Help);
         Assert.Equal((GameMode.Backdrop, true), (session.Mode, session.Trek.Conversation!.ShowsBackdrop));
         Assert.Equal(SystemMenu.HelpScript, session.Trek.Conversation.Runner.Script.Id);

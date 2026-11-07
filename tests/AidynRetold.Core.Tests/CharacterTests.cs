@@ -208,6 +208,11 @@ public class CharacterTests
         alaron.TakeDamage(35);
         alaron.CampHeal(0.5f);
         Assert.Equal(55, alaron.Hp);
+
+        // The remade game's camp heals nothing, its batteries refilling by half all the same (CampingRecord.Recharge).
+        alaron.TakeDamage(10);
+        alaron.CampHeal(0, recharge: 0.5f);
+        Assert.Equal(45, alaron.Hp);
     }
 
     [Fact]

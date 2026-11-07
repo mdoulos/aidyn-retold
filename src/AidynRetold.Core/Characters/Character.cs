@@ -328,16 +328,17 @@ public sealed partial class Character
 
     /// <summary>
     /// Camping heals <paramref name="fraction"/> of the maximum hit points, truncated, up to what's
-    /// missing, and refills the worn items' batteries by the same fraction (<c>Entity::CampHeal</c>).
-    /// The party ages its effects beside it.
+    /// missing, and refills the worn items' batteries by the same fraction (<c>Entity::CampHeal</c>), or by
+    /// <paramref name="recharge"/> where it's given. The party ages its effects beside it.
     /// </summary>
-    public void CampHeal(float fraction)
+    public void CampHeal(float fraction, float? recharge = null)
     {
         var max = (ushort)MaxHp;
         var amount = (ushort)(max * fraction);
         var missing = (ushort)(max - Hp);
-        Heal(Math.Min(amount, missing));
-        Equipment.RechargeBatteries(fraction);
+        if (amount > 0)
+            Heal(Math.Min(amount, missing));
+        Equipment.RechargeBatteries(recharge ?? fraction);
     }
 
     /// <summary>

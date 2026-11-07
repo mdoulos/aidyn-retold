@@ -782,7 +782,9 @@ public sealed partial class TrekLoop : IMapObjectHost
         var rules = Game.Camping;
         var at = Player.Sphere.Position;
         var effectTicks = (int)Math.Min((long)rules.EffectTicks * Math.Max(hours, 0) / Math.Max(rules.RestHours, 1), int.MaxValue);
-        Game.NoteTossed(Game.Party.CampHeal(rules.Heal, effectTicks, Game.Random.Combat));
+        // The remade game heals nothing here, the camping record's heal being 0 in the ACRE plugin, and refills the batteries by half
+        // still (CampingRecord.Recharge).
+        Game.NoteTossed(Game.Party.CampHeal(rules.Heal, effectTicks, Game.Random.Combat, rules.Recharge));
 
         // The story's scene first, as the original looks for it.
         Game.Flags.TrySet(rules.Checking, true);
@@ -796,8 +798,9 @@ public sealed partial class TrekLoop : IMapObjectHost
             return new CampRestResult(CampNight.Scene, hours - (story.Script.Rest ? rules.RestHours : 0));
         }
 
-        // The camp talk was told as the camp opened (GameSession.OpenCamp), so else the Campsite's own, as the original falls back to it.
-        if (Game.Plugins.TryGet<MapRecord>(rules.Campsite) is { } campsite
+        // The camp talk was told as the camp opened (GameSession.OpenCamp), so else the Campsite's own, as the original falls back to it,
+        // where the camping record names one: the remade game names none, so its nights without a story scene play nothing.
+        if (rules.Campsite is { } campsiteMap && Game.Plugins.TryGet<MapRecord>(campsiteMap) is { } campsite
             && campsite.Objects.OfType<DialogueObject>().FirstOrDefault() is { } fire
             && CutSceneLaunch.Of(Game.Plugins, fire, MapRecord.VoxelId(campsite.Id, fire.Index)) is { } marshmallows)
         {

@@ -109,6 +109,10 @@ public sealed record CampLayout(int Size, IReadOnlyList<string> Slots);
 /// user's choice (Nov 7, 2026), in the ambient sounds' volume, fading in as the camp opens and out as it closes.
 /// </param>
 /// <param name="SoundVolume">How loud the loop plays, 0 to 1, under the ambient sounds' volume.</param>
+/// <param name="Music">
+/// The music while the camp shows, in the music's volume; none is silence. Trek's music stops as the camp opens, the user's choice
+/// (Nov 7, 2026), and comes back as it closes; the camp gets music of its own later.
+/// </param>
 public sealed record CampsiteRecord(
     RecordId Id,
     string Name,
@@ -125,7 +129,8 @@ public sealed record CampsiteRecord(
     bool Calibrated = false,
     RecordId? Vignette = null,
     RecordId? Sound = null,
-    float SoundVolume = 1)
+    float SoundVolume = 1,
+    RecordId? Music = null)
 {
     /// <summary>A slot by its name, or null.</summary>
     public CampSlot? Slot(string id) => Slots.FirstOrDefault(s => s.Id == id);

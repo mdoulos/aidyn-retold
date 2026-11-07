@@ -54,7 +54,9 @@ public partial class CampView : Control
     // user's design (Nov 7, 2026). The sides keep clear of the rollers, which lie over the band's ends.
     // The paper is the tabs' height: the top tab's top at its top and the bottom tab's foot at its foot, the tabs as tall as the gaps
     // between them leave (the user's design, Nov 7, 2026). Every tab's slip runs on under the paper; the tab showing's over it, fading.
-    private const float PaperTop = 2.5f, Side = 12, TabWidth = 42, TabGap = 1.2f, TabUnder = 8, TabOver = 3, TabIconSize = 9, TabIconLeft = 6,
+    // The tabs are as tall as the paper's height left them with gaps of TabGap, and set TabSpacing apart, so the column stands a little
+    // inside the paper's top and foot and the paper hides all of each slip that runs on under it, its torn corners too (Nov 7, 2026).
+    private const float PaperTop = 2.5f, Side = 12, TabWidth = 42, TabGap = 1.2f, TabSpacing = 0.4f, TabUnder = 8, TabIconSize = 9, TabIconLeft = 6,
         PointerLeft = 1.5f, PaperInsetX = 3, PaperInsetY = 3;
 
     /// <summary>
@@ -89,7 +91,13 @@ public partial class CampView : Control
     private readonly PauseScrollView? _scroll;
 
     /// <summary>What the mouse can land on: a tab, a recipe or Rest.</summary>
-    private enum Target { Tab, Recipe, Rest }
+    private enum Target { Tab, Recipe, Rest, Bar, Badge }
+
+    /// <summary>What the hover over a bar or a badge says, and where the bar or badge is on this control, or none.</summary>
+    private (string Text, Rect2 Area)? _tip;
+
+    /// <summary>A hover's slip: how far its text is from its sides and its ends, the Party tab's.</summary>
+    private const float TipSide = 3, TipEnds = 2;
 
     /// <summary>Where each tab, recipe and Rest was drawn, in the band's pixels, for the mouse: its area, what it is and its index.</summary>
     private readonly List<(Rect2 Area, Target Target, int Index)> _hits = [];
@@ -171,6 +179,13 @@ public partial class CampView : Control
             var hit = Hit(motion.Position);
             if (hit is var (target, index) ? Point(camp, target, index) : Unhover())
                 QueueRedraw();
+            // The bar's and the badges' hovers, as the Party tab's bar's and icons' are.
+            var tip = HitEntry(motion.Position) is { Target: Target.Bar or Target.Badge } entry ? TipOf(camp, entry) : null;
+            if (tip != _tip)
+            {
+                _tip = tip;
+                Top.QueueRedraw();
+            }
             return;
         }
         if (e is not InputEventMouseButton { Pressed: true } button)
@@ -193,12 +208,13 @@ public partial class CampView : Control
         }
         else if (button.ButtonIndex == MouseButton.Left && Hit(button.Position) is var (target, index))
         {
-            // A tab opens on a click, as the pause menu's do; a recipe or Rest is pointed at and pressed as A.
+            // A tab opens on a click, as the pause menu's do; a recipe or Rest is pointed at and pressed as A; a bar or a badge only
+            // has its hover.
             if (target == Target.Tab)
             {
                 camp.Choose(CampMenu.Tabs[index]);
             }
-            else
+            else if (target is not (Target.Bar or Target.Badge))
             {
                 Point(camp, target, index);
                 Click?.Invoke(MenuAction.Accept);
@@ -206,6 +222,30 @@ public partial class CampView : Control
             QueueRedraw();
             AcceptEvent();
         }
+    }
+
+    /// <summary>What's under a point of this control, with where it is on this control.</summary>
+    private (Rect2 Area, Target Target, int Index)? HitEntry(Vector2 at)
+    {
+        var inBand = at - _band.Position;
+        foreach (var (area, target, index) in _hits)
+        {
+            if (area.HasPoint(inBand))
+                return (new Rect2(area.Position + _band.Position, area.Size), target, index);
+        }
+        return null;
+    }
+
+    /// <summary>What a bar's or a badge's hover says, and where it is: a bar's index is its member's, a badge's its member's times four and its own.</summary>
+    private static (string Text, Rect2 Area)? TipOf(CampMenu camp, (Rect2 Area, Target Target, int Index) entry)
+    {
+        var members = camp.Members;
+        if (entry.Target == Target.Bar && members.ElementAtOrDefault(entry.Index) is { } member)
+            return (CampMenu.BarTooltip(member), entry.Area);
+        if (entry.Target == Target.Badge && members.ElementAtOrDefault(entry.Index / 4) is { } badged
+            && CampMenu.Badges(badged).ElementAtOrDefault(entry.Index % 4) is { Tooltip: { } text })
+            return (text, entry.Area);
+        return null;
     }
 
     /// <summary>What's under a point of this control, the hits being in the band's pixels.</summary>
@@ -235,6 +275,8 @@ public partial class CampView : Control
                 return changed;
             case Target.Recipe:
                 return camp.PointRecipe(index) | changed;
+            case Target.Bar or Target.Badge:
+                return changed;
             default:
                 var was = camp.Focus;
                 camp.FocusOn(CampFocus.Content);
@@ -389,6 +431,28 @@ public partial class CampView : Control
         }
         if (ShowOverlay && _ui.Images.Get(Thirds) is { } thirds)
             canvas.DrawTextureRect(thirds, new Rect2(Vector2.Zero, Size), false);
+        if (camp is { Open: true, Tab: CampTab.Camp } && _tip is var (text, area))
+            Tip(canvas, text, area);
+    }
+
+    /// <summary>
+    /// A hover's slip over what it's for, as the Party tab's names are on a little slip of the tooltip's parchment: its text in the slim
+    /// face at the Fine size, centred over the bar or badge, its foot just above it, kept inside the screen.
+    /// </summary>
+    private void Tip(CanvasItem canvas, string text, Rect2 over)
+    {
+        var font = _ui.Slim.Sized(UiPainter.FineText);
+        var width = font.ExactWidth(text);
+        var height = font.Capitals + 2 * TipEnds;
+        var left = Math.Clamp(over.GetCenter().X - width / 2 - TipSide, 4, Size.X - 4 - width - 2 * TipSide);
+        var paper = new Rect2(left, over.Position.Y - 1 - height, width + 2 * TipSide, height);
+        if (UiPainter.Original)
+            canvas.DrawRect(paper, new Color(0, 0, 0, 0.75f));
+        else
+            _ui.Slip(canvas, paper, sheet: UiPainter.TooltipSheet);
+        canvas.DrawSetTransform(new Vector2(left + TipSide, paper.Position.Y + height / 2 - font.Middle));
+        _ui.Text(canvas, font, text, 0, 0, UiPainter.Original ? new Rgba(255, 255, 255, 255) : UiPainter.Ink);
+        canvas.DrawSetTransform(Vector2.Zero);
     }
 
     private Rect2 DrawButton(CanvasItem canvas, Rect2 area, string text, bool lit)
@@ -690,8 +754,9 @@ public partial class CampView : Control
         var small = Font(UiPainter.SmallText);
         var count = CampMenu.Tabs.Count;
         var tabHeight = (paper.Size.Y - (count - 1) * TabGap) / count;
+        var columnTop = paper.Position.Y + (paper.Size.Y - count * tabHeight - (count - 1) * TabSpacing) / 2;
         // Each slip runs on under the paper, so no end of it shows beside the paper; what the mouse finds is the part that shows.
-        Rect2 SlipRect(int i) => new(Side, paper.Position.Y + i * (tabHeight + TabGap), TabWidth + TabUnder, tabHeight);
+        Rect2 SlipRect(int i) => new(Side, columnTop + i * (tabHeight + TabSpacing), TabWidth + TabUnder, tabHeight);
         Rect2 TabRect(int i) => SlipRect(i) with { Size = new Vector2(paper.Position.X - Side, tabHeight) };
         var showing = CampMenu.Tabs.ToList().IndexOf(camp.Tab);
         for (var i = 0; i < count; i++)
@@ -716,11 +781,9 @@ public partial class CampView : Control
         }
         else
         {
-            // Over the paper: cut at its edge, then on a little way over it fading out, and joined to it between its edges.
-            var slip = SlipRect(showing);
-            var cut = paper.Position.X + PaperEdge;
-            _ui.Slip(canvas, slip, sheet: UiPainter.GoldSheet, cutRightAt: cut);
-            FadeRight(canvas, UiPainter.GoldSheet, slip, cut, cut + TabOver + JoinFeather);
+            // Over the paper, cut at its border, so the tab's top and foot edges stop where they meet the paper's, and joined to it
+            // between them, so the tab and the paper read as one sheet (the user's eye, Nov 7, 2026).
+            _ui.Slip(canvas, SlipRect(showing), sheet: UiPainter.GoldSheet, cutRightAt: paper.Position.X + PaperEdge);
             JoinTab(canvas, current, paper);
         }
         TabFace(canvas, small, showing, current, current: true);
@@ -728,23 +791,6 @@ public partial class CampView : Control
         if (camp.Focus == CampFocus.Tabs)
             Pointer(canvas, Side + PointerLeft, current.GetCenter().Y, Cursor);
         _hits.Add((current, Target.Tab, showing));
-    }
-
-    /// <summary>
-    /// A strip of a sheet drawn over a rectangle, as <see cref="UiPainter.Slip"/> lays it, from <paramref name="from"/> to
-    /// <paramref name="to"/> across, opaque at its left and fading out to its right: the tab showing running on over the paper.
-    /// </summary>
-    private static void FadeRight(CanvasItem canvas, string sheet, Rect2 rect, float from, float to)
-    {
-        if (UiImages.Art(sheet) is not { } texture || to <= from)
-            return;
-        var drawn = UiPainter.SheetRect(sheet, rect);
-        Vector2 Uv(float x, float y) => new((x - drawn.Position.X) / drawn.Size.X, (y - drawn.Position.Y) / drawn.Size.Y);
-        var (top, bottom) = (drawn.Position.Y, drawn.End.Y);
-        canvas.DrawPolygon(
-            [new(from, top), new(to, top), new(to, bottom), new(from, bottom)],
-            [Colors.White, Colors.White with { A = 0 }, Colors.White with { A = 0 }, Colors.White],
-            [Uv(from, top), Uv(to, top), Uv(to, bottom), Uv(from, bottom)], texture);
     }
 
     /// <summary>A tab's icon and caption on its slip, the tab showing in the cursor's red and the others in brown with their icons faded.</summary>
@@ -827,15 +873,19 @@ public partial class CampView : Control
             var share = member.MaxHp > 0 ? Math.Clamp((float)member.Hp / member.MaxHp, 0, 1) : 0;
             var stamina = member.MaxHp > 0 ? Math.Clamp((float)member.StaminaPoints / member.MaxHp, 0, 1) : 0;
             _ui.HealthBar(canvas, frame, share, stamina, HeaderNumbers.Of(member).BarSplits ? 1 : 0);
+            _hits.Add((new Rect2(x, frame.Position.Y, block, BarHeight), Target.Bar, i));
             var opening = UiPainter.BarOpening(frame);
             var hp = $"{member.Hp} / {member.MaxHp}";
             Print(canvas, fine, hp, opening.Position.X + (opening.Size.X - fine.ExactWidth(hp)) / 2, opening.Position.Y + opening.Size.Y / 2 - fine.Middle,
                 BarText, BarShadow, bold: true);
             // The statuses' badges stacked under the bar, each icon drawn whole, so its round edge isn't cut as a sampled image's is.
             var badgeY = frame.End.Y + 1;
-            foreach (var (icon, name) in CampMenu.Badges(member))
+            var badges = CampMenu.Badges(member);
+            for (var n = 0; n < badges.Count; n++)
             {
+                var (icon, name, _) = badges[n];
                 var badge = new Rect2(x, badgeY, block, BadgeHeight);
+                _hits.Add((badge, Target.Badge, i * 4 + n));
                 if (UiPainter.Original)
                     canvas.DrawRect(badge, new Color(0, 0, 0, 0.2f));
                 else

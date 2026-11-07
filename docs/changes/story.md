@@ -6,6 +6,8 @@ run. Their crashes and softlocks that Retold fixes are in [bug fixes](bug-fixes.
 
 ## Conversations
 
+- **The party talks at camp**, in the conversation box over the camp screen ([world](world.md#camping)).
+
 - **Lines that animate the speaker play.** Nine conversation nodes ask the speaker for an animation in place of the talk, which never
   plays in 1.0: the line shows twice and takes A twice, as with the lighthouse keeper's "Here... take the key" (script 890). Retold plays
   the animation and shows the line once, in conversations; cut-scenes are as 1.0 has them
@@ -16,6 +18,9 @@ run. Their crashes and softlocks that Retold fixes are in [bug fixes](bug-fixes.
   ([ui](../systems/ui.md#the-shop)).
 
 ## Cut-scenes
+
+- **No marshmallows.** The original's camp falls back, on a night with no story scene, to Alaron alone at the fire ("pass the
+  marshmallows"); Retold's doesn't play it ([world](world.md#camping)).
 
 - **The Fire Lord's scene's walkers walk where the script says** (script `0x048F`). In 1.0 a walker stops at another actor's point, as
   bodies push; Retold's cut-scene actors don't push, the user's judgement: "less faithful but better", and Niesen no longer faces the wrong

@@ -136,16 +136,16 @@ public sealed partial class Party
     /// (<see cref="PartyInventory.Age"/>): what spoiled and left is returned, for the player to be told. The living sleep through it
     /// (<see cref="Character.Sleep"/>), so Tired and Overtired go.
     /// </summary>
-    public IReadOnlyList<Items.Tossed> CampHeal(float fraction, int effectTicks, IRandom random)
+    public IReadOnlyList<Items.Tossed> CampHeal(float fraction, int effectTicks, IRandom random, float? recharge = null)
     {
         foreach (var member in Members.Where(m => !m.IsDead))
         {
-            member.CampHeal(fraction);
+            member.CampHeal(fraction, recharge);
             member.AgeEffects(effectTicks, random: random);
             member.Sleep();
         }
         foreach (var stack in Inventory.Stacks)
-            Items.Equipment.Recharge(stack.Instance, fraction);
+            Items.Equipment.Recharge(stack.Instance, recharge ?? fraction);
         return Inventory.Age((ulong)Math.Max(effectTicks, 0) * GameClock.DaySpeed);
     }
 

@@ -17,6 +17,8 @@ settings are in [options](options.md#audio), and the audio bugs Retold fixes in 
   ([audio](../systems/audio.md#recordings-in-the-sequences-place)).
 - **Any sequence can be a recording.** A plugin's WAV named for a sequence plays wherever that sequence would
   ([audio](../systems/audio.md#recordings-in-the-sequences-place)).
+- **No music at camp.** Trek's music stops as the camp screen opens and starts again as it closes; the camp is to have music of its own,
+  in the music's volume ([camping](../systems/camping.md#the-camp-screen)).
 
 ## The text's voice
 
@@ -28,6 +30,11 @@ settings are in [options](options.md#audio), and the audio bugs Retold fixes in 
   ([ui](../systems/ui.md#the-conversation-box), [hardcoded content](../hardcoded-content.md#assets-engine-code-names)).
 
 ## Sound
+
+- **The fire crackles at camp**: the user's recording, looped without a seam, in the ambient sounds' volume, fading in and out with the
+  camp screen ([camping](../systems/camping.md#the-camp-screen)).
+- **The camp screen's menu makes the pause menu's sounds**: the cursor, the tabs, A, B and the member, and the scroll's as its band
+  unrolls and rolls up ([camping](../systems/camping.md#the-camp-screen)).
 
 - **A rain's loop goes on, hushed, under the post-battle windows**, where the original's is silent; whether to hush or stop it is still
   open ([weather](../systems/weather.md#differences-from-the-original)).

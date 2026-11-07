@@ -17,7 +17,10 @@ namespace AidynRetold.Plugins.Records;
 /// A dialogue object in the player's chunk whose enabling flag is one of these, and holds, starts as the party camps,
 /// the first found, wherever it is.
 /// </param>
-/// <param name="Campsite">With no camp scene, this map's first dialogue object starts.</param>
+/// <param name="Campsite">
+/// With no camp scene, this map's first dialogue object starts: the original's Alaron alone at the fire ("pass the marshmallows").
+/// None plays nothing in its place, as the remade game has it (the user's choice, Nov 7, 2026).
+/// </param>
 /// <param name="AmbushLevels">
 /// The highest average party level of each of the ambush's tiers but the last (<see cref="TerrainRecord.Ambushes"/>): 5, 10,
 /// 15 and 20 (<c>CampEncounters.Load</c>). Null in plugins imported before them.
@@ -25,6 +28,10 @@ namespace AidynRetold.Plugins.Records;
 /// <param name="RestHours">
 /// The hours a camp's rest passes before anything done at camp adds to them, the remade game's: 8, the original's
 /// (<c>World::Lapse8Hours</c>). Each thing made at camp adds its activity's hours (<see cref="CampActivityRecord.Hours"/>).
+/// </param>
+/// <param name="Recharge">
+/// The share of every battery's capacity that camping restores, or none for <paramref name="Heal"/>'s, as the original refills them
+/// by the same share it heals. The remade game heals nothing at camp and keeps the batteries' half (the user's choice, Nov 7, 2026).
 /// </param>
 public sealed record CampingRecord(
     RecordId Id,
@@ -37,6 +44,7 @@ public sealed record CampingRecord(
     int EffectTicks,
     RecordId Checking,
     IReadOnlyList<RecordId> Scenes,
-    RecordId Campsite,
+    RecordId? Campsite = null,
     IReadOnlyList<int>? AmbushLevels = null,
-    int RestHours = 8);
+    int RestHours = 8,
+    float? Recharge = null);

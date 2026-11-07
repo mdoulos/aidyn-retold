@@ -101,10 +101,9 @@ public sealed record CampLayout(int Size, IReadOnlyList<string> Slots);
 /// overlay says so while they aren't.
 /// </param>
 /// <param name="Vignette">
-/// A mask the picture's edges are darkened by (<c>acre:image/…</c>): white where the picture shows as painted, black where it's
-/// darkened, at the picture's size. The screen softens it and lays it over the picture as a shade; none leaves the picture as it is.
+/// A transparent image laid over the picture as painted (<c>acre:image/…</c>), at the picture's size: its dark at its own alpha,
+/// clear where the picture shows as it is. The screen changes nothing of it; none leaves the picture as it is.
 /// </param>
-/// <param name="VignetteStrength">How dark the mask's black is, 0 to 1: 0.8 leaves a fifth of the picture through.</param>
 public sealed record CampsiteRecord(
     RecordId Id,
     string Name,
@@ -119,8 +118,7 @@ public sealed record CampsiteRecord(
     IReadOnlyList<int>? Terrains = null,
     Rgba? Ambient = null,
     bool Calibrated = false,
-    RecordId? Vignette = null,
-    float VignetteStrength = 0.8f)
+    RecordId? Vignette = null)
 {
     /// <summary>A slot by its name, or null.</summary>
     public CampSlot? Slot(string id) => Slots.FirstOrDefault(s => s.Id == id);

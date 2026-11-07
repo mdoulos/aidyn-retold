@@ -123,7 +123,8 @@ public partial class CampView : Control
             DrawTextureRect(picture, fit, false);
         if (camp.Arrangement is { } arrangement && site is not null)
             DrawParty(arrangement, site, fit);
-        if (site?.Vignette is { } mask && Shade(mask, site.VignetteStrength) is { } shade)
+        // The vignette as painted: a transparent image with its dark at its own alpha, laid over the picture pixel for pixel.
+        if (site?.Vignette is { } vignette && _ui.Images.Get(vignette) is { } shade)
             DrawTextureRect(shade, fit, false);
         // The rows go while a talk shows in the box over the screen, and come back as it ends; the overlay and the debug buttons too.
         _talkButton = _debugButton = default;
@@ -151,35 +152,6 @@ public partial class CampView : Control
         _ui.TextSize = UiPainter.SmallText;
         _ui.Text(this, _ui.Main, text, (int)area.Position.X + 4, (int)area.Position.Y + 2, Button);
         return area;
-    }
-
-    private readonly Dictionary<RecordId, Texture2D?> _shades = [];
-
-    /// <summary>
-    /// The campsite's vignette as a shade to draw over the picture: the mask's dark made black at the strength and its light clear,
-    /// softened first by shrinking it to a 64th and growing it back, so a hard-edged mask falls off gently. Made once a mask.
-    /// </summary>
-    private Texture2D? Shade(RecordId mask, float strength)
-    {
-        if (_shades.TryGetValue(mask, out var made))
-            return made;
-        Texture2D? shade = null;
-        if (_plugins.FindAsset(mask, "png") is { } png && Png.Load(png) is { } image)
-        {
-            var (width, height) = (image.GetWidth(), image.GetHeight());
-            var soft = (Image)image.Duplicate();
-            soft.Convert(Image.Format.Rgba8);
-            soft.Resize(Math.Max(width / 64, 2), Math.Max(height / 64, 2), Image.Interpolation.Bilinear);
-            soft.Resize(width / 4, height / 4, Image.Interpolation.Cubic);
-            var dark = Image.CreateEmpty(soft.GetWidth(), soft.GetHeight(), false, Image.Format.Rgba8);
-            for (var y = 0; y < soft.GetHeight(); y++)
-            {
-                for (var x = 0; x < soft.GetWidth(); x++)
-                    dark.SetPixel(x, y, new Color(0, 0, 0, (1 - soft.GetPixel(x, y).Luminance) * Mathf.Clamp(strength, 0, 1)));
-            }
-            shade = ImageTexture.CreateFromImage(dark);
-        }
-        return _shades[mask] = shade;
     }
 
     /// <summary>Where the picture is drawn: as large as fits the screen, whole, centred, black either side.</summary>

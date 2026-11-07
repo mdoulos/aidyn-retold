@@ -1,5 +1,6 @@
 using System.Numerics;
 using AidynRetold.Core.Actors;
+using AidynRetold.Core.Audio;
 using AidynRetold.Core.Calendar;
 using AidynRetold.Core.Cameras;
 using AidynRetold.Core.Camp;
@@ -144,6 +145,14 @@ public sealed class GameSession
     private SessionSettings _settings;
     /// <summary>Whether the last tick froze trek, as while the runtime's free camera flies: then A and B in trek do nothing.</summary>
     private bool _frozen;
+
+    /// <summary>The campsite's loop (<see cref="CampsiteRecord.Sound"/>): its sequence while it plays, its handle, its volume and how far it has faded in.</summary>
+    private RecordId? _campLoop;
+    private SoundHandle _campLoopHandle;
+    private float _campLoopVolume, _campLoopLevel;
+
+    /// <summary>How many ticks the campsite's loop fades in and out over: a second.</summary>
+    public const int CampLoopFadeTicks = 60;
 
     private GameSession(GameState game, ITrekHost host, ZoneEngine zone, PlayerMotion player, FollowCamera camera, Settings? settings,
         IPauseMenuHost? menuHost, string? savesFolder, SessionSettings? playing, ICombatHost? combatHost)
@@ -419,6 +428,7 @@ public sealed class GameSession
             Game.CountTick();
         _frozen = frozen;
         StepStick();
+        StepCampLoop();
         // The menu's tick, every tick, before the mode's: a frame of it while it's open, and once it has closed, how it ended,
         // carried out here.
         var (scrollFrame, scrollLength) = ScrollClock();
@@ -1068,7 +1078,32 @@ public sealed class GameSession
             Send(new Transition.OpenMenu());
             return true;
         }
-        return camp.Press(action);
+        var pressed = camp.Press(action);
+        PlayCampSounds(camp);
+        return pressed;
+    }
+
+    /// <summary>
+    /// The camp band's sounds since the last call (<see cref="Ui.CampMenu.TakeSounds"/>), played as the pause menu plays its own: the
+    /// same sounds, for the same ticks, in the interface's group (the user's choice, Nov 7, 2026).
+    /// </summary>
+    public void PlayCampSounds(Ui.CampMenu camp)
+    {
+        foreach (var sound in camp.TakeSounds())
+        {
+            var menu = Game.Sounds.Menu;
+            var (id, ticks) = sound switch
+            {
+                CampSound.Cursor => (menu.Cursor, Audio.OneShot.ShortTicks),
+                CampSound.PageCursor => (menu.PageCursor, Audio.OneShot.ShortTicks),
+                CampSound.TabForward => (menu.TabForward, 2 * Audio.OneShot.MenuTicks),
+                CampSound.TabBack => (menu.TabBack, 2 * Audio.OneShot.MenuTicks),
+                CampSound.Accept => (menu.Accept, Audio.OneShot.MenuTicks),
+                CampSound.Back => (menu.Back, Audio.OneShot.MenuTicks),
+                _ => (menu.Member, Audio.OneShot.MenuTicks),
+            };
+            _menuHost.Cue(new MenuSoundCue(new Audio.OneShot(id, ticks, Group: Audio.SoundGroup.Interface)));
+        }
     }
 
     /// <summary>
@@ -1100,6 +1135,7 @@ public sealed class GameSession
         var tick = camp.Step(frame, length);
         if (tick.Cue is { } cue)
             _menuHost.Cue(new CampScrollCue(cue, tick.Restart));
+        PlayCampSounds(camp);
         if (tick.Closed)
         {
             switch (camp.Choice)
@@ -1143,6 +1179,44 @@ public sealed class GameSession
     /// (<see cref="StepCamp"/>); the band comes back as it ends. Whether the band took it.
     /// </summary>
     public bool TriggerCampTalk() => Camp is { } camp && camp.RequestTalk();
+
+    /// <summary>
+    /// A tick of the campsite's loop, under the camp screen and the pause menu over it alike (<see cref="CampsiteRecord.Sound"/>): it
+    /// starts as the camp opens, looped and centred, fades in over a second to its volume times the ambient sounds' volume, starts again if
+    /// something stopped it, as a cinematic stops every sound, and fades out over a second once the camp has closed, then stops.
+    /// </summary>
+    private void StepCampLoop()
+    {
+        var audio = Zone.Audio;
+        if (Camp?.Site is { Sound: { } sound } site)
+        {
+            if (_campLoop != sound || !audio.IsPlaying(_campLoopHandle))
+            {
+                audio.Stop(_campLoopHandle);
+                _campLoopHandle = audio.Start(sound, 0, WeatherSounds.Centre, loop: true);
+                if (_campLoop != sound)
+                    _campLoopLevel = 0;
+                _campLoop = sound;
+            }
+            _campLoopVolume = site.SoundVolume;
+            _campLoopLevel = Math.Min(1, _campLoopLevel + 1f / CampLoopFadeTicks);
+        }
+        else if (_campLoop is not null)
+        {
+            _campLoopLevel = Math.Max(0, _campLoopLevel - 1f / CampLoopFadeTicks);
+            if (_campLoopLevel <= 0)
+            {
+                audio.Stop(_campLoopHandle);
+                (_campLoop, _campLoopHandle) = (null, default);
+                return;
+            }
+        }
+        else
+        {
+            return;
+        }
+        audio.Set(_campLoopHandle, GameAudio.Volume(_campLoopLevel * _campLoopVolume * audio.Level(SoundGroup.Ambient)), WeatherSounds.Centre);
+    }
 
     /// <summary>The camp screen closes (<see cref="Transition.CloseCamp"/>), trek's world still where it was under it.</summary>
     private void CloseCamp(CampChoice choice)

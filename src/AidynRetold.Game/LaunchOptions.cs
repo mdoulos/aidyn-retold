@@ -118,9 +118,11 @@ public sealed class LaunchOptions(Dictionary<string, string> values)
     /// <summary>The time of day in hours.</summary>
     public float? Time => Number("time");
 
-    /// <summary>Plain flags to set before anything loads, such as 5,11 for after the Kendall and ambush cut-scenes.</summary>
-    public IEnumerable<int> Flags =>
-        (Text("flags") ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).Select(f => int.Parse(f, CultureInfo.InvariantCulture));
+    /// <summary>
+    /// Flags to set before anything loads: plain numbers, such as 5,11 for after the Kendall and ambush cut-scenes, or record IDs, such
+    /// as acre:flag/camp_brenna_stars, a plugin's own.
+    /// </summary>
+    public IEnumerable<string> Flags => (Text("flags") ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries);
 
     /// <summary>Whether bodies and actors are lit by point lights; <c>--lights off</c> leaves them lit by the sky alone, as a baseline.</summary>
     public bool PointLights => Text("lights") != "off";
@@ -142,7 +144,12 @@ public sealed class LaunchOptions(Dictionary<string, string> values)
     public void SetFlags(GameState game)
     {
         foreach (var flag in Flags)
-            game.Flags.Set(flag, true);
+        {
+            if (int.TryParse(flag, NumberStyles.None, CultureInfo.InvariantCulture, out var plain))
+                game.Flags.Set(plain, true);
+            else if (!game.Flags.TrySet(Plugins.RecordId.Parse(flag), true))
+                GD.PushWarning($"--flags: no flag {flag}.");
+        }
     }
 
     // The settings for this run, a layer over the player's (LaunchSettings).

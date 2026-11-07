@@ -101,6 +101,13 @@ public partial class PauseScrollView : Control
     /// </summary>
     private const float HeldSpan = 0.718f, StartSpan = 0.123f;
 
+    /// <summary>
+    /// How much nearer the middle a band's rollers are drawn as they start, of the scroll's length, less and less as they go out, none
+    /// once held open: the actor's two rolled together still showed a sliver of the world between them, which the user wanted closed
+    /// (Nov 7, 2026).
+    /// </summary>
+    private const float StartPull = 0.025f;
+
     /// <summary>The scroll's clock in the state it's in, from 1.</summary>
     public int Frame => _animator.Frame;
 
@@ -313,7 +320,9 @@ public partial class PauseScrollView : Control
                 var column = Camera.UnprojectPosition(axis).X / Fine - centre;
                 var start = StartSpan * lines;
                 var past = Math.Max(0, Math.Abs(column) - start);
-                _shift = Math.Sign(column) * past * ((half - start) / (HeldSpan * lines - start) - 1);
+                var way = HeldSpan * lines - start;
+                var pull = StartPull * lines * (1 - Math.Clamp(past / way, 0, 1));
+                _shift = Math.Sign(column) * (past * ((half - start) / way - 1) - pull);
             }
         }
 

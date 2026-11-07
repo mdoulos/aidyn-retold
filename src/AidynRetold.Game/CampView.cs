@@ -52,7 +52,10 @@ public partial class CampView : Control
     // The band's layout, in the band's pixels from its top left corner: the tabs' slips down the left, spread from the band's top to
     // its foot, each with its icon and caption, and the tab showing joined to the content's paper beside them, the wide sheet, the
     // user's design (Nov 7, 2026). The sides keep clear of the rollers, which lie over the band's ends.
-    private const float Edge = 5, Side = 12, TabWidth = 42, TabHeight = 14, TabIconSize = 9, TabIconLeft = 2.5f, PaperInsetX = 4, PaperInsetY = 3;
+    // The paper is the tabs' height: the top tab's top at its top and the bottom tab's foot at its foot, the tabs as tall as the gaps
+    // between them leave (the user's design, Nov 7, 2026). Every tab's slip runs on under the paper; the tab showing's over it, fading.
+    private const float PaperTop = 2.5f, Side = 12, TabWidth = 42, TabGap = 1.2f, TabUnder = 8, TabOver = 3, TabIconSize = 9, TabIconLeft = 6,
+        PointerLeft = 1.5f, PaperInsetX = 3, PaperInsetY = 3;
 
     /// <summary>
     /// How far the join between the tab showing and the paper fades out at its ends and along its sides, how deep the paper's torn
@@ -62,8 +65,16 @@ public partial class CampView : Control
 
     // The Camp tab: the name and level over each portrait, 30 square as the HUD's, the portraits 2 apart, the bar under each and its
     // status badges under that, and the foot row with the location, the inventory and Rest.
-    private const float PortraitSize = 30, MemberPitch = 32, NameRow = 6, BarHeight = 7, BadgeHeight = 6, BadgePitch = 6.75f, BadgeIcon = 5,
-        BadgeIconLeft = 1.5f, FootHeight = 10;
+    // Each portrait framed as the Party tab's are, on the small square sheet with its border, as large as five fit with a gap between
+    // their frames that keeps them and their shadows apart; the bar and the badges as wide as the frame.
+    private const float PortraitSize = 30, PortraitBorder = 0.85f, FrameGap = 2.5f, NameRow = 6, BarHeight = 7, BadgeHeight = 6, BadgePitch = 6.75f,
+        BadgeIcon = 5, BadgeIconLeft = 1.5f, FootHeight = 10;
+
+    /// <summary>The tab the mouse is over, which is lit, and opens only when it's clicked, as the pause menu's tabs do.</summary>
+    private int? _hoveredTab;
+
+    /// <summary>The tabs' slips behind and the one under the mouse, the Party tab's tints.</summary>
+    private static readonly Rgba HoveredTab = new(242, 236, 226, 255);
 
     /// <summary>
     /// How many frames the band is drawn invisible as the camp opens, so its textures load then rather than as it unrolls, where the
@@ -99,6 +110,8 @@ public partial class CampView : Control
         MouseFilter = MouseFilterEnum.Pass;
         Band.Painter = PaintBand;
         Top.Painter = PaintTop;
+        Glow.Painter = PaintGlow;
+        Fire.Painter = PaintFire;
     }
 
     /// <summary>The band's control, cut at the rollers, placed by <see cref="_Draw"/>: the layer puts it over this control and under the scroll.</summary>
@@ -106,6 +119,21 @@ public partial class CampView : Control
 
     /// <summary>The debug marks over everything: the buttons and the rule-of-thirds lines; the layer puts it over the scroll.</summary>
     public PaintedControl Top { get; } = new() { Name = "Camp marks", MouseFilter = MouseFilterEnum.Ignore };
+
+    /// <summary>The firelight over the picture, added to it (<see cref="PaintGlow"/>); the layer puts it over this control.</summary>
+    public PaintedControl Glow { get; } = new()
+    {
+        Name = "Camp firelight",
+        MouseFilter = MouseFilterEnum.Ignore,
+        Material = new CanvasItemMaterial { BlendMode = CanvasItemMaterial.BlendModeEnum.Add },
+    };
+
+    /// <summary>The smoke and the flames over the painted fire (<see cref="PaintFire"/>); the layer puts it over the firelight.</summary>
+    public PaintedControl Fire { get; } = new() { Name = "Camp fire", MouseFilter = MouseFilterEnum.Ignore };
+
+    /// <summary>Where the picture was drawn last, and its campsite, which the fire is placed on.</summary>
+    private Rect2 _fit;
+    private CampsiteRecord? _site;
 
     /// <summary>The camp screen showing, or null.</summary>
     public CampMenu? Camp { get; set; }
@@ -140,7 +168,8 @@ public partial class CampView : Control
             return;
         if (e is InputEventMouseMotion motion)
         {
-            if (Hit(motion.Position) is var (target, index) && Point(camp, target, index))
+            var hit = Hit(motion.Position);
+            if (hit is var (target, index) ? Point(camp, target, index) : Unhover())
                 QueueRedraw();
             return;
         }
@@ -164,10 +193,16 @@ public partial class CampView : Control
         }
         else if (button.ButtonIndex == MouseButton.Left && Hit(button.Position) is var (target, index))
         {
-            // A tab is shown by the click alone; a recipe or Rest is pointed at and pressed as A.
-            Point(camp, target, index);
-            if (target != Target.Tab)
+            // A tab opens on a click, as the pause menu's do; a recipe or Rest is pointed at and pressed as A.
+            if (target == Target.Tab)
+            {
+                camp.Choose(CampMenu.Tabs[index]);
+            }
+            else
+            {
+                Point(camp, target, index);
                 Click?.Invoke(MenuAction.Accept);
+            }
             QueueRedraw();
             AcceptEvent();
         }
@@ -185,29 +220,47 @@ public partial class CampView : Control
         return null;
     }
 
-    /// <summary>The mouse over something: the tab shown and the tabs focused, or the recipe or Rest pointed at in the content; whether anything changed.</summary>
-    private static bool Point(CampMenu camp, Target target, int index)
+    /// <summary>
+    /// The mouse over something: a tab lit, opening only on a click, as the pause menu's tabs do; or the recipe or Rest pointed at in the
+    /// content; whether anything changed.
+    /// </summary>
+    private bool Point(CampMenu camp, Target target, int index)
     {
+        int? hovered = target == Target.Tab ? index : null;
+        var changed = hovered != _hoveredTab;
+        _hoveredTab = hovered;
         switch (target)
         {
             case Target.Tab:
-                var tab = CampMenu.Tabs[index];
-                var changed = camp.Tab != tab || camp.Focus != CampFocus.Tabs;
-                if (camp.Tab != tab)
-                    camp.Show(tab);
-                camp.FocusOn(CampFocus.Tabs);
                 return changed;
             case Target.Recipe:
-                return camp.PointRecipe(index);
+                return camp.PointRecipe(index) | changed;
             default:
                 var was = camp.Focus;
                 camp.FocusOn(CampFocus.Content);
-                return was != CampFocus.Content;
+                return was != CampFocus.Content || changed;
         }
+    }
+
+    /// <summary>The mouse off the tabs: none lit; whether one was.</summary>
+    private bool Unhover()
+    {
+        var was = _hoveredTab is not null;
+        _hoveredTab = null;
+        return was;
     }
 
     /// <summary>A camp has opened: the band draws invisible for a frame or two, so what it draws with is loaded before it unrolls.</summary>
     public void Warm() => _warmFrames = WarmFrames;
+
+    /// <summary>The fire moves every frame, at the frame's rate, not the ticks'.</summary>
+    public override void _Process(double delta)
+    {
+        if (Camp is null)
+            return;
+        Glow.QueueRedraw();
+        Fire.QueueRedraw();
+    }
 
     public override void _Draw()
     {
@@ -223,6 +276,7 @@ public partial class CampView : Control
         DrawRect(new Rect2(Vector2.Zero, size), Colors.Black);
         var site = camp.Site;
         var fit = Fit(site, size, camp.Pan);
+        (_fit, _site) = (fit, site);
         if (site is not null && _ui.Images.Get(site.Image) is { } picture)
             DrawTextureRect(picture, fit, false);
         if (camp.Arrangement is { } arrangement && site is not null)
@@ -398,6 +452,155 @@ public partial class CampView : Control
         }
     }
 
+    // The fire over the painted one, the user's choice (Nov 7, 2026): flames from the user's sheet of them (art-flames-flicker, cut into
+    // camp_flame_00 to 13, the first seven tall and the rest short), smoke from the sheet of plumes, faint, and the firelight. "Later that
+    // will change", the user said: the picture is to have its fire painted out, and these are to stand on the logs in its place. Sizes
+    // and offsets are in the picture's pixels, from the fire's anchor (CampsiteRecord.Fire), and scaled with it as it's drawn.
+
+    private static readonly RecordId[] Flames = [.. Enumerable.Range(0, 14).Select(i => RecordId.Parse($"acre:image/camp_flame_{i:00}"))];
+    private static readonly RecordId[] Smokes = [.. Enumerable.Range(0, 12).Select(i => RecordId.Parse($"acre:image/camp_smoke_{i:00}"))];
+
+    /// <summary>
+    /// The flames across the pit, back to front: each one's offset from the fire's anchor, its height, whether it's drawn from the tall
+    /// flames or the short, and how many shapes a second it changes through.
+    /// </summary>
+    private static readonly (float X, float Height, bool Tall, float Rate)[] FlameLayout =
+    [
+        (-30, 28, false, 7.5f), (30, 30, false, 8.5f), (-14, 44, true, 6.5f), (15, 46, true, 7f), (1, 62, true, 6f),
+    ];
+
+    /// <summary>How far under the anchor the flames' feet are, how wide a flame is drawn of its sprite's shape, and how opaque.</summary>
+    private const float FlameDrop = 6, FlameWidth = 0.9f, FlameAlpha = 0.92f;
+
+    /// <summary>The smoke: how many plumes rise at once, how long each takes, how far it rises and how tall it grows, and how faint it is.</summary>
+    private const int SmokePlumes = 4;
+    private const float SmokeSeconds = 9, SmokeRise = 230, SmokeFrom = 110, SmokeTo = 220, SmokeAlpha = 0.24f;
+
+    /// <summary>The firelight's soft round, made once: white in the middle fading out to nothing at the edge.</summary>
+    private static readonly GradientTexture2D LightRound = new()
+    {
+        Width = 256,
+        Height = 256,
+        Fill = GradientTexture2D.FillEnum.Radial,
+        FillFrom = new Vector2(0.5f, 0.5f),
+        FillTo = new Vector2(1, 0.5f),
+        Gradient = new Gradient
+        {
+            Offsets = [0, 0.35f, 1],
+            Colors = [Colors.White, new Color(1, 1, 1, 0.45f), new Color(1, 1, 1, 0)],
+        },
+    };
+
+    /// <summary>The firelight's colour: the warm orange of the painted fire's light on the ground.</summary>
+    private static readonly Color FireLight = new(1f, 0.56f, 0.24f);
+
+    /// <summary>
+    /// The firelight, added to the picture under the flames: a wide pool on the ground round the pit and a brighter round about the
+    /// flames, both ebbing and flickering as the fire does (<see cref="FireStrength"/>).
+    /// </summary>
+    private void PaintGlow(CanvasItem canvas)
+    {
+        if (Camp is null || _site is not { } site || site.Width <= 0)
+            return;
+        var pixel = _fit.Size.X / site.Width;
+        var fire = At(_fit, site.Fire.X, site.Fire.Y);
+        var strength = FireStrength(Seconds);
+        Light(canvas, fire + new Vector2(0, 8 * pixel), new Vector2(900, 380) * pixel, FireLight with { A = 0.16f * strength });
+        Light(canvas, fire - new Vector2(0, 22 * pixel), new Vector2(300, 240) * pixel, FireLight with { A = 0.22f * strength });
+        Light(canvas, fire - new Vector2(0, 18 * pixel), new Vector2(110, 110) * pixel, new Color(1f, 0.7f, 0.35f, 0.3f * FireStrength(Seconds * 1.7f + 3)));
+    }
+
+    private static void Light(CanvasItem canvas, Vector2 centre, Vector2 size, Color color) =>
+        canvas.DrawTextureRect(LightRound, new Rect2(centre - size / 2, size), false, color);
+
+    /// <summary>How strong the fire burns at a moment, about 0.8 to 1.1: a slow ebb and a quicker flicker over it.</summary>
+    private static float FireStrength(float seconds) =>
+        0.92f + 0.09f * MathF.Sin(seconds * 2.3f) + 0.06f * Noise(seconds * 2.1f, 11) + 0.05f * Noise(seconds * 9f, 23);
+
+    /// <summary>
+    /// The smoke, then the flames over the painted fire. The smoke rises from over the pot in a few plumes at once, each faint, growing
+    /// and drifting as it rises and fading in and out, a different plume each time round. Each flame changes through the sheet's shapes,
+    /// one fading into the next, its height flickering and its tip swaying, its foot on the logs.
+    /// </summary>
+    private void PaintFire(CanvasItem canvas)
+    {
+        if (Camp is null || _site is not { } site || site.Width <= 0)
+            return;
+        var pixel = _fit.Size.X / site.Width;
+        var fire = At(_fit, site.Fire.X, site.Fire.Y);
+        var pot = site.Pot is { } p ? At(_fit, p.X, p.Y) : fire - new Vector2(0, 40 * pixel);
+        var seconds = Seconds;
+        for (var i = 0; i < SmokePlumes; i++)
+        {
+            var age = seconds / SmokeSeconds + (float)i / SmokePlumes;
+            var round = (int)MathF.Floor(age);
+            var u = age - round;
+            if (_ui.Images.Get(Smokes[(int)(Hash(round, i * 31 + 7) * Smokes.Length)]) is not { } smoke)
+                continue;
+            var height = Mathf.Lerp(SmokeFrom, SmokeTo, u) * pixel;
+            var width = height * smoke.GetWidth() / smoke.GetHeight();
+            var drift = (8 + 18 * Noise(round + u * 2, i + 40)) * u * pixel;
+            var foot = pot + new Vector2(drift + (Hash(round, i) - 0.5f) * 16 * pixel, -(12 + SmokeRise * u) * pixel);
+            var alpha = SmokeAlpha * MathF.Pow(MathF.Sin(MathF.PI * u), 1.5f);
+            var mirror = Hash(round, i + 90) < 0.5f;
+            var rect = new Rect2(foot.X - width / 2, foot.Y - height, width, height);
+            canvas.DrawTextureRect(smoke, mirror ? new Rect2(rect.End.X, rect.Position.Y, -width, height) : rect, false, new Color(0.95f, 0.9f, 0.84f, alpha));
+        }
+        for (var i = 0; i < FlameLayout.Length; i++)
+        {
+            var (x, tall, flicker, rate) = (FlameLayout[i].X, FlameLayout[i].Height, FlameLayout[i].Tall, FlameLayout[i].Rate);
+            var shape = seconds * rate + i * 0.37f;
+            var step = (int)MathF.Floor(shape);
+            var blend = Smooth(shape - step);
+            var height = tall * (0.86f + 0.14f * Noise(seconds * 3.1f, i * 5 + 1)) * pixel;
+            var sway = 0.16f * Noise(seconds * 1.4f, i * 7 + 2);
+            var foot = fire + new Vector2((x + 1.5f * Noise(seconds * 2.6f, i * 3 + 9)) * pixel, FlameDrop * pixel);
+            canvas.DrawSetTransformMatrix(new Transform2D(new Vector2(1, 0), new Vector2(sway, 1), foot));
+            Flame(canvas, FlameOf(step, i, flicker), height, FlameAlpha * (1 - blend));
+            Flame(canvas, FlameOf(step + 1, i, flicker), height, FlameAlpha * blend);
+        }
+        canvas.DrawSetTransform(Vector2.Zero);
+    }
+
+    /// <summary>A flame's sprite for a step of its changing, chosen from the tall or the short by a hash of the step, and whether it's mirrored.</summary>
+    private (RecordId Image, bool Mirror) FlameOf(int step, int flame, bool tall)
+    {
+        var pick = (int)(Hash(step, flame * 13 + 5) * 7);
+        return (Flames[(tall ? 0 : 7) + pick], Hash(step, flame * 13 + 6) < 0.5f);
+    }
+
+    /// <summary>A flame drawn standing on the transform's origin, so tall, at an alpha.</summary>
+    private void Flame(CanvasItem canvas, (RecordId Image, bool Mirror) flame, float height, float alpha)
+    {
+        if (alpha <= 0.01f || _ui.Images.Get(flame.Image) is not { } texture)
+            return;
+        var width = height * texture.GetWidth() / texture.GetHeight() * FlameWidth;
+        var rect = flame.Mirror ? new Rect2(width / 2, -height, -width, height) : new Rect2(-width / 2, -height, width, height);
+        canvas.DrawTextureRect(texture, rect, false, new Color(1, 1, 1, alpha));
+    }
+
+    /// <summary>The seconds the fire has burned, the clock it's animated by.</summary>
+    private static float Seconds => Time.GetTicksMsec() / 1000f;
+
+    private static float Smooth(float t) => t * t * (3 - 2 * t);
+
+    /// <summary>A smooth wander between -1 and 1 over time, a different one for each seed.</summary>
+    private static float Noise(float t, int seed)
+    {
+        var i = (int)MathF.Floor(t);
+        var f = t - i;
+        return Mathf.Lerp(Hash(i, seed), Hash(i + 1, seed), Smooth(f)) * 2 - 1;
+    }
+
+    /// <summary>A number from 0 to 1 for a step and a seed, the same each time.</summary>
+    private static float Hash(int step, int seed)
+    {
+        var h = (uint)(step * 374761393 + seed * 668265263);
+        h = (h ^ (h >> 13)) * 1274126177;
+        h ^= h >> 16;
+        return (h & 0xFFFFFF) / (float)0x1000000;
+    }
+
     /// <summary>The biome's ambient tint over the figures, restrained; white with none.</summary>
     private static Color Tint(CampsiteRecord site) =>
         site.Ambient is { } a ? new Color(a.R / 255f, a.G / 255f, a.B / 255f, a.A / 255f) : Colors.White;
@@ -459,9 +662,10 @@ public partial class CampView : Control
             canvas.DrawTextureRect(parchment, new Rect2(-2, -2, width + 4, height + 4), false);
         else
             canvas.DrawRect(new Rect2(0, 0, width, height), new Color(0, 0, 0, 0.55f));
-        // The content's paper, the wide sheet, from under the tabs' right ends to the band's right side, and the content within its edges.
-        var paper = new Rect2(Side + TabWidth - 1, Edge - 1, width - Side - (Side + TabWidth - 1), height - 2 * Edge + 2);
-        DrawTabs(canvas, camp, paper, height);
+        // The content's paper, the wide sheet, from the tabs' right ends to the band's right side, as tall as the tabs' column, and the
+        // content within its edges.
+        var paper = new Rect2(Side + TabWidth - 1, PaperTop, width - Side - (Side + TabWidth - 1), height - 2 * PaperTop);
+        DrawTabs(canvas, camp, paper);
         var content = new Rect2(paper.Position.X + PaperInsetX, paper.Position.Y + PaperInsetY, paper.Size.X - 2 * PaperInsetX, paper.Size.Y - 2 * PaperInsetY);
         if (camp.Tab == CampTab.Camp)
             DrawCampTab(canvas, camp, content);
@@ -481,23 +685,25 @@ public partial class CampView : Control
     /// the tab showing in the cursor's red on its slip plain, over the paper, cut at the paper's edge and joined to it as the Party
     /// tab's is to its page, sideways; and the pointer before it while the cursor is on the tabs.
     /// </summary>
-    private void DrawTabs(CanvasItem canvas, CampMenu camp, Rect2 paper, float height)
+    private void DrawTabs(CanvasItem canvas, CampMenu camp, Rect2 paper)
     {
         var small = Font(UiPainter.SmallText);
-        var pitch = (height - 2 * Edge - TabHeight) / (CampMenu.Tabs.Count - 1);
-        Rect2 TabRect(int i) => new(Side, Edge + i * pitch, TabWidth, TabHeight);
+        var count = CampMenu.Tabs.Count;
+        var tabHeight = (paper.Size.Y - (count - 1) * TabGap) / count;
+        // Each slip runs on under the paper, so no end of it shows beside the paper; what the mouse finds is the part that shows.
+        Rect2 SlipRect(int i) => new(Side, paper.Position.Y + i * (tabHeight + TabGap), TabWidth + TabUnder, tabHeight);
+        Rect2 TabRect(int i) => SlipRect(i) with { Size = new Vector2(paper.Position.X - Side, tabHeight) };
         var showing = CampMenu.Tabs.ToList().IndexOf(camp.Tab);
-        for (var i = 0; i < CampMenu.Tabs.Count; i++)
+        for (var i = 0; i < count; i++)
         {
             if (i == showing)
                 continue;
-            var rect = TabRect(i);
             if (UiPainter.Original)
-                canvas.DrawRect(rect, new Color(0, 0, 0, 0.12f));
+                canvas.DrawRect(TabRect(i), new Color(0, 0, 0, 0.12f));
             else
-                _ui.Slip(canvas, rect, SlipDim, sheet: UiPainter.GoldSheet);
-            TabFace(canvas, small, i, rect, current: false);
-            _hits.Add((rect, Target.Tab, i));
+                _ui.Slip(canvas, SlipRect(i), i == _hoveredTab ? HoveredTab : SlipDim, sheet: UiPainter.GoldSheet);
+            TabFace(canvas, small, i, TabRect(i), current: false);
+            _hits.Add((TabRect(i), Target.Tab, i));
         }
         if (UiPainter.Original)
             canvas.DrawRect(paper, new Color(0, 0, 0, 0.18f));
@@ -510,22 +716,45 @@ public partial class CampView : Control
         }
         else
         {
-            _ui.Slip(canvas, current, sheet: UiPainter.GoldSheet, cutRightAt: paper.Position.X + PaperEdge);
+            // Over the paper: cut at its edge, then on a little way over it fading out, and joined to it between its edges.
+            var slip = SlipRect(showing);
+            var cut = paper.Position.X + PaperEdge;
+            _ui.Slip(canvas, slip, sheet: UiPainter.GoldSheet, cutRightAt: cut);
+            FadeRight(canvas, UiPainter.GoldSheet, slip, cut, cut + TabOver + JoinFeather);
             JoinTab(canvas, current, paper);
         }
         TabFace(canvas, small, showing, current, current: true);
+        // The pointer inside the tab, at its left, clear of the roller over the band's end.
         if (camp.Focus == CampFocus.Tabs)
-            Pointer(canvas, Side - 5, current.GetCenter().Y, Cursor);
+            Pointer(canvas, Side + PointerLeft, current.GetCenter().Y, Cursor);
         _hits.Add((current, Target.Tab, showing));
+    }
+
+    /// <summary>
+    /// A strip of a sheet drawn over a rectangle, as <see cref="UiPainter.Slip"/> lays it, from <paramref name="from"/> to
+    /// <paramref name="to"/> across, opaque at its left and fading out to its right: the tab showing running on over the paper.
+    /// </summary>
+    private static void FadeRight(CanvasItem canvas, string sheet, Rect2 rect, float from, float to)
+    {
+        if (UiImages.Art(sheet) is not { } texture || to <= from)
+            return;
+        var drawn = UiPainter.SheetRect(sheet, rect);
+        Vector2 Uv(float x, float y) => new((x - drawn.Position.X) / drawn.Size.X, (y - drawn.Position.Y) / drawn.Size.Y);
+        var (top, bottom) = (drawn.Position.Y, drawn.End.Y);
+        canvas.DrawPolygon(
+            [new(from, top), new(to, top), new(to, bottom), new(from, bottom)],
+            [Colors.White, Colors.White with { A = 0 }, Colors.White with { A = 0 }, Colors.White],
+            [Uv(from, top), Uv(to, top), Uv(to, bottom), Uv(from, bottom)], texture);
     }
 
     /// <summary>A tab's icon and caption on its slip, the tab showing in the cursor's red and the others in brown with their icons faded.</summary>
     private void TabFace(CanvasItem canvas, UiFont small, int i, Rect2 rect, bool current)
     {
+        var middle = rect.GetCenter().Y;
         if (UiImages.Art(TabIcons[i]) is { } icon)
-            canvas.DrawTextureRect(icon, new Rect2(rect.Position.X + TabIconLeft, rect.Position.Y + (TabHeight - TabIconSize) / 2, TabIconSize, TabIconSize),
+            canvas.DrawTextureRect(icon, new Rect2(rect.Position.X + TabIconLeft, middle - TabIconSize / 2, TabIconSize, TabIconSize),
                 false, current ? Colors.White : new Color(1, 1, 1, 0.75f));
-        Print(canvas, small, CampMenu.Tabs[i].ToString(), rect.Position.X + TabIconLeft + TabIconSize + 2, rect.Position.Y + TabHeight / 2 - small.Middle, current ? Cursor : Text);
+        Print(canvas, small, CampMenu.Tabs[i].ToString(), rect.Position.X + TabIconLeft + TabIconSize + 2, middle - small.Middle, current ? Cursor : Text);
     }
 
     /// <summary>
@@ -573,33 +802,28 @@ public partial class CampView : Control
         var small = Font(UiPainter.SmallText);
         var fine = Font(UiPainter.FineText);
         var members = camp.Members;
-        var total = members.Count * MemberPitch - (MemberPitch - PortraitSize);
+        // As large as five framed portraits fit across with their gaps, the HUD's 30 at most, the same size for a smaller party.
+        var slots = Math.Max(members.Count, Core.Characters.Party.MaxSize);
+        var block = Math.Min(PortraitSize + 2 * PortraitBorder, (content.Size.X - (slots - 1) * FrameGap) / slots);
+        var size = block - 2 * PortraitBorder;
+        var pitch = block + FrameGap;
+        var total = members.Count * pitch - FrameGap;
         var x0 = content.Position.X + Math.Max(0, (content.Size.X - total) / 2);
         var seconds = Time.GetTicksMsec() / 1000f;
         for (var i = 0; i < members.Count; i++)
         {
             var member = members[i];
-            var x = x0 + i * MemberPitch;
-            // The name at the left and the level at the right, their capitals' middles level.
+            var x = x0 + i * pitch;
+            // The name at the left and the level at the right of the frame, their capitals' middles level.
             var rowMiddle = content.Position.Y + NameRow / 2 - 0.5f;
             Print(canvas, small, member.Name, x, rowMiddle - small.Middle, member.IsDead ? Dim : Text);
             var level = CampMenu.LevelLabel(member);
-            Print(canvas, fine, level, x + PortraitSize - fine.ExactWidth(level), rowMiddle - fine.Middle, Note);
-            var portraitY = content.Position.Y + NameRow;
-            var rect = new Rect2(x, portraitY, PortraitSize, PortraitSize);
-            if (member.Record.Portrait is { } portrait)
-            {
-                _ui.Image(canvas, portrait, rect);
-                // A hungry or tired member's portrait pulses amber, a starving or overtired one's red (StatusPulse), as on the Party tab.
-                if (StatusPulse.Tint(member.Hunger, member.Rest, seconds) is { } tint)
-                    _ui.Image(canvas, portrait, rect, tint);
-            }
-            else
-            {
-                canvas.DrawRect(rect, new Color(0, 0, 0, 0.3f));
-            }
-            // The bar under the portrait, as wide as it, with the hit points on it.
-            var frame = UiPainter.BarFrom(x, x + PortraitSize, portraitY + PortraitSize + 1, BarHeight);
+            Print(canvas, fine, level, x + block - fine.ExactWidth(level), rowMiddle - fine.Middle, Note);
+            var frameTop = content.Position.Y + NameRow;
+            var rect = new Rect2(x + PortraitBorder, frameTop + PortraitBorder, size, size);
+            FramedPortrait(canvas, member, rect, seconds);
+            // The bar under the frame, as wide as it, with the hit points on it.
+            var frame = UiPainter.BarSpanning(x, x + block, frameTop + block + 1, BarHeight);
             var share = member.MaxHp > 0 ? Math.Clamp((float)member.Hp / member.MaxHp, 0, 1) : 0;
             var stamina = member.MaxHp > 0 ? Math.Clamp((float)member.StaminaPoints / member.MaxHp, 0, 1) : 0;
             _ui.HealthBar(canvas, frame, share, stamina, HeaderNumbers.Of(member).BarSplits ? 1 : 0);
@@ -611,7 +835,7 @@ public partial class CampView : Control
             var badgeY = frame.End.Y + 1;
             foreach (var (icon, name) in CampMenu.Badges(member))
             {
-                var badge = new Rect2(x, badgeY, PortraitSize, BadgeHeight);
+                var badge = new Rect2(x, badgeY, block, BadgeHeight);
                 if (UiPainter.Original)
                     canvas.DrawRect(badge, new Color(0, 0, 0, 0.2f));
                 else
@@ -619,7 +843,7 @@ public partial class CampView : Control
                 if (_ui.Images.Get(icon) is { } mark)
                     canvas.DrawTextureRect(mark, new Rect2(x + BadgeIconLeft, badgeY + (BadgeHeight - BadgeIcon) / 2, BadgeIcon, BadgeIcon), false);
                 var textLeft = x + BadgeIconLeft + BadgeIcon + 1;
-                var textRoom = x + PortraitSize - 1 - textLeft;
+                var textRoom = x + block - 1 - textLeft;
                 Print(canvas, fine, name, textLeft + Math.Max(0, (textRoom - fine.ExactWidth(name)) / 2), badgeY + BadgeHeight / 2 - fine.Middle, Said);
                 badgeY += BadgePitch;
             }
@@ -642,6 +866,34 @@ public partial class CampView : Control
         var location = camp.LocationLine;
         Print(canvas, fine, location, content.Position.X, footMiddle - fine.Middle, Text);
         Print(canvas, fine, camp.InventoryLine, content.Position.X + fine.ExactWidth(location) + 6, footMiddle - fine.Middle, Text);
+    }
+
+    /// <summary>
+    /// A portrait framed as the Party tab's are, the user's design (Nov 2, 2026, and for the camp Nov 7): the small square sheet of
+    /// parchment a border past it all round, and on it the portrait cut to the sheet's outline, which pulses amber or red with hunger or
+    /// tiredness (<see cref="StatusPulse"/>); the original look's plain portrait, pulsing alike.
+    /// </summary>
+    private void FramedPortrait(CanvasItem canvas, Core.Characters.Character member, Rect2 rect, float seconds)
+    {
+        var tint = StatusPulse.Tint(member.Hunger, member.Rest, seconds);
+        if (member.Record.Portrait is not { } portrait)
+        {
+            canvas.DrawRect(rect, new Color(0, 0, 0, 0.3f));
+            return;
+        }
+        if (UiPainter.Original)
+        {
+            _ui.Image(canvas, portrait, rect);
+            if (tint is { } plain)
+                _ui.Image(canvas, portrait, rect, plain);
+            return;
+        }
+        _ui.Slip(canvas, rect.Grow(PortraitBorder), sheet: UiPainter.SquareSheet);
+        if (_ui.Images.CutTo(portrait, UiPainter.SquareSheet) is not { } cut)
+            return;
+        canvas.DrawTextureRect(cut, rect, false, _ui.Tint(new Rgba(255, 255, 255, 255)));
+        if (tint is { } pulse)
+            canvas.DrawTextureRect(cut, rect, false, _ui.Tint(pulse));
     }
 
     /// <summary>A recipes tab: who makes them, the recipes with the cursor, as many as fit with the cursor's among them, or why there's nothing to make.</summary>
@@ -746,8 +998,12 @@ public partial class CampLayer : CanvasLayer
         _scroll = PauseScrollView.Create(plugins, _models);
         _view = new CampView(plugins, _scroll) { Click = _screen.Click };
         _view.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-        // The picture, then the band over it, the rollers over the band's edges, and the debug marks over all.
+        // The picture, the firelight and the fire over it, then the band, the rollers over the band's edges, and the debug marks over all.
         _screen.Canvas.AddChild(_view);
+        _view.Glow.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        _screen.Canvas.AddChild(_view.Glow);
+        _view.Fire.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        _screen.Canvas.AddChild(_view.Fire);
         _screen.Canvas.AddChild(_view.Band);
         if (_scroll is not null)
         {

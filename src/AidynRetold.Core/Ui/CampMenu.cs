@@ -53,6 +53,26 @@ public enum CampFocus
 public readonly record struct CampTick(ScrollCue? Cue = null, bool Restart = false, bool Closed = false);
 
 /// <summary>
+/// A sound the camp band makes, one of the pause menu's (<see cref="MenuSounds"/>), the user's choice (Nov 7, 2026): the band
+/// records them (<see cref="CampMenu.TakeSounds"/>) and the session plays them as the pause menu plays its own.
+/// </summary>
+public enum CampSound
+{
+    /// <summary>Up or down in the content, or on the tabs at either end.</summary>
+    Cursor,
+    /// <summary>Left or right, between the tabs and the content.</summary>
+    PageCursor,
+    /// <summary>A tab further down, or the band rolling up, as the pause menu's scroll does closing from its Party tab.</summary>
+    TabForward,
+    /// <summary>A tab further up, or the band unrolling, as the pause menu's scroll does opening on its Party tab.</summary>
+    TabBack,
+    Accept,
+    Back,
+    /// <summary>Another member makes the tab's recipes.</summary>
+    Member,
+}
+
+/// <summary>
 /// The camp screen, the remade game's (the user's design, Nov 7, 2026): the party round the fire (<see cref="Arrangement"/>) under
 /// five tabs, Camp, Food, Potions, Weapons and Armor, on a band of parchment between two rollers, which unrolls and rolls up as the
 /// pause menu's scroll does. Camp shows the members and Rest, which says how many hours the night will take; Food, Potions and Armor
@@ -93,6 +113,7 @@ public sealed class CampMenu
     private readonly IReadOnlyList<RecipeRecord> _recipes;
     private readonly IRandom _random;
     private readonly List<string> _log = [];
+    private readonly List<CampSound> _sounds = [];
     private readonly Dictionary<string, int> _made = [];
     private int _added;
     private int _panTicks;
@@ -254,7 +275,10 @@ public sealed class CampMenu
         if (Scroll is { } scroll)
         {
             if (scroll.Phase == PauseScrollPhase.Open && (Choice != CampChoice.None || TalkPending || Talking))
+            {
+                _sounds.Add(CampSound.TabForward);
                 return new CampTick(scroll.Close(PauseScroll.Party));
+            }
             var cue = scroll.Step(frame, length);
             if (scroll.Phase == PauseScrollPhase.Closed)
             {
@@ -269,7 +293,18 @@ public sealed class CampMenu
         // At the foot with nothing pending: the band unrolls, its actor afresh, as the pause menu's is built for each opening, and holds
         // with its rollers just past the Party tab's parchment, as barter's does, rather than running on out to the other tabs' ends.
         Scroll = new PauseScroll(PauseScroll.Party, brightens: false, holds: true, darkens: false);
+        _sounds.Add(CampSound.TabBack);
         return new CampTick(Scroll.Step(frame, length), Restart: true);
+    }
+
+    /// <summary>The sounds made since the last call, in order, for the session to play; none are kept.</summary>
+    public IReadOnlyList<CampSound> TakeSounds()
+    {
+        if (_sounds.Count == 0)
+            return [];
+        var sounds = _sounds.ToList();
+        _sounds.Clear();
+        return sounds;
     }
 
     /// <summary>The debug button's talk: the band rolls up first, and the talk starts as it has. False unless the band is open.</summary>
@@ -281,7 +316,7 @@ public sealed class CampMenu
         return true;
     }
 
-    /// <summary>A press on the screen; whether it took it. Only the open band takes one.</summary>
+    /// <summary>A press on the screen; whether it took it. Only the open band takes one. Each press taken makes the pause menu's sound for it.</summary>
     public bool Press(MenuAction action)
     {
         if (!Open)
@@ -289,22 +324,28 @@ public sealed class CampMenu
         switch (action)
         {
             case MenuAction.TabPrevious:
-                Show(Tabs[(Tabs.ToList().IndexOf(Tab) + Tabs.Count - 1) % Tabs.Count]);
+                Choose(Tabs[(Tabs.ToList().IndexOf(Tab) + Tabs.Count - 1) % Tabs.Count], Focus);
                 return true;
             case MenuAction.TabNext:
-                Show(Tabs[(Tabs.ToList().IndexOf(Tab) + 1) % Tabs.Count]);
+                Choose(Tabs[(Tabs.ToList().IndexOf(Tab) + 1) % Tabs.Count], Focus);
                 return true;
             case MenuAction.Left:
                 Focus = CampFocus.Tabs;
+                _sounds.Add(CampSound.PageCursor);
                 return true;
             case MenuAction.Right:
                 Focus = CampFocus.Content;
+                _sounds.Add(CampSound.PageCursor);
                 return true;
             case MenuAction.Up or MenuAction.Down:
-                if (Focus == CampFocus.Tabs)
-                    Show(Tabs[Math.Clamp(Tabs.ToList().IndexOf(Tab) + action.Vertical(), 0, Tabs.Count - 1)]);
-                else if (Recipes.Count > 0)
+                if (Focus == CampFocus.Tabs && Tabs[Math.Clamp(Tabs.ToList().IndexOf(Tab) + action.Vertical(), 0, Tabs.Count - 1)] is var next && next != Tab)
+                {
+                    Choose(next, CampFocus.Tabs);
+                    return true;
+                }
+                if (Focus == CampFocus.Content && Recipes.Count > 0)
                     RecipeCursor = Math.Clamp(RecipeCursor + action.Vertical(), 0, Recipes.Count - 1);
+                _sounds.Add(CampSound.Cursor);
                 return true;
             case MenuAction.MemberLeft or MenuAction.MemberRight:
                 if (Current is { } offer && Member is { } current)
@@ -315,10 +356,12 @@ public sealed class CampMenu
                         var at = able.IndexOf(current);
                         Member = able[(at + (action == MenuAction.MemberRight ? 1 : able.Count - 1)) % able.Count];
                         RefreshRecipes();
+                        _sounds.Add(CampSound.Member);
                     }
                 }
                 return true;
             case MenuAction.Accept:
+                _sounds.Add(CampSound.Accept);
                 if (Focus == CampFocus.Tabs)
                 {
                     Focus = CampFocus.Content;
@@ -335,6 +378,7 @@ public sealed class CampMenu
                     Say(why);
                 return true;
             case MenuAction.Back:
+                _sounds.Add(CampSound.Back);
                 if (Focus == CampFocus.Content)
                     Focus = CampFocus.Tabs;
                 else
@@ -345,7 +389,22 @@ public sealed class CampMenu
         }
     }
 
-    /// <summary>Shows a tab, its recipes from its best member, as a press or the mouse asks.</summary>
+    /// <summary>
+    /// A tab chosen, by a press or a click on it, the cursor then on <paramref name="focus"/>: shown, with the pause menu's sound for a
+    /// tab further down or further up; nothing if it's showing already, but the focus.
+    /// </summary>
+    public void Choose(CampTab tab, CampFocus focus = CampFocus.Tabs)
+    {
+        var from = Tabs.ToList().IndexOf(Tab);
+        var to = Tabs.ToList().IndexOf(tab);
+        Focus = focus;
+        if (from == to)
+            return;
+        Show(tab);
+        _sounds.Add(to > from ? CampSound.TabForward : CampSound.TabBack);
+    }
+
+    /// <summary>Shows a tab, its recipes from its best member.</summary>
     public void Show(CampTab tab)
     {
         Tab = tab;

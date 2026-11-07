@@ -472,6 +472,9 @@ public sealed class UiPainter
     public const float BarArtWidth = 850, BarArtHeight = 200, BarArtLeft = 65, BarEnd = 140, BarOpeningLeft = 93, BarOpeningRight = 753,
         BarOpeningTop = 63, BarOpeningBottom = 139;
 
+    /// <summary>How far in from its art's right end the frame's drawn right edge is, in its pixels: the art is opaque to column 780 of 850.</summary>
+    public const float BarArtRight = 70;
+
     /// <summary>
     /// The washes over the red once the bar splits (<see cref="HeaderNumbers.BarSplits"/>): white at this alpha over Stamina's end,
     /// which lightens it, and black at this over Endurance's, which darkens it a little.
@@ -483,6 +486,13 @@ public sealed class UiPainter
     {
         var x = left - BarArtLeft * height / BarArtHeight;
         return new Rect2(x, top, right - x, height);
+    }
+
+    /// <summary>The bar frame's rectangle with its drawn edges, left and right, at two points across, as wide as what it's under.</summary>
+    public static Rect2 BarSpanning(float left, float right, float top, float height)
+    {
+        var x = left - BarArtLeft * height / BarArtHeight;
+        return new Rect2(x, top, right + BarArtRight * height / BarArtHeight - x, height);
     }
 
     /// <summary>A bar frame's opening, where it's drawn, which the hit points are centred in and the red fills.</summary>

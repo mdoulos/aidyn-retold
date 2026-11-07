@@ -104,6 +104,11 @@ public sealed record CampLayout(int Size, IReadOnlyList<string> Slots);
 /// A transparent image laid over the picture as painted (<c>acre:image/…</c>), at the picture's size: its dark at its own alpha,
 /// clear where the picture shows as it is. The screen changes nothing of it; none leaves the picture as it is.
 /// </param>
+/// <param name="Sound">
+/// The loop played while the camp shows (<c>acre:sequence/…</c>, a recording as a sequence's <c>.wav</c>): the fire crackling, the
+/// user's choice (Nov 7, 2026), in the ambient sounds' volume, fading in as the camp opens and out as it closes.
+/// </param>
+/// <param name="SoundVolume">How loud the loop plays, 0 to 1, under the ambient sounds' volume.</param>
 public sealed record CampsiteRecord(
     RecordId Id,
     string Name,
@@ -118,7 +123,9 @@ public sealed record CampsiteRecord(
     IReadOnlyList<int>? Terrains = null,
     Rgba? Ambient = null,
     bool Calibrated = false,
-    RecordId? Vignette = null)
+    RecordId? Vignette = null,
+    RecordId? Sound = null,
+    float SoundVolume = 1)
 {
     /// <summary>A slot by its name, or null.</summary>
     public CampSlot? Slot(string id) => Slots.FirstOrDefault(s => s.Id == id);

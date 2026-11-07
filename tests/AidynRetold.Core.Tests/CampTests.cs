@@ -497,6 +497,8 @@ public class CampTests
         Unroll(screen);
         Assert.Equal(["Rest Until Morning", "Rest Until Noon", "Rest Until Evening", "Rest Until Midnight"], screen.RestOptions.Select(o => o.Label));
         Assert.Equal([20.0, 2, 8, 14], screen.RestOptions.Select(o => o.Hours));
+        Assert.Equal("Current Time: 10:00", screen.CurrentTimeLine);
+        Assert.Equal("Current Time: 21:37", new CampMenu(party, null, null, [], [Tonic], Characters.D100([1])) { HourOfDay = 21 + 37 / 60.0 + 1e-9 }.CurrentTimeLine);
 
         // Into the content on Long Rest; the list takes the presses while it's open: B shuts it, the tabs stay put, and down to the last
         // rests until midnight.

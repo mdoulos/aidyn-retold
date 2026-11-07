@@ -235,8 +235,8 @@ Camping is a screen in Retold where the original cuts to a scene ([world](world.
 - **The Camp tab shows the party**: each member's name and level over their portrait, framed as the Party tab's are and pulsing with
   hunger or tiredness; the Party tab's hit points bar, with the points on it and split into Stamina and Endurance by the same rule; the
   statuses stacked in badges with their names, the one place they're not icons in a row; and along the foot where the party is and
-  two rest buttons: Quick Rest, an hour at once, and Long Rest, which opens a list where it stands of Rest Until Morning, Noon, Evening
-  and Midnight. The mouse over a bar or a badge shows what the Party tab's do.
+  two rest buttons: Quick Rest, an hour at once, and Long Rest, which opens a list where it stands, headed by the current time, of Rest
+  Until Morning, Noon, Evening and Midnight. The mouse over a bar or a badge shows what the Party tab's do.
 - **The pause menu opens over the camp**, its World tab's Camp dimmed: "The party is already camped."
 
 ## Books and help pages

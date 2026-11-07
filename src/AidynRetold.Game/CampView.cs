@@ -94,7 +94,7 @@ public partial class CampView : Control
     private enum Target { Tab, Recipe, Rest, Bar, Badge, RestOption }
 
     /// <summary>How far apart the ways to rest are in their list, and how far in from its ends and its left side.</summary>
-    private const float RestPitch = 7.5f, RestListEnds = 2.5f, RestListSide = 9;
+    private const float RestPitch = 7.5f, RestListEnds = 2.5f, RestListSide = 9, RestTimeRow = 5.5f;
 
     /// <summary>What the hover over a bar or a badge says, and where the bar or badge is on this control, or none.</summary>
     private (string Text, Rect2 Area)? _tip;
@@ -960,17 +960,21 @@ public partial class CampView : Control
     /// </summary>
     private void DrawRestList(CanvasItem canvas, CampMenu camp, Rect2 button, UiFont small)
     {
+        // The current time at the top, in the smallest size, then the ways under it.
+        var fine = Font(UiPainter.FineText);
+        var time = camp.CurrentTimeLine;
         var options = camp.RestOptions;
-        var width = options.Max(o => small.ExactWidth(o.Label)) + RestListSide + 5;
-        var height = options.Count * RestPitch + 2 * RestListEnds;
+        var width = Math.Max(options.Max(o => small.ExactWidth(o.Label)), fine.ExactWidth(time)) + RestListSide + 5;
+        var height = RestTimeRow + options.Count * RestPitch + 2 * RestListEnds;
         var list = new Rect2(button.End.X - width, button.End.Y - height, width, height);
         if (UiPainter.Original)
             canvas.DrawRect(list, new Color(0, 0, 0, 0.75f));
         else
             _ui.Slip(canvas, list);
+        Print(canvas, fine, time, list.Position.X + RestListSide, list.Position.Y + RestListEnds + RestTimeRow / 2 - fine.Middle, Note);
         for (var i = 0; i < options.Count; i++)
         {
-            var row = new Rect2(list.Position.X, list.Position.Y + RestListEnds + i * RestPitch, width, RestPitch);
+            var row = new Rect2(list.Position.X, list.Position.Y + RestListEnds + RestTimeRow + i * RestPitch, width, RestPitch);
             var middle = row.GetCenter().Y;
             var current = i == camp.RestCursor;
             if (current)

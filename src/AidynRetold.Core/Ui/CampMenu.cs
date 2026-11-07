@@ -114,7 +114,7 @@ public sealed class CampMenu
         MissingIngredients = "You don't have the ingredients.", StackFull = "You can't carry any more of it.", TooLow = "{0} isn't skilled enough.",
         MakerNote = "{0} makes it (C-left, C-right to change)", LevelText = "Lv {0}", LocationText = "Current Location: {0}",
         RestUntilMorningText = "Rest Until Morning", RestUntilNoonText = "Rest Until Noon", RestUntilEveningText = "Rest Until Evening",
-        RestUntilMidnightText = "Rest Until Midnight";
+        RestUntilMidnightText = "Rest Until Midnight", CurrentTimeText = "Current Time: {0:00}:{1:00}";
 
     /// <summary>
     /// The hours the party wakes at, resting until morning, noon, evening or midnight: when the calendar's morning, afternoon and evening
@@ -172,6 +172,19 @@ public sealed class CampMenu
 
     /// <summary>The hours the chosen rest passes, once one is chosen (<see cref="RestOptions"/>); nothing that's made at camp changes it.</summary>
     public double Hours { get; private set; }
+
+    /// <summary>
+    /// The line at the top of the ways to rest, the user's design (Nov 7, 2026): the game's time as the camp opened, on the 24-hour clock,
+    /// to the minute, "Current Time: 21:37".
+    /// </summary>
+    public string CurrentTimeLine
+    {
+        get
+        {
+            var minutes = (int)Math.Floor(((HourOfDay % 24) + 24) % 24 * 60);
+            return string.Format(CultureInfo.InvariantCulture, CurrentTimeText, minutes / 60, minutes % 60);
+        }
+    }
 
     /// <summary>What the Long Rest button says.</summary>
     public string RestLabel => RestText;

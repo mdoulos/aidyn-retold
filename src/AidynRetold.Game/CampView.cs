@@ -17,8 +17,12 @@ namespace AidynRetold.Game;
 /// </summary>
 public partial class CampView : Control
 {
-    private static readonly Rgba Text = new(232, 218, 186, 255), Dim = new(150, 140, 120, 255), Cursor = new(255, 236, 130, 255),
-        Note = new(196, 186, 160, 255), Said = new(255, 250, 230, 255), Overlay = new(120, 255, 160, 255), Warn = new(255, 170, 90, 255);
+    /// <summary>The rows' colours on the parchment: the journal's brown, the Party tab's red for the cursor.</summary>
+    private static readonly Rgba Text = new(98, 70, 60, 255), Dim = new(170, 152, 130, 255), Cursor = new(150, 40, 35, 255),
+        Note = new(130, 105, 85, 255), Said = new(70, 45, 40, 255), Overlay = new(120, 255, 160, 255), Warn = new(255, 170, 90, 255),
+        Button = new(255, 236, 130, 255);
+
+    private static readonly RecordId Parchment = RecordId.Parse("acre:image/parchment");
 
     private readonly UiPainter _ui;
     private readonly PluginSet _plugins;
@@ -42,14 +46,17 @@ public partial class CampView : Control
     /// <summary>A click on a row, which the view has put the cursor on: the button to press.</summary>
     public Action<MenuAction>? Click { get; set; }
 
-    /// <summary>Whether the debug button is drawn, at the top right: a debug build's. It starts a camp talk at once (<see cref="TalkRequested"/>).</summary>
+    /// <summary>
+    /// Whether the debug buttons are drawn, at the top right: a debug build's. Talk starts a camp talk at once (<see cref="TalkRequested"/>),
+    /// and Debug shows the technical text and marks that won't be in the game (<see cref="ShowOverlay"/>), off until it's clicked.
+    /// </summary>
     public bool DebugButtons { get; set; }
 
-    /// <summary>The debug button was clicked: a camp talk is to show now.</summary>
+    /// <summary>The Talk button was clicked: a camp talk is to show now.</summary>
     public Action? TalkRequested { get; set; }
 
-    /// <summary>Where the debug button was drawn, or empty.</summary>
-    private Rect2 _talkButton;
+    /// <summary>Where the Talk and Debug buttons were drawn, or empty.</summary>
+    private Rect2 _talkButton, _debugButton;
 
     public override void _Notification(int what)
     {
@@ -77,6 +84,12 @@ public partial class CampView : Control
         else if (button.ButtonIndex == MouseButton.Left && _talkButton.HasArea() && _talkButton.HasPoint(button.Position))
         {
             TalkRequested?.Invoke();
+            AcceptEvent();
+        }
+        else if (button.ButtonIndex == MouseButton.Left && _debugButton.HasArea() && _debugButton.HasPoint(button.Position))
+        {
+            ShowOverlay = !ShowOverlay;
+            QueueRedraw();
             AcceptEvent();
         }
         else if (button.ButtonIndex == MouseButton.Left && Hit(button.Position) is var (index, recipe))
@@ -112,25 +125,32 @@ public partial class CampView : Control
             DrawParty(arrangement, site, fit);
         if (site?.Vignette is { } mask && Shade(mask, site.VignetteStrength) is { } shade)
             DrawTextureRect(shade, fit, false);
-        if (site is not null && (ShowOverlay || !site.Calibrated))
-            DrawOverlay(camp, site, fit);
-        // The rows go while a talk shows in the box over the screen, and come back as it ends; the debug button too.
-        _talkButton = default;
+        // The rows go while a talk shows in the box over the screen, and come back as it ends; the overlay and the debug buttons too.
+        _talkButton = _debugButton = default;
         if (camp.Talking)
             return;
+        if (site is not null && ShowOverlay)
+            DrawOverlay(camp, site, fit);
         DrawMenu(camp, site, fit, size);
         if (DebugButtons && camp.Choice == CampChoice.None)
-            DrawTalkButton(size);
+            DrawButtons(size);
     }
 
-    /// <summary>The debug button at the top right, "Talk": a camp talk shows at once, without resting.</summary>
-    private void DrawTalkButton(Vector2 size)
+    /// <summary>The debug buttons at the top right: Talk, a camp talk at once without resting, and Debug, the overlay on or off.</summary>
+    private void DrawButtons(Vector2 size)
     {
-        _talkButton = new Rect2(size.X - 34, 3, 30, 11);
-        DrawRect(_talkButton, new Color(0, 0, 0, 0.6f));
-        DrawRect(_talkButton, new Color(Cursor.R / 255f, Cursor.G / 255f, Cursor.B / 255f, 0.9f), false, 1);
+        _debugButton = DrawButton(new Rect2(size.X - 36, 3, 32, 11), "Debug", ShowOverlay);
+        _talkButton = DrawButton(new Rect2(size.X - 70, 3, 30, 11), "Talk", false);
+    }
+
+    private Rect2 DrawButton(Rect2 area, string text, bool lit)
+    {
+        var yellow = new Color(Button.R / 255f, Button.G / 255f, Button.B / 255f);
+        DrawRect(area, lit ? yellow with { A = 0.35f } : new Color(0, 0, 0, 0.6f));
+        DrawRect(area, yellow with { A = 0.9f }, false, 1);
         _ui.TextSize = UiPainter.SmallText;
-        _ui.Text(this, _ui.Main, "Talk", (int)_talkButton.Position.X + 7, (int)_talkButton.Position.Y + 2, Cursor);
+        _ui.Text(this, _ui.Main, text, (int)area.Position.X + 4, (int)area.Position.Y + 2, Button);
+        return area;
     }
 
     private readonly Dictionary<RecordId, Texture2D?> _shades = [];
@@ -201,9 +221,11 @@ public partial class CampView : Control
                 var wide = tall * 0.38f;
                 var color = new Color(0.9f, 0.85f, 0.7f, 0.45f);
                 DrawRect(new Rect2(foot.X - wide / 2, foot.Y - tall, wide, tall), color);
+                if (!ShowOverlay)
+                    continue;
                 DrawCircle(foot, 2, Colors.White);
                 _ui.TextSize = UiPainter.FineText;
-                _ui.Text(this, _ui.Main, $"{MemberName(placement.Member)}, {Plain(placement.Pose)}{(placement.Mirrored ? " (mirrored)" : "")}", (int)(foot.X - wide / 2), (int)(foot.Y - tall) - 10, Text);
+                _ui.Text(this, _ui.Main, $"{MemberName(placement.Member)}, {Plain(placement.Pose)}{(placement.Mirrored ? " (mirrored)" : "")}", (int)(foot.X - wide / 2), (int)(foot.Y - tall) - 10, Button);
             }
         }
     }
@@ -260,9 +282,14 @@ public partial class CampView : Control
         var bandTop = At(fit, 0, site?.SafeUi?.Y ?? 0.565f).Y;
         var bandBottom = At(fit, 0, site?.SafeUi is { } safe ? safe.Y + safe.Height : 0.945f).Y;
         var band = new Rect2(frameLeft + DialogueBox.OverscanSide, bandTop, DialogueBox.FrameWidth - 2 * DialogueBox.OverscanSide, bandBottom - bandTop);
-        DrawRect(band, new Color(0, 0, 0, 0.55f));
-        var left = (int)band.Position.X + 6;
-        var top = (int)band.Position.Y + 4;
+        // The pause menu's parchment, the game's own, sized to the band: its torn top and bottom edges are transparent, so the band
+        // is drawn a little taller than it is and the rows start under the tear.
+        if (_ui.Images.Get(Parchment) is { } parchment)
+            DrawTextureRect(parchment, band.Grow(2), false);
+        else
+            DrawRect(band, new Color(0, 0, 0, 0.55f));
+        var left = (int)band.Position.X + 12;
+        var top = (int)band.Position.Y + 10;
         var columnWidth = (int)(band.Size.X * 0.46f);
         _ui.TextSize = UiPainter.StandardText;
         var row = _ui.Main.LineHeight;

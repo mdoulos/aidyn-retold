@@ -1054,7 +1054,12 @@ public sealed class GameSession
         var offers = CampActivities.Offered(Game.Plugins.All<CampActivityRecord>(RecordTypes.CampActivity), recipes, Game.Party);
         // Where the party is, for the Camp tab: the place that names the chunk (PlaceRecord), else the campsite's name, capitalised.
         var location = Location ?? (site is { Name.Length: > 0 } ? char.ToUpperInvariant(site.Name[0]) + site.Name[1..] : "");
-        Camp = new Ui.CampMenu(Game.Party, site, arrangement, offers, recipes, Game.Camping.RestHours, Game.Random.World) { Seed = seed, Location = location };
+        Camp = new Ui.CampMenu(Game.Party, site, arrangement, offers, recipes, Game.Random.World)
+        {
+            Seed = seed,
+            Location = location,
+            HourOfDay = (double)(Game.Clock.Time % GameClock.Day) / GameClock.Hour,
+        };
         // Trek's music stops under the camp, the user's choice (Nov 7, 2026): the campsite's own plays in the music's volume, none yet.
         _musicBeforeCamp = Zone.Audio.Music;
         Zone.Audio.Music = site?.Music;

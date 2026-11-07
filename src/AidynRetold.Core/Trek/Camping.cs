@@ -29,7 +29,7 @@ public enum CampNight
 
 /// <summary>How the rest went (<see cref="TrekLoop.CampRest"/>).</summary>
 /// <param name="HoursNow">The hours to pass at once: the camp's, less the eight a <c>rest</c> script passes as it ends, if the night's is one.</param>
-public sealed record CampRestResult(CampNight Night, int HoursNow);
+public sealed record CampRestResult(CampNight Night, double HoursNow);
 
 /// <summary>Camping's ambush (<c>0x800788cc</c> in 1.0). See <see cref="CampingRecord"/>.</summary>
 public static class Camping

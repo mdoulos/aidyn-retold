@@ -247,9 +247,9 @@ public class CampTests
     private static readonly ItemRecord Reagent = ItemData.NewItem(0x2011) with { Name = "Herb" };
     private static readonly ItemRecord Potion = ItemData.NewItem(0x2012, ItemKind.Potion) with { Name = "Tonic" };
     private static readonly RecipeRecord Tonic = new(RecordId.Parse("acre:recipe/tonic"), Crafting.Alchemist, Potion.Id, [new Ingredient(Reagent.Id, 1)], 1, 0);
-    private static readonly CampActivityRecord Brewing = new(RecordId.Parse("acre:campactivity/brewing"), "Brewing", Crafting.Alchemist, 2, "Potions from reagents.");
-    private static readonly CampActivityRecord Smithing = new(RecordId.Parse("acre:campactivity/smithing"), "Making armor", Crafting.Mechanic, 3, Order: -1);
-    private static readonly CampActivityRecord Odd = new(RecordId.Parse("acre:campactivity/odd"), "Odd", RecordId.Parse("acre:item/0x0001"), 1);
+    private static readonly CampActivityRecord Brewing = new(RecordId.Parse("acre:campactivity/brewing"), "Brewing", Crafting.Alchemist, "Potions from reagents.");
+    private static readonly CampActivityRecord Smithing = new(RecordId.Parse("acre:campactivity/smithing"), "Making armor", Crafting.Mechanic, Order: -1);
+    private static readonly CampActivityRecord Odd = new(RecordId.Parse("acre:campactivity/odd"), "Odd", RecordId.Parse("acre:item/0x0001"));
 
     private static (CharacterParty Party, Character Alchemist, Character Fighter) Camp(int herbs = 3)
     {
@@ -285,13 +285,13 @@ public class CampTests
     }
 
     /// <summary>A screen as it opens, with no campsite: the fire centred and the band away.</summary>
-    private static CampMenu Fresh(CharacterParty party, int baseHours = 8, params int[] rolls) =>
-        new(party, null, null, CampActivities.Offered([Brewing, Smithing], [Tonic], party), [Tonic], baseHours, Characters.D100(rolls.Length == 0 ? [1, 1, 1, 1, 1, 1] : rolls));
+    private static CampMenu Fresh(CharacterParty party, params int[] rolls) =>
+        new(party, null, null, CampActivities.Offered([Brewing, Smithing], [Tonic], party), [Tonic], Characters.D100(rolls.Length == 0 ? [1, 1, 1, 1, 1, 1] : rolls));
 
     /// <summary>A screen with its band open, as the session has it once the pan is up and the scroll unrolled.</summary>
-    private static CampMenu Screen(CharacterParty party, int baseHours = 8, params int[] rolls)
+    private static CampMenu Screen(CharacterParty party, params int[] rolls)
     {
-        var screen = Fresh(party, baseHours, rolls);
+        var screen = Fresh(party, rolls);
         Unroll(screen);
         return screen;
     }
@@ -351,6 +351,8 @@ public class CampTests
         // Rest: the band rolls up first, nothing taking presses meanwhile, and Rest is carried out as it has; nothing unrolls again.
         Assert.True(screen.Press(MenuAction.Right));
         Assert.True(screen.Press(MenuAction.Accept));
+        Assert.True(screen.RestListOpen);
+        Assert.True(screen.Press(MenuAction.Accept));
         Assert.Equal(CampChoice.Rest, screen.Choice);
         Assert.False(screen.Open);
         tick = screen.Step(1000, 1);
@@ -397,7 +399,7 @@ public class CampTests
         var (party, _, _) = Camp();
         var screen = Screen(party);
         Assert.Equal(CampTab.Camp, screen.Tab);
-        Assert.Equal("Rest (8 hours)", screen.RestLabel);
+        Assert.Equal("Long Rest", screen.RestLabel);
         Assert.Equal(2, screen.Members.Count);
         Assert.Null(screen.Empty);
 
@@ -437,17 +439,21 @@ public class CampTests
         Assert.True(screen.Press(MenuAction.Left));
         Assert.Equal(CampFocus.Tabs, screen.Focus);
 
-        // On Camp, A enters the content and A again rests.
+        // On Camp, A enters the content, A again opens the ways to rest, and A rests the first, until morning.
         screen.Show(CampTab.Camp);
         Assert.True(screen.Press(MenuAction.Accept));
         Assert.Equal(CampChoice.None, screen.Choice);
         Assert.True(screen.Press(MenuAction.Accept));
+        Assert.True(screen.RestListOpen);
+        Assert.Equal(CampChoice.None, screen.Choice);
+        Assert.True(screen.Press(MenuAction.Accept));
         Assert.Equal(CampChoice.Rest, screen.Choice);
+        Assert.Equal(screen.RestOptions[0].Hours, screen.Hours);
         Assert.False(screen.Press(MenuAction.Up));
     }
 
     [Fact]
-    public void ThePotionsTabOffersTheAlchemistsRecipesAndEachThingMadeAddsItsActivitysHours()
+    public void ThePotionsTabOffersTheAlchemistsRecipesAndWhatsMadeDoesntChangeTheRest()
     {
         var (party, alchemist, _) = Camp();
         var screen = Screen(party);
@@ -457,39 +463,93 @@ public class CampTests
         Assert.Equal([Tonic], screen.Recipes);
         Assert.Null(screen.Empty);
 
-        // Two tonics: two herbs used, two hours each.
+        // Two tonics: two herbs used, and the rest no longer for it.
         Assert.True(screen.Press(MenuAction.Accept));
         Assert.Equal("Tonic is ready.", screen.Message);
-        Assert.Equal(10, screen.Hours);
         Assert.True(screen.Press(MenuAction.Accept));
-        Assert.Equal(12, screen.Hours);
+        Assert.Equal(0, screen.Hours);
         Assert.Equal(2, party.Inventory.Count(Potion.Id));
         Assert.Equal(1, party.Inventory.Count(Reagent.Id));
         Assert.Equal(2, screen.Made["Tonic"]);
         Assert.Equal(2, screen.Log.Count(l => l == "Tonic is ready."));
-        Assert.Equal("Rest (12 hours)", screen.RestLabel);
+        Assert.Equal("Long Rest", screen.RestLabel);
+        Assert.Equal(screen.RestOptions.Select(o => o.Hours), Screen(party).RestOptions.Select(o => o.Hours));
 
         // A on Armor, which nobody can do, only says so.
         screen.Show(CampTab.Armor);
         Assert.True(screen.Press(MenuAction.Accept));
         Assert.Equal(CampMenu.NobodyCan, screen.Message);
-        Assert.Equal(12, screen.Hours);
     }
 
     [Fact]
-    public void AFailedBrewAddsNoHoursAndMissingIngredientsAreSaid()
+    public void LongRestOpensItsWaysWhichWakeAtMorningNoonEveningOrMidnightAndQuickRestIsAnHour()
+    {
+        Assert.Equal(8.5, CampMenu.HoursUntil(21.5, CampMenu.MorningHour));
+        Assert.Equal(14.5, CampMenu.HoursUntil(21.5, CampMenu.NoonHour));
+        Assert.Equal(20.5, CampMenu.HoursUntil(21.5, CampMenu.EveningHour));
+        // Morning begun, the next one; at its very hour, a whole day.
+        Assert.Equal(22, CampMenu.HoursUntil(8, CampMenu.MorningHour));
+        Assert.Equal(24, CampMenu.HoursUntil(6, CampMenu.MorningHour));
+        Assert.Equal(2.5, CampMenu.HoursUntil(21.5, CampMenu.MidnightHour));
+
+        var (party, _, _) = Camp();
+        var screen = new CampMenu(party, null, null, [], [Tonic], Characters.D100([1])) { HourOfDay = 10 };
+        Unroll(screen);
+        Assert.Equal(["Rest Until Morning", "Rest Until Noon", "Rest Until Evening", "Rest Until Midnight"], screen.RestOptions.Select(o => o.Label));
+        Assert.Equal([20.0, 2, 8, 14], screen.RestOptions.Select(o => o.Hours));
+
+        // Into the content on Long Rest; the list takes the presses while it's open: B shuts it, the tabs stay put, and down to the last
+        // rests until midnight.
+        screen.Press(MenuAction.Right);
+        Assert.Equal(CampRestButton.Long, screen.RestButton);
+        Assert.True(screen.Press(MenuAction.Accept));
+        Assert.True(screen.RestListOpen);
+        Assert.True(screen.Press(MenuAction.TabNext));
+        Assert.Equal(CampTab.Camp, screen.Tab);
+        Assert.True(screen.Press(MenuAction.Back));
+        Assert.False(screen.RestListOpen);
+        Assert.Equal(CampChoice.None, screen.Choice);
+        Assert.Equal(CampFocus.Content, screen.Focus);
+        screen.Press(MenuAction.Accept);
+        for (var i = 0; i < 5; i++)
+            screen.Press(MenuAction.Down);
+        Assert.Equal(3, screen.RestCursor);
+        Assert.True(screen.PointRestOption(1));
+        Assert.False(screen.PointRestOption(9));
+        screen.Press(MenuAction.Down);
+        screen.Press(MenuAction.Down);
+        Assert.True(screen.Press(MenuAction.Accept));
+        Assert.Equal((CampChoice.Rest, 14.0), (screen.Choice, screen.Hours));
+
+        // Quick Rest, left of Long Rest: an hour at once; left again is the tabs.
+        var quick = new CampMenu(party, null, null, [], [Tonic], Characters.D100([1])) { HourOfDay = 10 };
+        Unroll(quick);
+        quick.Press(MenuAction.Right);
+        quick.Press(MenuAction.Left);
+        Assert.Equal((CampFocus.Content, CampRestButton.Quick), (quick.Focus, quick.RestButton));
+        quick.Press(MenuAction.Left);
+        Assert.Equal(CampFocus.Tabs, quick.Focus);
+        quick.Press(MenuAction.Right);
+        Assert.Equal(CampRestButton.Long, quick.RestButton);
+        Assert.False(quick.PointRestButton(CampRestButton.Long));
+        Assert.True(quick.PointRestButton(CampRestButton.Quick));
+        Assert.True(quick.Press(MenuAction.Accept));
+        Assert.False(quick.RestListOpen);
+        Assert.Equal((CampChoice.Rest, 1.0), (quick.Choice, quick.Hours));
+    }
+
+    [Fact]
+    public void AFailedBrewIsSaidAndSoAreMissingIngredients()
     {
         var (party, _, _) = Camp(herbs: 1);
         // A roll of 100 fails against Intelligence × 3 + Alchemist × 6, 72; the herb is used up all the same, as the original's brewing uses it.
-        var screen = Screen(party, 8, 100, 1);
+        var screen = Screen(party, 100, 1);
         screen.Show(CampTab.Potions);
         screen.Press(MenuAction.Right);
         Assert.True(screen.Press(MenuAction.Accept));
         Assert.Equal("Alaron fails.", screen.Message);
-        Assert.Equal(8, screen.Hours);
         Assert.True(screen.Press(MenuAction.Accept));
         Assert.Equal(CampMenu.MissingIngredients, screen.Message);
-        Assert.Equal(8, screen.Hours);
         Assert.Empty(screen.Made);
     }
 

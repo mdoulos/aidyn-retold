@@ -107,7 +107,7 @@ public abstract record Transition
     public sealed record CloseCamp(CampChoice Choice) : Transition;
 
     /// <summary>Hours passed at once (<see cref="GameState.Lapse"/>), after a camp heal or a camp scene.</summary>
-    public sealed record Rest(int Hours) : Transition;
+    public sealed record Rest(double Hours) : Transition;
 
     /// <summary>Something to tell the player, such as that a keeper keeps no shop.</summary>
     public sealed record Say(string Text) : Transition;

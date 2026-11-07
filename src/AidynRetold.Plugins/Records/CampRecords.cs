@@ -7,10 +7,9 @@ namespace AidynRetold.Plugins.Records;
 /// </summary>
 /// <param name="Name">What the camp screen calls it.</param>
 /// <param name="Skill">The skill whose recipes it offers (<c>aidyn:skill/n</c>, or the Cook's <c>acre:skill/12</c>), done by the member best at it.</param>
-/// <param name="Hours">What each thing made adds to the camp's hours.</param>
 /// <param name="Description">A line under its name, if any.</param>
 /// <param name="Order">Where it comes in the camp screen's list; ties by ID.</param>
-public sealed record CampActivityRecord(RecordId Id, string Name, RecordId Skill, int Hours, string? Description = null, int Order = 0);
+public sealed record CampActivityRecord(RecordId Id, string Name, RecordId Skill, string? Description = null, int Order = 0);
 
 /// <summary>Which way a figure faces on the screen: toward the left or right edge, or away from the viewer, into the picture.</summary>
 public enum CampFacing

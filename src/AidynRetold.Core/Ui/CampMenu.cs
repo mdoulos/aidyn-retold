@@ -13,7 +13,7 @@ public enum CampChoice
 {
     /// <summary>It's still up.</summary>
     None,
-    /// <summary>Rest: the party heals, sleeps and its hours pass, and the night's scene plays.</summary>
+    /// <summary>Rest: the party sleeps and the chosen rest's hours pass (<see cref="Hours"/>), and the night's scene plays.</summary>
     Rest,
     /// <summary>Break camp: back to trek with nothing done, as B asks.</summary>
     Leave,
@@ -52,6 +52,18 @@ public enum CampFocus
 /// <param name="Closed">Whether the band rolled up this tick.</param>
 public readonly record struct CampTick(ScrollCue? Cue = null, bool Restart = false, bool Closed = false);
 
+/// <summary>A way to rest that the Long Rest button offers: what it says, and how many hours it passes from now.</summary>
+public sealed record RestOption(string Label, double Hours);
+
+/// <summary>The Camp tab's two rest buttons along its foot, the user's design (Nov 7, 2026).</summary>
+public enum CampRestButton
+{
+    /// <summary>Quick Rest, at the left: an hour, at once.</summary>
+    Quick,
+    /// <summary>Long Rest, at the right: the ways to rest, until morning, noon, evening or midnight.</summary>
+    Long,
+}
+
 /// <summary>
 /// A sound the camp band makes, one of the pause menu's (<see cref="MenuSounds"/>), the user's choice (Nov 7, 2026): the band
 /// records them (<see cref="CampMenu.TakeSounds"/>) and the session plays them as the pause menu plays its own.
@@ -75,9 +87,9 @@ public enum CampSound
 /// <summary>
 /// The camp screen, the remade game's (the user's design, Nov 7, 2026): the party round the fire (<see cref="Arrangement"/>) under
 /// five tabs, Camp, Food, Potions, Weapons and Armor, on a band of parchment between two rollers, which unrolls and rolls up as the
-/// pause menu's scroll does. Camp shows the members and Rest, which says how many hours the night will take; Food, Potions and Armor
+/// pause menu's scroll does. Camp shows the members, Quick Rest, an hour, and Long Rest, which opens the ways to rest, until morning, noon, evening or midnight (<see cref="RestOptions"/>); Food, Potions and Armor
 /// offer the Cook's, the Alchemist's and the Mechanic's recipes (<see cref="CampActivityRecord"/>), made by the member best at the
-/// skill, and each thing made adds its activity's hours to the rest, so the more is made, the later the party wakes. Weapons holds
+/// skill; what's made doesn't change how long the party rests. Weapons holds
 /// nothing yet. Positions are the view's; the core keeps the state, as it does for the pause menu's tabs.
 /// </summary>
 /// <remarks>
@@ -97,11 +109,18 @@ public enum CampSound
 public sealed class CampMenu
 {
     /// <summary>The camp screen's own lines, the remade game's, as the original has no camp screen.</summary>
-    public const string RestText = "Rest", RestHoursText = "Rest ({0} hours)", LeaveText = "Break camp", NobodyCan = "Nobody has the skill.",
+    public const string RestText = "Long Rest", QuickRestText = "Quick Rest", LeaveText = "Break camp", NobodyCan = "Nobody has the skill.",
         NothingToMake = "Nothing to make.", NothingHere = "", Ready = "{0} is ready.", GoesWrong = "It goes wrong: {0}.", Fails = "{0} fails.",
         MissingIngredients = "You don't have the ingredients.", StackFull = "You can't carry any more of it.", TooLow = "{0} isn't skilled enough.",
-        MakerNote = "{0} makes it (C-left, C-right to change)", HoursNote = "+{0} h each", LevelText = "Lv {0}", LocationText = "Current Location: {0}",
-        InventoryText = "Total Inventory: {0}";
+        MakerNote = "{0} makes it (C-left, C-right to change)", LevelText = "Lv {0}", LocationText = "Current Location: {0}",
+        RestUntilMorningText = "Rest Until Morning", RestUntilNoonText = "Rest Until Noon", RestUntilEveningText = "Rest Until Evening",
+        RestUntilMidnightText = "Rest Until Midnight";
+
+    /// <summary>
+    /// The hours the party wakes at, resting until morning, noon, evening or midnight: when the calendar's morning, afternoon and evening
+    /// begin (<see cref="Calendar.CalendarDate.PartOfDay"/>), 6:00, 12:00 and 18:00, and midnight; and how long a quick rest is, an hour.
+    /// </summary>
+    public const double MorningHour = 6, NoonHour = 12, EveningHour = 18, MidnightHour = 0, QuickRestHours = 1;
 
     /// <summary>The tabs in order, down the left side.</summary>
     public static readonly IReadOnlyList<CampTab> Tabs = [CampTab.Camp, CampTab.Food, CampTab.Potions, CampTab.Weapons, CampTab.Armor];
@@ -115,17 +134,15 @@ public sealed class CampMenu
     private readonly List<string> _log = [];
     private readonly List<CampSound> _sounds = [];
     private readonly Dictionary<string, int> _made = [];
-    private int _added;
     private int _panTicks;
 
     /// <param name="site">The campsite shown, or null where the plugins have none.</param>
     /// <param name="arrangement">The party's arrangement at it, or null with no campsite.</param>
     /// <param name="offers">The activities, in order, which the tabs find by their skills.</param>
     /// <param name="recipes">Every recipe, which an activity's are chosen from again as ingredients are used.</param>
-    /// <param name="baseHours">The rest's hours before anything made adds to them (<see cref="CampingRecord.RestHours"/>).</param>
     /// <param name="random">The stream the crafting rolls on.</param>
     public CampMenu(Party party, CampsiteRecord? site, CampArrangement? arrangement, IReadOnlyList<CampOffer> offers, IReadOnlyList<RecipeRecord> recipes,
-        int baseHours, IRandom random)
+        IRandom random)
     {
         _party = party;
         _recipes = recipes;
@@ -133,7 +150,6 @@ public sealed class CampMenu
         Site = site;
         Arrangement = arrangement;
         Offers = offers;
-        BaseHours = baseHours;
     }
 
     public CampsiteRecord? Site { get; }
@@ -151,20 +167,45 @@ public sealed class CampMenu
     /// <summary>The party's members, in slot order, for the Camp tab's portraits.</summary>
     public IReadOnlyList<Character> Members => [.. _party.Members];
 
-    /// <summary>The rest's hours before anything made adds to them.</summary>
-    public int BaseHours { get; }
+    /// <summary>The time of day as the camp opened, in hours from midnight, which the rests until a time count from; time stands still at camp.</summary>
+    public double HourOfDay { get; init; } = 21;
 
-    /// <summary>The hours the rest will take: the base and what's been made.</summary>
-    public int Hours => BaseHours + _added;
+    /// <summary>The hours the chosen rest passes, once one is chosen (<see cref="RestOptions"/>); nothing that's made at camp changes it.</summary>
+    public double Hours { get; private set; }
 
-    /// <summary>What the Rest button says.</summary>
-    public string RestLabel => string.Format(CultureInfo.InvariantCulture, RestHoursText, Hours);
+    /// <summary>What the Long Rest button says.</summary>
+    public string RestLabel => RestText;
+
+    /// <summary>Which rest button the cursor is on while it's in the Camp tab's content: Long Rest as it comes in.</summary>
+    public CampRestButton RestButton { get; private set; } = CampRestButton.Long;
+
+    /// <summary>
+    /// The ways to rest that Long Rest opens, the user's design (Nov 7, 2026): until morning, noon, evening or midnight, waking as it
+    /// comes, the next one if it's that hour now. Quick Rest is the hour.
+    /// </summary>
+    public IReadOnlyList<RestOption> RestOptions =>
+    [
+        new(RestUntilMorningText, HoursUntil(HourOfDay, MorningHour)),
+        new(RestUntilNoonText, HoursUntil(HourOfDay, NoonHour)),
+        new(RestUntilEveningText, HoursUntil(HourOfDay, EveningHour)),
+        new(RestUntilMidnightText, HoursUntil(HourOfDay, MidnightHour)),
+    ];
+
+    /// <summary>The hours from <paramref name="now"/> to the next <paramref name="hour"/> o'clock, a whole day where it's that hour now.</summary>
+    public static double HoursUntil(double now, double hour)
+    {
+        var hours = ((hour - now) % 24 + 24) % 24;
+        return hours <= 0 ? 24 : hours;
+    }
+
+    /// <summary>Whether the list of ways to rest is open over the Rest button, which takes the presses while it is.</summary>
+    public bool RestListOpen { get; private set; }
+
+    /// <summary>The cursor's way to rest in the list.</summary>
+    public int RestCursor { get; private set; }
 
     /// <summary>The Camp tab's line on where the party is.</summary>
     public string LocationLine => string.Format(CultureInfo.InvariantCulture, LocationText, Location);
-
-    /// <summary>The Camp tab's line on the inventory: how many items the party carries, every stack's count, as the Inventory tab's foot says it.</summary>
-    public string InventoryLine => string.Format(CultureInfo.InvariantCulture, InventoryText, _party.Inventory.Stacks.Sum(s => s.Quantity));
 
     /// <summary>A member's level for the row over their portrait.</summary>
     public static string LevelLabel(Character member) => string.Format(CultureInfo.InvariantCulture, LevelText, member.Level);
@@ -332,6 +373,8 @@ public sealed class CampMenu
     {
         if (!Open)
             return false;
+        if (RestListOpen)
+            return PressRestList(action);
         switch (action)
         {
             case MenuAction.TabPrevious:
@@ -341,11 +384,24 @@ public sealed class CampMenu
                 Choose(Tabs[(Tabs.ToList().IndexOf(Tab) + 1) % Tabs.Count], Focus);
                 return true;
             case MenuAction.Left:
-                Focus = CampFocus.Tabs;
+                // On the Camp tab, from Long Rest to Quick Rest first, then out to the tabs.
+                if (Focus == CampFocus.Content && Tab == CampTab.Camp && RestButton == CampRestButton.Long)
+                    RestButton = CampRestButton.Quick;
+                else
+                    Focus = CampFocus.Tabs;
                 _sounds.Add(CampSound.PageCursor);
                 return true;
             case MenuAction.Right:
-                Focus = CampFocus.Content;
+                // Into the content, on Long Rest; from Quick Rest over to Long Rest.
+                if (Focus == CampFocus.Tabs)
+                {
+                    Focus = CampFocus.Content;
+                    RestButton = CampRestButton.Long;
+                }
+                else if (Tab == CampTab.Camp)
+                {
+                    RestButton = CampRestButton.Long;
+                }
                 _sounds.Add(CampSound.PageCursor);
                 return true;
             case MenuAction.Up or MenuAction.Down:
@@ -376,11 +432,21 @@ public sealed class CampMenu
                 if (Focus == CampFocus.Tabs)
                 {
                     Focus = CampFocus.Content;
+                    RestButton = CampRestButton.Long;
+                    return true;
+                }
+                if (Tab == CampTab.Camp && RestButton == CampRestButton.Quick)
+                {
+                    // Quick Rest: an hour, at once.
+                    Hours = QuickRestHours;
+                    Choice = CampChoice.Rest;
                     return true;
                 }
                 if (Tab == CampTab.Camp)
                 {
-                    Choice = CampChoice.Rest;
+                    // Long Rest opens the ways to rest over the button, the cursor on the first.
+                    RestListOpen = true;
+                    RestCursor = 0;
                     return true;
                 }
                 if (Current is { } making && Member is { } member && Recipes.ElementAtOrDefault(RecipeCursor) is { } recipe)
@@ -415,9 +481,53 @@ public sealed class CampMenu
         _sounds.Add(to > from ? CampSound.TabForward : CampSound.TabBack);
     }
 
+    /// <summary>
+    /// A press while the ways to rest are open, which takes them all: up and down move over them, A rests the cursor's way, and B shuts
+    /// the list; the rest do nothing until it's shut.
+    /// </summary>
+    private bool PressRestList(MenuAction action)
+    {
+        switch (action)
+        {
+            case MenuAction.Up or MenuAction.Down:
+                RestCursor = Math.Clamp(RestCursor + action.Vertical(), 0, RestOptions.Count - 1);
+                _sounds.Add(CampSound.Cursor);
+                break;
+            case MenuAction.Accept:
+                Hours = RestOptions[RestCursor].Hours;
+                RestListOpen = false;
+                Choice = CampChoice.Rest;
+                _sounds.Add(CampSound.Accept);
+                break;
+            case MenuAction.Back:
+                CloseRestList();
+                break;
+        }
+        return true;
+    }
+
+    /// <summary>Shuts the ways to rest, as B or a click away from them does.</summary>
+    public void CloseRestList()
+    {
+        if (!RestListOpen)
+            return;
+        RestListOpen = false;
+        _sounds.Add(CampSound.Back);
+    }
+
+    /// <summary>The list's cursor onto a way to rest, as the mouse points at one; whether it moved.</summary>
+    public bool PointRestOption(int row)
+    {
+        if (!RestListOpen || row < 0 || row >= RestOptions.Count || row == RestCursor)
+            return false;
+        RestCursor = row;
+        return true;
+    }
+
     /// <summary>Shows a tab, its recipes from its best member.</summary>
     public void Show(CampTab tab)
     {
+        RestListOpen = false;
         Tab = tab;
         Member = Current?.Member;
         RecipeCursor = 0;
@@ -438,7 +548,15 @@ public sealed class CampMenu
     /// <summary>The cursor onto the tabs or the content, as the mouse goes over one.</summary>
     public void FocusOn(CampFocus focus) => Focus = focus;
 
-    /// <summary>Makes the recipe, says how it went, and adds the activity's hours for anything made, a spoilt dish among them.</summary>
+    /// <summary>The cursor onto a rest button, in the content, as the mouse goes over one; whether it moved.</summary>
+    public bool PointRestButton(CampRestButton button)
+    {
+        var moved = Focus != CampFocus.Content || RestButton != button;
+        (Focus, RestButton) = (CampFocus.Content, button);
+        return moved;
+    }
+
+    /// <summary>Makes the recipe and says how it went; the rest is as long as the player chooses, whatever's made.</summary>
     private void Make(CampOffer offer, Character member, RecipeRecord recipe)
     {
         var name = ProductName(recipe);
@@ -448,13 +566,11 @@ public sealed class CampMenu
             case CraftResult.Made:
                 Say(string.Format(CultureInfo.InvariantCulture, Ready, name));
                 Count(name);
-                _added += offer.Activity.Hours;
                 break;
             case CraftResult.Spoilt:
                 var spoilt = recipe.Failure is { } failure ? _party.Inventory.Catalog.TryGet(failure)?.Name ?? failure.ToString() : name;
                 Say(string.Format(CultureInfo.InvariantCulture, GoesWrong, spoilt));
                 Count(spoilt);
-                _added += offer.Activity.Hours;
                 break;
             case CraftResult.MissingIngredients:
                 Say(MissingIngredients);

@@ -27,7 +27,7 @@ public sealed class CampRecordsTests
         """;
 
     private const string Activity = """
-        [{ "id": "acre:campactivity/cooking", "name": "Cooking", "skill": "acre:skill/12", "hours": 1, "description": "A meal from what's carried." }]
+        [{ "id": "acre:campactivity/cooking", "name": "Cooking", "skill": "acre:skill/12", "description": "A meal from what's carried." }]
         """;
 
     private const string Talk = """
@@ -76,7 +76,6 @@ public sealed class CampRecordsTests
 
         var cooking = Assert.Single(set.All<CampActivityRecord>(RecordTypes.CampActivity));
         Assert.Equal("acre:skill/12", cooking.Skill.ToString());
-        Assert.Equal(1, cooking.Hours);
 
         var talk = Assert.Single(set.All<CampTalkRecord>(RecordTypes.CampTalk));
         Assert.Equal(["aidyn:entity/0x0243"], talk.Members!.Select(m => m.ToString()));

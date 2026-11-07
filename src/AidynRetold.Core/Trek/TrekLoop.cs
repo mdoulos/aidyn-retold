@@ -774,10 +774,10 @@ public sealed partial class TrekLoop : IMapObjectHost
     /// while its check flag is set, cued as the cut-scene it is; the Campsite's own script, Alaron alone at the fire; or nothing.
     /// The camp talk (<see cref="CampTalks"/>, <see cref="ShowCampTalk"/>) was told as the camp opened.
     /// The hours pass as the scene ends where it's a <c>rest</c> script, which passes eight, so the caller passes the rest at once
-    /// (<see cref="CampRestResult.HoursNow"/>).
+    /// (<see cref="CampRestResult.HoursNow"/>), none where the scene passes more than the rest asked for.
     /// </summary>
     /// <param name="seed">The camp's seed, which the talk is chosen by (<see cref="Camp.CampSeed"/>).</param>
-    public CampRestResult CampRest(int hours, uint seed)
+    public CampRestResult CampRest(double hours, uint seed)
     {
         var rules = Game.Camping;
         var at = Player.Sphere.Position;
@@ -795,7 +795,7 @@ public sealed partial class TrekLoop : IMapObjectHost
         if (scene is not null && CutSceneLaunch.Of(Game.Plugins, scene, MapRecord.VoxelId(map!.Record.Id, scene.Index)) is { } story)
         {
             Cue(story);
-            return new CampRestResult(CampNight.Scene, hours - (story.Script.Rest ? rules.RestHours : 0));
+            return new CampRestResult(CampNight.Scene, Math.Max(0, hours - (story.Script.Rest ? rules.RestHours : 0)));
         }
 
         // The camp talk was told as the camp opened (GameSession.OpenCamp), so else the Campsite's own, as the original falls back to it,
@@ -805,7 +805,7 @@ public sealed partial class TrekLoop : IMapObjectHost
             && CutSceneLaunch.Of(Game.Plugins, fire, MapRecord.VoxelId(campsite.Id, fire.Index)) is { } marshmallows)
         {
             Cue(marshmallows);
-            return new CampRestResult(CampNight.Scene, hours - (marshmallows.Script.Rest ? rules.RestHours : 0));
+            return new CampRestResult(CampNight.Scene, Math.Max(0, hours - (marshmallows.Script.Rest ? rules.RestHours : 0)));
         }
         return new CampRestResult(CampNight.None, hours);
     }

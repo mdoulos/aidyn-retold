@@ -91,7 +91,10 @@ public partial class CampView : Control
     private readonly PauseScrollView? _scroll;
 
     /// <summary>What the mouse can land on: a tab, a recipe or Rest.</summary>
-    private enum Target { Tab, Recipe, Rest, Bar, Badge }
+    private enum Target { Tab, Recipe, Rest, Bar, Badge, RestOption }
+
+    /// <summary>How far apart the ways to rest are in their list, and how far in from its ends and its left side.</summary>
+    private const float RestPitch = 7.5f, RestListEnds = 2.5f, RestListSide = 9;
 
     /// <summary>What the hover over a bar or a badge says, and where the bar or badge is on this control, or none.</summary>
     private (string Text, Rect2 Area)? _tip;
@@ -174,6 +177,12 @@ public partial class CampView : Control
     {
         if (Camp is not { Open: true } camp)
             return;
+        if (e is InputEventMouseMotion overList && camp.RestListOpen)
+        {
+            if (HitEntry(overList.Position) is { Target: Target.RestOption } way && camp.PointRestOption(way.Index))
+                QueueRedraw();
+            return;
+        }
         if (e is InputEventMouseMotion motion)
         {
             var hit = Hit(motion.Position);
@@ -206,6 +215,21 @@ public partial class CampView : Control
             QueueRedraw();
             AcceptEvent();
         }
+        else if (button.ButtonIndex == MouseButton.Left && camp.RestListOpen)
+        {
+            // A way to rest is pointed at and pressed as A; a click anywhere else shuts the list, as B does.
+            if (HitEntry(button.Position) is { Target: Target.RestOption } way)
+            {
+                camp.PointRestOption(way.Index);
+                Click?.Invoke(MenuAction.Accept);
+            }
+            else
+            {
+                camp.CloseRestList();
+            }
+            QueueRedraw();
+            AcceptEvent();
+        }
         else if (button.ButtonIndex == MouseButton.Left && Hit(button.Position) is var (target, index))
         {
             // A tab opens on a click, as the pause menu's do; a recipe or Rest is pointed at and pressed as A; a bar or a badge only
@@ -228,7 +252,7 @@ public partial class CampView : Control
     private (Rect2 Area, Target Target, int Index)? HitEntry(Vector2 at)
     {
         var inBand = at - _band.Position;
-        foreach (var (area, target, index) in _hits)
+        foreach (var (area, target, index) in Enumerable.Reverse(_hits))
         {
             if (area.HasPoint(inBand))
                 return (new Rect2(area.Position + _band.Position, area.Size), target, index);
@@ -251,8 +275,9 @@ public partial class CampView : Control
     /// <summary>What's under a point of this control, the hits being in the band's pixels.</summary>
     private (Target Target, int Index)? Hit(Vector2 at)
     {
+        // The last drawn first, so what's on top, the ways to rest over the badges, takes the mouse.
         var inBand = at - _band.Position;
-        foreach (var (area, target, index) in _hits)
+        foreach (var (area, target, index) in Enumerable.Reverse(_hits))
         {
             if (area.HasPoint(inBand))
                 return (target, index);
@@ -278,9 +303,8 @@ public partial class CampView : Control
             case Target.Bar or Target.Badge:
                 return changed;
             default:
-                var was = camp.Focus;
-                camp.FocusOn(CampFocus.Content);
-                return was != CampFocus.Content || changed;
+                // A rest button: Quick Rest's index is 0, Long Rest's 1.
+                return camp.PointRestButton(index == 0 ? CampRestButton.Quick : CampRestButton.Long) | changed;
         }
     }
 
@@ -898,24 +922,62 @@ public partial class CampView : Control
                 badgeY += BadgePitch;
             }
         }
-        // The foot: Rest on a slip at the right, with the pointer while the cursor is in the content, and the location and the inventory
-        // at the left, level with it.
-        var rest = camp.RestLabel;
-        var restWidth = small.ExactWidth(rest) + 14;
-        var button = new Rect2(content.End.X - restWidth, content.End.Y - FootHeight, restWidth, FootHeight);
-        var footMiddle = button.GetCenter().Y;
+        // The foot: Long Rest on a slip at the right and Quick Rest beside it, the cursor's with the pointer while the cursor is in the
+        // content, and the location at the left, level with them, the user's design (Nov 7, 2026).
+        var longWidth = small.ExactWidth(CampMenu.RestText) + 14;
+        var longButton = new Rect2(content.End.X - longWidth, content.End.Y - FootHeight, longWidth, FootHeight);
+        var quickWidth = small.ExactWidth(CampMenu.QuickRestText) + 14;
+        var quickButton = new Rect2(longButton.Position.X - RestButtonGap - quickWidth, longButton.Position.Y, quickWidth, FootHeight);
+        var focused = camp.Focus == CampFocus.Content && !camp.RestListOpen;
+        RestButton(canvas, quickButton, CampMenu.QuickRestText, small, focused && camp.RestButton == CampRestButton.Quick);
+        _hits.Add((quickButton, Target.Rest, 0));
+        RestButton(canvas, longButton, CampMenu.RestText, small, focused && camp.RestButton == CampRestButton.Long);
+        _hits.Add((longButton, Target.Rest, 1));
+        Print(canvas, fine, camp.LocationLine, content.Position.X, longButton.GetCenter().Y - fine.Middle, Text);
+        if (camp.RestListOpen)
+            DrawRestList(canvas, camp, longButton, small);
+    }
+
+    /// <summary>How far apart Quick Rest and Long Rest stand.</summary>
+    private const float RestButtonGap = 3;
+
+    /// <summary>A rest button: a slip of the gold's parchment with its label, in red with the pointer when the cursor's on it.</summary>
+    private void RestButton(CanvasItem canvas, Rect2 button, string label, UiFont small, bool current)
+    {
+        var middle = button.GetCenter().Y;
         if (UiPainter.Original)
             canvas.DrawRect(button, new Color(0, 0, 0, 0.2f));
         else
             _ui.Slip(canvas, button, sheet: UiPainter.GoldSheet);
-        var focused = camp.Focus == CampFocus.Content;
-        if (focused)
-            Pointer(canvas, button.Position.X + 4, footMiddle, Cursor);
-        Print(canvas, small, rest, button.Position.X + 9, footMiddle - small.Middle, focused ? Cursor : Text);
-        _hits.Add((button, Target.Rest, 0));
-        var location = camp.LocationLine;
-        Print(canvas, fine, location, content.Position.X, footMiddle - fine.Middle, Text);
-        Print(canvas, fine, camp.InventoryLine, content.Position.X + fine.ExactWidth(location) + 6, footMiddle - fine.Middle, Text);
+        if (current)
+            Pointer(canvas, button.Position.X + 4, middle, Cursor);
+        Print(canvas, small, label, button.Position.X + 9, middle - small.Middle, current ? Cursor : Text);
+    }
+
+    /// <summary>
+    /// The ways to rest, open where the Long Rest button is, the user's design (Nov 7, 2026): a sheet of parchment over the button, its
+    /// bottom right at the button's, growing up and left to fit, each way a row, the cursor's in red with the pointer.
+    /// </summary>
+    private void DrawRestList(CanvasItem canvas, CampMenu camp, Rect2 button, UiFont small)
+    {
+        var options = camp.RestOptions;
+        var width = options.Max(o => small.ExactWidth(o.Label)) + RestListSide + 5;
+        var height = options.Count * RestPitch + 2 * RestListEnds;
+        var list = new Rect2(button.End.X - width, button.End.Y - height, width, height);
+        if (UiPainter.Original)
+            canvas.DrawRect(list, new Color(0, 0, 0, 0.75f));
+        else
+            _ui.Slip(canvas, list);
+        for (var i = 0; i < options.Count; i++)
+        {
+            var row = new Rect2(list.Position.X, list.Position.Y + RestListEnds + i * RestPitch, width, RestPitch);
+            var middle = row.GetCenter().Y;
+            var current = i == camp.RestCursor;
+            if (current)
+                Pointer(canvas, row.Position.X + 4, middle, Cursor);
+            Print(canvas, small, options[i].Label, row.Position.X + RestListSide, middle - small.Middle, current ? Cursor : Text);
+            _hits.Add((row, Target.RestOption, i));
+        }
     }
 
     /// <summary>

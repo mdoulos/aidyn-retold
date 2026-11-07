@@ -26,8 +26,9 @@ namespace AidynRetold.Plugins.Records;
 /// 15 and 20 (<c>CampEncounters.Load</c>). Null in plugins imported before them.
 /// </param>
 /// <param name="RestHours">
-/// The hours a camp's rest passes before anything done at camp adds to them, the remade game's: 8, the original's
-/// (<c>World::Lapse8Hours</c>). Each thing made at camp adds its activity's hours (<see cref="CampActivityRecord.Hours"/>).
+/// The hours a night's rest is, the original's 8 (<c>World::Lapse8Hours</c>): what a story camp scene's <c>rest</c> passes, and the
+/// rest the camping record's effect ticks are for, which a longer or shorter rest scales. The remade game's camp rests until morning,
+/// noon or evening or for an hour, as the player chooses (the user's design, Nov 7, 2026), whatever is made there.
 /// </param>
 /// <param name="Recharge">
 /// The share of every battery's capacity that camping restores, or none for <paramref name="Heal"/>'s, as the original refills them

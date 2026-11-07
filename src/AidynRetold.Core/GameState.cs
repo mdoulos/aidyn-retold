@@ -337,9 +337,9 @@ public sealed class GameState : IScriptWorld
     /// Hours passing at once, as after camping (<c>World::Lapse8Hours</c>): the clock moves on, within the year, the
     /// weather may change, and the calendar's and the rain's flags are written. Time played doesn't, and effects don't run down: camping's heal runs those.
     /// </summary>
-    public void Lapse(int hours)
+    public void Lapse(double hours)
     {
-        Clock.Time = (uint)((Clock.Time + (ulong)hours * GameClock.Hour) % GameClock.Year);
+        Clock.Time = (uint)((Clock.Time + (ulong)Math.Round(Math.Max(hours, 0) * GameClock.Hour)) % GameClock.Year);
         Weather.Frame(Clock.Date.PartOfDay, Clock.Date.Season, Terrain(Weather.Terrain), Random.World, Random.Cosmetic);
         WriteStateFlags();
     }

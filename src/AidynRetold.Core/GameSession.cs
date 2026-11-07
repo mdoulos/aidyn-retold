@@ -1039,8 +1039,8 @@ public sealed class GameSession
             _host.Log($"Camp at {site!.Id}: {note}");
         var recipes = Game.Plugins.All<RecipeRecord>(RecordTypes.Recipe).ToList();
         var offers = CampActivities.Offered(Game.Plugins.All<CampActivityRecord>(RecordTypes.CampActivity), recipes, Game.Party);
-        // Where the party is, for the Camp tab: the campsite's name, capitalised, until places have names of their own.
-        var location = site is { Name.Length: > 0 } ? char.ToUpperInvariant(site.Name[0]) + site.Name[1..] : "";
+        // Where the party is, for the Camp tab: the place that names the chunk (PlaceRecord), else the campsite's name, capitalised.
+        var location = Location ?? (site is { Name.Length: > 0 } ? char.ToUpperInvariant(site.Name[0]) + site.Name[1..] : "");
         Camp = new Ui.CampMenu(Game.Party, site, arrangement, offers, recipes, Game.Camping.RestHours, Game.Random.World) { Seed = seed, Location = location };
         Send(new Transition.OpenCamp(Camp));
         // The camp opens on the party's talk, the user's design (Nov 7, 2026): the night's conversation in the box over the picture,
@@ -1397,6 +1397,9 @@ public sealed class GameSession
     /// <summary>The player's body's actor: the party leader's (<see cref="EntityBody.Actor"/>), Alaron's in the original game.</summary>
     public RecordId? PlayerActor =>
         Game.Party.Members.FirstOrDefault() is { } leader ? Game.Plugins.TryGet<EntityRecord>(leader.Entity)?.Body?.Actor : null;
+
+    /// <summary>Where the player is, by name (<see cref="TrekLoop.Location"/>), or null where no place names his chunk; trek's, a cut-scene's stage having none.</summary>
+    public string? Location => Trek.Location;
 
     /// <summary>The chunk the player is in, and whether its terrain has the outdoor sky, for the World tab's map and Camp.</summary>
     public (ChunkRef? Place, bool Outdoors) Where()

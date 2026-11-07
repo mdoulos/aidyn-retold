@@ -957,6 +957,12 @@ public sealed partial class TrekLoop : IMapObjectHost
         Chunks.ChunkAt(Player.Sphere.Position) is { } chunk ? (new ChunkRef(Chunks.MapSet.Id, chunk.Row, chunk.Column), chunk.Terrain) : (null, null);
 
     /// <summary>
+    /// Where the player is, by name, the remade game's (<see cref="PlaceRecord.At"/>): the place naming the chunk he stands in, its
+    /// region or its map set, or null where no place names it yet.
+    /// </summary>
+    public string? Location => Chunks.ChunkAt(Player.Sphere.Position) is { } chunk ? PlaceRecord.At(Game.Plugins, Chunks.MapSet.Id, chunk)?.Name : null;
+
+    /// <summary>
     /// What the player was doing as a wanderer caught him, for the enemies' spawn set (<c>EncounterDat.aniByte</c>, which
     /// <c>Wanderer.Tick</c> notes as it notices him): 3 running, 2 walking, 1 sneaking, else 0.
     /// </summary>

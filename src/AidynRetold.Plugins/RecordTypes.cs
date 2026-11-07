@@ -176,6 +176,9 @@ public static class RecordTypes
     /// <summary>A conversation the party may have at camp, the remade game's, with the conditions it's told under.</summary>
     public const string CampTalk = "camptalk";
 
+    /// <summary>A named place the party can be in, the remade game's: chunks, world map regions or map sets, which name where the player is.</summary>
+    public const string Place = "place";
+
     private static readonly Type[] DbViews = [typeof(DbRecord)];
 
     /// <summary>Every type, in the registry's order: the DB records, the flags, the Borgs, then the rest as they were added.</summary>
@@ -233,6 +236,7 @@ public static class RecordTypes
         new(Campsite, typeof(CampsiteRecord), KeyKind.Decimal),
         new(CampFigure, typeof(CampFigureRecord), KeyKind.Decimal),
         new(CampTalk, typeof(CampTalkRecord), KeyKind.Decimal),
+        new(Place, typeof(PlaceRecord), KeyKind.Decimal),
     ];
 
     private static readonly Dictionary<string, RecordTypeInfo> ByName = Registry.ToDictionary(t => t.Name, StringComparer.Ordinal);

@@ -13,7 +13,7 @@ Read what your task needs, not all of it.
 | How the original plays, from the player's side, written from memory | [docs/engine-behaviour.md](docs/engine-behaviour.md) |
 | How a ROM format is laid out, and what decoding it found | [docs/formats/](docs/formats/): `rom`, `db`, `textures`, `geometry`, `scenes`, `animation`, `actors`, `particles`, `dialogue`, `maps`, `quests`, `text`, `audio` |
 | Content the engine hardcodes, and which ADR 0008 layer it goes in | [docs/hardcoded-content.md](docs/hardcoded-content.md) |
-| How our code ports or runs a system | [docs/systems/](docs/systems/): `importer`, `plugins`, `runtime`, `movement`, `cameras`, `rendering`, `flags`, `scripts`, `characters`, `items`, `map-objects`, `wanderers`, `camping`, `combat`, `magic`, `saves`, `editor`, `ui`, `audio`, `weather`, `cinematics`, `events` |
+| How our code ports or runs a system | [docs/systems/](docs/systems/): `importer`, `plugins`, `runtime`, `movement`, `cameras`, `rendering`, `flags`, `scripts`, `characters`, `items`, `map-objects`, `wanderers`, `camping`, `places`, `combat`, `magic`, `saves`, `editor`, `ui`, `audio`, `weather`, `cinematics`, `events` |
 | How the packages are built and laid out, how the ACRE plugin goes in, and how the release workflow numbers and describes releases | [docs/systems/releases.md](docs/systems/releases.md) |
 | The user's notes from playing the runtime and timing the original | [docs/playtests.md](docs/playtests.md) |
 | What Retold changes from the original, by category (mechanics, combat, items, weapons, armor, graphics, UI, saves and the rest), the bugs it fixes and the ones it keeps on purpose, for players and contributors | [docs/changes/](docs/changes/README.md) |

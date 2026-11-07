@@ -118,8 +118,11 @@ public sealed class CampMenu
     /// <summary>How the screen was left, once it was.</summary>
     public CampChoice Choice { get; private set; }
 
-    /// <summary>Whether the night's talk shows over the screen, in the conversation box, which takes the presses meanwhile.</summary>
+    /// <summary>Whether a talk shows over the screen, in the conversation box, which takes the presses meanwhile; the rows are hidden under it.</summary>
     public bool Talking { get; set; }
+
+    /// <summary>How many talks the debug button has started this camp, which each press's seed counts on (<c>GameSession.TriggerCampTalk</c>).</summary>
+    public int TalksTriggered { get; set; }
 
     /// <summary>The name of a recipe's product, for the rows.</summary>
     public string ProductName(RecipeRecord recipe) => _party.Inventory.Catalog.TryGet(recipe.Product)?.Name ?? recipe.Product.ToString();

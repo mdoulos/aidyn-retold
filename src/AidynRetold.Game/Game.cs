@@ -408,6 +408,12 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
         AddChild(_backdrop);
         _camp = new CampLayer(plugins);
         _camp.Clicked += Clicked;
+        _camp.DebugButtons = Debugging;
+        _camp.TalkRequested += () =>
+        {
+            if (_session is { } playing && playing.TriggerCampTalk())
+                ShowPressed(playing);
+        };
         AddChild(_camp);
         _cinematic = new CinematicLayer(plugins, _models!, _audio!);
         AddChild(_cinematic);

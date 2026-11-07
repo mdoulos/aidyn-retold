@@ -1091,10 +1091,29 @@ public sealed class GameSession
         EndTalkIfOver();
     }
 
+    /// <summary>The talk over the camp screen has ended: the screen closes if it was the night's, or its rows come back if the debug button's.</summary>
     private void EndTalkIfOver()
     {
-        if (Camp is { Talking: true } && Trek.Conversation is null)
+        if (Camp is not { Talking: true } camp || Trek.Conversation is not null)
+            return;
+        if (camp.Choice == CampChoice.Rest)
             CloseCamp(CampChoice.Rest);
+        else
+            camp.Talking = false;
+    }
+
+    /// <summary>
+    /// The camp screen's debug button: a camp talk shows now, over the screen, without resting, each press the next the seed gives
+    /// among every talk the party could have, told before or not, and no done flag set. The rows come back as it ends. Whether one started.
+    /// </summary>
+    public bool TriggerCampTalk()
+    {
+        if (Camp is not { Talking: false, Choice: CampChoice.None } camp)
+            return false;
+        if (Trek.ShowCampTalk(camp.Seed + (uint)camp.TalksTriggered++, any: true) is null)
+            return false;
+        camp.Talking = true;
+        return true;
     }
 
     /// <summary>The camp screen closes (<see cref="Transition.CloseCamp"/>), trek's world still where it was under it.</summary>

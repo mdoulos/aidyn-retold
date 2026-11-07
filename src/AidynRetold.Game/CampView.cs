@@ -42,6 +42,15 @@ public partial class CampView : Control
     /// <summary>A click on a row, which the view has put the cursor on: the button to press.</summary>
     public Action<MenuAction>? Click { get; set; }
 
+    /// <summary>Whether the debug button is drawn, at the top right: a debug build's. It starts a camp talk at once (<see cref="TalkRequested"/>).</summary>
+    public bool DebugButtons { get; set; }
+
+    /// <summary>The debug button was clicked: a camp talk is to show now.</summary>
+    public Action? TalkRequested { get; set; }
+
+    /// <summary>Where the debug button was drawn, or empty.</summary>
+    private Rect2 _talkButton;
+
     public override void _Notification(int what)
     {
         if (what == NotificationResized)
@@ -63,6 +72,11 @@ public partial class CampView : Control
         if (button.ButtonIndex == MouseButton.Right)
         {
             Click?.Invoke(MenuAction.Back);
+            AcceptEvent();
+        }
+        else if (button.ButtonIndex == MouseButton.Left && _talkButton.HasArea() && _talkButton.HasPoint(button.Position))
+        {
+            TalkRequested?.Invoke();
             AcceptEvent();
         }
         else if (button.ButtonIndex == MouseButton.Left && Hit(button.Position) is var (index, recipe))
@@ -98,7 +112,23 @@ public partial class CampView : Control
             DrawParty(arrangement, site, fit);
         if (site is not null && (ShowOverlay || !site.Calibrated))
             DrawOverlay(camp, site, fit);
+        // The rows go while a talk shows in the box over the screen, and come back as it ends; the debug button too.
+        _talkButton = default;
+        if (camp.Talking)
+            return;
         DrawMenu(camp, site, fit, size);
+        if (DebugButtons && camp.Choice == CampChoice.None)
+            DrawTalkButton(size);
+    }
+
+    /// <summary>The debug button at the top right, "Talk": a camp talk shows at once, without resting.</summary>
+    private void DrawTalkButton(Vector2 size)
+    {
+        _talkButton = new Rect2(size.X - 34, 3, 30, 11);
+        DrawRect(_talkButton, new Color(0, 0, 0, 0.6f));
+        DrawRect(_talkButton, new Color(Cursor.R / 255f, Cursor.G / 255f, Cursor.B / 255f, 0.9f), false, 1);
+        _ui.TextSize = UiPainter.SmallText;
+        _ui.Text(this, _ui.Main, "Talk", (int)_talkButton.Position.X + 7, (int)_talkButton.Position.Y + 2, Cursor);
     }
 
     /// <summary>Where the picture is drawn: as large as fits the screen, whole, centred, black either side.</summary>
@@ -251,11 +281,6 @@ public partial class CampView : Control
             _ui.TextSize = UiPainter.SmallText;
             _ui.Text(this, _ui.Main, message, left, (int)band.End.Y - _ui.Main.LineHeight - 2, Said);
         }
-        if (camp.Talking)
-        {
-            _ui.TextSize = UiPainter.SmallText;
-            _ui.Text(this, _ui.Main, "The party talks by the fire.", left, (int)band.End.Y - _ui.Main.LineHeight - 2, Note);
-        }
     }
 
     /// <summary>The cursor's pointer before a row: a small triangle, as the face has no glyph for one.</summary>
@@ -299,6 +324,20 @@ public partial class CampLayer : CanvasLayer
     {
         add => _screen.Clicked += value;
         remove => _screen.Clicked -= value;
+    }
+
+    /// <summary>Whether the debug button is drawn: a debug build's.</summary>
+    public bool DebugButtons
+    {
+        get => _view.DebugButtons;
+        set => _view.DebugButtons = value;
+    }
+
+    /// <summary>The debug button was clicked: a camp talk is to show now (<see cref="Core.GameSession.TriggerCampTalk"/>).</summary>
+    public event Action? TalkRequested
+    {
+        add => _view.TalkRequested += value;
+        remove => _view.TalkRequested -= value;
     }
 
     /// <summary>Whether the debug overlay is drawn whatever the campsite says.</summary>

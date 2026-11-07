@@ -797,21 +797,8 @@ public sealed partial class TrekLoop : IMapObjectHost
         }
 
         // Then a camp talk, in the box over the camp screen.
-        var (_, terrain) = Here();
-        var party = Game.Party.Members.Select(m => m.Entity).ToList();
-        var talk = CampTalks.Choose(Game.Plugins.All<CampTalkRecord>(RecordTypes.CampTalk), party, Game.Flags.Holds, Game.Flags.IsSet, terrain, seed);
-        if (talk is not null && Game.Plugins.TryGet<DialogueRecord>(talk.Script) is { } script && Conversation is null)
-        {
-            if (talk.Done is { } done)
-                Game.Flags.TrySet(done, true);
-            if (script.Mode == DialogueMode.Conversation)
-            {
-                Conversation = Conversation.Show(Game, script, new ScriptStart(), _host, Player);
-                Refresh();
-                return new CampRestResult(CampNight.Talk, hours - (script.Rest ? rules.RestHours : 0));
-            }
-            _host.Warn($"{talk.Id}'s script {script.Id} is a {script.Mode}, not a conversation; it isn't told.");
-        }
+        if (ShowCampTalk(seed) is { } told)
+            return new CampRestResult(CampNight.Talk, hours - (told.Rest ? rules.RestHours : 0));
 
         // Else the Campsite's own, as the original falls back to it.
         if (Game.Plugins.TryGet<MapRecord>(rules.Campsite) is { } campsite
@@ -822,6 +809,32 @@ public sealed partial class TrekLoop : IMapObjectHost
             return new CampRestResult(CampNight.Scene, hours - (marshmallows.Script.Rest ? rules.RestHours : 0));
         }
         return new CampRestResult(CampNight.None, hours);
+    }
+
+    /// <summary>
+    /// Shows a camp talk in the box over the camp screen (<see cref="CampTalks"/>): the one the seed chooses among those told now, its
+    /// done flag set; the script shown, or null with none to tell, one that isn't a conversation (warned of) or a conversation
+    /// already up. With <paramref name="any"/>, the talks already told are among the choice and no done flag is set: the debug button's.
+    /// </summary>
+    public DialogueRecord? ShowCampTalk(uint seed, bool any = false)
+    {
+        if (Conversation is not null)
+            return null;
+        var (_, terrain) = Here();
+        var party = Game.Party.Members.Select(m => m.Entity).ToList();
+        var talk = CampTalks.Choose(Game.Plugins.All<CampTalkRecord>(RecordTypes.CampTalk), party, Game.Flags.Holds, any ? _ => false : Game.Flags.IsSet, terrain, seed);
+        if (talk is null || Game.Plugins.TryGet<DialogueRecord>(talk.Script) is not { } script)
+            return null;
+        if (script.Mode != DialogueMode.Conversation)
+        {
+            _host.Warn($"{talk.Id}'s script {script.Id} is a {script.Mode}, not a conversation; it isn't told.");
+            return null;
+        }
+        if (!any && talk.Done is { } done)
+            Game.Flags.TrySet(done, true);
+        Conversation = Conversation.Show(Game, script, new ScriptStart(), _host, Player);
+        Refresh();
+        return script;
     }
 
     /// <summary>

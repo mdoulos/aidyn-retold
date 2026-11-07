@@ -578,21 +578,21 @@ public partial class CampView : Control
     /// </summary>
     private static readonly (float X, float Height, bool Tall, float Rate)[] FlameLayout =
     [
-        (-26, 30, false, 7.5f), (26, 30, false, 8.5f), (-13, 46, true, 6.5f), (13, 46, true, 7f), (0, 62, true, 6f),
+        (-21, 24, false, 7.5f), (21, 24, false, 8.5f), (-10, 37, true, 6.5f), (10, 37, true, 7f), (0, 50, true, 6f),
     ];
 
     /// <summary>
     /// How far under the fire's anchor the flames' feet are: half the tallest flame, so the fire's middle is on the anchor, the user's
     /// point (Nov 7, 2026); how wide a flame is drawn of its sprite's shape; and how opaque.
     /// </summary>
-    private const float FlameDrop = 31, FlameWidth = 0.9f, FlameAlpha = 0.92f;
+    private const float FlameDrop = 25, FlameWidth = 0.9f, FlameAlpha = 0.92f;
 
-    /// <summary>How far over the pot's middle the smoke starts: its rim, as the tripod is drawn.</summary>
-    private const float SmokeFromPot = 28;
+    /// <summary>How far over the pot's bottom the smoke starts: its rim, as the tripod is drawn.</summary>
+    private const float SmokeFromPot = 30;
 
     /// <summary>The smoke: how many plumes rise at once, how long each takes, how far it rises and how tall it grows, and how faint it is.</summary>
     private const int SmokePlumes = 4;
-    private const float SmokeSeconds = 9, SmokeRise = 230, SmokeFrom = 110, SmokeTo = 220, SmokeAlpha = 0.24f;
+    private const float SmokeSeconds = 9, SmokeRise = 190, SmokeFrom = 80, SmokeTo = 160, SmokeAlpha = 0.24f;
 
     /// <summary>The firelight's soft round, made once: white in the middle fading out to nothing at the edge.</summary>
     private static readonly GradientTexture2D LightRound = new()
@@ -623,9 +623,9 @@ public partial class CampView : Control
         var pixel = _fit.Size.X / site.Width;
         var fire = At(_fit, site.Fire.X, site.Fire.Y);
         var strength = FireStrength(Seconds);
-        Light(canvas, fire + new Vector2(0, 30 * pixel), new Vector2(900, 380) * pixel, FireLight with { A = 0.16f * strength });
-        Light(canvas, fire, new Vector2(300, 240) * pixel, FireLight with { A = 0.22f * strength });
-        Light(canvas, fire, new Vector2(110, 110) * pixel, new Color(1f, 0.7f, 0.35f, 0.3f * FireStrength(Seconds * 1.7f + 3)));
+        Light(canvas, fire + new Vector2(0, 22 * pixel), new Vector2(720, 300) * pixel, FireLight with { A = 0.16f * strength });
+        Light(canvas, fire, new Vector2(230, 190) * pixel, FireLight with { A = 0.22f * strength });
+        Light(canvas, fire, new Vector2(85, 85) * pixel, new Color(1f, 0.7f, 0.35f, 0.3f * FireStrength(Seconds * 1.7f + 3)));
     }
 
     private static void Light(CanvasItem canvas, Vector2 centre, Vector2 size, Color color) =>

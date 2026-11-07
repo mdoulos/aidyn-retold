@@ -98,7 +98,7 @@ public sealed record CampLayout(int Size, IReadOnlyList<string> Slots);
 /// <param name="Fire">The fire's base, which every biome's picture keeps in the same place.</param>
 /// <param name="Slots">The candidate anchors, at least seven for a party of up to five to vary over.</param>
 /// <param name="Layouts">The curated layouts, by party size; a size with none falls back to the slots in order.</param>
-/// <param name="Pot">The cooking pot, where a fire-tending figure's hands reach, if the picture has one.</param>
+/// <param name="Pot">The cooking pot's bottom, where the tripod's pot hangs and a fire-tending figure's hands reach, if the picture has one.</param>
 /// <param name="SafeUi">Where the menu may be drawn without covering the fire or the figures.</param>
 /// <param name="Terrains">The terrains (<c>aidyn:terrain/n</c>'s indices) this campsite is shown on; a campsite with none is the fallback for the rest.</param>
 /// <param name="Ambient">A tint laid over the figures for the biome's light, restrained; none leaves them as painted.</param>
@@ -123,7 +123,7 @@ public sealed record CampLayout(int Size, IReadOnlyList<string> Slots);
 /// The fire pit, its stones and logs, laid over the picture with its flames' middle on <paramref name="Fire"/>, under the screen's own
 /// flames, for a picture with no fire painted in.
 /// </param>
-/// <param name="Tripod">The tripod and its pot, laid over the picture with the pot's middle on <paramref name="Pot"/>, under the flames.</param>
+/// <param name="Tripod">The tripod and its pot, laid over the picture with the pot's bottom on <paramref name="Pot"/>, under the flames.</param>
 public sealed record CampsiteRecord(
     RecordId Id,
     string Name,

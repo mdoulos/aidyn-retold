@@ -110,6 +110,8 @@ public partial class CampView : Control
             DrawTextureRect(picture, fit, false);
         if (camp.Arrangement is { } arrangement && site is not null)
             DrawParty(arrangement, site, fit);
+        if (site?.Vignette is { } mask && Shade(mask, site.VignetteStrength) is { } shade)
+            DrawTextureRect(shade, fit, false);
         if (site is not null && (ShowOverlay || !site.Calibrated))
             DrawOverlay(camp, site, fit);
         // The rows go while a talk shows in the box over the screen, and come back as it ends; the debug button too.
@@ -129,6 +131,35 @@ public partial class CampView : Control
         DrawRect(_talkButton, new Color(Cursor.R / 255f, Cursor.G / 255f, Cursor.B / 255f, 0.9f), false, 1);
         _ui.TextSize = UiPainter.SmallText;
         _ui.Text(this, _ui.Main, "Talk", (int)_talkButton.Position.X + 7, (int)_talkButton.Position.Y + 2, Cursor);
+    }
+
+    private readonly Dictionary<RecordId, Texture2D?> _shades = [];
+
+    /// <summary>
+    /// The campsite's vignette as a shade to draw over the picture: the mask's dark made black at the strength and its light clear,
+    /// softened first by shrinking it to a 64th and growing it back, so a hard-edged mask falls off gently. Made once a mask.
+    /// </summary>
+    private Texture2D? Shade(RecordId mask, float strength)
+    {
+        if (_shades.TryGetValue(mask, out var made))
+            return made;
+        Texture2D? shade = null;
+        if (_plugins.FindAsset(mask, "png") is { } png && Png.Load(png) is { } image)
+        {
+            var (width, height) = (image.GetWidth(), image.GetHeight());
+            var soft = (Image)image.Duplicate();
+            soft.Convert(Image.Format.Rgba8);
+            soft.Resize(Math.Max(width / 64, 2), Math.Max(height / 64, 2), Image.Interpolation.Bilinear);
+            soft.Resize(width / 4, height / 4, Image.Interpolation.Cubic);
+            var dark = Image.CreateEmpty(soft.GetWidth(), soft.GetHeight(), false, Image.Format.Rgba8);
+            for (var y = 0; y < soft.GetHeight(); y++)
+            {
+                for (var x = 0; x < soft.GetWidth(); x++)
+                    dark.SetPixel(x, y, new Color(0, 0, 0, (1 - soft.GetPixel(x, y).Luminance) * Mathf.Clamp(strength, 0, 1)));
+            }
+            shade = ImageTexture.CreateFromImage(dark);
+        }
+        return _shades[mask] = shade;
     }
 
     /// <summary>Where the picture is drawn: as large as fits the screen, whole, centred, black either side.</summary>
@@ -223,9 +254,12 @@ public partial class CampView : Control
 
     private void DrawMenu(CampMenu camp, CampsiteRecord? site, Rect2 fit, Vector2 size)
     {
-        var band = site?.SafeUi is { } safe
-            ? new Rect2(At(fit, safe.X, safe.Y), new Vector2(fit.Size.X * safe.Width, fit.Size.Y * safe.Height))
-            : new Rect2(size.X * 0.03f, size.Y * 0.72f, size.X * 0.94f, size.Y * 0.26f);
+        // The band is as wide as the conversation box, 16 to 304 of the 320 frame centred on the screen, and from where the camp's
+        // safe area starts (or 0.565 of the picture with none) down to near the picture's foot, the user's layout (Nov 7, 2026).
+        var frameLeft = (size.X - DialogueBox.FrameWidth) / 2;
+        var bandTop = At(fit, 0, site?.SafeUi?.Y ?? 0.565f).Y;
+        var bandBottom = At(fit, 0, site?.SafeUi is { } safe ? safe.Y + safe.Height : 0.945f).Y;
+        var band = new Rect2(frameLeft + DialogueBox.OverscanSide, bandTop, DialogueBox.FrameWidth - 2 * DialogueBox.OverscanSide, bandBottom - bandTop);
         DrawRect(band, new Color(0, 0, 0, 0.55f));
         var left = (int)band.Position.X + 6;
         var top = (int)band.Position.Y + 4;

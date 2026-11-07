@@ -85,6 +85,8 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
     private VoiceCircleView? _voiceRing;
     /// <summary>A backdrop's or the help menu's page, over the world darkened, with the game paused.</summary>
     private BackdropLayer? _backdrop;
+    /// <summary>The camp screen, the remade game's, over the world held still, under trek's UI so the night's talk shows in the box over it.</summary>
+    private CampLayer? _camp;
     /// <summary>The player's settings, which the options menu changes and <see cref="ApplySettings"/> carries out.</summary>
     private readonly Settings _settings = Settings.Load(DataPaths.Settings);
 
@@ -404,6 +406,9 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
         _stick.Repeat = session.Stick;
         _backdrop = new BackdropLayer(plugins);
         AddChild(_backdrop);
+        _camp = new CampLayer(plugins);
+        _camp.Clicked += Clicked;
+        AddChild(_camp);
         _cinematic = new CinematicLayer(plugins, _models!, _audio!);
         AddChild(_cinematic);
         _credits = new CreditsLayer(plugins);
@@ -434,7 +439,8 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
     /// </summary>
     private bool ConversationMouse(GameSession session, InputEvent e)
     {
-        if (session.Mode is not (GameMode.Conversation or GameMode.CutScene or GameMode.Popup or GameMode.Backdrop))
+        var talkingAtCamp = session.Mode == GameMode.Camp && session.Trek.Conversation is not null;
+        if (session.Mode is not (GameMode.Conversation or GameMode.CutScene or GameMode.Popup or GameMode.Backdrop) && !talkingAtCamp)
             return false;
         if (e is InputEventMouseMotion && _box is { Visible: true } box
             && _trekScreen.ToCanvas(((InputEventMouse)_trekScreen.MakeInputLocal(e)).Position) is { } at
@@ -497,7 +503,7 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
         N64Material.SetSurfaceDetail(s.SurfaceDetail);
         ActorAnimator.Blending = s.AnimationBlending;
         _cinematic?.Viewport.Msaa3D = GetViewport().Msaa3D;
-        foreach (var screen in new[] { _menu?.Screen, _backdrop?.Screen, _cinematic?.Screen, _credits?.Screen, _titleLayer?.Screen, _trekScreen })
+        foreach (var screen in new[] { _menu?.Screen, _backdrop?.Screen, _camp?.Screen, _cinematic?.Screen, _credits?.Screen, _titleLayer?.Screen, _trekScreen })
         {
             if (screen is null)
                 continue;
@@ -657,7 +663,7 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
         _audio!.Step();
         // The HUD is trek's: not in a cut-scene. Under the pause menu and a backdrop's page it's drawn as it stands,
         // as the world is, so that it lays itself out again as the window or the menu size changes.
-        _hud!.Visible = Scene is null && Battle is null && Title is null;
+        _hud!.Visible = Scene is null && Battle is null && Title is null && session.Camp is null;
         _hud.QueueRedraw();
         if (session.TrekRuns)
             _popupView!.Step();
@@ -672,6 +678,7 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
         _camera.TakeZoom();
         TakeJump();
         _backdrop!.Draw(session.Backdrop);
+        _camp!.Draw(session.Camp);
         SoundTextVoice(session);
         _voiceRing?.LabelWanderers(session.Trek.Wanderers.All);
         switch (step)
@@ -1003,7 +1010,7 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
         {
             case GameMode.Cinematic or GameMode.Credits or GameMode.Backdrop or GameMode.Popup or GameMode.Conversation or GameMode.Title:
                 return;
-            case GameMode.Menu:
+            case GameMode.Menu or GameMode.Camp:
                 if (outcome == PressOutcome.Taken)
                     return;
                 break;
@@ -1043,6 +1050,8 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
         else if (e.IsActionPressed("toggle_overlay"))
         {
             _overlay.Visible = !_overlay.Visible;
+            if (_camp is not null)
+                _camp.ShowOverlay = _overlay.Visible;
         }
         else if (e.IsActionPressed("toggle_pace") && _player is not null)
         {
@@ -1065,6 +1074,7 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
         _popupView!.QueueRedraw();
         _box!.QueueRedraw();
         _backdrop!.Draw(session.Backdrop);
+        _camp!.Draw(session.Camp);
         _menu!.Redraw();
         _battleScreen?.QueueRedraw();
         _titleLayer?.Redraw();
@@ -1144,6 +1154,13 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
                 break;
             case Transition.Camp camp:
                 GD.Print($"Camping: {camp.Outcome}.");
+                break;
+            case Transition.OpenCamp open:
+                _camp!.Draw(open.Menu);
+                break;
+            case Transition.CloseCamp closed:
+                _camp!.Draw(null);
+                GD.Print($"Camp: {closed.Choice}.");
                 break;
             case Transition.Rest rest:
                 GD.Print($"{rest.Hours} hours pass.");

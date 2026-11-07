@@ -48,6 +48,10 @@ are the remake's look ([options](options.md#graphic-quality)).
 
 ## The art
 
+- **The camp is a picture in pieces**: the user's blank forest, with the user's fire pit and tripod laid on it at the fire's and the
+  pot's points, animated flames and smoke, and firelight added over it, so another biome or another fire changes a piece, not the
+  painting ([camping](../systems/camping.md#the-camp-screen)).
+
 - **Redrawn pictures.** Aidyn ReChronicled's redrawn portraits, item icons, empty slots, titles and HUD pieces stand in the original's, drawn
   at the original's size and sharper ([ADR 0034](../adr/0034-retold-and-rechronicled-collaborate.md), [ui](../systems/ui.md#the-ports-layout)).
 - **A picture for each potion and each scroll.** The original draws every potion as one flask and every scroll as one scroll. Retold has

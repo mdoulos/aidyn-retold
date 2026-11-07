@@ -345,8 +345,17 @@ public partial class CampView : Control
         (_fit, _site) = (fit, site);
         if (site is not null && _ui.Images.Get(site.Image) is { } picture)
             DrawTextureRect(picture, fit, false);
-        if (camp.Arrangement is { } arrangement && site is not null)
-            DrawParty(arrangement, site, fit);
+        // The figures behind the fire, the fire pit and the tripod, then the figures in front of it (CampsiteRecord.FireDepth).
+        if (camp.Arrangement is { } behind && site is not null)
+            DrawParty(behind, site, fit, front: false);
+        if (site is not null)
+        {
+            DrawProp(site.FirePit, site, fit, site.Fire);
+            if (site.Pot is { } potPoint)
+                DrawProp(site.Tripod, site, fit, potPoint);
+        }
+        if (camp.Arrangement is { } inFront && site is not null)
+            DrawParty(inFront, site, fit, front: true);
         // The vignette as painted: a transparent image with its dark at its own alpha, laid over the picture pixel for pixel.
         if (site?.Vignette is { } vignette && _ui.Images.Get(vignette) is { } shade)
             DrawTextureRect(shade, fit, false);
@@ -512,11 +521,26 @@ public partial class CampView : Control
     /// <summary>A point given as shares of the picture, in the canvas.</summary>
     private static Vector2 At(Rect2 fit, float x, float y) => fit.Position + new Vector2(fit.Size.X * x, fit.Size.Y * y);
 
-    private void DrawParty(CampArrangement arrangement, CampsiteRecord site, Rect2 fit)
+    /// <summary>
+    /// A piece laid over the picture at an anchor, the user's art: its image's anchor point on the anchor, as wide as the record says in
+    /// the picture's pixels, scaled with the picture as it's drawn.
+    /// </summary>
+    private void DrawProp(CampProp? prop, CampsiteRecord site, Rect2 fit, CampPoint anchor)
+    {
+        if (prop is null || _ui.Images.Get(prop.Image) is not { } image)
+            return;
+        var pixel = fit.Size.X / site.Width;
+        var size = new Vector2(prop.Width, prop.Width * image.GetHeight() / image.GetWidth()) * pixel;
+        var at = At(fit, anchor.X, anchor.Y) - new Vector2(prop.Anchor.X * size.X, prop.Anchor.Y * size.Y);
+        DrawTextureRect(image, new Rect2(at, size), false);
+    }
+
+    /// <summary>The party's figures behind the fire or in front of it, by their slots' depths against the fire's.</summary>
+    private void DrawParty(CampArrangement arrangement, CampsiteRecord site, Rect2 fit, bool front)
     {
         // A picture pixel's size on the canvas: a figure's image is painted at the picture's own scale, times the slot's and its stature.
         var pixel = fit.Size.X / site.Width;
-        foreach (var placement in arrangement.InDrawOrder)
+        foreach (var placement in arrangement.InDrawOrder.Where(p => p.Slot.Depth > CampsiteRecord.FireDepth == front))
         {
             var foot = At(fit, placement.Slot.X, placement.Slot.Y);
             if (placement.Image is { } pose && _ui.Images.Get(pose.Image) is { } image)
@@ -554,11 +578,17 @@ public partial class CampView : Control
     /// </summary>
     private static readonly (float X, float Height, bool Tall, float Rate)[] FlameLayout =
     [
-        (-30, 28, false, 7.5f), (30, 30, false, 8.5f), (-14, 44, true, 6.5f), (15, 46, true, 7f), (1, 62, true, 6f),
+        (-26, 30, false, 7.5f), (26, 30, false, 8.5f), (-13, 46, true, 6.5f), (13, 46, true, 7f), (0, 62, true, 6f),
     ];
 
-    /// <summary>How far under the anchor the flames' feet are, how wide a flame is drawn of its sprite's shape, and how opaque.</summary>
-    private const float FlameDrop = 6, FlameWidth = 0.9f, FlameAlpha = 0.92f;
+    /// <summary>
+    /// How far under the fire's anchor the flames' feet are: half the tallest flame, so the fire's middle is on the anchor, the user's
+    /// point (Nov 7, 2026); how wide a flame is drawn of its sprite's shape; and how opaque.
+    /// </summary>
+    private const float FlameDrop = 31, FlameWidth = 0.9f, FlameAlpha = 0.92f;
+
+    /// <summary>How far over the pot's middle the smoke starts: its rim, as the tripod is drawn.</summary>
+    private const float SmokeFromPot = 28;
 
     /// <summary>The smoke: how many plumes rise at once, how long each takes, how far it rises and how tall it grows, and how faint it is.</summary>
     private const int SmokePlumes = 4;
@@ -593,9 +623,9 @@ public partial class CampView : Control
         var pixel = _fit.Size.X / site.Width;
         var fire = At(_fit, site.Fire.X, site.Fire.Y);
         var strength = FireStrength(Seconds);
-        Light(canvas, fire + new Vector2(0, 8 * pixel), new Vector2(900, 380) * pixel, FireLight with { A = 0.16f * strength });
-        Light(canvas, fire - new Vector2(0, 22 * pixel), new Vector2(300, 240) * pixel, FireLight with { A = 0.22f * strength });
-        Light(canvas, fire - new Vector2(0, 18 * pixel), new Vector2(110, 110) * pixel, new Color(1f, 0.7f, 0.35f, 0.3f * FireStrength(Seconds * 1.7f + 3)));
+        Light(canvas, fire + new Vector2(0, 30 * pixel), new Vector2(900, 380) * pixel, FireLight with { A = 0.16f * strength });
+        Light(canvas, fire, new Vector2(300, 240) * pixel, FireLight with { A = 0.22f * strength });
+        Light(canvas, fire, new Vector2(110, 110) * pixel, new Color(1f, 0.7f, 0.35f, 0.3f * FireStrength(Seconds * 1.7f + 3)));
     }
 
     private static void Light(CanvasItem canvas, Vector2 centre, Vector2 size, Color color) =>
@@ -628,7 +658,7 @@ public partial class CampView : Control
             var height = Mathf.Lerp(SmokeFrom, SmokeTo, u) * pixel;
             var width = height * smoke.GetWidth() / smoke.GetHeight();
             var drift = (8 + 18 * Noise(round + u * 2, i + 40)) * u * pixel;
-            var foot = pot + new Vector2(drift + (Hash(round, i) - 0.5f) * 16 * pixel, -(12 + SmokeRise * u) * pixel);
+            var foot = pot + new Vector2(drift + (Hash(round, i) - 0.5f) * 16 * pixel, -(SmokeFromPot + SmokeRise * u) * pixel);
             var alpha = SmokeAlpha * MathF.Pow(MathF.Sin(MathF.PI * u), 1.5f);
             var mirror = Hash(round, i + 90) < 0.5f;
             var rect = new Rect2(foot.X - width / 2, foot.Y - height, width, height);

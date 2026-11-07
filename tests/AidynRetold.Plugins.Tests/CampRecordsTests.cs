@@ -10,6 +10,7 @@ public sealed class CampRecordsTests
           "id": "acre:campsite/forest", "name": "forest", "image": "acre:image/campsite_forest", "width": 1672, "height": 941,
           "fire": { "x": 0.5, "y": 0.6 }, "pot": { "x": 0.5, "y": 0.58 }, "safeUi": { "x": 0.02, "y": 0.72, "width": 0.96, "height": 0.26 },
           "terrains": [0, 3, 4],
+          "firePit": { "image": "acre:image/camp_fire_pit", "anchor": { "x": 0.4987, "y": 0.6152 }, "width": 270 },
           "slots": [
             { "id": "left_profile", "x": 0.38, "y": 0.64, "scale": 0.95, "depth": 20, "poses": ["sit_profile", "stand_profile"], "facing": "Right", "mirror": true },
             { "id": "rear_center", "x": 0.51, "y": 0.54, "scale": 0.84, "depth": 10, "poses": ["sit_rear", "stand_rear"], "facing": "Away" }
@@ -52,6 +53,8 @@ public sealed class CampRecordsTests
         Assert.Equal(0.6f, forest.Fire.Y);
         Assert.Equal(0.58f, forest.Pot!.Y);
         Assert.Equal(0.26f, forest.SafeUi!.Height);
+        Assert.Equal((RecordId.Parse("acre:image/camp_fire_pit"), 0.6152f, 270f), (forest.FirePit!.Image, forest.FirePit.Anchor.Y, forest.FirePit.Width));
+        Assert.Null(forest.Tripod);
         Assert.Equal(["left_profile", "rear_center"], forest.Slots.Select(s => s.Id));
         Assert.Equal(CampFacing.Right, forest.Slot("left_profile")!.Facing);
         Assert.True(forest.Slot("left_profile")!.Mirror);

@@ -56,6 +56,13 @@ public static class CampPoses
 /// <summary>A point in a campsite's picture, as a share of its width and height, 0 to 1.</summary>
 public sealed record CampPoint(float X, float Y);
 
+/// <summary>
+/// A piece laid over a campsite's picture at one of its anchors, the user's art (Nov 7, 2026): the fire pit at the fire, the tripod at
+/// the pot. <paramref name="Anchor"/> is the point of the image, as shares of its width and height, that sits on the anchor, and
+/// <paramref name="Width"/> how wide the whole image is drawn, in the picture's pixels, its height kept to its shape.
+/// </summary>
+public sealed record CampProp(RecordId Image, CampPoint Anchor, float Width);
+
 /// <summary>A rectangle in a campsite's picture, as shares of its width and height, 0 to 1.</summary>
 public sealed record CampRect(float X, float Y, float Width, float Height);
 
@@ -112,6 +119,11 @@ public sealed record CampLayout(int Size, IReadOnlyList<string> Slots);
 /// The music while the camp shows, in the music's volume; none is silence. Trek's music stops as the camp opens, the user's choice
 /// (Nov 7, 2026), and comes back as it closes; the camp gets music of its own later.
 /// </param>
+/// <param name="FirePit">
+/// The fire pit, its stones and logs, laid over the picture with its flames' middle on <paramref name="Fire"/>, under the screen's own
+/// flames, for a picture with no fire painted in.
+/// </param>
+/// <param name="Tripod">The tripod and its pot, laid over the picture with the pot's middle on <paramref name="Pot"/>, under the flames.</param>
 public sealed record CampsiteRecord(
     RecordId Id,
     string Name,
@@ -129,8 +141,13 @@ public sealed record CampsiteRecord(
     RecordId? Vignette = null,
     RecordId? Sound = null,
     float SoundVolume = 1,
-    RecordId? Music = null)
+    RecordId? Music = null,
+    CampProp? FirePit = null,
+    CampProp? Tripod = null)
 {
+    /// <summary>The depth the fire stands at among the slots': a slot under it is drawn behind the pit and the tripod, one over it in front.</summary>
+    public const int FireDepth = 100;
+
     /// <summary>A slot by its name, or null.</summary>
     public CampSlot? Slot(string id) => Slots.FirstOrDefault(s => s.Id == id);
 

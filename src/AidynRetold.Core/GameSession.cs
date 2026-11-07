@@ -263,6 +263,9 @@ public sealed class GameSession
     /// </summary>
     public Func<(int Frame, int Length)> ScrollClock { get; set; } = () => (1000, 1);
 
+    /// <summary>The camp band's scroll actor's clock, as <see cref="ScrollClock"/> is the pause menu's; without one, past any state's end.</summary>
+    public Func<(int Frame, int Length)> CampScrollClock { get; set; } = () => (1000, 1);
+
     /// <summary>
     /// What the battle just won gave, while its post-battle windows are up or about to be (game mode 6,
     /// <see cref="Transition.PostBattle"/>): the world is held, and trek is built again as they close.
@@ -1036,7 +1039,9 @@ public sealed class GameSession
             _host.Log($"Camp at {site!.Id}: {note}");
         var recipes = Game.Plugins.All<RecipeRecord>(RecordTypes.Recipe).ToList();
         var offers = CampActivities.Offered(Game.Plugins.All<CampActivityRecord>(RecordTypes.CampActivity), recipes, Game.Party);
-        Camp = new Ui.CampMenu(Game.Party, site, arrangement, offers, recipes, Game.Camping.RestHours, Game.Random.World) { Seed = seed };
+        // Where the party is, for the Camp tab: the campsite's name, capitalised, until places have names of their own.
+        var location = site is { Name.Length: > 0 } ? char.ToUpperInvariant(site.Name[0]) + site.Name[1..] : "";
+        Camp = new Ui.CampMenu(Game.Party, site, arrangement, offers, recipes, Game.Camping.RestHours, Game.Random.World) { Seed = seed, Location = location };
         Send(new Transition.OpenCamp(Camp));
         // The camp opens on the party's talk, the user's design (Nov 7, 2026): the night's conversation in the box over the picture,
         // the rows coming once it's over. With none to tell, the rows come at once.
@@ -1046,7 +1051,7 @@ public sealed class GameSession
 
     /// <summary>
     /// A press on the camp screen: the night's talk takes it while it shows, as a conversation's (<see cref="TrekLoop.Press"/>); else the
-    /// screen's own, and Rest rests the party, or Break camp closes it with nothing done.
+    /// band's own, while it's open. Rest and Break camp are carried out as the band rolls up (<see cref="StepCamp"/>).
     /// </summary>
     private bool PressCamp(MenuAction action)
     {
@@ -1063,18 +1068,7 @@ public sealed class GameSession
             Send(new Transition.OpenMenu());
             return true;
         }
-        if (!camp.Press(action))
-            return false;
-        switch (camp.Choice)
-        {
-            case CampChoice.Rest:
-                CampRest();
-                break;
-            case CampChoice.Leave:
-                CloseCamp(CampChoice.Leave);
-                break;
-        }
-        return true;
+        return camp.Press(action);
     }
 
     /// <summary>
@@ -1094,9 +1088,40 @@ public sealed class GameSession
             CloseCamp(CampChoice.Rest);
     }
 
-    /// <summary>A tick of the camp screen: the night's talk steps, as a conversation's does in trek, and the screen closes once it ends.</summary>
+    /// <summary>
+    /// A tick of the camp screen: the pan and the band (<see cref="Ui.CampMenu.Step"/>), its scroll's steps cued to its actor
+    /// (<see cref="CampScrollCue"/>); as the band rolls up, the choice made on it is carried out, Rest or Break camp, or the debug
+    /// button's talk starts; and the night's talk steps, as a conversation's does in trek, the screen closing once it ends.
+    /// </summary>
     private void StepCamp()
     {
+        var camp = Camp!;
+        var (frame, length) = CampScrollClock();
+        var tick = camp.Step(frame, length);
+        if (tick.Cue is { } cue)
+            _menuHost.Cue(new CampScrollCue(cue, tick.Restart));
+        if (tick.Closed)
+        {
+            switch (camp.Choice)
+            {
+                case CampChoice.Rest:
+                    CampRest();
+                    break;
+                case CampChoice.Leave:
+                    CloseCamp(CampChoice.Leave);
+                    break;
+                default:
+                    if (camp.TalkPending)
+                    {
+                        camp.TalkPending = false;
+                        if (Trek.ShowCampTalk(camp.Seed + (uint)camp.TalksTriggered++, any: true) is not null)
+                            camp.Talking = true;
+                    }
+                    break;
+            }
+        }
+        if (Camp is null)
+            return;
         Trek.StepConversation();
         EndTalkIfOver();
     }
@@ -1113,18 +1138,11 @@ public sealed class GameSession
     }
 
     /// <summary>
-    /// The camp screen's debug button: a camp talk shows now, over the screen, without resting, each press the next the seed gives
-    /// among every talk the party could have, told before or not, and no done flag set. The rows come back as it ends. Whether one started.
+    /// The camp screen's debug button: a camp talk, over the screen, without resting, each press the next the seed gives among every
+    /// talk the party could have, told before or not, and no done flag set. The band rolls up first and the talk starts as it has
+    /// (<see cref="StepCamp"/>); the band comes back as it ends. Whether the band took it.
     /// </summary>
-    public bool TriggerCampTalk()
-    {
-        if (Camp is not { Talking: false, Choice: CampChoice.None } camp)
-            return false;
-        if (Trek.ShowCampTalk(camp.Seed + (uint)camp.TalksTriggered++, any: true) is null)
-            return false;
-        camp.Talking = true;
-        return true;
-    }
+    public bool TriggerCampTalk() => Camp is { } camp && camp.RequestTalk();
 
     /// <summary>The camp screen closes (<see cref="Transition.CloseCamp"/>), trek's world still where it was under it.</summary>
     private void CloseCamp(CampChoice choice)

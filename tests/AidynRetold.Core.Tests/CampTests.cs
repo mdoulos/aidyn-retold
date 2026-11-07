@@ -284,8 +284,111 @@ public class CampTests
         Assert.Equal([Tonic], nothing.Recipes);
     }
 
-    private static CampMenu Screen(CharacterParty party, int baseHours = 8, params int[] rolls) =>
+    /// <summary>A screen as it opens, with no campsite: the fire centred and the band away.</summary>
+    private static CampMenu Fresh(CharacterParty party, int baseHours = 8, params int[] rolls) =>
         new(party, null, null, CampActivities.Offered([Brewing, Smithing], [Tonic], party), [Tonic], baseHours, Characters.D100(rolls.Length == 0 ? [1, 1, 1, 1, 1, 1] : rolls));
+
+    /// <summary>A screen with its band open, as the session has it once the pan is up and the scroll unrolled.</summary>
+    private static CampMenu Screen(CharacterParty party, int baseHours = 8, params int[] rolls)
+    {
+        var screen = Fresh(party, baseHours, rolls);
+        Unroll(screen);
+        return screen;
+    }
+
+    /// <summary>Ticks the screen until its band is open, as the session does: the pan up, then the scroll unrolled, its actor's clock past any state's end.</summary>
+    private static void Unroll(CampMenu screen)
+    {
+        for (var i = 0; i < 2 * CampMenu.PanTicks && !screen.Open; i++)
+            screen.Step(1000, 1);
+        Assert.True(screen.Open);
+    }
+
+    /// <summary>Ticks the screen until its band has rolled up; how many ticks it took.</summary>
+    private static int RollUp(CampMenu screen)
+    {
+        for (var ticks = 1; ticks <= 100; ticks++)
+        {
+            if (screen.Step(1000, 1).Closed)
+                return ticks;
+        }
+        Assert.Fail("The band never rolled up.");
+        return 0;
+    }
+
+    [Fact]
+    public void TheBandUnrollsAtTheFootOnceTheTalkIsOverAndRollsUpBeforeRestIsCarriedOut()
+    {
+        var (party, _, _) = Camp();
+        var screen = Fresh(party);
+        screen.Talking = true;
+        Assert.Equal(0, screen.Pan);
+        for (var i = 0; i < 10; i++)
+            Assert.Equal(default, screen.Step(1000, 1));
+        Assert.Equal(0, screen.Pan);
+        Assert.Null(screen.Scroll);
+        Assert.False(screen.BandShown);
+
+        // The talk over: the pan takes its second up to the foot, and there the band's scroll starts afresh and unrolls.
+        screen.Talking = false;
+        CampTick tick = default;
+        var ticks = 0;
+        while (screen.Scroll is null)
+        {
+            tick = screen.Step(1000, 1);
+            ticks++;
+        }
+        Assert.Equal(CampMenu.PanTicks, ticks);
+        Assert.Equal(1, screen.Pan);
+        Assert.True(tick.Restart);
+        Assert.NotNull(tick.Cue);
+        Assert.True(screen.BandShown);
+        Assert.False(screen.Open);
+        Assert.False(screen.Press(MenuAction.Right));
+        screen.Step(1000, 1);
+        Assert.True(screen.Open);
+
+        // Rest: the band rolls up first, nothing taking presses meanwhile, and Rest is carried out as it has; nothing unrolls again.
+        Assert.True(screen.Press(MenuAction.Accept));
+        Assert.Equal(CampChoice.Rest, screen.Choice);
+        Assert.False(screen.Open);
+        tick = screen.Step(1000, 1);
+        Assert.NotNull(tick.Cue);
+        Assert.False(tick.Closed);
+        Assert.False(screen.Press(MenuAction.Right));
+        Assert.True(RollUp(screen) > 0);
+        Assert.Null(screen.Scroll);
+        Assert.False(screen.BandShown);
+        Assert.Equal(default, screen.Step(1000, 1));
+        Assert.Equal(1, screen.Pan);
+    }
+
+    [Fact]
+    public void TheDebugButtonsTalkRollsTheBandUpFirstAndTheBandComesBackAsTheTalkEnds()
+    {
+        var (party, _, _) = Camp();
+        var screen = Screen(party);
+        Assert.True(screen.RequestTalk());
+        Assert.True(screen.TalkPending);
+        Assert.False(screen.Open);
+        Assert.False(screen.RequestTalk());
+        RollUp(screen);
+        Assert.Equal(1, screen.Pan);
+
+        // The session starts the talk as the band has rolled up: the picture pans back down to the fire under the box.
+        screen.TalkPending = false;
+        screen.Talking = true;
+        for (var i = 0; i < CampMenu.PanTicks; i++)
+            Assert.Equal(default, screen.Step(1000, 1));
+        Assert.Equal(0, screen.Pan);
+        Assert.Null(screen.Scroll);
+
+        // And as it ends, the pan goes up again and the band unrolls afresh.
+        screen.Talking = false;
+        Unroll(screen);
+        Assert.Equal(1, screen.Pan);
+        Assert.Equal(CampTab.Camp, screen.Tab);
+    }
 
     [Fact]
     public void TheScreenOpensOnTheCampTabWhereAIsRestAndTheTriggersWalkTheFiveTabsRound()

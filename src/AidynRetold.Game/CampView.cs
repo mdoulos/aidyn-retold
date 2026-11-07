@@ -1,4 +1,5 @@
 using AidynRetold.Core.Camp;
+using AidynRetold.Core.Characters;
 using AidynRetold.Core.Ui;
 using AidynRetold.Plugins;
 using AidynRetold.Plugins.Records;
@@ -7,56 +8,89 @@ using Godot;
 
 namespace AidynRetold.Game;
 
+/// <summary>A control painted by whoever owns it: the camp band, cut to its rectangle, and the debug marks over the whole camp screen.</summary>
+public partial class PaintedControl : Control
+{
+    public Action<CanvasItem>? Painter { get; set; }
+
+    public override void _Draw() => Painter?.Invoke(this);
+}
+
 /// <summary>
 /// Draws the camp screen (<see cref="CampMenu"/>, the remade game's) on a <see cref="UiScreen"/>'s canvas: the campsite's picture
-/// fitted to the screen, black either side; the party's figures at their slots, each pose's image scaled by the slot's perspective
-/// and the figure's stature, mirrored where the arrangement says, or a marker where a member has no figure yet; the debug overlay of
-/// the fire, the pot, the slots and the safe area while the campsite's anchors are placeholders (<see cref="CampsiteRecord.Calibrated"/>)
-/// or asked for; and in the safe area the rows, the open activity's recipes and the last thing said. The mouse points at a row and a
-/// click presses A on it, as in the pause menu. The night's talk shows in trek's box, which is drawn over this layer.
+/// as wide as the screen and panned between the fire centred and its foot (<see cref="CampMenu.Pan"/>); the party's figures at their
+/// slots, each pose's image scaled by the slot's perspective and the figure's stature, mirrored where the arrangement says, or a marker
+/// where a member has no figure yet; the debug overlay of the fire, the pot, the slots and the safe area while the campsite's anchors
+/// are placeholders (<see cref="CampsiteRecord.Calibrated"/>) or asked for; and the band: the campsite's safe area as a strip of the
+/// pause menu's parchment between two rollers of its 3D scroll (<see cref="PauseScrollView"/>, drawn smaller and its rollers out at the
+/// band's ends), which unrolls and rolls up as the pause menu's does from its Party tab, with the five tabs down its left on slips of
+/// the gold's parchment and the tab showing beside them, the user's design (Nov 7, 2026). The band is a control of its own, cut at the
+/// rollers (<see cref="Band"/>), and the debug marks another over everything (<see cref="Top"/>). The mouse points at a tab, a row or
+/// Rest and a click presses A on it, as in the pause menu. The night's talk shows in trek's box, which is drawn over this layer.
 /// </summary>
 public partial class CampView : Control
 {
-    /// <summary>The rows' colours on the parchment: the journal's brown, the Party tab's red for the cursor.</summary>
+    /// <summary>The band's colours on the parchment: the journal's brown, the Party tab's red for the cursor, and the bar's cream over its red.</summary>
     private static readonly Rgba Text = new(98, 70, 60, 255), Dim = new(170, 152, 130, 255), Cursor = new(150, 40, 35, 255),
         Note = new(130, 105, 85, 255), Said = new(70, 45, 40, 255), Overlay = new(120, 255, 160, 255), Warn = new(255, 170, 90, 255),
-        Button = new(255, 236, 130, 255);
+        Button = new(255, 236, 130, 255), BarText = new(250, 242, 226, 255), BarShadow = new(40, 20, 14, 170), SlipDim = new(228, 218, 202, 255);
 
     private static readonly RecordId Parchment = RecordId.Parse("acre:image/parchment"), Thirds = RecordId.Parse("acre:image/debug_thirds");
 
-    /// <summary>How long the pan between the fire centred and the picture's foot takes, in seconds.</summary>
-    public const float PanSeconds = 1f;
+    /// <summary>The tabs' icons, the user's, in <see cref="CampMenu.Tabs"/>' order: a tent, food, a mortar and flask, crossed arms and a breastplate.</summary>
+    private static readonly string[] TabIcons = ["ui_camp", "ui_food", "ui_potions", "ui_weapons", "ui_armor"];
 
     /// <summary>
-    /// Where a picture taller than the screen is panned to, 0 to 1: 0 with the fire at the screen's centre, for the talk, and 1 with the
-    /// picture's foot at the screen's, for the rows. It moves toward <see cref="PanTarget"/> over <see cref="PanSeconds"/>.
+    /// How much of the scroll's length its parchment spans: lines 6 to 234 of the frame's 240 (<see cref="ParchmentSwap"/>), so the band's
+    /// parchment, this share of the scroll's length, lies within its rollers' ends.
     /// </summary>
-    private float _pan;
+    private const float PaperShare = 228f / 240;
 
-    /// <summary>The pan the camp asks for: the fire centred while a talk shows, the foot otherwise.</summary>
-    private float PanTarget => Camp is { Talking: true } ? 0 : 1;
+    /// <summary>How tall the scroll's control is, of its length, for the rollers' ends past the parchment.</summary>
+    private const float ScrollRoom = 1.5f;
 
-    /// <summary>Whether the pan has arrived where the camp asks, so the rows may show.</summary>
-    private bool Panned => Mathf.IsEqualApprox(_pan, PanTarget);
+    // The band's layout, in the band's pixels from its top left corner: the tabs' slips down the left, each with its icon and caption,
+    // and the tab showing beside them, the user's design (Nov 7, 2026). The sides keep clear of the rollers, which lie over the band's ends.
+    private const float Edge = 5, Side = 12, TabWidth = 42, TabHeight = 13, TabPitch = 14, TabIconSize = 9, TabIconLeft = 2.5f, ContentLeft = Side + TabWidth + 6;
+
+    // The Camp tab: the name and level over each portrait, 30 square as the HUD's, the portraits 3 apart, the bar under each and its
+    // status badges under that, and the foot row with the location, the inventory and Rest.
+    private const float PortraitSize = 30, MemberPitch = 33, NameRow = 6, BarHeight = 7, BadgeHeight = 7, BadgePitch = 8, BadgeIcon = 5,
+        BadgeIconLeft = 1.5f, FootHeight = 10;
 
     private readonly UiPainter _ui;
     private readonly PluginSet _plugins;
+    private readonly PauseScrollView? _scroll;
+
     /// <summary>What the mouse can land on: a tab, a recipe or Rest.</summary>
     private enum Target { Tab, Recipe, Rest }
 
-    /// <summary>Where each tab, recipe and Rest was drawn, for the mouse: its area, what it is and its index.</summary>
+    /// <summary>Where each tab, recipe and Rest was drawn, in the band's pixels, for the mouse: its area, what it is and its index.</summary>
     private readonly List<(Rect2 Area, Target Target, int Index)> _hits = [];
 
-    /// <summary>The tabs' column's width in the band, and the portraits' pitch and size on the Camp tab.</summary>
-    private const int TabsWidth = 60, MemberPitch = 44, PortraitSize = 30;
+    /// <summary>The band, in this control's pixels: the campsite's safe area over the picture panned to its foot.</summary>
+    private Rect2 _band;
 
-    public CampView(PluginSet plugins)
+    /// <summary>The transform the band's content is drawn at on its control, for text placed to a fraction of a pixel.</summary>
+    private Vector2 _base;
+
+    /// <param name="scroll">The band's scroll, the pause menu's actor again, or null without one: then the band has no rollers.</param>
+    public CampView(PluginSet plugins, PauseScrollView? scroll)
     {
         _plugins = plugins;
+        _scroll = scroll;
         _ui = new UiPainter(plugins) { TextSize = UiPainter.StandardText };
         Name = "Camp screen";
         MouseFilter = MouseFilterEnum.Pass;
+        Band.Painter = PaintBand;
+        Top.Painter = PaintTop;
     }
+
+    /// <summary>The band's control, cut at the rollers, placed by <see cref="_Draw"/>: the layer puts it over this control and under the scroll.</summary>
+    public PaintedControl Band { get; } = new() { Name = "Camp band", ClipContents = true, MouseFilter = MouseFilterEnum.Ignore, Visible = false };
+
+    /// <summary>The debug marks over everything: the buttons and the rule-of-thirds lines; the layer puts it over the scroll.</summary>
+    public PaintedControl Top { get; } = new() { Name = "Camp marks", MouseFilter = MouseFilterEnum.Ignore };
 
     /// <summary>The camp screen showing, or null.</summary>
     public CampMenu? Camp { get; set; }
@@ -68,12 +102,12 @@ public partial class CampView : Control
     public Action<MenuAction>? Click { get; set; }
 
     /// <summary>
-    /// Whether the debug buttons are drawn, at the top right: a debug build's. Talk starts a camp talk at once (<see cref="TalkRequested"/>),
+    /// Whether the debug buttons are drawn, at the top right: a debug build's. Talk starts a camp talk (<see cref="TalkRequested"/>),
     /// and Debug shows the technical text and marks that won't be in the game (<see cref="ShowOverlay"/>), off until it's clicked.
     /// </summary>
     public bool DebugButtons { get; set; }
 
-    /// <summary>The Talk button was clicked: a camp talk is to show now.</summary>
+    /// <summary>The Talk button was clicked: a camp talk is to show.</summary>
     public Action? TalkRequested { get; set; }
 
     /// <summary>Where the Talk and Debug buttons were drawn, or empty.</summary>
@@ -85,20 +119,9 @@ public partial class CampView : Control
             QueueRedraw();
     }
 
-    public override void _Process(double delta)
-    {
-        if (Camp is null || Panned)
-            return;
-        _pan = Mathf.MoveToward(_pan, PanTarget, (float)delta / PanSeconds);
-        QueueRedraw();
-    }
-
-    /// <summary>A camp opens on the talk with the fire centred: the pan starts there.</summary>
-    public void Opened() => _pan = 0;
-
     public override void _GuiInput(InputEvent e)
     {
-        if (Camp is not { Choice: CampChoice.None, Talking: false } camp)
+        if (Camp is not { Open: true } camp)
             return;
         if (e is InputEventMouseMotion motion)
         {
@@ -135,11 +158,13 @@ public partial class CampView : Control
         }
     }
 
+    /// <summary>What's under a point of this control, the hits being in the band's pixels.</summary>
     private (Target Target, int Index)? Hit(Vector2 at)
     {
+        var inBand = at - _band.Position;
         foreach (var (area, target, index) in _hits)
         {
-            if (area.HasPoint(at))
+            if (area.HasPoint(inBand))
                 return (target, index);
         }
         return null;
@@ -167,11 +192,15 @@ public partial class CampView : Control
     {
         _hits.Clear();
         if (Camp is not { } camp)
+        {
+            HideBand();
+            Top.QueueRedraw();
             return;
+        }
         var size = Size;
         DrawRect(new Rect2(Vector2.Zero, size), Colors.Black);
         var site = camp.Site;
-        var fit = Fit(site, size);
+        var fit = Fit(site, size, camp.Pan);
         if (site is not null && _ui.Images.Get(site.Image) is { } picture)
             DrawTextureRect(picture, fit, false);
         if (camp.Arrangement is { } arrangement && site is not null)
@@ -179,44 +208,106 @@ public partial class CampView : Control
         // The vignette as painted: a transparent image with its dark at its own alpha, laid over the picture pixel for pixel.
         if (site?.Vignette is { } vignette && _ui.Images.Get(vignette) is { } shade)
             DrawTextureRect(shade, fit, false);
-        // The rows go while a talk shows in the box over the screen, and come back as it ends; the overlay and the debug buttons too.
-        _talkButton = _debugButton = default;
-        if (camp.Talking)
-            return;
-        if (site is not null && ShowOverlay)
+        if (site is not null && ShowOverlay && !camp.Talking)
             DrawOverlay(camp, site, fit);
-        // The rows wait for the pan to bring the picture's foot up, so they're never drawn over the fire.
-        if (Panned)
-            DrawMenu(camp, site, fit, size);
-        if (DebugButtons && camp.Choice == CampChoice.None)
-            DrawButtons(size);
-        // The rule-of-thirds lines over the whole screen, as the user drew them, with the overlay.
-        if (ShowOverlay && _ui.Images.Get(Thirds) is { } thirds)
-            DrawTextureRect(thirds, new Rect2(Vector2.Zero, size), false);
+        _band = BandRect(site, fit, size);
+        LayBand(camp);
+        Top.QueueRedraw();
     }
 
-    /// <summary>The debug buttons at the top right: Talk, a camp talk at once without resting, and Debug, the overlay on or off.</summary>
-    private void DrawButtons(Vector2 size)
+    /// <summary>The band's rectangle: the campsite's safe area over the picture as it's fitted now, or a strip low on the screen with none.</summary>
+    private static Rect2 BandRect(CampsiteRecord? site, Rect2 fit, Vector2 size)
     {
-        _debugButton = DrawButton(new Rect2(size.X - 36, 3, 32, 11), "Debug", ShowOverlay);
-        _talkButton = DrawButton(new Rect2(size.X - 70, 3, 30, 11), "Talk", false);
+        if (site?.SafeUi is { } safe)
+            return new Rect2(At(fit, safe.X, safe.Y), new Vector2(fit.Size.X * safe.Width, fit.Size.Y * safe.Height));
+        return new Rect2((size.X - 234) / 2, size.Y * 0.583f, 234, 85);
     }
 
-    private Rect2 DrawButton(Rect2 area, string text, bool lit)
+    /// <summary>
+    /// Lays the band out as its scroll stands: the scroll's control over the band, its length the band's height over the parchment's
+    /// share of it and its rollers' middles at the band's ends when open; the band's control cut between the rollers' middles and to
+    /// their ends, and faded with the scroll, and in as the rollers stand up across the screen as the pause menu's parchment is
+    /// (<see cref="ScrollParchmentView"/>). Nothing while the band is away.
+    /// </summary>
+    private void LayBand(CampMenu camp)
+    {
+        if (!camp.BandShown || camp.Scroll is not { } scroll)
+        {
+            HideBand();
+            return;
+        }
+        var clip = _band.Grow(2);
+        var alpha = scroll.Alpha;
+        var paper = 1f;
+        if (_scroll is { } view)
+        {
+            var lines = _band.Size.Y / PaperShare;
+            var height = lines * ScrollRoom;
+            view.Lines = lines;
+            view.OpenHalfWidth = _band.Size.X / 2;
+            view.Position = new Vector2(0, _band.GetCenter().Y - height / 2);
+            view.Size = new Vector2(Size.X, height);
+            view.Alpha = alpha;
+            view.Visible = true;
+            view.Rendering = true;
+            var (left, right, top, bottom, upright) = view.Arrange();
+            if (!float.IsInfinity(left) && !float.IsInfinity(right))
+            {
+                var cutLeft = Math.Max(clip.Position.X, Mathf.Round(left + view.Position.X));
+                var cutRight = Math.Min(clip.End.X, Mathf.Round(right + view.Position.X));
+                var cutTop = Math.Max(clip.Position.Y, Mathf.Round(top + view.Position.Y));
+                var cutBottom = Math.Min(clip.End.Y, Mathf.Round(bottom + view.Position.Y));
+                clip = new Rect2(cutLeft, cutTop, Math.Max(0, cutRight - cutLeft), Math.Max(0, cutBottom - cutTop));
+            }
+            var t = Math.Clamp((upright - ScrollParchmentView.UprightFrom) / (ScrollParchmentView.UprightTo - ScrollParchmentView.UprightFrom), 0, 1);
+            paper = t * t * (3 - 2 * t);
+        }
+        Band.Position = clip.Position;
+        Band.Size = clip.Size;
+        Band.Visible = clip.HasArea() && alpha * paper > 0;
+        Band.Modulate = new Color(1, 1, 1, alpha * paper);
+        Band.QueueRedraw();
+    }
+
+    private void HideBand()
+    {
+        Band.Visible = false;
+        if (_scroll is { } view)
+        {
+            view.Visible = false;
+            view.Rendering = false;
+        }
+    }
+
+    /// <summary>The debug marks over everything: the buttons at the top right, and the rule-of-thirds lines over the whole screen, as the user drew them, with the overlay.</summary>
+    private void PaintTop(CanvasItem canvas)
+    {
+        _talkButton = _debugButton = default;
+        if (Camp is not { Talking: false } camp)
+            return;
+        if (DebugButtons && camp.Choice == CampChoice.None && !camp.TalkPending)
+        {
+            _debugButton = DrawButton(canvas, new Rect2(Size.X - 36, 3, 32, 11), "Debug", ShowOverlay);
+            _talkButton = DrawButton(canvas, new Rect2(Size.X - 70, 3, 30, 11), "Talk", false);
+        }
+        if (ShowOverlay && _ui.Images.Get(Thirds) is { } thirds)
+            canvas.DrawTextureRect(thirds, new Rect2(Vector2.Zero, Size), false);
+    }
+
+    private Rect2 DrawButton(CanvasItem canvas, Rect2 area, string text, bool lit)
     {
         var yellow = new Color(Button.R / 255f, Button.G / 255f, Button.B / 255f);
-        DrawRect(area, lit ? yellow with { A = 0.35f } : new Color(0, 0, 0, 0.6f));
-        DrawRect(area, yellow with { A = 0.9f }, false, 1);
-        _ui.TextSize = UiPainter.SmallText;
-        _ui.Text(this, _ui.Main, text, (int)area.Position.X + 4, (int)area.Position.Y + 2, Button);
+        canvas.DrawRect(area, lit ? yellow with { A = 0.35f } : new Color(0, 0, 0, 0.6f));
+        canvas.DrawRect(area, yellow with { A = 0.9f }, false, 1);
+        _ui.Text(canvas, Font(UiPainter.SmallText), text, (int)area.Position.X + 4, (int)area.Position.Y + 2, Button);
         return area;
     }
 
     /// <summary>
     /// Where the picture is drawn, never squeezed: as wide as the screen, and if that leaves it taller than the screen, panned
-    /// (<see cref="_pan"/>) between the fire at the screen's centre and its foot at the screen's; else as large as fits, whole, centred.
+    /// (<see cref="CampMenu.Pan"/>) between the fire at the screen's centre and its foot at the screen's; else as large as fits, whole, centred.
     /// </summary>
-    private Rect2 Fit(CampsiteRecord? site, Vector2 size)
+    private static Rect2 Fit(CampsiteRecord? site, Vector2 size, float pan)
     {
         if (site is null || site.Width <= 0 || site.Height <= 0)
             return new Rect2(Vector2.Zero, size);
@@ -230,7 +321,7 @@ public partial class CampView : Control
         }
         var foot = size.Y - drawn.Y;
         var centred = Mathf.Clamp(size.Y / 2 - site.Fire.Y * drawn.Y, foot, 0);
-        return new Rect2(0, Mathf.Lerp(centred, foot, _pan), drawn.X, drawn.Y);
+        return new Rect2(0, Mathf.Lerp(centred, foot, pan), drawn.X, drawn.Y);
     }
 
     /// <summary>A point given as shares of the picture, in the canvas.</summary>
@@ -259,8 +350,7 @@ public partial class CampView : Control
             {
                 // No figure to draw yet: nothing in the game, and with the overlay a dot on the anchor with who stands there.
                 DrawCircle(foot, 2, Colors.White);
-                _ui.TextSize = UiPainter.FineText;
-                _ui.Text(this, _ui.Main, $"{MemberName(placement.Member)}, {Plain(placement.Pose)}{(placement.Mirrored ? " (mirrored)" : "")}", (int)foot.X - 10, (int)foot.Y - 12, Button);
+                _ui.Text(this, Font(UiPainter.FineText), $"{MemberName(placement.Member)}, {Plain(placement.Pose)}{(placement.Mirrored ? " (mirrored)" : "")}", (int)foot.X - 10, (int)foot.Y - 12, Button);
             }
         }
     }
@@ -279,7 +369,7 @@ public partial class CampView : Control
             DrawArc(At(fit, pot.X, pot.Y), 4, 0, Mathf.Tau, 16, Colors.Orange, 1);
         if (site.SafeUi is { } safe)
             DrawRect(new Rect2(At(fit, safe.X, safe.Y), new Vector2(fit.Size.X * safe.Width, fit.Size.Y * safe.Height)), green with { A = 0.6f }, false, 1);
-        _ui.TextSize = UiPainter.FineText;
+        var fine = Font(UiPainter.FineText);
         var taken = camp.Arrangement?.Placements.ToDictionary(p => p.Slot.Id, p => p) ?? [];
         foreach (var slot in site.Slots)
         {
@@ -289,7 +379,7 @@ public partial class CampView : Control
             DrawLine(at - new Vector2(0, 3), at + new Vector2(0, 3), green with { A = 0.6f }, 1);
             if (slot.Interaction is { } hand)
                 DrawLine(at, At(fit, hand.X, hand.Y), Colors.Orange with { A = 0.5f }, 1);
-            _ui.Text(this, _ui.Main, $"{Plain(slot.Id)} x{slot.Scale:0.00} d{slot.Depth}", (int)at.X + 4, (int)at.Y - 4, used ? Overlay : Dim);
+            _ui.Text(this, fine, $"{Plain(slot.Id)} x{slot.Scale:0.00} d{slot.Depth}", (int)at.X + 4, (int)at.Y - 4, used ? Overlay : Dim);
         }
         var line = 2;
         var lines = new List<(string Text, Rgba Color)>
@@ -304,130 +394,213 @@ public partial class CampView : Control
             lines.Add((note, Warn));
         foreach (var (text, color) in lines)
         {
-            _ui.Text(this, _ui.Main, text, 3, line, color);
+            _ui.Text(this, fine, text, 3, line, color);
             line += 7;
         }
     }
 
-    private void DrawMenu(CampMenu camp, CampsiteRecord? site, Rect2 fit, Vector2 size)
+    /// <summary>
+    /// The band on its control: the pause menu's parchment, the game's own, over the whole band, its torn top and bottom edges a little
+    /// past it; the tabs down the left; the tab showing; and the last thing said. Drawn from the band's own corner, the control being cut
+    /// to what shows between the rollers.
+    /// </summary>
+    private void PaintBand(CanvasItem canvas)
     {
-        // The band is as wide as the conversation box, 16 to 304 of the 320 frame centred on the screen, and from where the camp's
-        // safe area starts (or 0.565 of the picture with none) down to near the picture's foot, the user's layout (Nov 7, 2026).
-        var frameLeft = (size.X - DialogueBox.FrameWidth) / 2;
-        var bandTop = At(fit, 0, site?.SafeUi?.Y ?? 0.565f).Y;
-        var bandBottom = At(fit, 0, site?.SafeUi is { } safe ? safe.Y + safe.Height : 0.945f).Y;
-        var band = new Rect2(frameLeft + DialogueBox.OverscanSide, bandTop, DialogueBox.FrameWidth - 2 * DialogueBox.OverscanSide, bandBottom - bandTop);
-        // The pause menu's parchment, the game's own, sized to the band: its torn top and bottom edges are transparent, so the band
-        // is drawn a little taller than it is and the rows start under the tear.
+        if (Camp is not { } camp)
+            return;
+        _base = _band.Position - Band.Position;
+        canvas.DrawSetTransform(_base);
+        var width = _band.Size.X;
+        var height = _band.Size.Y;
         if (_ui.Images.Get(Parchment) is { } parchment)
-            DrawTextureRect(parchment, band.Grow(2), false);
+            canvas.DrawTextureRect(parchment, new Rect2(-2, -2, width + 4, height + 4), false);
         else
-            DrawRect(band, new Color(0, 0, 0, 0.55f));
-        var left = (int)band.Position.X + 10;
-        var top = (int)band.Position.Y + 10;
-        _ui.TextSize = UiPainter.StandardText;
-        var row = _ui.Main.LineHeight;
-
-        // The tabs down the left, the one showing in the cursor's red with the pointer.
-        var y = top;
-        foreach (var tab in CampMenu.Tabs)
-        {
-            var current = tab == camp.Tab;
-            if (current)
-                Pointer(left, y + row / 2, Cursor);
-            _ui.TextSize = UiPainter.StandardText;
-            _ui.Text(this, _ui.Main, tab.ToString(), left + 6, y, current ? Cursor : Text);
-            _hits.Add((new Rect2(band.Position.X, y, TabsWidth + 10, row), Target.Tab, (int)tab));
-            y += row;
-        }
-        var contentLeft = left + TabsWidth;
-        var dim = new Color(Dim.R / 255f, Dim.G / 255f, Dim.B / 255f, 0.8f);
-        DrawLine(new Vector2(contentLeft - 6, top), new Vector2(contentLeft - 6, band.End.Y - 8), dim, 1);
-
+            canvas.DrawRect(new Rect2(0, 0, width, height), new Color(0, 0, 0, 0.55f));
+        DrawTabs(canvas, camp);
+        var content = new Rect2(ContentLeft, Edge, width - Side - ContentLeft, height - 2 * Edge);
         if (camp.Tab == CampTab.Camp)
-            DrawCampTab(camp, contentLeft, top, band, row);
+            DrawCampTab(canvas, camp, content);
         else
-            DrawRecipes(camp, contentLeft, top, band, row);
-
-        if (camp.Message is { } message)
+            DrawRecipes(canvas, camp, content);
+        if (camp.Message is { } message && camp.Tab != CampTab.Camp)
         {
-            _ui.TextSize = UiPainter.SmallText;
-            _ui.Text(this, _ui.Main, message, contentLeft, (int)band.End.Y - _ui.Main.LineHeight - 4, Said);
+            var small = Font(UiPainter.SmallText);
+            Print(canvas, small, message, content.Position.X, content.End.Y - small.LineHeight, Said);
         }
+        canvas.DrawSetTransform(Vector2.Zero);
     }
 
-    /// <summary>The Camp tab: Rest, the one thing A does here, then each member's portrait with their health and statuses under it.</summary>
-    private void DrawCampTab(CampMenu camp, int left, int top, Rect2 band, int row)
+    /// <summary>
+    /// The tabs down the band's left, each on a slip of the gold's parchment with its icon at the left and its caption after, the user's
+    /// design (Nov 7, 2026): the tab showing in the cursor's red on its slip plain, the others in brown on theirs a shade darker.
+    /// </summary>
+    private void DrawTabs(CanvasItem canvas, CampMenu camp)
     {
-        Pointer(left, top + row / 2, Cursor);
-        _ui.TextSize = UiPainter.StandardText;
-        _ui.Text(this, _ui.Main, camp.RestLabel, left + 6, top, Cursor);
-        _hits.Add((new Rect2(left, top, band.End.X - left, row), Target.Rest, 0));
-
-        var y = top + row + 6;
-        var x = left + 6;
-        foreach (var member in camp.Members)
+        var small = Font(UiPainter.SmallText);
+        for (var i = 0; i < CampMenu.Tabs.Count; i++)
         {
-            if (member.Record.Portrait is { } portrait)
-                _ui.Image(this, portrait, x, y, new Vector2I(PortraitSize, PortraitSize));
+            var tab = CampMenu.Tabs[i];
+            var current = tab == camp.Tab;
+            var rect = new Rect2(Side, Edge + i * TabPitch, TabWidth, TabHeight);
+            if (UiPainter.Original)
+                canvas.DrawRect(rect, new Color(0, 0, 0, current ? 0.25f : 0.12f));
             else
-                DrawRect(new Rect2(x, y, PortraitSize, PortraitSize), new Color(0, 0, 0, 0.3f));
-            // The health bar under the portrait, as the HUD's: green, red below a third, over a dark backing.
-            var share = member.MaxHp > 0 ? Mathf.Clamp((float)member.Hp / member.MaxHp, 0, 1) : 0;
-            var barY = y + PortraitSize + 1;
-            _ui.Image(this, PartyPortraits.Pixel, new Rect2(x, barY, PortraitSize, PartyPortraits.BarHeight), PartyPortraits.BarBacking);
-            if (share > 0)
-                _ui.Image(this, PartyPortraits.Pixel, new Rect2(x, barY, PortraitSize * share, PartyPortraits.BarHeight), share <= PartyPortraits.LowHealth ? PartyPortraits.BarLow : PartyPortraits.BarFill);
-            // The statuses' icons after the bar, as the HUD shows them, and the name and hit points under.
-            var iconX = x;
-            foreach (var icon in PartyPortraits.StatusIcons(member.Hunger, member.Rest))
-            {
-                _ui.Image(this, icon, iconX, barY + PartyPortraits.BarHeight + 1, new Vector2I(PartyPortraits.IconSize, PartyPortraits.IconSize));
-                iconX += PartyPortraits.IconSize + 1;
-            }
-            _ui.TextSize = UiPainter.SmallText;
-            var nameY = barY + PartyPortraits.BarHeight + PartyPortraits.IconSize + 3;
-            _ui.Text(this, _ui.Main, member.Name, x, nameY, member.IsDead ? Dim : Text);
-            _ui.TextSize = UiPainter.FineText;
-            _ui.Text(this, _ui.Main, $"{member.Hp} / {member.MaxHp}", x, nameY + _ui.Main.LineHeight + 1, Note);
-            x += MemberPitch;
+                _ui.Slip(canvas, rect, current ? null : SlipDim, sheet: UiPainter.GoldSheet);
+            if (UiImages.Art(TabIcons[i]) is { } icon)
+                canvas.DrawTextureRect(icon, new Rect2(rect.Position.X + TabIconLeft, rect.Position.Y + (TabHeight - TabIconSize) / 2, TabIconSize, TabIconSize),
+                    false, current ? Colors.White : new Color(1, 1, 1, 0.75f));
+            Print(canvas, small, tab.ToString(), rect.Position.X + TabIconLeft + TabIconSize + 2, rect.Position.Y + TabHeight / 2 - small.Middle, current ? Cursor : Text);
+            _hits.Add((rect, Target.Tab, i));
         }
     }
 
-    /// <summary>A recipes tab: who makes them, the recipes with the cursor, or why there's nothing to make.</summary>
-    private void DrawRecipes(CampMenu camp, int left, int top, Rect2 band, int row)
+    /// <summary>
+    /// The Camp tab, the user's design (Nov 7, 2026): each member's name and level in a row over their portrait, which pulses with their
+    /// hunger or tiredness as the Party tab's does; under it the hit points bar in the Party tab's own art, taller for the hit points
+    /// inside it, split into Stamina's lighter red and Endurance's darker by the same rule; under that their statuses stacked in a
+    /// column, the one place they are, each in a badge as wide as the portrait, its icon fixed at the left and its name centred in the
+    /// rest; and along the foot the location and the inventory at the left and Rest at the right, the one thing A does here.
+    /// </summary>
+    private void DrawCampTab(CanvasItem canvas, CampMenu camp, Rect2 content)
     {
-        var y = top;
+        var small = Font(UiPainter.SmallText);
+        var fine = Font(UiPainter.FineText);
+        var members = camp.Members;
+        var total = members.Count * MemberPitch - (MemberPitch - PortraitSize);
+        var x0 = content.Position.X + Math.Max(0, (content.Size.X - total) / 2);
+        var seconds = Time.GetTicksMsec() / 1000f;
+        for (var i = 0; i < members.Count; i++)
+        {
+            var member = members[i];
+            var x = x0 + i * MemberPitch;
+            // The name at the left and the level at the right, their capitals' middles level.
+            var rowMiddle = content.Position.Y + NameRow / 2 - 0.5f;
+            Print(canvas, small, member.Name, x, rowMiddle - small.Middle, member.IsDead ? Dim : Text);
+            var level = CampMenu.LevelLabel(member);
+            Print(canvas, fine, level, x + PortraitSize - fine.ExactWidth(level), rowMiddle - fine.Middle, Note);
+            var portraitY = content.Position.Y + NameRow;
+            var rect = new Rect2(x, portraitY, PortraitSize, PortraitSize);
+            if (member.Record.Portrait is { } portrait)
+            {
+                _ui.Image(canvas, portrait, rect);
+                // A hungry or tired member's portrait pulses amber, a starving or overtired one's red (StatusPulse), as on the Party tab.
+                if (StatusPulse.Tint(member.Hunger, member.Rest, seconds) is { } tint)
+                    _ui.Image(canvas, portrait, rect, tint);
+            }
+            else
+            {
+                canvas.DrawRect(rect, new Color(0, 0, 0, 0.3f));
+            }
+            // The bar under the portrait, as wide as it, with the hit points on it.
+            var frame = UiPainter.BarFrom(x, x + PortraitSize, portraitY + PortraitSize + 1, BarHeight);
+            var share = member.MaxHp > 0 ? Math.Clamp((float)member.Hp / member.MaxHp, 0, 1) : 0;
+            var stamina = member.MaxHp > 0 ? Math.Clamp((float)member.StaminaPoints / member.MaxHp, 0, 1) : 0;
+            _ui.HealthBar(canvas, frame, share, stamina, HeaderNumbers.Of(member).BarSplits ? 1 : 0);
+            var opening = UiPainter.BarOpening(frame);
+            var hp = $"{member.Hp} / {member.MaxHp}";
+            Print(canvas, fine, hp, opening.Position.X + (opening.Size.X - fine.ExactWidth(hp)) / 2, opening.Position.Y + opening.Size.Y / 2 - fine.Middle,
+                BarText, BarShadow, bold: true);
+            // The statuses' badges stacked under the bar.
+            var badgeY = frame.End.Y + 1;
+            foreach (var (icon, name) in CampMenu.Badges(member))
+            {
+                var badge = new Rect2(x, badgeY, PortraitSize, BadgeHeight);
+                if (UiPainter.Original)
+                    canvas.DrawRect(badge, new Color(0, 0, 0, 0.2f));
+                else
+                    _ui.Slip(canvas, badge, sheet: UiPainter.TooltipSheet);
+                _ui.Image(canvas, icon, new Rect2(x + BadgeIconLeft, badgeY + (BadgeHeight - BadgeIcon) / 2, BadgeIcon, BadgeIcon));
+                var textLeft = x + BadgeIconLeft + BadgeIcon + 1;
+                var textRoom = x + PortraitSize - 1 - textLeft;
+                Print(canvas, fine, name, textLeft + Math.Max(0, (textRoom - fine.ExactWidth(name)) / 2), badgeY + BadgeHeight / 2 - fine.Middle, Said);
+                badgeY += BadgePitch;
+            }
+        }
+        // The foot: Rest on a slip at the right, with the pointer, and the location and the inventory at the left, level with it.
+        var standard = Font(UiPainter.StandardText);
+        var rest = camp.RestLabel;
+        var restWidth = standard.ExactWidth(rest) + 14;
+        var button = new Rect2(content.End.X - restWidth, content.End.Y - FootHeight, restWidth, FootHeight);
+        var footMiddle = button.GetCenter().Y;
+        if (UiPainter.Original)
+            canvas.DrawRect(button, new Color(0, 0, 0, 0.2f));
+        else
+            _ui.Slip(canvas, button, sheet: UiPainter.GoldSheet);
+        Pointer(canvas, button.Position.X + 4, footMiddle, Cursor);
+        Print(canvas, standard, rest, button.Position.X + 9, footMiddle - standard.Middle, Cursor);
+        _hits.Add((button, Target.Rest, 0));
+        var location = camp.LocationLine;
+        Print(canvas, fine, location, content.Position.X, footMiddle - fine.Middle, Text);
+        Print(canvas, fine, camp.InventoryLine, content.Position.X + fine.ExactWidth(location) + 6, footMiddle - fine.Middle, Text);
+    }
+
+    /// <summary>A recipes tab: who makes them, the recipes with the cursor, as many as fit with the cursor's among them, or why there's nothing to make.</summary>
+    private void DrawRecipes(CanvasItem canvas, CampMenu camp, Rect2 content)
+    {
+        var standard = Font(UiPainter.StandardText);
+        var small = Font(UiPainter.SmallText);
+        var left = content.Position.X;
+        var y = content.Position.Y;
         if (camp.Current is { } offer && camp.Member is { } member)
         {
-            _ui.TextSize = UiPainter.StandardText;
-            _ui.Text(this, _ui.Main, offer.Activity.Name, left, y, Text);
-            _ui.TextSize = UiPainter.SmallText;
-            _ui.Text(this, _ui.Main, string.Format(System.Globalization.CultureInfo.InvariantCulture, CampMenu.MakerNote, member.Name), left + 70, y + 1, Note);
-            y += row;
+            Print(canvas, standard, offer.Activity.Name, left, y, Text);
+            Print(canvas, small, string.Format(System.Globalization.CultureInfo.InvariantCulture, CampMenu.MakerNote, member.Name), left + 60, y + 1, Note);
+            y += standard.LineHeight;
         }
         if (camp.Empty is { Length: > 0 } empty)
         {
-            _ui.TextSize = UiPainter.SmallText;
-            _ui.Text(this, _ui.Main, empty, left, y, Dim);
+            Print(canvas, small, empty, left, y, Dim);
             return;
         }
-        _ui.TextSize = UiPainter.SmallText;
-        var small = _ui.Main.LineHeight;
-        for (var i = 0; i < camp.Recipes.Count; i++)
+        var row = small.LineHeight;
+        // The rows that fit, a window over the recipes that keeps the cursor's within it, with a line for the message under them.
+        var fit = Math.Max(1, (int)((content.End.Y - row - y) / row));
+        var first = Math.Clamp(camp.RecipeCursor - fit + 1, 0, Math.Max(0, camp.Recipes.Count - fit));
+        for (var i = first; i < Math.Min(camp.Recipes.Count, first + fit); i++)
         {
             var current = i == camp.RecipeCursor;
             if (current)
-                Pointer(left, y + small / 2, Cursor);
-            _ui.Text(this, _ui.Main, camp.ProductName(camp.Recipes[i]), left + 6, y, current ? Cursor : Text);
-            _hits.Add((new Rect2(left, y, band.End.X - left, small), Target.Recipe, i));
-            y += small;
+                Pointer(canvas, left, y + row / 2f, Cursor);
+            Print(canvas, small, camp.ProductName(camp.Recipes[i]), left + 6, y, current ? Cursor : Text);
+            _hits.Add((new Rect2(left, y, content.Size.X, row), Target.Recipe, i));
+            y += row;
         }
+        if (first > 0)
+            Print(canvas, small, "^", content.End.X - 6, content.Position.Y + row, Dim);
+        if (first + fit < camp.Recipes.Count)
+            Print(canvas, small, "v", content.End.X - 6, y - row, Dim);
+    }
+
+    /// <summary>The main font with its capitals this tall, whatever the painter's size is set to.</summary>
+    private UiFont Font(float capitals) => _ui.Main.Sized(capitals);
+
+    /// <summary>
+    /// One line of text from a point placed to a fraction of a pixel on the band, in a colour; over its shadow, a little down and right,
+    /// if it has one; and drawn twice a fifth of a pixel apart for a touch of weight if bold, as the Party tab's bar's hit points are.
+    /// </summary>
+    private void Print(CanvasItem canvas, UiFont font, string text, float x, float y, Rgba color, Rgba? shadow = null, bool bold = false)
+    {
+        if (shadow is { } dark)
+        {
+            PrintAt(canvas, font, text, x + 0.4f, y + 0.4f, dark);
+            if (bold)
+                PrintAt(canvas, font, text, x + 0.6f, y + 0.4f, dark);
+        }
+        PrintAt(canvas, font, text, x, y, color);
+        if (bold)
+            PrintAt(canvas, font, text, x + 0.2f, y, color);
+    }
+
+    private void PrintAt(CanvasItem canvas, UiFont font, string text, float x, float y, Rgba color)
+    {
+        canvas.DrawSetTransform(_base + new Vector2(x, y));
+        _ui.Text(canvas, font, text, 0, 0, color);
+        canvas.DrawSetTransform(_base);
     }
 
     /// <summary>The cursor's pointer before a row: a small triangle, as the face has no glyph for one.</summary>
-    private void Pointer(int x, int middle, Rgba color) =>
-        DrawPolygon([new Vector2(x, middle - 2.5f), new Vector2(x + 4, middle), new Vector2(x, middle + 2.5f)],
+    private static void Pointer(CanvasItem canvas, float x, float middle, Rgba color) =>
+        canvas.DrawPolygon([new Vector2(x, middle - 2.5f), new Vector2(x + 4, middle), new Vector2(x, middle + 2.5f)],
             [new Color(color.R / 255f, color.G / 255f, color.B / 255f)]);
 
     private string MemberName(RecordId member) => _plugins.TryGet<EntityRecord>(member)?.Name ?? member.Key;
@@ -439,11 +612,15 @@ public partial class CampView : Control
 /// <summary>
 /// The camp screen over the world (<see cref="Core.GameSession.Camp"/>): under trek's UI layer, so the conversation box draws the
 /// night's talk over it and the cut-scene fade darkens it as a story scene is cued, and over the world, which it covers whole. The
-/// session makes the screen and holds its state; this draws it each tick and after a press, and hands its clicks on.
+/// session makes the screen and holds its state; this draws it each tick and after a press, plays its band's scroll as the session
+/// cues it (<see cref="CampScrollCue"/>), and hands its clicks on. The band's scroll is the pause menu's actor again, from models of
+/// this layer's own.
 /// </summary>
 public partial class CampLayer : CanvasLayer
 {
     private readonly UiScreen _screen = new() { ForwardsMouse = true };
+    private readonly Models _models;
+    private readonly PauseScrollView? _scroll;
     private readonly CampView _view;
 
     public CampLayer(PluginSet plugins)
@@ -453,13 +630,42 @@ public partial class CampLayer : CanvasLayer
         Visible = false;
         _screen.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         AddChild(_screen);
-        _view = new CampView(plugins) { Click = _screen.Click };
+        _models = new Models(plugins);
+        _scroll = PauseScrollView.Create(plugins, _models);
+        _view = new CampView(plugins, _scroll) { Click = _screen.Click };
         _view.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        // The picture, then the band over it, the rollers over the band's edges, and the debug marks over all.
         _screen.Canvas.AddChild(_view);
+        _screen.Canvas.AddChild(_view.Band);
+        if (_scroll is not null)
+        {
+            _scroll.Visible = false;
+            _screen.Canvas.AddChild(_scroll);
+        }
+        _view.Top.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        _screen.Canvas.AddChild(_view.Top);
     }
+
+    public override void _ExitTree() => _models.Dispose();
 
     /// <summary>The UI screen, whose lines and filter the game sets.</summary>
     public UiScreen Screen => _screen;
+
+    /// <summary>The band's scroll actor's clock in its state, from 1, which the core's camp steps by; without the actor, past any state's end.</summary>
+    public int ScrollFrame => _scroll?.Frame ?? 1000;
+
+    /// <summary>The length of the state the band's scroll actor is in, in frames.</summary>
+    public int ScrollLength => _scroll?.Length ?? 1;
+
+    /// <summary>A step of the band's scroll actor, as the core cues it, the actor started afresh first where the cue says.</summary>
+    public void PlayScroll(CampScrollCue cue)
+    {
+        if (_scroll is null)
+            return;
+        if (cue.Restart)
+            _scroll.Restart();
+        _scroll.Play(cue.Cue);
+    }
 
     /// <summary>A click on a row, which the view has put the cursor on: the button to press (<see cref="UiScreen.Clicked"/>).</summary>
     public event Action<MenuAction>? Clicked
@@ -468,14 +674,14 @@ public partial class CampLayer : CanvasLayer
         remove => _screen.Clicked -= value;
     }
 
-    /// <summary>Whether the debug button is drawn: a debug build's.</summary>
+    /// <summary>Whether the debug buttons are drawn: a debug build's.</summary>
     public bool DebugButtons
     {
         get => _view.DebugButtons;
         set => _view.DebugButtons = value;
     }
 
-    /// <summary>The debug button was clicked: a camp talk is to show now (<see cref="Core.GameSession.TriggerCampTalk"/>).</summary>
+    /// <summary>The debug button was clicked: a camp talk is to show (<see cref="Core.GameSession.TriggerCampTalk"/>).</summary>
     public event Action? TalkRequested
     {
         add => _view.TalkRequested += value;
@@ -496,8 +702,6 @@ public partial class CampLayer : CanvasLayer
     /// <summary>Draws the session's camp screen as it stands, each tick and after a press: shown while there's one, hidden once it has closed.</summary>
     public void Draw(CampMenu? camp)
     {
-        if (camp is not null && !ReferenceEquals(_view.Camp, camp))
-            _view.Opened();
         _view.Camp = camp;
         Visible = camp is not null;
         _view.QueueRedraw();

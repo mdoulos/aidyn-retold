@@ -44,3 +44,9 @@ public sealed record MenuSoundCue(OneShot Sound) : PauseMenuCue;
 /// partway through, as the original's actors reset their request after each step.
 /// </summary>
 public sealed record ScrollPlayCue(ScrollCue Cue) : PauseMenuCue;
+
+/// <summary>
+/// A step of the camp band's scroll actor, the camp screen's own copy of the pause menu's scroll (<see cref="CampMenu.Scroll"/>), and
+/// whether it starts afresh first, as a band begins to unroll.
+/// </summary>
+public sealed record CampScrollCue(ScrollCue Cue, bool Restart) : PauseMenuCue;

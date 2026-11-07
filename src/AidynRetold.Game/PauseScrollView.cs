@@ -79,6 +79,26 @@ public partial class PauseScrollView : Control
         return new PauseScrollView(node, animator, actor.InitialState);
     }
 
+    /// <summary>
+    /// How many of the control's lines the scroll's 45° of view spans: the frame's 240, so the pause menu's scroll lines up with the
+    /// tabs at any of the screen's heights; fewer for the camp band's, a smaller scroll whole within its band (<see cref="CampView"/>).
+    /// </summary>
+    public float Lines { get; set; } = UiScreen.Height;
+
+    /// <summary>
+    /// Where the rollers' middles are to be when the scroll is held open (<see cref="PauseScroll"/>'s hold), either side of the
+    /// control's centre, or null for where the scene puts them: the camp band's are drawn out to its parchment's ends, each roller's
+    /// column from the centre scaled by the ratio of this to where the hold leaves it (<see cref="HeldSpan"/>), so the two still rise
+    /// together from the middle and meet there rolled up (<see cref="End.Aim"/>).
+    /// </summary>
+    public float? OpenHalfWidth { get; set; }
+
+    /// <summary>
+    /// How far out the rollers' middles stand, either side of the centre, of the scroll's length (<see cref="Lines"/>), when the scroll
+    /// is held open: measured from the actor's held frame, 0.716 and 0.720 for its two rollers.
+    /// </summary>
+    private const float HeldSpan = 0.718f;
+
     /// <summary>The scroll's clock in the state it's in, from 1.</summary>
     public int Frame => _animator.Frame;
 
@@ -124,10 +144,11 @@ public partial class PauseScrollView : Control
         Fit();
         if (!_measured)
             return (float.NegativeInfinity, float.PositiveInfinity, float.NegativeInfinity, float.PositiveInfinity, 1);
-        _system.Aim(Axis(_system));
-        _world.Aim(Axis(_world));
-        // Near enough, both are drawn by one camera, so they hide each other as they should where they meet.
-        _apart = _system.Camera.Position.X != 0 || _world.Camera.Position.X != 0;
+        _system.Aim(Axis(_system), OpenHalfWidth, Lines);
+        _world.Aim(Axis(_world), OpenHalfWidth, Lines);
+        // Near enough, both are drawn by one camera, so they hide each other as they should where they meet; drawn out to a band's
+        // ends, each by its own.
+        _apart = _system.Camera.Position.X != 0 || _world.Camera.Position.X != 0 || OpenHalfWidth is not null;
         _system.Camera.CullMask = _apart ? SystemLayer : SystemLayer | WorldLayer;
         _world.Camera.CullMask = _apart ? WorldLayer : 0;
         QueueRedraw();
@@ -193,7 +214,8 @@ public partial class PauseScrollView : Control
     {
         var size = new Vector2I(Math.Max((int)Size.X, 1), Math.Max((int)Size.Y, 1));
         var fine = UiScreen.Of(this)?.Oversampling ?? 1;
-        var fov = Mathf.RadToDeg(2 * MathF.Atan(MathF.Tan(Mathf.DegToRad(FieldOfView / 2)) * size.Y / UiScreen.Height));
+        // Clamped to what a camera takes: the control may be unsized before it's laid out.
+        var fov = Math.Clamp(Mathf.RadToDeg(2 * MathF.Atan(MathF.Tan(Mathf.DegToRad(FieldOfView / 2)) * size.Y / Lines)), 1, 179);
         FitEnd(_system);
         FitEnd(_world);
 
@@ -269,17 +291,26 @@ public partial class PauseScrollView : Control
         /// <summary>
         /// Aims the camera at a roller whose middle is at <paramref name="axis"/>: over the scene's middle while the
         /// roller is no further out than when its tab is open, and else following it so that it's seen as it is then,
-        /// its picture moved out a tab's 320 pixels for each tab it has gone.
+        /// its picture moved out a tab's 320 pixels for each tab it has gone. With <paramref name="halfWidth"/>, the
+        /// roller's column from the centre is scaled so that it's there when the scroll is held open, <see cref="HeldSpan"/>
+        /// of <paramref name="lines"/> out, and so the rollers still meet in the middle rolled up.
         /// </summary>
-        public void Aim(Vector3 axis)
+        public void Aim(Vector3 axis, float? halfWidth = null, float lines = UiScreen.Height)
         {
             // Where the scroll would be for the roller, open, to be here, and so which tab it's at.
             var at = axis.X - Open;
             var tab = at >= 0 ? (PauseScroll.TabX[0] - at) / PauseScroll.TabX[0] : 1 + at / PauseScroll.TabX[2];
-            var beyond = _home == 0 ? tab > 0 : tab < 2;
+            // Drawn out to a band's ends, the camera stays over the middle however far out the roller is.
+            var beyond = halfWidth is null && (_home == 0 ? tab > 0 : tab < 2);
             var camera = Camera.Position;
             Camera.Position = camera with { X = beyond ? at - PauseScroll.TabX[_home] : 0 };
             _shift = beyond ? (_home - tab) * UiScreen.Width : 0;
+            if (halfWidth is { } half && lines > 0)
+            {
+                var centre = View.Size.X / 2f / Fine;
+                var column = Camera.UnprojectPosition(axis).X / Fine - centre;
+                _shift = column * (half / (HeldSpan * lines) - 1);
+            }
         }
 
         /// <summary>Where a point of the scene is drawn across the control.</summary>

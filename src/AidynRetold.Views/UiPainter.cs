@@ -459,6 +459,86 @@ public sealed class UiPainter
     }
 
     /// <summary>
+    /// The hit points bar's art, the user's (Nov 2, 2026): its frame, and the brown track and the red fill under it, each 850 × 200
+    /// (<see cref="BarArtWidth"/>, <see cref="BarArtHeight"/>).
+    /// </summary>
+    public const string BarFrameArt = "ui_bar_frame", BarFillArt = "ui_bar_red", BarTrackArt = "ui_bar_brown";
+
+    /// <summary>
+    /// The bar's art: its size, how far in its frame's drawn left edge is, how wide each end kept whole is, and its opening's sides, top
+    /// and bottom, in its pixels.
+    /// </summary>
+    public const float BarArtWidth = 850, BarArtHeight = 200, BarArtLeft = 65, BarEnd = 140, BarOpeningLeft = 93, BarOpeningRight = 753,
+        BarOpeningTop = 63, BarOpeningBottom = 139;
+
+    /// <summary>
+    /// The washes over the red once the bar splits (<see cref="HeaderNumbers.BarSplits"/>): white at this alpha over Stamina's end,
+    /// which lightens it, and black at this over Endurance's, which darkens it a little.
+    /// </summary>
+    public static readonly Rgba StaminaWash = new(255, 255, 255, 90), EnduranceShade = new(0, 0, 0, 40);
+
+    /// <summary>The bar frame's rectangle with its drawn left edge, <see cref="BarArtLeft"/> into its art, at <paramref name="left"/>, and its right end at <paramref name="right"/>.</summary>
+    public static Rect2 BarFrom(float left, float right, float top, float height)
+    {
+        var x = left - BarArtLeft * height / BarArtHeight;
+        return new Rect2(x, top, right - x, height);
+    }
+
+    /// <summary>A bar frame's opening, where it's drawn, which the hit points are centred in and the red fills.</summary>
+    public static Rect2 BarOpening(Rect2 frame)
+    {
+        var scale = frame.Size.Y / BarArtHeight;
+        var left = frame.Position.X + BarOpeningLeft * scale;
+        var right = frame.End.X - (BarArtWidth - BarOpeningRight) * scale;
+        return new Rect2(left, frame.Position.Y + BarOpeningTop * scale, right - left, (BarOpeningBottom - BarOpeningTop) * scale);
+    }
+
+    /// <summary>
+    /// The hit points bar over its frame's rectangle, the Party tab's (the user's art and the user's choice, Nov 2, 2026): the brown
+    /// track, the red fill to <paramref name="share"/> of the opening, its ragged end cut off straight, and the frame over them. One plain
+    /// red until it splits (<see cref="HeaderNumbers.BarSplits"/>), the user's design (Nov 6, 2026): then, by <paramref name="split"/>,
+    /// Stamina's hit points (<paramref name="stamina"/> of the opening, the bar's right end) are washed to a lighter red and Endurance's
+    /// the rest shaded darker, so as Stamina drains the lighter end shrinks and what's left in the darker red is Endurance's.
+    /// </summary>
+    public void HealthBar(CanvasItem canvas, Rect2 frame, float share, float stamina, float split)
+    {
+        ThreeSlice(canvas, BarTrackArt, frame);
+        var opening = BarOpening(frame);
+        var end = opening.Position.X + opening.Size.X * share;
+        if (share > 0)
+            ThreeSlice(canvas, BarFillArt, frame, end);
+        if (split > 0 && share > 0)
+        {
+            var boundary = opening.Position.X + opening.Size.X * Math.Max(0, share - stamina);
+            canvas.DrawRect(new Rect2(opening.Position.X, opening.Position.Y, boundary - opening.Position.X, opening.Size.Y),
+                Tint(EnduranceShade with { A = (byte)(EnduranceShade.A * split) }));
+            if (end > boundary)
+                canvas.DrawRect(new Rect2(boundary, opening.Position.Y, end - boundary, opening.Size.Y), Tint(StaminaWash with { A = (byte)(StaminaWash.A * split) }));
+        }
+        ThreeSlice(canvas, BarFrameArt, frame);
+    }
+
+    /// <summary>
+    /// A piece of the bar's art over a rectangle in three slices: its ends, <see cref="BarEnd"/> of its pixels wide, kept their shape
+    /// at the rectangle's height, and its middle stretched between them; cut off at <paramref name="right"/>, as the red is.
+    /// </summary>
+    public void ThreeSlice(CanvasItem canvas, string name, Rect2 rect, float right = float.MaxValue)
+    {
+        if (UiImages.Art(name) is not { } texture)
+            return;
+        var texels = texture.GetWidth() / BarArtWidth;
+        var end = BarEnd * rect.Size.Y / BarArtHeight;
+        float[] dx = [rect.Position.X, rect.Position.X + end, rect.End.X - end, rect.End.X];
+        float[] sx = [0, BarEnd, BarArtWidth - BarEnd, BarArtWidth];
+        for (var i = 0; i < 3 && dx[i] < right; i++)
+        {
+            var share = Math.Min(1, (right - dx[i]) / (dx[i + 1] - dx[i]));
+            canvas.DrawTextureRectRegion(texture, new Rect2(dx[i], rect.Position.Y, (dx[i + 1] - dx[i]) * share, rect.Size.Y),
+                new Rect2(sx[i] * texels, 0, (sx[i + 1] - sx[i]) * texels * share, texture.GetHeight()), White);
+        }
+    }
+
+    /// <summary>
     /// Draws a frame over a rectangle in nine slices, as a frame for any box: its corners, <paramref name="corner"/> of its pixels
     /// square, drawn <paramref name="drawn"/> square and keeping their shape; its edges between them stretched along; and its middle
     /// stretched over the rest.

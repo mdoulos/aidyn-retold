@@ -32,6 +32,7 @@ The maps, the map objects, the wanderers, camping and the weather as it plays. W
 - **The rest is as long as the evening**: eight hours, and each thing made at camp adds its activity's hours, so a long cook is a late start ([camping](../systems/camping.md#the-camp-screen)).
 - **The party talks at camp**: a conversation chosen for the night from those whose members are there and whose story flags hold, over the camp screen, on the nights the original's story scenes leave empty ([camping](../systems/camping.md#the-camp-screen)).
 - **Breaking camp is allowed**: B on the camp screen goes back to trek with nothing done, where the original always camps once it's chosen ([camping](../systems/camping.md#the-camp-screen)).
+- **The camp's menu is a band of the pause menu's scroll**: after the talk the picture pans up and a strip of parchment unrolls between two rollers, with five tabs on slips down its left, Camp, Food, Potions, Weapons and Armor; the Camp tab shows each member's name, level, portrait, the Party tab's hit points bar and their statuses stacked in badges, with the location, the inventory and Rest along the foot; the band rolls up before Rest, Break camp or a talk ([camping](../systems/camping.md#the-camp-screen)).
 
 ## Weather
 

@@ -35,17 +35,32 @@ public enum CampTab
 }
 
 /// <summary>
+/// A tick of the camp screen: what its scroll's actor is to play, if anything, and whether the band has just rolled up, so what asked
+/// for that, a choice or a talk, is carried out now.
+/// </summary>
+/// <param name="Cue">A step of the scroll's actor, or null while it holds.</param>
+/// <param name="Restart">Whether the actor starts afresh first, in its first state, as a band begins to unroll.</param>
+/// <param name="Closed">Whether the band rolled up this tick.</param>
+public readonly record struct CampTick(ScrollCue? Cue = null, bool Restart = false, bool Closed = false);
+
+/// <summary>
 /// The camp screen, the remade game's (the user's design, Nov 7, 2026): the party round the fire (<see cref="Arrangement"/>) under
-/// five tabs, Camp, Food, Potions, Weapons and Armor. Camp shows the members and Rest, which says how many hours the night will
-/// take; Food, Potions and Armor offer the Cook's, the Alchemist's and the Mechanic's recipes (<see cref="CampActivityRecord"/>), made
-/// by the member best at the skill, and each thing made adds its activity's hours to the rest, so the more is made, the later the
-/// party wakes. Weapons holds nothing yet. Positions are the view's; the core keeps the state, as it does for the pause menu's tabs.
+/// five tabs, Camp, Food, Potions, Weapons and Armor, on a band of parchment between two rollers, which unrolls and rolls up as the
+/// pause menu's scroll does. Camp shows the members and Rest, which says how many hours the night will take; Food, Potions and Armor
+/// offer the Cook's, the Alchemist's and the Mechanic's recipes (<see cref="CampActivityRecord"/>), made by the member best at the
+/// skill, and each thing made adds its activity's hours to the rest, so the more is made, the later the party wakes. Weapons holds
+/// nothing yet. Positions are the view's; the core keeps the state, as it does for the pause menu's tabs.
 /// </summary>
 /// <remarks>
-/// The triggers, or left and right, change the tab; up and down move over a tab's recipes; A makes the cursor's recipe, or on Camp
-/// rests; C-left and C-right change who makes it among those with the skill; B breaks camp with nothing done; Start opens the pause
-/// menu over the camp. A controller and a mouse both reach everything: the view points at a tab or a row under the mouse and
-/// clicks as A does.
+/// <para>
+/// The screen opens with the fire centred and the night's talk in the box over it, if there's one; as the talk ends the picture pans up
+/// over a second to its foot (<see cref="Pan"/>), and there the band unrolls (<see cref="Scroll"/>). The triggers, or left and right,
+/// change the tab; up and down move over a tab's recipes; A makes the cursor's recipe, or on Camp rests; C-left and C-right change who
+/// makes it among those with the skill; B breaks camp with nothing done; Start opens the pause menu over the camp. A choice, or the
+/// debug button's talk, rolls the band up first, and is carried out as it closes (<see cref="Step"/>): a talk then pans the picture back
+/// down to the fire, and the band unrolls again as it ends. A controller and a mouse both reach everything: the view points at a tab or a
+/// row under the mouse and clicks as A does.
+/// </para>
 /// </remarks>
 public sealed class CampMenu
 {
@@ -53,10 +68,14 @@ public sealed class CampMenu
     public const string RestText = "Rest", RestHoursText = "Rest ({0} hours)", LeaveText = "Break camp", NobodyCan = "Nobody has the skill.",
         NothingToMake = "Nothing to make.", NothingHere = "", Ready = "{0} is ready.", GoesWrong = "It goes wrong: {0}.", Fails = "{0} fails.",
         MissingIngredients = "You don't have the ingredients.", StackFull = "You can't carry any more of it.", TooLow = "{0} isn't skilled enough.",
-        MakerNote = "{0} makes it (C-left, C-right to change)", HoursNote = "+{0} h each";
+        MakerNote = "{0} makes it (C-left, C-right to change)", HoursNote = "+{0} h each", LevelText = "Lv {0}", LocationText = "Current Location: {0}",
+        InventoryText = "Total Inventory: {0}";
 
     /// <summary>The tabs in order, down the left side.</summary>
     public static readonly IReadOnlyList<CampTab> Tabs = [CampTab.Camp, CampTab.Food, CampTab.Potions, CampTab.Weapons, CampTab.Armor];
+
+    /// <summary>How many ticks the pan between the fire centred and the picture's foot takes: a second, the user's design (Nov 7, 2026).</summary>
+    public const int PanTicks = 60;
 
     private readonly Party _party;
     private readonly IReadOnlyList<RecipeRecord> _recipes;
@@ -64,6 +83,7 @@ public sealed class CampMenu
     private readonly List<string> _log = [];
     private readonly Dictionary<string, int> _made = [];
     private int _added;
+    private int _panTicks;
 
     /// <param name="site">The campsite shown, or null where the plugins have none.</param>
     /// <param name="arrangement">The party's arrangement at it, or null with no campsite.</param>
@@ -90,6 +110,9 @@ public sealed class CampMenu
     /// <summary>The camp's seed (<see cref="CampSeed"/>), which the arrangement was chosen by and the night's talk was.</summary>
     public uint Seed { get; init; }
 
+    /// <summary>Where the party is camped, for the Camp tab's line: the campsite's name until places have names of their own.</summary>
+    public string Location { get; init; } = "";
+
     public IReadOnlyList<CampOffer> Offers { get; private set; }
 
     /// <summary>The party's members, in slot order, for the Camp tab's portraits.</summary>
@@ -103,6 +126,30 @@ public sealed class CampMenu
 
     /// <summary>What the Rest button says.</summary>
     public string RestLabel => string.Format(CultureInfo.InvariantCulture, RestHoursText, Hours);
+
+    /// <summary>The Camp tab's line on where the party is.</summary>
+    public string LocationLine => string.Format(CultureInfo.InvariantCulture, LocationText, Location);
+
+    /// <summary>The Camp tab's line on the inventory: how many items the party carries, every stack's count, as the Inventory tab's foot says it.</summary>
+    public string InventoryLine => string.Format(CultureInfo.InvariantCulture, InventoryText, _party.Inventory.Stacks.Sum(s => s.Quantity));
+
+    /// <summary>A member's level for the row over their portrait.</summary>
+    public static string LevelLabel(Character member) => string.Format(CultureInfo.InvariantCulture, LevelText, member.Level);
+
+    /// <summary>
+    /// A member's statuses for the Camp tab's badges, the one place they're stacked in a column with their names rather than icons in
+    /// a row, the user's design (Nov 7, 2026): hunger's while Hungry or Starving, then tiredness's while Tired or Overtired, each with its
+    /// HUD icon and its name.
+    /// </summary>
+    public static IReadOnlyList<(RecordId Icon, string Name)> Badges(Character member)
+    {
+        var badges = new List<(RecordId, string)>();
+        if (StatusPulse.Rank(member.Hunger) > 0 && HungerDisplay.StatusIcon(member.Hunger) is { } hungry)
+            badges.Add((hungry, member.Hunger.ToString()));
+        if (RestDisplay.StatusIcon(member.Rest) is { } tired)
+            badges.Add((tired, member.Rest.ToString()));
+        return badges;
+    }
 
     /// <summary>The tab showing.</summary>
     public CampTab Tab { get; private set; }
@@ -139,14 +186,36 @@ public sealed class CampMenu
     /// <summary>What's been made this camp, by name, with how many.</summary>
     public IReadOnlyDictionary<string, int> Made => _made;
 
-    /// <summary>How the screen was left, once it was.</summary>
+    /// <summary>How the screen was left, once it was: chosen on the band, and carried out as it rolls up (<see cref="CampTick.Closed"/>).</summary>
     public CampChoice Choice { get; private set; }
 
-    /// <summary>Whether a talk shows over the screen, in the conversation box, which takes the presses meanwhile; the tabs are hidden under it.</summary>
+    /// <summary>Whether a talk shows over the screen, in the conversation box, which takes the presses meanwhile; the band is away under it.</summary>
     public bool Talking { get; set; }
+
+    /// <summary>Whether the debug button's talk waits for the band to roll up, to start as it has (<see cref="RequestTalk"/>).</summary>
+    public bool TalkPending { get; set; }
 
     /// <summary>How many talks the debug button has started this camp, which each press's seed counts on (<c>GameSession.TriggerCampTalk</c>).</summary>
     public int TalksTriggered { get; set; }
+
+    /// <summary>
+    /// Where a picture taller than the screen is panned to, 0 to 1: 0 with the fire at the screen's centre, for the talk, and 1 with the
+    /// picture's foot at the screen's, for the band. It moves a <see cref="PanTicks"/>th a tick toward the fire while a talk shows and
+    /// toward the foot otherwise.
+    /// </summary>
+    public float Pan => (float)_panTicks / PanTicks;
+
+    /// <summary>
+    /// The band's scroll while the band is up: unrolling, open or rolling up, as the pause menu's does from its Party tab, rising from
+    /// below and dropping away; null while it's away, before the pan has brought the picture's foot up and after it has rolled up.
+    /// </summary>
+    public PauseScroll? Scroll { get; private set; }
+
+    /// <summary>Whether the band is drawn: up, unrolling, open or rolling.</summary>
+    public bool BandShown => Scroll is { ShowsMenu: true };
+
+    /// <summary>Whether the band is open and takes presses: unrolled, no talk showing or coming, and no choice made.</summary>
+    public bool Open => Scroll is { Phase: PauseScrollPhase.Open } && !Talking && !TalkPending && Choice == CampChoice.None;
 
     /// <summary>The name of a recipe's product, for the rows.</summary>
     public string ProductName(RecipeRecord recipe) => _party.Inventory.Catalog.TryGet(recipe.Product)?.Name ?? recipe.Product.ToString();
@@ -160,10 +229,47 @@ public sealed class CampMenu
         _ => null,
     };
 
-    /// <summary>A press on the screen; whether it took it.</summary>
+    /// <summary>
+    /// A tick: the pan toward the fire or the foot, the band unrolling at the foot and stepping while it's up, and rolling up as a choice
+    /// or a talk asks. <paramref name="frame"/> and <paramref name="length"/> are the scroll actor's clock and the length of its state, as
+    /// <see cref="PauseScroll.Step"/> takes them.
+    /// </summary>
+    public CampTick Step(int frame, int length)
+    {
+        if (Scroll is { } scroll)
+        {
+            if (scroll.Phase == PauseScrollPhase.Open && (Choice != CampChoice.None || TalkPending || Talking))
+                return new CampTick(scroll.Close(PauseScroll.Party));
+            var cue = scroll.Step(frame, length);
+            if (scroll.Phase == PauseScrollPhase.Closed)
+            {
+                Scroll = null;
+                return new CampTick(Closed: true);
+            }
+            return scroll.StepsScroll ? new CampTick(cue) : default;
+        }
+        _panTicks = Talking ? Math.Max(0, _panTicks - 1) : Math.Min(PanTicks, _panTicks + 1);
+        if (_panTicks < PanTicks || Talking || TalkPending || Choice != CampChoice.None)
+            return default;
+        // At the foot with nothing pending: the band unrolls, its actor afresh, as the pause menu's is built for each opening, and holds
+        // with its rollers just past the Party tab's parchment, as barter's does, rather than running on out to the other tabs' ends.
+        Scroll = new PauseScroll(PauseScroll.Party, brightens: false, holds: true, darkens: false);
+        return new CampTick(Scroll.Step(frame, length), Restart: true);
+    }
+
+    /// <summary>The debug button's talk: the band rolls up first, and the talk starts as it has. False unless the band is open.</summary>
+    public bool RequestTalk()
+    {
+        if (!Open)
+            return false;
+        TalkPending = true;
+        return true;
+    }
+
+    /// <summary>A press on the screen; whether it took it. Only the open band takes one.</summary>
     public bool Press(MenuAction action)
     {
-        if (Choice != CampChoice.None || Talking)
+        if (!Open)
             return false;
         switch (action)
         {

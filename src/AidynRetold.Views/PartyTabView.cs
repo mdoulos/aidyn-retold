@@ -123,44 +123,13 @@ public partial class PartyTabView : Control
     // Up under the portraits and across to just before the school's icon, the user's choice (Nov 5, 2026): from x 22 to 137.2 at y 62,
     // then 2 nearer the icon, to 139.2, up 6 with the header's content, to y 56, and 1 shorter with its foot kept, from y 57, the user's
     // eye (Nov 6, 2026).
-    private static readonly Rect2 BarFrame = BarFrom(PortraitPiece.Position.X + 4 - HeaderShift, 141.2f - HeaderShift, 62 - HeaderRise + 1, 10);
-
-    /// <summary>The bar frame's rectangle with its drawn left edge, <see cref="BarArtLeft"/> into its art, at a point across.</summary>
-    private static Rect2 BarFrom(float left, float right, float top, float height)
-    {
-        var x = left - BarArtLeft * height / BarArtHeight;
-        return new Rect2(x, top, right - x, height);
-    }
-
-    /// <summary>
-    /// The bar's art: its size, how far in its frame's drawn left edge is, how wide each end kept whole is, and its opening's sides, top
-    /// and bottom, in its pixels.
-    /// </summary>
-    private const float BarArtWidth = 850, BarArtHeight = 200, BarArtLeft = 65, BarEnd = 140, BarOpeningLeft = 93, BarOpeningRight = 753,
-        BarOpeningTop = 63, BarOpeningBottom = 139;
-
-    private const string BarFrameArt = "ui_bar_frame", BarFillArt = "ui_bar_red", BarTrackArt = "ui_bar_brown";
+    private static readonly Rect2 BarFrame = UiPainter.BarFrom(PortraitPiece.Position.X + 4 - HeaderShift, 141.2f - HeaderShift, 62 - HeaderRise + 1, 10);
 
     /// <summary>How finely the bar's share of hit points is taken, as a width it's measured across.</summary>
     private const int BarPrecision = 1000;
 
-    /// <summary>
-    /// The washes over the red once the bar splits (<see cref="HeaderNumbers.BarSplits"/>): white at this alpha over Stamina's end,
-    /// which lightens it, and black at this over Endurance's, which darkens it a little.
-    /// </summary>
-    private static readonly Rgba StaminaWash = new(255, 255, 255, 90), EnduranceShade = new(0, 0, 0, 40);
-
     /// <summary>The bar frame's opening, where it's drawn, which the hit points are centred in and the red fills.</summary>
-    private static Rect2 BarOpening
-    {
-        get
-        {
-            var scale = BarFrame.Size.Y / BarArtHeight;
-            var left = BarFrame.Position.X + BarOpeningLeft * scale;
-            var right = BarFrame.End.X - (BarArtWidth - BarOpeningRight) * scale;
-            return new Rect2(left, BarFrame.Position.Y + BarOpeningTop * scale, right - left, (BarOpeningBottom - BarOpeningTop) * scale);
-        }
-    }
+    private static Rect2 BarOpening => UiPainter.BarOpening(BarFrame);
 
     /// <summary>The aspect's and school's icons after the bar, from the portraits' frames' corner, and how far apart they are.</summary>
     private static readonly Vector2I IconsAt = new(107, 45);
@@ -1618,47 +1587,11 @@ public partial class PartyTabView : Control
             stamina = MenuTween.Value(before.StaminaBar(BarPrecision), stamina, change);
             split = MenuTween.Value(before.BarSplits ? 1f : 0f, split, change);
         }
-        ThreeSlice(BarTrackArt, BarFrame);
-        // The red from its left end under the frame to the share across the opening, its ragged end cut off straight.
-        var opening = BarOpening;
-        var end = opening.Position.X + opening.Size.X * share / BarPrecision;
-        if (share > 0)
-            ThreeSlice(BarFillArt, BarFrame, end);
-        // One plain red until it splits (HeaderNumbers.BarSplits), the user's design (Nov 6, 2026): then Stamina's hit points are its
-        // right end washed to a lighter red and Endurance's the rest shaded darker, so as Stamina drains the lighter end shrinks and what's
-        // left in the darker red is Endurance's. The split fades in and out with the numbers' change.
-        if (split > 0 && share > 0)
-        {
-            var boundary = opening.Position.X + opening.Size.X * Math.Max(0, share - stamina) / BarPrecision;
-            _canvas.DrawRect(new Rect2(opening.Position.X, opening.Position.Y, boundary - opening.Position.X, opening.Size.Y),
-                _ui.Tint(EnduranceShade with { A = (byte)(EnduranceShade.A * split) }));
-            if (end > boundary)
-                _canvas.DrawRect(new Rect2(boundary, opening.Position.Y, end - boundary, opening.Size.Y), _ui.Tint(StaminaWash with { A = (byte)(StaminaWash.A * split) }));
-        }
-        ThreeSlice(BarFrameArt, BarFrame);
+        // The track, the red to the share across the opening, the split's washes fading in and out with the numbers' change, and the frame.
+        _ui.HealthBar(_canvas, BarFrame, (float)share / BarPrecision, (float)stamina / BarPrecision, split);
         if (Menu.PreviousNumbers is { } was)
             Numbers(was, FadingOut(White, change).A);
         Numbers(HeaderNumbers.Of(shown), FadingIn(White, change).A);
-    }
-
-    /// <summary>
-    /// A piece of the bar's art over a rectangle in three slices: its ends, <see cref="BarEnd"/> of its pixels wide, kept their shape
-    /// at the rectangle's height, and its middle stretched between them; cut off at <paramref name="right"/>, as the red is.
-    /// </summary>
-    private void ThreeSlice(string name, Rect2 rect, float right = float.MaxValue)
-    {
-        if (UiImages.Art(name) is not { } texture)
-            return;
-        var texels = texture.GetWidth() / BarArtWidth;
-        var end = BarEnd * rect.Size.Y / BarArtHeight;
-        float[] dx = [rect.Position.X, rect.Position.X + end, rect.End.X - end, rect.End.X];
-        float[] sx = [0, BarEnd, BarArtWidth - BarEnd, BarArtWidth];
-        for (var i = 0; i < 3 && dx[i] < right; i++)
-        {
-            var share = Math.Min(1, (right - dx[i]) / (dx[i + 1] - dx[i]));
-            _canvas.DrawTextureRectRegion(texture, new Rect2(dx[i], rect.Position.Y, (dx[i + 1] - dx[i]) * share, rect.Size.Y),
-                new Rect2(sx[i] * texels, 0, (sx[i + 1] - sx[i]) * texels * share, texture.GetHeight()), _ui.Tint(White));
-        }
     }
 
     /// <summary>

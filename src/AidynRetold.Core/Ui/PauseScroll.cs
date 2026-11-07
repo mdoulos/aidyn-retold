@@ -79,7 +79,10 @@ public sealed class PauseScroll
     // From FadeFrom the tabs and the scroll fade out, gone by the animation's end.
     private readonly record struct Closing(int Request, int Start, int End, int LeftEnd, int RightEnd, int FadeFrom);
 
-    private const int System = 0, Party = 1;
+    private const int System = 0;
+
+    /// <summary>The Party tab's index: the tab whose scroll rises from below and drops away, which the camp band borrows.</summary>
+    public const int Party = 1;
 
     private static readonly Opening[] Openings =
     [
@@ -141,11 +144,16 @@ public sealed class PauseScroll
     /// <param name="holds">
     /// Whether the scroll runs on only a little way and holds there, for barter and training, which can't change tab.
     /// </param>
-    public PauseScroll(int tab, bool brightens = true, bool holds = false)
+    /// <param name="darkens">
+    /// Whether the world darkens before the scroll unrolls. The camp band's doesn't: it unrolls at once, over a picture that stays as it is.
+    /// </param>
+    public PauseScroll(int tab, bool brightens = true, bool holds = false, bool darkens = true)
     {
         Tab = tab;
         _brightens = brightens;
         _holds = holds;
+        if (!darkens)
+            Tint = Dark;
     }
 
     public PauseScrollPhase Phase { get; private set; }

@@ -406,7 +406,8 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
         _stick.Repeat = session.Stick;
         _backdrop = new BackdropLayer(plugins);
         AddChild(_backdrop);
-        _camp = new CampLayer(plugins);
+        var camp = _camp = new CampLayer(plugins);
+        session.CampScrollClock = () => (camp.ScrollFrame, camp.ScrollLength);
         _camp.Clicked += Clicked;
         _camp.DebugButtons = Debugging;
         _camp.TalkRequested += () =>
@@ -1208,6 +1209,9 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
                 break;
             case ScrollPlayCue scroll:
                 _menu?.PlayScroll(scroll.Cue);
+                break;
+            case CampScrollCue camp:
+                _camp?.PlayScroll(camp);
                 break;
         }
     }

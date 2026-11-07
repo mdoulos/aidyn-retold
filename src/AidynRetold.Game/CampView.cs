@@ -22,7 +22,22 @@ public partial class CampView : Control
         Note = new(130, 105, 85, 255), Said = new(70, 45, 40, 255), Overlay = new(120, 255, 160, 255), Warn = new(255, 170, 90, 255),
         Button = new(255, 236, 130, 255);
 
-    private static readonly RecordId Parchment = RecordId.Parse("acre:image/parchment");
+    private static readonly RecordId Parchment = RecordId.Parse("acre:image/parchment"), Thirds = RecordId.Parse("acre:image/debug_thirds");
+
+    /// <summary>How long the pan between the fire centred and the picture's foot takes, in seconds.</summary>
+    public const float PanSeconds = 1f;
+
+    /// <summary>
+    /// Where a picture taller than the screen is panned to, 0 to 1: 0 with the fire at the screen's centre, for the talk, and 1 with the
+    /// picture's foot at the screen's, for the rows. It moves toward <see cref="PanTarget"/> over <see cref="PanSeconds"/>.
+    /// </summary>
+    private float _pan;
+
+    /// <summary>The pan the camp asks for: the fire centred while a talk shows, the foot otherwise.</summary>
+    private float PanTarget => Camp is { Talking: true } ? 0 : 1;
+
+    /// <summary>Whether the pan has arrived where the camp asks, so the rows may show.</summary>
+    private bool Panned => Mathf.IsEqualApprox(_pan, PanTarget);
 
     private readonly UiPainter _ui;
     private readonly PluginSet _plugins;
@@ -63,6 +78,17 @@ public partial class CampView : Control
         if (what == NotificationResized)
             QueueRedraw();
     }
+
+    public override void _Process(double delta)
+    {
+        if (Camp is null || Panned)
+            return;
+        _pan = Mathf.MoveToward(_pan, PanTarget, (float)delta / PanSeconds);
+        QueueRedraw();
+    }
+
+    /// <summary>A camp opens on the talk with the fire centred: the pan starts there.</summary>
+    public void Opened() => _pan = 0;
 
     public override void _GuiInput(InputEvent e)
     {
@@ -132,9 +158,14 @@ public partial class CampView : Control
             return;
         if (site is not null && ShowOverlay)
             DrawOverlay(camp, site, fit);
-        DrawMenu(camp, site, fit, size);
+        // The rows wait for the pan to bring the picture's foot up, so they're never drawn over the fire.
+        if (Panned)
+            DrawMenu(camp, site, fit, size);
         if (DebugButtons && camp.Choice == CampChoice.None)
             DrawButtons(size);
+        // The rule-of-thirds lines over the whole screen, as the user drew them, with the overlay.
+        if (ShowOverlay && _ui.Images.Get(Thirds) is { } thirds)
+            DrawTextureRect(thirds, new Rect2(Vector2.Zero, size), false);
     }
 
     /// <summary>The debug buttons at the top right: Talk, a camp talk at once without resting, and Debug, the overlay on or off.</summary>
@@ -154,14 +185,25 @@ public partial class CampView : Control
         return area;
     }
 
-    /// <summary>Where the picture is drawn: as large as fits the screen, whole, centred, black either side.</summary>
-    private static Rect2 Fit(CampsiteRecord? site, Vector2 size)
+    /// <summary>
+    /// Where the picture is drawn, never squeezed: as wide as the screen, and if that leaves it taller than the screen, panned
+    /// (<see cref="_pan"/>) between the fire at the screen's centre and its foot at the screen's; else as large as fits, whole, centred.
+    /// </summary>
+    private Rect2 Fit(CampsiteRecord? site, Vector2 size)
     {
         if (site is null || site.Width <= 0 || site.Height <= 0)
             return new Rect2(Vector2.Zero, size);
-        var scale = Mathf.Min(size.X / site.Width, size.Y / site.Height);
+        var scale = size.X / site.Width;
         var drawn = new Vector2(site.Width * scale, site.Height * scale);
-        return new Rect2((size - drawn) / 2, drawn);
+        if (drawn.Y <= size.Y)
+        {
+            scale = Mathf.Min(scale, size.Y / site.Height);
+            drawn = new Vector2(site.Width * scale, site.Height * scale);
+            return new Rect2((size - drawn) / 2, drawn);
+        }
+        var foot = size.Y - drawn.Y;
+        var centred = Mathf.Clamp(size.Y / 2 - site.Fire.Y * drawn.Y, foot, 0);
+        return new Rect2(0, Mathf.Lerp(centred, foot, _pan), drawn.X, drawn.Y);
     }
 
     /// <summary>A point given as shares of the picture, in the canvas.</summary>
@@ -186,18 +228,12 @@ public partial class CampView : Control
                 var rect = placement.Mirrored ? new Rect2(left + width, top, -width, height) : new Rect2(left, top, width, height);
                 DrawTextureRect(image, rect, false, Tint(site));
             }
-            else
+            else if (ShowOverlay)
             {
-                // No figure to draw yet: a marker on the anchor, with who stands there, so the slot can be judged all the same.
-                var tall = (CampPoses.IsSeated(placement.Pose) ? 95 : 170) * pixel * placement.Scale;
-                var wide = tall * 0.38f;
-                var color = new Color(0.9f, 0.85f, 0.7f, 0.45f);
-                DrawRect(new Rect2(foot.X - wide / 2, foot.Y - tall, wide, tall), color);
-                if (!ShowOverlay)
-                    continue;
+                // No figure to draw yet: nothing in the game, and with the overlay a dot on the anchor with who stands there.
                 DrawCircle(foot, 2, Colors.White);
                 _ui.TextSize = UiPainter.FineText;
-                _ui.Text(this, _ui.Main, $"{MemberName(placement.Member)}, {Plain(placement.Pose)}{(placement.Mirrored ? " (mirrored)" : "")}", (int)(foot.X - wide / 2), (int)(foot.Y - tall) - 10, Button);
+                _ui.Text(this, _ui.Main, $"{MemberName(placement.Member)}, {Plain(placement.Pose)}{(placement.Mirrored ? " (mirrored)" : "")}", (int)foot.X - 10, (int)foot.Y - 12, Button);
             }
         }
     }
@@ -387,6 +423,8 @@ public partial class CampLayer : CanvasLayer
     /// <summary>Draws the session's camp screen as it stands, each tick and after a press: shown while there's one, hidden once it has closed.</summary>
     public void Draw(CampMenu? camp)
     {
+        if (camp is not null && !ReferenceEquals(_view.Camp, camp))
+            _view.Opened();
         _view.Camp = camp;
         Visible = camp is not null;
         _view.QueueRedraw();

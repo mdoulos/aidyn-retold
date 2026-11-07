@@ -771,8 +771,8 @@ public sealed partial class TrekLoop : IMapObjectHost
     /// <paramref name="hours"/>: each living member heals by half and its effects run down by the camping record's ticks, scaled to
     /// the hours, every battery refills by half, the party sleeps and the food ages; then the night's scene, the first found of:
     /// the original's story camp scene, a dialogue object in the chunk whose enabling flag is one of the camping record's and holds
-    /// while its check flag is set, cued as the cut-scene it is; a camp talk the plugins give (<see cref="CampTalks"/>), shown in the
-    /// conversation box over the camp screen, its done flag set; the Campsite's own script, Alaron alone at the fire; or nothing.
+    /// while its check flag is set, cued as the cut-scene it is; the Campsite's own script, Alaron alone at the fire; or nothing.
+    /// The camp talk (<see cref="CampTalks"/>, <see cref="ShowCampTalk"/>) was told as the camp opened.
     /// The hours pass as the scene ends where it's a <c>rest</c> script, which passes eight, so the caller passes the rest at once
     /// (<see cref="CampRestResult.HoursNow"/>).
     /// </summary>
@@ -796,11 +796,7 @@ public sealed partial class TrekLoop : IMapObjectHost
             return new CampRestResult(CampNight.Scene, hours - (story.Script.Rest ? rules.RestHours : 0));
         }
 
-        // Then a camp talk, in the box over the camp screen.
-        if (ShowCampTalk(seed) is { } told)
-            return new CampRestResult(CampNight.Talk, hours - (told.Rest ? rules.RestHours : 0));
-
-        // Else the Campsite's own, as the original falls back to it.
+        // The camp talk was told as the camp opened (GameSession.OpenCamp), so else the Campsite's own, as the original falls back to it.
         if (Game.Plugins.TryGet<MapRecord>(rules.Campsite) is { } campsite
             && campsite.Objects.OfType<DialogueObject>().FirstOrDefault() is { } fire
             && CutSceneLaunch.Of(Game.Plugins, fire, MapRecord.VoxelId(campsite.Id, fire.Index)) is { } marshmallows)

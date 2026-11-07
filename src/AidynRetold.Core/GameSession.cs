@@ -1038,6 +1038,10 @@ public sealed class GameSession
         var offers = CampActivities.Offered(Game.Plugins.All<CampActivityRecord>(RecordTypes.CampActivity), recipes, Game.Party);
         Camp = new Ui.CampMenu(Game.Party, site, arrangement, offers, recipes, Game.Camping.RestHours, Game.Random.World) { Seed = seed };
         Send(new Transition.OpenCamp(Camp));
+        // The camp opens on the party's talk, the user's design (Nov 7, 2026): the night's conversation in the box over the picture,
+        // the rows coming once it's over. With none to tell, the rows come at once.
+        if (Trek.ShowCampTalk(seed) is not null)
+            Camp.Talking = true;
     }
 
     /// <summary>

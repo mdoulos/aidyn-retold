@@ -94,10 +94,12 @@ public partial class PauseScrollView : Control
     public float? OpenHalfWidth { get; set; }
 
     /// <summary>
-    /// How far out the rollers' middles stand, either side of the centre, of the scroll's length (<see cref="Lines"/>), when the scroll
-    /// is held open: measured from the actor's held frame, 0.716 and 0.720 for its two rollers.
+    /// How far out the rollers' middles stand, either side of the centre, of the scroll's length (<see cref="Lines"/>): when the scroll
+    /// is held open, measured from the actor's held frame, 0.716 and 0.720 for its two rollers; and as the Party opening starts, the two
+    /// rolled together, 0.123 (11 of 89.4 lines). A band's rollers are moved out by their way past the start alone, so they begin
+    /// together as the actor has them, with no gap, and stand at the band's ends held open.
     /// </summary>
-    private const float HeldSpan = 0.718f;
+    private const float HeldSpan = 0.718f, StartSpan = 0.123f;
 
     /// <summary>The scroll's clock in the state it's in, from 1.</summary>
     public int Frame => _animator.Frame;
@@ -292,8 +294,8 @@ public partial class PauseScrollView : Control
         /// Aims the camera at a roller whose middle is at <paramref name="axis"/>: over the scene's middle while the
         /// roller is no further out than when its tab is open, and else following it so that it's seen as it is then,
         /// its picture moved out a tab's 320 pixels for each tab it has gone. With <paramref name="halfWidth"/>, the
-        /// roller's column from the centre is scaled so that it's there when the scroll is held open, <see cref="HeldSpan"/>
-        /// of <paramref name="lines"/> out, and so the rollers still meet in the middle rolled up.
+        /// roller's way out past where it starts (<see cref="StartSpan"/> of <paramref name="lines"/>) is scaled so that its
+        /// middle is there when the scroll is held open (<see cref="HeldSpan"/>), and the rollers still start together.
         /// </summary>
         public void Aim(Vector3 axis, float? halfWidth = null, float lines = UiScreen.Height)
         {
@@ -309,7 +311,9 @@ public partial class PauseScrollView : Control
             {
                 var centre = View.Size.X / 2f / Fine;
                 var column = Camera.UnprojectPosition(axis).X / Fine - centre;
-                _shift = column * (half / (HeldSpan * lines) - 1);
+                var start = StartSpan * lines;
+                var past = Math.Max(0, Math.Abs(column) - start);
+                _shift = Math.Sign(column) * past * ((half - start) / (HeldSpan * lines - start) - 1);
             }
         }
 

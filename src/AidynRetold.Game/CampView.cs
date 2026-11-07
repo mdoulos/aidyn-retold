@@ -49,14 +49,29 @@ public partial class CampView : Control
     /// <summary>How tall the scroll's control is, of its length, for the rollers' ends past the parchment.</summary>
     private const float ScrollRoom = 1.5f;
 
-    // The band's layout, in the band's pixels from its top left corner: the tabs' slips down the left, each with its icon and caption,
-    // and the tab showing beside them, the user's design (Nov 7, 2026). The sides keep clear of the rollers, which lie over the band's ends.
-    private const float Edge = 5, Side = 12, TabWidth = 42, TabHeight = 13, TabPitch = 14, TabIconSize = 9, TabIconLeft = 2.5f, ContentLeft = Side + TabWidth + 6;
+    // The band's layout, in the band's pixels from its top left corner: the tabs' slips down the left, spread from the band's top to
+    // its foot, each with its icon and caption, and the tab showing joined to the content's paper beside them, the wide sheet, the
+    // user's design (Nov 7, 2026). The sides keep clear of the rollers, which lie over the band's ends.
+    private const float Edge = 5, Side = 12, TabWidth = 42, TabHeight = 14, TabIconSize = 9, TabIconLeft = 2.5f, PaperInsetX = 4, PaperInsetY = 3;
 
-    // The Camp tab: the name and level over each portrait, 30 square as the HUD's, the portraits 3 apart, the bar under each and its
+    /// <summary>
+    /// How far the join between the tab showing and the paper fades out at its ends and along its sides, how deep the paper's torn
+    /// left edge and a tab's top and bottom edges are, as the Party tab has them for its page.
+    /// </summary>
+    private const float JoinFeather = 2, JoinSideFeather = 0.4f, PaperEdge = 1, TabEdge = 0.8f;
+
+    // The Camp tab: the name and level over each portrait, 30 square as the HUD's, the portraits 2 apart, the bar under each and its
     // status badges under that, and the foot row with the location, the inventory and Rest.
-    private const float PortraitSize = 30, MemberPitch = 33, NameRow = 6, BarHeight = 7, BadgeHeight = 7, BadgePitch = 8, BadgeIcon = 5,
+    private const float PortraitSize = 30, MemberPitch = 32, NameRow = 6, BarHeight = 7, BadgeHeight = 6, BadgePitch = 6.75f, BadgeIcon = 5,
         BadgeIconLeft = 1.5f, FootHeight = 10;
+
+    /// <summary>
+    /// How many frames the band is drawn invisible as the camp opens, so its textures load then rather than as it unrolls, where the
+    /// loading stalled the scroll for a tenth of a second (Nov 7, 2026).
+    /// </summary>
+    private const int WarmFrames = 2;
+    private int _warmFrames;
+    private bool _rendering;
 
     private readonly UiPainter _ui;
     private readonly PluginSet _plugins;
@@ -170,29 +185,36 @@ public partial class CampView : Control
         return null;
     }
 
-    /// <summary>The mouse over something: the tab shown, or the recipe pointed at; whether anything changed.</summary>
+    /// <summary>The mouse over something: the tab shown and the tabs focused, or the recipe or Rest pointed at in the content; whether anything changed.</summary>
     private static bool Point(CampMenu camp, Target target, int index)
     {
         switch (target)
         {
             case Target.Tab:
                 var tab = CampMenu.Tabs[index];
-                if (camp.Tab == tab)
-                    return false;
-                camp.Show(tab);
-                return true;
+                var changed = camp.Tab != tab || camp.Focus != CampFocus.Tabs;
+                if (camp.Tab != tab)
+                    camp.Show(tab);
+                camp.FocusOn(CampFocus.Tabs);
+                return changed;
             case Target.Recipe:
                 return camp.PointRecipe(index);
             default:
-                return false;
+                var was = camp.Focus;
+                camp.FocusOn(CampFocus.Content);
+                return was != CampFocus.Content;
         }
     }
+
+    /// <summary>A camp has opened: the band draws invisible for a frame or two, so what it draws with is loaded before it unrolls.</summary>
+    public void Warm() => _warmFrames = WarmFrames;
 
     public override void _Draw()
     {
         _hits.Clear();
         if (Camp is not { } camp)
         {
+            Render(false);
             HideBand();
             Top.QueueRedraw();
             return;
@@ -211,8 +233,18 @@ public partial class CampView : Control
         if (site is not null && ShowOverlay && !camp.Talking)
             DrawOverlay(camp, site, fit);
         _band = BandRect(site, fit, size);
+        Render(true);
         LayBand(camp);
         Top.QueueRedraw();
+    }
+
+    /// <summary>Whether the scroll's viewports render: while a camp shows, so the rollers are drawn the frame the band begins to unroll.</summary>
+    private void Render(bool on)
+    {
+        if (_scroll is null || _rendering == on)
+            return;
+        _rendering = on;
+        _scroll.Rendering = on;
     }
 
     /// <summary>The band's rectangle: the campsite's safe area over the picture as it's fitted now, or a strip low on the screen with none.</summary>
@@ -247,10 +279,13 @@ public partial class CampView : Control
             view.OpenHalfWidth = _band.Size.X / 2;
             view.Position = new Vector2(0, _band.GetCenter().Y - height / 2);
             view.Size = new Vector2(Size.X, height);
-            view.Alpha = alpha;
             view.Visible = true;
-            view.Rendering = true;
             var (left, right, top, bottom, upright) = view.Arrange();
+            // The rollers fade in from nothing as they stand up across the screen, opaque by the time they stand, the user's choice for the
+            // band alone (Nov 7, 2026); the pause menu's scroll keeps its own rise.
+            var standing = Math.Clamp(upright / ScrollParchmentView.UprightTo, 0, 1);
+            alpha *= standing * standing * (3 - 2 * standing);
+            view.Alpha = alpha;
             if (!float.IsInfinity(left) && !float.IsInfinity(right))
             {
                 var cutLeft = Math.Max(clip.Position.X, Mathf.Round(left + view.Position.X));
@@ -269,14 +304,22 @@ public partial class CampView : Control
         Band.QueueRedraw();
     }
 
+    /// <summary>The band away: not drawn, but for the warm-up's invisible frames as a camp opens.</summary>
     private void HideBand()
     {
-        Band.Visible = false;
         if (_scroll is { } view)
-        {
             view.Visible = false;
-            view.Rendering = false;
+        if (_warmFrames > 0 && Camp is not null)
+        {
+            _warmFrames--;
+            Band.Position = _band.Position;
+            Band.Size = _band.Size;
+            Band.Modulate = new Color(1, 1, 1, 0);
+            Band.Visible = true;
+            Band.QueueRedraw();
+            return;
         }
+        Band.Visible = false;
     }
 
     /// <summary>The debug marks over everything: the buttons at the top right, and the rule-of-thirds lines over the whole screen, as the user drew them, with the overlay.</summary>
@@ -416,8 +459,10 @@ public partial class CampView : Control
             canvas.DrawTextureRect(parchment, new Rect2(-2, -2, width + 4, height + 4), false);
         else
             canvas.DrawRect(new Rect2(0, 0, width, height), new Color(0, 0, 0, 0.55f));
-        DrawTabs(canvas, camp);
-        var content = new Rect2(ContentLeft, Edge, width - Side - ContentLeft, height - 2 * Edge);
+        // The content's paper, the wide sheet, from under the tabs' right ends to the band's right side, and the content within its edges.
+        var paper = new Rect2(Side + TabWidth - 1, Edge - 1, width - Side - (Side + TabWidth - 1), height - 2 * Edge + 2);
+        DrawTabs(canvas, camp, paper, height);
+        var content = new Rect2(paper.Position.X + PaperInsetX, paper.Position.Y + PaperInsetY, paper.Size.X - 2 * PaperInsetX, paper.Size.Y - 2 * PaperInsetY);
         if (camp.Tab == CampTab.Camp)
             DrawCampTab(canvas, camp, content);
         else
@@ -431,26 +476,88 @@ public partial class CampView : Control
     }
 
     /// <summary>
-    /// The tabs down the band's left, each on a slip of the gold's parchment with its icon at the left and its caption after, the user's
-    /// design (Nov 7, 2026): the tab showing in the cursor's red on its slip plain, the others in brown on theirs a shade darker.
+    /// The tabs down the band's left, spread from its top to its foot, each on a slip of the gold's parchment with its icon at the left
+    /// and its caption after, the user's design (Nov 7, 2026): the others in brown on slips a shade darker, behind the content's paper;
+    /// the tab showing in the cursor's red on its slip plain, over the paper, cut at the paper's edge and joined to it as the Party
+    /// tab's is to its page, sideways; and the pointer before it while the cursor is on the tabs.
     /// </summary>
-    private void DrawTabs(CanvasItem canvas, CampMenu camp)
+    private void DrawTabs(CanvasItem canvas, CampMenu camp, Rect2 paper, float height)
     {
         var small = Font(UiPainter.SmallText);
+        var pitch = (height - 2 * Edge - TabHeight) / (CampMenu.Tabs.Count - 1);
+        Rect2 TabRect(int i) => new(Side, Edge + i * pitch, TabWidth, TabHeight);
+        var showing = CampMenu.Tabs.ToList().IndexOf(camp.Tab);
         for (var i = 0; i < CampMenu.Tabs.Count; i++)
         {
-            var tab = CampMenu.Tabs[i];
-            var current = tab == camp.Tab;
-            var rect = new Rect2(Side, Edge + i * TabPitch, TabWidth, TabHeight);
+            if (i == showing)
+                continue;
+            var rect = TabRect(i);
             if (UiPainter.Original)
-                canvas.DrawRect(rect, new Color(0, 0, 0, current ? 0.25f : 0.12f));
+                canvas.DrawRect(rect, new Color(0, 0, 0, 0.12f));
             else
-                _ui.Slip(canvas, rect, current ? null : SlipDim, sheet: UiPainter.GoldSheet);
-            if (UiImages.Art(TabIcons[i]) is { } icon)
-                canvas.DrawTextureRect(icon, new Rect2(rect.Position.X + TabIconLeft, rect.Position.Y + (TabHeight - TabIconSize) / 2, TabIconSize, TabIconSize),
-                    false, current ? Colors.White : new Color(1, 1, 1, 0.75f));
-            Print(canvas, small, tab.ToString(), rect.Position.X + TabIconLeft + TabIconSize + 2, rect.Position.Y + TabHeight / 2 - small.Middle, current ? Cursor : Text);
+                _ui.Slip(canvas, rect, SlipDim, sheet: UiPainter.GoldSheet);
+            TabFace(canvas, small, i, rect, current: false);
             _hits.Add((rect, Target.Tab, i));
+        }
+        if (UiPainter.Original)
+            canvas.DrawRect(paper, new Color(0, 0, 0, 0.18f));
+        else
+            _ui.Slip(canvas, paper, sheet: UiPainter.WideSheet);
+        var current = TabRect(showing);
+        if (UiPainter.Original)
+        {
+            canvas.DrawRect(current, new Color(0, 0, 0, 0.25f));
+        }
+        else
+        {
+            _ui.Slip(canvas, current, sheet: UiPainter.GoldSheet, cutRightAt: paper.Position.X + PaperEdge);
+            JoinTab(canvas, current, paper);
+        }
+        TabFace(canvas, small, showing, current, current: true);
+        if (camp.Focus == CampFocus.Tabs)
+            Pointer(canvas, Side - 5, current.GetCenter().Y, Cursor);
+        _hits.Add((current, Target.Tab, showing));
+    }
+
+    /// <summary>A tab's icon and caption on its slip, the tab showing in the cursor's red and the others in brown with their icons faded.</summary>
+    private void TabFace(CanvasItem canvas, UiFont small, int i, Rect2 rect, bool current)
+    {
+        if (UiImages.Art(TabIcons[i]) is { } icon)
+            canvas.DrawTextureRect(icon, new Rect2(rect.Position.X + TabIconLeft, rect.Position.Y + (TabHeight - TabIconSize) / 2, TabIconSize, TabIconSize),
+                false, current ? Colors.White : new Color(1, 1, 1, 0.75f));
+        Print(canvas, small, CampMenu.Tabs[i].ToString(), rect.Position.X + TabIconLeft + TabIconSize + 2, rect.Position.Y + TabHeight / 2 - small.Middle, current ? Cursor : Text);
+    }
+
+    /// <summary>
+    /// The tab showing joined to the content's paper, as the Party tab's is to its page but sideways: paper from just inside the
+    /// paper's torn left edge, at the paper's scale, over where the tab's right end and the paper's edge meet, down the tab but for its
+    /// top and bottom edges, its ends faded over <see cref="JoinFeather"/> so it runs into the papers either side.
+    /// </summary>
+    private void JoinTab(CanvasItem canvas, Rect2 tab, Rect2 paper)
+    {
+        var sheet = UiPainter.WideSheet;
+        if (UiImages.Art(sheet) is not { } texture)
+            return;
+        var art = UiImages.ArtImage(sheet).Paper;
+        var scale = paper.Size / art.Size;
+        var patch = new Rect2(tab.End.X - JoinFeather - 1, tab.Position.Y + TabEdge, JoinFeather + 1 + PaperEdge + JoinFeather, tab.Size.Y - 2 * TabEdge);
+        // From the paper's parchment inside its torn left edge, at the patch's own rows, so it's the paper's grain and tone there.
+        var source = new Rect2(art.Position.X + art.Size.X * 0.05f, art.Position.Y + (patch.Position.Y - paper.Position.Y) / scale.Y, patch.Size / scale);
+        var size = texture.GetSize();
+        float[] xs = [patch.Position.X, patch.Position.X + JoinFeather, patch.End.X - JoinFeather, patch.End.X];
+        float[] ys = [patch.Position.Y, patch.Position.Y + JoinSideFeather, patch.End.Y - JoinSideFeather, patch.End.Y];
+        Vector2 Uv(float x, float y) => (source.Position + new Vector2(x - patch.Position.X, y - patch.Position.Y) / scale) / size;
+        var solid = Colors.White;
+        Color Corner(int i, int j) => i is 0 or 3 || j is 0 or 3 ? solid with { A = 0 } : solid;
+        for (var i = 0; i < 3; i++)
+        {
+            for (var j = 0; j < 3; j++)
+            {
+                canvas.DrawPolygon(
+                    [new(xs[i], ys[j]), new(xs[i + 1], ys[j]), new(xs[i + 1], ys[j + 1]), new(xs[i], ys[j + 1])],
+                    [Corner(i, j), Corner(i + 1, j), Corner(i + 1, j + 1), Corner(i, j + 1)],
+                    [Uv(xs[i], ys[j]), Uv(xs[i + 1], ys[j]), Uv(xs[i + 1], ys[j + 1]), Uv(xs[i], ys[j + 1])], texture);
+            }
         }
     }
 
@@ -500,7 +607,7 @@ public partial class CampView : Control
             var hp = $"{member.Hp} / {member.MaxHp}";
             Print(canvas, fine, hp, opening.Position.X + (opening.Size.X - fine.ExactWidth(hp)) / 2, opening.Position.Y + opening.Size.Y / 2 - fine.Middle,
                 BarText, BarShadow, bold: true);
-            // The statuses' badges stacked under the bar.
+            // The statuses' badges stacked under the bar, each icon drawn whole, so its round edge isn't cut as a sampled image's is.
             var badgeY = frame.End.Y + 1;
             foreach (var (icon, name) in CampMenu.Badges(member))
             {
@@ -509,25 +616,28 @@ public partial class CampView : Control
                     canvas.DrawRect(badge, new Color(0, 0, 0, 0.2f));
                 else
                     _ui.Slip(canvas, badge, sheet: UiPainter.TooltipSheet);
-                _ui.Image(canvas, icon, new Rect2(x + BadgeIconLeft, badgeY + (BadgeHeight - BadgeIcon) / 2, BadgeIcon, BadgeIcon));
+                if (_ui.Images.Get(icon) is { } mark)
+                    canvas.DrawTextureRect(mark, new Rect2(x + BadgeIconLeft, badgeY + (BadgeHeight - BadgeIcon) / 2, BadgeIcon, BadgeIcon), false);
                 var textLeft = x + BadgeIconLeft + BadgeIcon + 1;
                 var textRoom = x + PortraitSize - 1 - textLeft;
                 Print(canvas, fine, name, textLeft + Math.Max(0, (textRoom - fine.ExactWidth(name)) / 2), badgeY + BadgeHeight / 2 - fine.Middle, Said);
                 badgeY += BadgePitch;
             }
         }
-        // The foot: Rest on a slip at the right, with the pointer, and the location and the inventory at the left, level with it.
-        var standard = Font(UiPainter.StandardText);
+        // The foot: Rest on a slip at the right, with the pointer while the cursor is in the content, and the location and the inventory
+        // at the left, level with it.
         var rest = camp.RestLabel;
-        var restWidth = standard.ExactWidth(rest) + 14;
+        var restWidth = small.ExactWidth(rest) + 14;
         var button = new Rect2(content.End.X - restWidth, content.End.Y - FootHeight, restWidth, FootHeight);
         var footMiddle = button.GetCenter().Y;
         if (UiPainter.Original)
             canvas.DrawRect(button, new Color(0, 0, 0, 0.2f));
         else
             _ui.Slip(canvas, button, sheet: UiPainter.GoldSheet);
-        Pointer(canvas, button.Position.X + 4, footMiddle, Cursor);
-        Print(canvas, standard, rest, button.Position.X + 9, footMiddle - standard.Middle, Cursor);
+        var focused = camp.Focus == CampFocus.Content;
+        if (focused)
+            Pointer(canvas, button.Position.X + 4, footMiddle, Cursor);
+        Print(canvas, small, rest, button.Position.X + 9, footMiddle - small.Middle, focused ? Cursor : Text);
         _hits.Add((button, Target.Rest, 0));
         var location = camp.LocationLine;
         Print(canvas, fine, location, content.Position.X, footMiddle - fine.Middle, Text);
@@ -553,12 +663,14 @@ public partial class CampView : Control
             return;
         }
         var row = small.LineHeight;
-        // The rows that fit, a window over the recipes that keeps the cursor's within it, with a line for the message under them.
+        // The rows that fit, a window over the recipes that keeps the cursor's within it, with a line for the message under them; the
+        // cursor's row in red with the pointer while the cursor is in the content.
         var fit = Math.Max(1, (int)((content.End.Y - row - y) / row));
         var first = Math.Clamp(camp.RecipeCursor - fit + 1, 0, Math.Max(0, camp.Recipes.Count - fit));
+        var focused = camp.Focus == CampFocus.Content;
         for (var i = first; i < Math.Min(camp.Recipes.Count, first + fit); i++)
         {
-            var current = i == camp.RecipeCursor;
+            var current = i == camp.RecipeCursor && focused;
             if (current)
                 Pointer(canvas, left, y + row / 2f, Cursor);
             Print(canvas, small, camp.ProductName(camp.Recipes[i]), left + 6, y, current ? Cursor : Text);
@@ -702,6 +814,8 @@ public partial class CampLayer : CanvasLayer
     /// <summary>Draws the session's camp screen as it stands, each tick and after a press: shown while there's one, hidden once it has closed.</summary>
     public void Draw(CampMenu? camp)
     {
+        if (camp is not null && !ReferenceEquals(_view.Camp, camp))
+            _view.Warm();
         _view.Camp = camp;
         Visible = camp is not null;
         _view.QueueRedraw();

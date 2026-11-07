@@ -34,6 +34,15 @@ public enum CampTab
     Armor,
 }
 
+/// <summary>Where the camp band's cursor is: on the list of tabs down the left, or in the tab's content beside it.</summary>
+public enum CampFocus
+{
+    /// <summary>The tabs: up and down change the tab, right or A enters its content, B breaks camp.</summary>
+    Tabs,
+    /// <summary>The tab's content: up and down move over its recipes, A makes one or rests, left or B goes back to the tabs.</summary>
+    Content,
+}
+
 /// <summary>
 /// A tick of the camp screen: what its scroll's actor is to play, if anything, and whether the band has just rolled up, so what asked
 /// for that, a choice or a talk, is carried out now.
@@ -55,8 +64,11 @@ public readonly record struct CampTick(ScrollCue? Cue = null, bool Restart = fal
 /// <para>
 /// The screen opens with the fire centred and the night's talk in the box over it, if there's one; as the talk ends the picture pans up
 /// over a second to its foot (<see cref="Pan"/>), and there the band unrolls (<see cref="Scroll"/>). The triggers, or left and right,
-/// change the tab; up and down move over a tab's recipes; A makes the cursor's recipe, or on Camp rests; C-left and C-right change who
-/// makes it among those with the skill; B breaks camp with nothing done; Start opens the pause menu over the camp. A choice, or the
+/// change the tab from anywhere. The cursor is on the tabs or in the tab's content (<see cref="Focus"/>), the user's design (Nov 7,
+/// 2026): on the tabs, up and down change the tab, and right or A enters the content; in the content, up and down move over a tab's
+/// recipes, A makes the cursor's recipe, or on Camp rests, and left goes back to the tabs. C-left and C-right change who makes it
+/// among those with the skill; B goes back to the tabs, or on them breaks camp with nothing done; Start opens the pause menu over the
+/// camp. A choice, or the
 /// debug button's talk, rolls the band up first, and is carried out as it closes (<see cref="Step"/>): a talk then pans the picture back
 /// down to the fire, and the band unrolls again as it ends. A controller and a mouse both reach everything: the view points at a tab or a
 /// row under the mouse and clicks as A does.
@@ -153,6 +165,9 @@ public sealed class CampMenu
 
     /// <summary>The tab showing.</summary>
     public CampTab Tab { get; private set; }
+
+    /// <summary>Where the cursor is: on the tabs, or in the tab's content.</summary>
+    public CampFocus Focus { get; private set; }
 
     /// <summary>The activity a tab offers: Food the Cook's, Potions the Alchemist's, Armor the Mechanic's; null for Camp and Weapons.</summary>
     public CampOffer? Offer(CampTab tab) => SkillOf(tab) is { } skill ? Offers.FirstOrDefault(o => o.Activity.Skill == skill) : null;
@@ -273,14 +288,22 @@ public sealed class CampMenu
             return false;
         switch (action)
         {
-            case MenuAction.TabPrevious or MenuAction.Left:
+            case MenuAction.TabPrevious:
                 Show(Tabs[(Tabs.ToList().IndexOf(Tab) + Tabs.Count - 1) % Tabs.Count]);
                 return true;
-            case MenuAction.TabNext or MenuAction.Right:
+            case MenuAction.TabNext:
                 Show(Tabs[(Tabs.ToList().IndexOf(Tab) + 1) % Tabs.Count]);
                 return true;
+            case MenuAction.Left:
+                Focus = CampFocus.Tabs;
+                return true;
+            case MenuAction.Right:
+                Focus = CampFocus.Content;
+                return true;
             case MenuAction.Up or MenuAction.Down:
-                if (Recipes.Count > 0)
+                if (Focus == CampFocus.Tabs)
+                    Show(Tabs[Math.Clamp(Tabs.ToList().IndexOf(Tab) + action.Vertical(), 0, Tabs.Count - 1)]);
+                else if (Recipes.Count > 0)
                     RecipeCursor = Math.Clamp(RecipeCursor + action.Vertical(), 0, Recipes.Count - 1);
                 return true;
             case MenuAction.MemberLeft or MenuAction.MemberRight:
@@ -296,6 +319,11 @@ public sealed class CampMenu
                 }
                 return true;
             case MenuAction.Accept:
+                if (Focus == CampFocus.Tabs)
+                {
+                    Focus = CampFocus.Content;
+                    return true;
+                }
                 if (Tab == CampTab.Camp)
                 {
                     Choice = CampChoice.Rest;
@@ -307,7 +335,10 @@ public sealed class CampMenu
                     Say(why);
                 return true;
             case MenuAction.Back:
-                Choice = CampChoice.Leave;
+                if (Focus == CampFocus.Content)
+                    Focus = CampFocus.Tabs;
+                else
+                    Choice = CampChoice.Leave;
                 return true;
             default:
                 return false;
@@ -324,14 +355,18 @@ public sealed class CampMenu
         RefreshRecipes();
     }
 
-    /// <summary>The cursor onto a recipe of the tab showing, as the mouse points at one; false if there's none.</summary>
+    /// <summary>The cursor onto a recipe of the tab showing, as the mouse points at one, the content taking the focus; false if there's none.</summary>
     public bool PointRecipe(int row)
     {
         if (row < 0 || row >= Recipes.Count)
             return false;
         RecipeCursor = row;
+        Focus = CampFocus.Content;
         return true;
     }
+
+    /// <summary>The cursor onto the tabs or the content, as the mouse goes over one.</summary>
+    public void FocusOn(CampFocus focus) => Focus = focus;
 
     /// <summary>Makes the recipe, says how it went, and adds the activity's hours for anything made, a spoilt dish among them.</summary>
     private void Make(CampOffer offer, Character member, RecipeRecord recipe)

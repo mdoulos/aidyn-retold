@@ -424,10 +424,10 @@ public sealed class UiPainter
 
     /// <summary>
     /// A loose sheet of parchment, the user's art, the one nearest the rectangle's shape or <paramref name="sheet"/>, stretched so its
-    /// paper covers the rectangle, with a soft shadow under it, in a colour; cut off straight at <paramref name="cutAt"/>, its shadow too,
-    /// as the tab showing is at its page's edge.
+    /// paper covers the rectangle, with a soft shadow under it, in a colour; cut off straight below <paramref name="cutAt"/> or right of
+    /// <paramref name="cutRightAt"/>, its shadow too, as the tab showing is at its page's edge.
     /// </summary>
-    public void Slip(CanvasItem canvas, Rect2 paper, Rgba? color = null, string? sheet = null, float? cutAt = null)
+    public void Slip(CanvasItem canvas, Rect2 paper, Rgba? color = null, string? sheet = null, float? cutAt = null, float? cutRightAt = null)
     {
         // The original has none.
         if (Original)
@@ -438,24 +438,25 @@ public sealed class UiPainter
         var drawn = SheetRect(sheet, paper);
         var tint = color is { } c ? Tint(c) : White;
         foreach (var (by, alpha) in Shadow)
-            Cut(canvas, texture, new Rect2(drawn.Position + by, drawn.Size), cutAt, ShadowColor with { A = alpha * tint.A });
-        Cut(canvas, texture, drawn, cutAt, tint);
+            Cut(canvas, texture, new Rect2(drawn.Position + by, drawn.Size), cutAt, cutRightAt, ShadowColor with { A = alpha * tint.A });
+        Cut(canvas, texture, drawn, cutAt, cutRightAt, tint);
     }
 
-    /// <summary>A texture over a rectangle, the part below <paramref name="cutAt"/> left out.</summary>
-    private static void Cut(CanvasItem canvas, Texture2D texture, Rect2 rect, float? cutAt, Color color)
+    /// <summary>A texture over a rectangle, the part below <paramref name="cutAt"/> and the part right of <paramref name="cutRightAt"/> left out.</summary>
+    private static void Cut(CanvasItem canvas, Texture2D texture, Rect2 rect, float? cutAt, float? cutRightAt, Color color)
     {
-        if (cutAt is not { } cut || cut >= rect.End.Y)
+        var bottom = cutAt is { } cut ? Math.Min(cut, rect.End.Y) : rect.End.Y;
+        var right = cutRightAt is { } cutRight ? Math.Min(cutRight, rect.End.X) : rect.End.X;
+        if (bottom <= rect.Position.Y || right <= rect.Position.X)
+            return;
+        if (bottom >= rect.End.Y && right >= rect.End.X)
         {
             canvas.DrawTextureRect(texture, rect, false, color);
             return;
         }
-        if (cut <= rect.Position.Y)
-            return;
-        var share = (cut - rect.Position.Y) / rect.Size.Y;
+        var share = new Vector2((right - rect.Position.X) / rect.Size.X, (bottom - rect.Position.Y) / rect.Size.Y);
         var size = texture.GetSize();
-        canvas.DrawTextureRectRegion(texture, new Rect2(rect.Position, new Vector2(rect.Size.X, rect.Size.Y * share)),
-            new Rect2(0, 0, size.X, size.Y * share), color);
+        canvas.DrawTextureRectRegion(texture, new Rect2(rect.Position, rect.Size * share), new Rect2(Vector2.Zero, size * share), color);
     }
 
     /// <summary>

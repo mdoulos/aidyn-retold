@@ -349,6 +349,7 @@ public class CampTests
         Assert.True(screen.Open);
 
         // Rest: the band rolls up first, nothing taking presses meanwhile, and Rest is carried out as it has; nothing unrolls again.
+        Assert.True(screen.Press(MenuAction.Right));
         Assert.True(screen.Press(MenuAction.Accept));
         Assert.Equal(CampChoice.Rest, screen.Choice);
         Assert.False(screen.Open);
@@ -400,24 +401,46 @@ public class CampTests
         Assert.Equal(2, screen.Members.Count);
         Assert.Null(screen.Empty);
 
+        // On the tabs: down and up walk the list without wrapping, the triggers wrap, and right enters the content.
+        Assert.Equal(CampFocus.Tabs, screen.Focus);
         Assert.True(screen.Press(MenuAction.TabNext));
         Assert.Equal(CampTab.Food, screen.Tab);
         Assert.Null(screen.Current);
         Assert.Equal(CampMenu.NobodyCan, screen.Empty);
-        Assert.True(screen.Press(MenuAction.Right));
+        Assert.True(screen.Press(MenuAction.Down));
         Assert.Equal(CampTab.Potions, screen.Tab);
-        Assert.True(screen.Press(MenuAction.Right));
+        Assert.True(screen.Press(MenuAction.Down));
         Assert.Equal(CampTab.Weapons, screen.Tab);
         Assert.Equal("", screen.Empty);
-        Assert.True(screen.Press(MenuAction.Right));
+        Assert.True(screen.Press(MenuAction.Down));
         Assert.Equal(CampTab.Armor, screen.Tab);
         Assert.Equal(CampMenu.NobodyCan, screen.Empty);
-        Assert.True(screen.Press(MenuAction.Right));
+        Assert.True(screen.Press(MenuAction.Down));
+        Assert.Equal(CampTab.Armor, screen.Tab);
+        Assert.True(screen.Press(MenuAction.TabNext));
         Assert.Equal(CampTab.Camp, screen.Tab);
         Assert.True(screen.Press(MenuAction.TabPrevious));
         Assert.Equal(CampTab.Armor, screen.Tab);
+        Assert.True(screen.Press(MenuAction.Up));
+        Assert.Equal(CampTab.Weapons, screen.Tab);
+        Assert.Equal(CampFocus.Tabs, screen.Focus);
+        Assert.True(screen.Press(MenuAction.Right));
+        Assert.Equal(CampFocus.Content, screen.Focus);
+        Assert.True(screen.Press(MenuAction.Down));
+        Assert.Equal(CampTab.Weapons, screen.Tab);
+        // B in the content goes back to the tabs; left does too; A on the tabs enters the content.
+        Assert.True(screen.Press(MenuAction.Back));
+        Assert.Equal(CampFocus.Tabs, screen.Focus);
+        Assert.Equal(CampChoice.None, screen.Choice);
+        Assert.True(screen.Press(MenuAction.Accept));
+        Assert.Equal(CampFocus.Content, screen.Focus);
+        Assert.True(screen.Press(MenuAction.Left));
+        Assert.Equal(CampFocus.Tabs, screen.Focus);
 
+        // On Camp, A enters the content and A again rests.
         screen.Show(CampTab.Camp);
+        Assert.True(screen.Press(MenuAction.Accept));
+        Assert.Equal(CampChoice.None, screen.Choice);
         Assert.True(screen.Press(MenuAction.Accept));
         Assert.Equal(CampChoice.Rest, screen.Choice);
         Assert.False(screen.Press(MenuAction.Up));
@@ -429,6 +452,7 @@ public class CampTests
         var (party, alchemist, _) = Camp();
         var screen = Screen(party);
         screen.Show(CampTab.Potions);
+        screen.Press(MenuAction.Right);
         Assert.Same(alchemist, screen.Member);
         Assert.Equal([Tonic], screen.Recipes);
         Assert.Null(screen.Empty);
@@ -459,6 +483,7 @@ public class CampTests
         // A roll of 100 fails against Intelligence × 3 + Alchemist × 6, 72; the herb is used up all the same, as the original's brewing uses it.
         var screen = Screen(party, 8, 100, 1);
         screen.Show(CampTab.Potions);
+        screen.Press(MenuAction.Right);
         Assert.True(screen.Press(MenuAction.Accept));
         Assert.Equal("Alaron fails.", screen.Message);
         Assert.Equal(8, screen.Hours);

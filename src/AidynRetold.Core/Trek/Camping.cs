@@ -12,9 +12,24 @@ public enum CampOutcome
     Refused,
     /// <summary>The party was ambushed: no heal and no time passing. Trek fades out into the battle (<see cref="TrekLoop.CueBattle"/>).</summary>
     Ambushed,
-    /// <summary>The party healed and a camp scene started; eight hours pass when it ends.</summary>
+    /// <summary>The party made camp: the camp screen opens, and the heal, the night's scene and the hours come with its rest (<see cref="TrekLoop.CampRest"/>).</summary>
     Camped,
 }
+
+/// <summary>What the night at camp shows, once the party rests.</summary>
+public enum CampNight
+{
+    /// <summary>Nothing: the hours pass and trek goes on.</summary>
+    None,
+    /// <summary>A camp talk, in the conversation box over the camp screen, which closes as the talk ends.</summary>
+    Talk,
+    /// <summary>A story camp scene, or the Campsite's own, cued as a cut-scene: the camp screen closes as trek fades out into it.</summary>
+    Scene,
+}
+
+/// <summary>How the rest went (<see cref="TrekLoop.CampRest"/>).</summary>
+/// <param name="HoursNow">The hours to pass at once: the camp's, less the eight a <c>rest</c> script passes as it ends, if the night's is one.</param>
+public sealed record CampRestResult(CampNight Night, int HoursNow);
 
 /// <summary>Camping's ambush (<c>0x800788cc</c> in 1.0). See <see cref="CampingRecord"/>.</summary>
 public static class Camping

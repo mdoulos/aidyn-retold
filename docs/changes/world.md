@@ -28,6 +28,10 @@ The maps, the map objects, the wanderers, camping and the weather as it plays. W
 - **Camping's rules are data** (`aidyn:camping/0`), for mods ([camping](../systems/camping.md#in-the-port)).
 - **The party sleeps through a camp**, which ends Tired and Overtired ([camping](../systems/camping.md#in-the-port), [characters](characters.md)).
 - **Food spoils through the camp's hours**, and when trek shows again a toast says what was tossed ([camping](../systems/camping.md#in-the-port), [items](items.md)).
+- **Camping is a screen**, the party round the fire in a painted campsite with what it can do before it sleeps, cooking, brewing, making armor, and Rest, where the original cuts straight to its camp scene. The terrain check, the ambush, the half heal, the story's eight camp scenes and the marshmallows stay as they were ([camping](../systems/camping.md#the-camp-screen)).
+- **The rest is as long as the evening**: eight hours, and each thing made at camp adds its activity's hours, so a long cook is a late start ([camping](../systems/camping.md#the-camp-screen)).
+- **The party talks at camp**: a conversation chosen for the night from those whose members are there and whose story flags hold, over the camp screen, on the nights the original's story scenes leave empty ([camping](../systems/camping.md#the-camp-screen)).
+- **Breaking camp is allowed**: B on the camp screen goes back to trek with nothing done, where the original always camps once it's chosen ([camping](../systems/camping.md#the-camp-screen)).
 
 ## Weather
 

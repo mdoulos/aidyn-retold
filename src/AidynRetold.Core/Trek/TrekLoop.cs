@@ -3,6 +3,7 @@ using AidynRetold.Core.Actors;
 using AidynRetold.Core.Audio;
 using AidynRetold.Core.Calendar;
 using AidynRetold.Core.Cameras;
+using AidynRetold.Core.Camp;
 using AidynRetold.Core.Chunks;
 using AidynRetold.Core.Combat;
 using AidynRetold.Core.Items;
@@ -743,13 +744,12 @@ public sealed partial class TrekLoop : IMapObjectHost
     }
 
     /// <summary>
-    /// Camps where the player stands (<c>Party::CampAmbushCheck</c>): refused where the chunk's terrain allows none, as the
-    /// World tab's Camp already checks; otherwise ambushed, which waits for combat, or healed by half, with the camp
-    /// scene cued: the first dialogue object in the chunk whose enabling flag is one of the camping record's and holds
-    /// while its check flag is set, wherever it is, or else the Campsite's.
-    /// Eight hours pass when the scene ends, as it's a <c>rest</c> script.
+    /// The party makes camp where the player stands (<c>Party::CampAmbushCheck</c>'s first half): refused where the chunk's
+    /// terrain allows none, as the World tab's Camp already checks; otherwise ambushed, which waits for combat, with no heal and no
+    /// time; otherwise camped, and the camp screen opens for what the party does before it rests (<see cref="Ui.CampMenu"/>, the
+    /// remade game's). The heal, the night's scene and the hours come with the rest (<see cref="CampRest"/>).
     /// </summary>
-    public CampOutcome Camp()
+    public CampOutcome BeginCamp()
     {
         var rules = Game.Camping;
         var at = Player.Sphere.Position;
@@ -763,25 +763,77 @@ public sealed partial class TrekLoop : IMapObjectHost
             CueBattle(BattleSetup.CampAmbush(place, terrainIndex, Game.Plugins, Game.Party));
             return CampOutcome.Ambushed;
         }
-        Game.NoteTossed(Game.Party.CampHeal(rules.Heal, rules.EffectTicks, Game.Random.Combat));
+        return CampOutcome.Camped;
+    }
 
+    /// <summary>
+    /// The party rests at camp (<c>Party::CampAmbushCheck</c>'s second half, <c>Party::CampHeal</c>, <c>TrekLoop.CampScene</c>), for
+    /// <paramref name="hours"/>: each living member heals by half and its effects run down by the camping record's ticks, scaled to
+    /// the hours, every battery refills by half, the party sleeps and the food ages; then the night's scene, the first found of:
+    /// the original's story camp scene, a dialogue object in the chunk whose enabling flag is one of the camping record's and holds
+    /// while its check flag is set, cued as the cut-scene it is; a camp talk the plugins give (<see cref="CampTalks"/>), shown in the
+    /// conversation box over the camp screen, its done flag set; the Campsite's own script, Alaron alone at the fire; or nothing.
+    /// The hours pass as the scene ends where it's a <c>rest</c> script, which passes eight, so the caller passes the rest at once
+    /// (<see cref="CampRestResult.HoursNow"/>).
+    /// </summary>
+    /// <param name="seed">The camp's seed, which the talk is chosen by (<see cref="Camp.CampSeed"/>).</param>
+    public CampRestResult CampRest(int hours, uint seed)
+    {
+        var rules = Game.Camping;
+        var at = Player.Sphere.Position;
+        var effectTicks = (int)Math.Min((long)rules.EffectTicks * Math.Max(hours, 0) / Math.Max(rules.RestHours, 1), int.MaxValue);
+        Game.NoteTossed(Game.Party.CampHeal(rules.Heal, effectTicks, Game.Random.Combat));
+
+        // The story's scene first, as the original looks for it.
         Game.Flags.TrySet(rules.Checking, true);
         var map = Chunks.MapAt(at);
         var scene = map?.Record.Objects.OfType<DialogueObject>().FirstOrDefault(d =>
             d.Enabled is { } gate && rules.Scenes.Contains(gate.Flag) && Game.Flags.Holds(gate));
         Game.Flags.TrySet(rules.Checking, false);
-        RecordId? source = scene is not null ? MapRecord.VoxelId(map!.Record.Id, scene.Index) : null;
-        if (scene is null && Game.Plugins.TryGet<MapRecord>(rules.Campsite) is { } campsite
-            && campsite.Objects.OfType<DialogueObject>().FirstOrDefault() is { } fire)
+        if (scene is not null && CutSceneLaunch.Of(Game.Plugins, scene, MapRecord.VoxelId(map!.Record.Id, scene.Index)) is { } story)
         {
-            scene = fire;
-            source = MapRecord.VoxelId(campsite.Id, fire.Index);
+            Cue(story);
+            return new CampRestResult(CampNight.Scene, hours - (story.Script.Rest ? rules.RestHours : 0));
         }
-        if (scene is not null && CutSceneLaunch.Of(Game.Plugins, scene, source) is { } launch)
-            Cue(launch);
-        else
-            _host.Transition(new Transition.Say("The party camps, but there's no camp scene to show; eight hours would pass."));
-        return CampOutcome.Camped;
+
+        // Then a camp talk, in the box over the camp screen.
+        var (_, terrain) = Here();
+        var party = Game.Party.Members.Select(m => m.Entity).ToList();
+        var talk = CampTalks.Choose(Game.Plugins.All<CampTalkRecord>(RecordTypes.CampTalk), party, Game.Flags.Holds, Game.Flags.IsSet, terrain, seed);
+        if (talk is not null && Game.Plugins.TryGet<DialogueRecord>(talk.Script) is { } script && Conversation is null)
+        {
+            if (talk.Done is { } done)
+                Game.Flags.TrySet(done, true);
+            if (script.Mode == DialogueMode.Conversation)
+            {
+                Conversation = Conversation.Show(Game, script, new ScriptStart(), _host, Player);
+                Refresh();
+                return new CampRestResult(CampNight.Talk, hours - (script.Rest ? rules.RestHours : 0));
+            }
+            _host.Warn($"{talk.Id}'s script {script.Id} is a {script.Mode}, not a conversation; it isn't told.");
+        }
+
+        // Else the Campsite's own, as the original falls back to it.
+        if (Game.Plugins.TryGet<MapRecord>(rules.Campsite) is { } campsite
+            && campsite.Objects.OfType<DialogueObject>().FirstOrDefault() is { } fire
+            && CutSceneLaunch.Of(Game.Plugins, fire, MapRecord.VoxelId(campsite.Id, fire.Index)) is { } marshmallows)
+        {
+            Cue(marshmallows);
+            return new CampRestResult(CampNight.Scene, hours - (marshmallows.Script.Rest ? rules.RestHours : 0));
+        }
+        return new CampRestResult(CampNight.None, hours);
+    }
+
+    /// <summary>
+    /// Steps the conversation over the camp screen by a tick, as trek's own tick steps one: a timer it waits on runs, and the box's
+    /// cursor pulses. The world is held meanwhile, so trek's tick doesn't run.
+    /// </summary>
+    public void StepConversation()
+    {
+        if (Conversation is { } conversation && conversation.Tick())
+            Refresh();
+        if (Conversation is not null)
+            Box.Step();
     }
 
     /// <summary>

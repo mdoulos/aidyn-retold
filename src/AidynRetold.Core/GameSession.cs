@@ -1,6 +1,8 @@
 using System.Numerics;
 using AidynRetold.Core.Actors;
+using AidynRetold.Core.Calendar;
 using AidynRetold.Core.Cameras;
+using AidynRetold.Core.Camp;
 using AidynRetold.Core.Chunks;
 using AidynRetold.Core.Cinematics;
 using AidynRetold.Core.Combat;
@@ -45,6 +47,9 @@ public enum GameMode
 
     /// <summary>The pause menu, or its barter or training state: the world is held still.</summary>
     Menu,
+
+    /// <summary>The camp screen, the remade game's, with the night's talk in the box over it: the world is held still.</summary>
+    Camp,
 
     /// <summary>The credits: the world is held still, its sounds going on silently.</summary>
     Credits,
@@ -274,6 +279,13 @@ public sealed class GameSession
     /// <summary>Whether a backdrop's or the help menu's page shows, or is still fading out.</summary>
     public bool BackdropShowing => Backdrop is not null;
 
+    /// <summary>
+    /// The camp screen, the remade game's, from the World tab's Camp until the party has rested and its night is over or it broke
+    /// camp (<see cref="Transition.OpenCamp"/>, <see cref="Transition.CloseCamp"/>): the world is held under it, and whoever
+    /// presents the game draws it. The night's talk, if there's one, shows in trek's conversation box over it (<see cref="TrekLoop.CampRest"/>).
+    /// </summary>
+    public Ui.CampMenu? Camp { get; private set; }
+
     /// <summary>The main font, which the credits are laid out in.</summary>
     private TextLayout Font => Game.Fonts.Main;
 
@@ -316,6 +328,7 @@ public sealed class GameSession
         : Cinematic is not null ? GameMode.Cinematic
         : CreditsRolling ? GameMode.Credits
         : MenuOpen || PostBattle is not null ? GameMode.Menu
+        : Camp is not null ? GameMode.Camp
         : BackdropShowing ? GameMode.Backdrop
         : Trek.Use is { Popup: not null } ? GameMode.Popup
         : Trek.Conversation is not null ? GameMode.Conversation
@@ -323,8 +336,8 @@ public sealed class GameSession
         : Battle is not null ? GameMode.Combat
         : GameMode.Trek;
 
-    /// <summary>Whether the world is held still: under the pause menu, a backdrop's page, the credits or a cinematic.</summary>
-    public bool Held => Mode is GameMode.Menu or GameMode.Backdrop or GameMode.Credits or GameMode.Cinematic or GameMode.Title;
+    /// <summary>Whether the world is held still: under the pause menu, the camp screen, a backdrop's page, the credits or a cinematic.</summary>
+    public bool Held => Mode is GameMode.Menu or GameMode.Camp or GameMode.Backdrop or GameMode.Credits or GameMode.Cinematic or GameMode.Title;
 
     /// <summary>Whether trek steps this tick: nothing holds the world and no cut-scene or battle plays in its place.</summary>
     public bool TrekRuns => !Held && Scene is null && Battle is null;
@@ -437,7 +450,7 @@ public sealed class GameSession
                 if (Menu.Repeats)
                     Stick.Tick(Menu.Repeat);
                 break;
-            case GameMode.Popup or GameMode.Conversation or GameMode.CutScene or GameMode.Backdrop:
+            case GameMode.Popup or GameMode.Conversation or GameMode.CutScene or GameMode.Backdrop or GameMode.Camp:
             case GameMode.Combat when Battle?.Menu is not null:
                 Stick.Tick(direction => Press(direction));
                 break;
@@ -474,6 +487,8 @@ public sealed class GameSession
                 return PressOutcome.Taken;
             case GameMode.Menu:
                 return Menu.Press(action, keyboard) ? PressOutcome.Taken : PressOutcome.Ignored;
+            case GameMode.Camp:
+                return PressCamp(action) ? PressOutcome.Taken : PressOutcome.Ignored;
             case GameMode.Combat:
                 return Battle!.Press(action) ? PressOutcome.Taken : PressOutcome.Ignored;
             case GameMode.CutScene:
@@ -528,6 +543,10 @@ public sealed class GameSession
             case GameMode.Menu or GameMode.Backdrop:
                 // The menu's frame keeps the map's sounds going, with everything held still (PauseMenu.Frame).
                 StepSounds();
+                return SessionStep.Held;
+            case GameMode.Camp:
+                StepSounds();
+                StepCamp();
                 return SessionStep.Held;
         }
         if (Scene is { } scene)
@@ -978,7 +997,11 @@ public sealed class GameSession
         switch (exit.Code)
         {
             case PauseExitCode.Camp:
-                Send(new Transition.Camp(Trek.Camp()));
+                var camped = Trek.BeginCamp();
+                if (camped == CampOutcome.Camped)
+                    OpenCamp();
+                else
+                    Send(new Transition.Camp(camped));
                 break;
             case PauseExitCode.Help:
                 Trek.ShowBackdrop(Game.Plugins.Get<DialogueRecord>(SystemMenu.HelpScript));
@@ -993,6 +1016,92 @@ public sealed class GameSession
                 Send(new Transition.LoadGame(path));
                 break;
         }
+    }
+
+    /// <summary>
+    /// The camp screen opens (<see cref="Transition.OpenCamp"/>), the remade game's: the campsite for the terrain the party camps
+    /// on, the party arranged round its fire by the camp's seed (<see cref="CampArranger"/>), and what the party can do before it
+    /// rests (<see cref="CampActivities"/>). What the arranging had to say goes to the log.
+    /// </summary>
+    private void OpenCamp()
+    {
+        var (chunk, terrain) = Trek.Here();
+        var party = Game.Party.Members.Select(m => m.Entity).ToList();
+        var day = (int)(Game.Clock.Time / GameClock.Day);
+        var seed = CampSeed.Of(day, chunk is { } here ? $"{here.MapSet}/{here.Row},{here.Column}" : "", party);
+        var site = CampsiteRecord.For(Game.Plugins, terrain);
+        var figures = Game.Plugins.All<CampFigureRecord>(RecordTypes.CampFigure).GroupBy(f => f.Entity).ToDictionary(g => g.Key, g => g.First());
+        var arrangement = site is null ? null : CampArranger.Arrange(site, party, id => figures.GetValueOrDefault(id), seed);
+        foreach (var note in arrangement?.Diagnostics ?? [])
+            _host.Log($"Camp at {site!.Id}: {note}");
+        var recipes = Game.Plugins.All<RecipeRecord>(RecordTypes.Recipe).ToList();
+        var offers = CampActivities.Offered(Game.Plugins.All<CampActivityRecord>(RecordTypes.CampActivity), recipes, Game.Party);
+        Camp = new Ui.CampMenu(Game.Party, site, arrangement, offers, recipes, Game.Camping.RestHours, Game.Random.World) { Seed = seed };
+        Send(new Transition.OpenCamp(Camp));
+    }
+
+    /// <summary>
+    /// A press on the camp screen: the night's talk takes it while it shows, as a conversation's (<see cref="TrekLoop.Press"/>); else the
+    /// screen's own, and Rest rests the party, or Break camp closes it with nothing done.
+    /// </summary>
+    private bool PressCamp(MenuAction action)
+    {
+        var camp = Camp!;
+        if (camp.Talking)
+        {
+            var taken = Trek.Conversation is not null && Trek.Press(action, _frozen) == PressOutcome.Taken;
+            EndTalkIfOver();
+            return taken;
+        }
+        if (!camp.Press(action))
+            return false;
+        switch (camp.Choice)
+        {
+            case CampChoice.Rest:
+                CampRest();
+                break;
+            case CampChoice.Leave:
+                CloseCamp(CampChoice.Leave);
+                break;
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// Rest on the camp screen: the party heals, sleeps and its food ages for the camp's hours, the night's scene or talk is chosen
+    /// (<see cref="TrekLoop.CampRest"/>), and the hours the scene won't pass itself pass at once (<see cref="Transition.Rest"/>). A talk
+    /// keeps the screen up under the box until it ends; a story scene closes it as trek fades out; nothing closes it now.
+    /// </summary>
+    private void CampRest()
+    {
+        var camp = Camp!;
+        var result = Trek.CampRest(camp.Hours, camp.Seed);
+        if (result.HoursNow > 0)
+            Trek.CarryOut([new Transition.Rest(result.HoursNow)]);
+        if (result.Night == CampNight.Talk)
+            camp.Talking = true;
+        else
+            CloseCamp(CampChoice.Rest);
+    }
+
+    /// <summary>A tick of the camp screen: the night's talk steps, as a conversation's does in trek, and the screen closes once it ends.</summary>
+    private void StepCamp()
+    {
+        Trek.StepConversation();
+        EndTalkIfOver();
+    }
+
+    private void EndTalkIfOver()
+    {
+        if (Camp is { Talking: true } && Trek.Conversation is null)
+            CloseCamp(CampChoice.Rest);
+    }
+
+    /// <summary>The camp screen closes (<see cref="Transition.CloseCamp"/>), trek's world still where it was under it.</summary>
+    private void CloseCamp(CampChoice choice)
+    {
+        Camp = null;
+        Send(new Transition.CloseCamp(choice));
     }
 
     /// <summary>

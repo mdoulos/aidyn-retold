@@ -22,6 +22,10 @@ namespace AidynRetold.Plugins.Records;
 /// The highest average party level of each of the ambush's tiers but the last (<see cref="TerrainRecord.Ambushes"/>): 5, 10,
 /// 15 and 20 (<c>CampEncounters.Load</c>). Null in plugins imported before them.
 /// </param>
+/// <param name="RestHours">
+/// The hours a camp's rest passes before anything done at camp adds to them, the remade game's: 8, the original's
+/// (<c>World::Lapse8Hours</c>). Each thing made at camp adds its activity's hours (<see cref="CampActivityRecord.Hours"/>).
+/// </param>
 public sealed record CampingRecord(
     RecordId Id,
     string CannotCamp,
@@ -34,4 +38,5 @@ public sealed record CampingRecord(
     RecordId Checking,
     IReadOnlyList<RecordId> Scenes,
     RecordId Campsite,
-    IReadOnlyList<int>? AmbushLevels = null);
+    IReadOnlyList<int>? AmbushLevels = null,
+    int RestHours = 8);

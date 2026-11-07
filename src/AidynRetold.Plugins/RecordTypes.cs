@@ -164,6 +164,18 @@ public static class RecordTypes
     /// </summary>
     public const string ModelTexture = "modeltexture";
 
+    /// <summary>Something the party does at camp before it rests, the remade game's: a skill's recipes, with the hours each thing made adds.</summary>
+    public const string CampActivity = "campactivity";
+
+    /// <summary>A campsite the camp screen shows, the remade game's: a biome's picture, its fire, its slots and its layouts by party size.</summary>
+    public const string Campsite = "campsite";
+
+    /// <summary>The figure a character cuts at camp, the remade game's: its poses' images and its stature.</summary>
+    public const string CampFigure = "campfigure";
+
+    /// <summary>A conversation the party may have at camp, the remade game's, with the conditions it's told under.</summary>
+    public const string CampTalk = "camptalk";
+
     private static readonly Type[] DbViews = [typeof(DbRecord)];
 
     /// <summary>Every type, in the registry's order: the DB records, the flags, the Borgs, then the rest as they were added.</summary>
@@ -217,6 +229,10 @@ public static class RecordTypes
         new(Trigger, typeof(TriggerRecord), KeyKind.Decimal),
         new(Explosion, typeof(ExplosionRecord), KeyKind.Decimal, Singleton: true),
         new(ModelTexture, null, KeyKind.ModelAndTexture),
+        new(CampActivity, typeof(CampActivityRecord), KeyKind.Decimal),
+        new(Campsite, typeof(CampsiteRecord), KeyKind.Decimal),
+        new(CampFigure, typeof(CampFigureRecord), KeyKind.Decimal),
+        new(CampTalk, typeof(CampTalkRecord), KeyKind.Decimal),
     ];
 
     private static readonly Dictionary<string, RecordTypeInfo> ByName = Registry.ToDictionary(t => t.Name, StringComparer.Ordinal);

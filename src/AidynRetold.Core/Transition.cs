@@ -97,8 +97,14 @@ public abstract record Transition
     /// <summary>The title has ended (<c>Title.Leave</c>, <c>0x80055718</c>), its music stopped, as New Game begins the game.</summary>
     public sealed record EndTitle : Transition;
 
-    /// <summary>The party camped, as the World tab's Camp asked (<see cref="TrekLoop.Camp"/>).</summary>
+    /// <summary>The party tried to camp, as the World tab's Camp asked, and couldn't or was ambushed (<see cref="TrekLoop.BeginCamp"/>); camped, the camp screen opens instead.</summary>
     public sealed record Camp(CampOutcome Outcome) : Transition;
+
+    /// <summary>The camp screen opens over trek's world, held still (<see cref="GameSession.Camp"/>): the party round the fire and what it can do before it rests.</summary>
+    public sealed record OpenCamp(Ui.CampMenu Menu) : Transition;
+
+    /// <summary>The camp screen closes: the party rested and its night is over, broke camp, or its story scene is cued and trek fades out.</summary>
+    public sealed record CloseCamp(CampChoice Choice) : Transition;
 
     /// <summary>Hours passed at once (<see cref="GameState.Lapse"/>), after a camp heal or a camp scene.</summary>
     public sealed record Rest(int Hours) : Transition;

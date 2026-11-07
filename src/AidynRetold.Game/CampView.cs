@@ -41,8 +41,14 @@ public partial class CampView : Control
 
     private readonly UiPainter _ui;
     private readonly PluginSet _plugins;
-    /// <summary>Where each row and recipe was drawn, for the mouse: its area, its index and whether it's a recipe.</summary>
-    private readonly List<(Rect2 Area, int Index, bool Recipe)> _hits = [];
+    /// <summary>What the mouse can land on: a tab, a recipe or Rest.</summary>
+    private enum Target { Tab, Recipe, Rest }
+
+    /// <summary>Where each tab, recipe and Rest was drawn, for the mouse: its area, what it is and its index.</summary>
+    private readonly List<(Rect2 Area, Target Target, int Index)> _hits = [];
+
+    /// <summary>The tabs' column's width in the band, and the portraits' pitch and size on the Camp tab.</summary>
+    private const int TabsWidth = 60, MemberPitch = 44, PortraitSize = 30;
 
     public CampView(PluginSet plugins)
     {
@@ -96,7 +102,7 @@ public partial class CampView : Control
             return;
         if (e is InputEventMouseMotion motion)
         {
-            if (Hit(motion.Position) is var (index, recipe) && (recipe ? camp.PointRecipe(index) : camp.Point(index)))
+            if (Hit(motion.Position) is var (target, index) && Point(camp, target, index))
                 QueueRedraw();
             return;
         }
@@ -118,22 +124,43 @@ public partial class CampView : Control
             QueueRedraw();
             AcceptEvent();
         }
-        else if (button.ButtonIndex == MouseButton.Left && Hit(button.Position) is var (index, recipe))
+        else if (button.ButtonIndex == MouseButton.Left && Hit(button.Position) is var (target, index))
         {
-            if (recipe ? camp.PointRecipe(index) : camp.Point(index))
+            // A tab is shown by the click alone; a recipe or Rest is pointed at and pressed as A.
+            Point(camp, target, index);
+            if (target != Target.Tab)
                 Click?.Invoke(MenuAction.Accept);
+            QueueRedraw();
             AcceptEvent();
         }
     }
 
-    private (int Index, bool Recipe)? Hit(Vector2 at)
+    private (Target Target, int Index)? Hit(Vector2 at)
     {
-        foreach (var (area, index, recipe) in _hits)
+        foreach (var (area, target, index) in _hits)
         {
             if (area.HasPoint(at))
-                return (index, recipe);
+                return (target, index);
         }
         return null;
+    }
+
+    /// <summary>The mouse over something: the tab shown, or the recipe pointed at; whether anything changed.</summary>
+    private static bool Point(CampMenu camp, Target target, int index)
+    {
+        switch (target)
+        {
+            case Target.Tab:
+                var tab = CampMenu.Tabs[index];
+                if (camp.Tab == tab)
+                    return false;
+                camp.Show(tab);
+                return true;
+            case Target.Recipe:
+                return camp.PointRecipe(index);
+            default:
+                return false;
+        }
     }
 
     public override void _Draw()
@@ -296,59 +323,105 @@ public partial class CampView : Control
             DrawTextureRect(parchment, band.Grow(2), false);
         else
             DrawRect(band, new Color(0, 0, 0, 0.55f));
-        var left = (int)band.Position.X + 12;
+        var left = (int)band.Position.X + 10;
         var top = (int)band.Position.Y + 10;
-        var columnWidth = (int)(band.Size.X * 0.46f);
         _ui.TextSize = UiPainter.StandardText;
         var row = _ui.Main.LineHeight;
+
+        // The tabs down the left, the one showing in the cursor's red with the pointer.
         var y = top;
-        var rows = camp.Rows;
-        for (var i = 0; i < rows.Count; i++)
+        foreach (var tab in CampMenu.Tabs)
         {
-            var item = rows[i];
-            var current = i == camp.Cursor && camp.Open is null;
-            var color = current ? Cursor : item.Enabled ? Text : Dim;
-            _ui.TextSize = UiPainter.StandardText;
+            var current = tab == camp.Tab;
             if (current)
-                Pointer(left, y + row / 2, color);
-            _ui.Text(this, _ui.Main, item.Text, left + 6, y, color);
-            if (item.Note is { } note)
-            {
-                _ui.TextSize = UiPainter.SmallText;
-                _ui.Text(this, _ui.Main, note, left + columnWidth / 2, y + 1, Note);
-            }
-            _hits.Add((new Rect2(band.Position.X, y, columnWidth, row), i, false));
+                Pointer(left, y + row / 2, Cursor);
+            _ui.TextSize = UiPainter.StandardText;
+            _ui.Text(this, _ui.Main, tab.ToString(), left + 6, y, current ? Cursor : Text);
+            _hits.Add((new Rect2(band.Position.X, y, TabsWidth + 10, row), Target.Tab, (int)tab));
             y += row;
         }
+        var contentLeft = left + TabsWidth;
+        var dim = new Color(Dim.R / 255f, Dim.G / 255f, Dim.B / 255f, 0.8f);
+        DrawLine(new Vector2(contentLeft - 6, top), new Vector2(contentLeft - 6, band.End.Y - 8), dim, 1);
 
-        if (camp.Open is { } open)
-        {
-            var right = (int)band.Position.X + columnWidth + 12;
-            var ry = top;
-            _ui.TextSize = UiPainter.StandardText;
-            _ui.Text(this, _ui.Main, $"{open.Activity.Name}: {camp.Member?.Name ?? "nobody"}  (C-left, C-right to change)", right, ry, Text);
-            ry += row;
-            _ui.TextSize = UiPainter.SmallText;
-            var small = _ui.Main.LineHeight;
-            if (camp.Recipes.Count == 0)
-            {
-                _ui.Text(this, _ui.Main, CampMenu.NothingToMake, right, ry, Dim);
-            }
-            for (var i = 0; i < camp.Recipes.Count; i++)
-            {
-                var current = i == camp.RecipeCursor;
-                if (current)
-                    Pointer(right, ry + small / 2, Cursor);
-                _ui.Text(this, _ui.Main, camp.ProductName(camp.Recipes[i]), right + 6, ry, current ? Cursor : Text);
-                _hits.Add((new Rect2(right, ry, band.End.X - right, small), i, true));
-                ry += small;
-            }
-        }
+        if (camp.Tab == CampTab.Camp)
+            DrawCampTab(camp, contentLeft, top, band, row);
+        else
+            DrawRecipes(camp, contentLeft, top, band, row);
 
         if (camp.Message is { } message)
         {
             _ui.TextSize = UiPainter.SmallText;
-            _ui.Text(this, _ui.Main, message, left, (int)band.End.Y - _ui.Main.LineHeight - 2, Said);
+            _ui.Text(this, _ui.Main, message, contentLeft, (int)band.End.Y - _ui.Main.LineHeight - 4, Said);
+        }
+    }
+
+    /// <summary>The Camp tab: Rest, the one thing A does here, then each member's portrait with their health and statuses under it.</summary>
+    private void DrawCampTab(CampMenu camp, int left, int top, Rect2 band, int row)
+    {
+        Pointer(left, top + row / 2, Cursor);
+        _ui.TextSize = UiPainter.StandardText;
+        _ui.Text(this, _ui.Main, camp.RestLabel, left + 6, top, Cursor);
+        _hits.Add((new Rect2(left, top, band.End.X - left, row), Target.Rest, 0));
+
+        var y = top + row + 6;
+        var x = left + 6;
+        foreach (var member in camp.Members)
+        {
+            if (member.Record.Portrait is { } portrait)
+                _ui.Image(this, portrait, x, y, new Vector2I(PortraitSize, PortraitSize));
+            else
+                DrawRect(new Rect2(x, y, PortraitSize, PortraitSize), new Color(0, 0, 0, 0.3f));
+            // The health bar under the portrait, as the HUD's: green, red below a third, over a dark backing.
+            var share = member.MaxHp > 0 ? Mathf.Clamp((float)member.Hp / member.MaxHp, 0, 1) : 0;
+            var barY = y + PortraitSize + 1;
+            _ui.Image(this, PartyPortraits.Pixel, new Rect2(x, barY, PortraitSize, PartyPortraits.BarHeight), PartyPortraits.BarBacking);
+            if (share > 0)
+                _ui.Image(this, PartyPortraits.Pixel, new Rect2(x, barY, PortraitSize * share, PartyPortraits.BarHeight), share <= PartyPortraits.LowHealth ? PartyPortraits.BarLow : PartyPortraits.BarFill);
+            // The statuses' icons after the bar, as the HUD shows them, and the name and hit points under.
+            var iconX = x;
+            foreach (var icon in PartyPortraits.StatusIcons(member.Hunger, member.Rest))
+            {
+                _ui.Image(this, icon, iconX, barY + PartyPortraits.BarHeight + 1, new Vector2I(PartyPortraits.IconSize, PartyPortraits.IconSize));
+                iconX += PartyPortraits.IconSize + 1;
+            }
+            _ui.TextSize = UiPainter.SmallText;
+            var nameY = barY + PartyPortraits.BarHeight + PartyPortraits.IconSize + 3;
+            _ui.Text(this, _ui.Main, member.Name, x, nameY, member.IsDead ? Dim : Text);
+            _ui.TextSize = UiPainter.FineText;
+            _ui.Text(this, _ui.Main, $"{member.Hp} / {member.MaxHp}", x, nameY + _ui.Main.LineHeight + 1, Note);
+            x += MemberPitch;
+        }
+    }
+
+    /// <summary>A recipes tab: who makes them, the recipes with the cursor, or why there's nothing to make.</summary>
+    private void DrawRecipes(CampMenu camp, int left, int top, Rect2 band, int row)
+    {
+        var y = top;
+        if (camp.Current is { } offer && camp.Member is { } member)
+        {
+            _ui.TextSize = UiPainter.StandardText;
+            _ui.Text(this, _ui.Main, offer.Activity.Name, left, y, Text);
+            _ui.TextSize = UiPainter.SmallText;
+            _ui.Text(this, _ui.Main, string.Format(System.Globalization.CultureInfo.InvariantCulture, CampMenu.MakerNote, member.Name), left + 70, y + 1, Note);
+            y += row;
+        }
+        if (camp.Empty is { Length: > 0 } empty)
+        {
+            _ui.TextSize = UiPainter.SmallText;
+            _ui.Text(this, _ui.Main, empty, left, y, Dim);
+            return;
+        }
+        _ui.TextSize = UiPainter.SmallText;
+        var small = _ui.Main.LineHeight;
+        for (var i = 0; i < camp.Recipes.Count; i++)
+        {
+            var current = i == camp.RecipeCursor;
+            if (current)
+                Pointer(left, y + small / 2, Cursor);
+            _ui.Text(this, _ui.Main, camp.ProductName(camp.Recipes[i]), left + 6, y, current ? Cursor : Text);
+            _hits.Add((new Rect2(left, y, band.End.X - left, small), Target.Recipe, i));
+            y += small;
         }
     }
 

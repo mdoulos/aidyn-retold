@@ -1057,6 +1057,12 @@ public sealed class GameSession
             EndTalkIfOver();
             return taken;
         }
+        // Start opens the pause menu over the camp, its World tab's Camp disabled, the user's design (Nov 7, 2026).
+        if (action == MenuAction.Start)
+        {
+            Send(new Transition.OpenMenu());
+            return true;
+        }
         if (!camp.Press(action))
             return false;
         switch (camp.Choice)
@@ -1137,6 +1143,7 @@ public sealed class GameSession
         switch (next)
         {
             case Transition.OpenMenu open:
+                Menu.Camping = Camp is not null;
                 Menu.Open(open.Tab);
                 if (open.Journal)
                     Menu.World.ShowJournal();

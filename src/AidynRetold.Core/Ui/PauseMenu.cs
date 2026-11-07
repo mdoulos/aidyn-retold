@@ -72,6 +72,9 @@ public sealed class PauseMenu
     /// <param name="where">The chunk the player is in, and whether it's outdoors, which the World tab's map and Camp read.</param>
     /// <param name="host">What plays the menu's sounds, steps its scroll and writes saves.</param>
     /// <param name="stick">The held directions, which a volume and the journal step by, and which opening and closing forget.</param>
+    /// <summary>Whether the party is at camp, with the menu opening over the camp screen: the World tab's Camp is disabled then (the session sets it as the menu opens).</summary>
+    public bool Camping { get; set; }
+
     public PauseMenu(GameState game, Settings settings, string savesFolder, Func<(ChunkRef? Place, bool Outdoors)> where, IPauseMenuHost host,
         StickRepeat stick)
     {
@@ -300,7 +303,7 @@ public sealed class PauseMenu
             screen: () => _host.Screen, unsaved: () => Unsaved, controller: () => _host.Controller);
         var (place, outdoors) = _where();
         World = new WorldMenu(_game.Plugins, _game,
-            place, outdoors);
+            place, outdoors, Camping);
         World.OriginalLook = OriginalLook;
         Tab = tab;
         Position = (float)tab;

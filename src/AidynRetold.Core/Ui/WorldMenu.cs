@@ -31,6 +31,9 @@ public sealed class WorldMenu
 
     public static readonly Rgba TextColor = PartyMenu.TextColor;
 
+    /// <summary>Whether the party is already at camp, so Camp is disabled: drawn dim, and A on it only says so.</summary>
+    public bool Camping { get; }
+
     /// <summary>Whether the tab looks as the original's does (<see cref="PauseMenu"/> sets it): Camp and Journal are its title images, else text.</summary>
     public bool OriginalLook { get; set; }
     /// <summary>The ring's colour at the top of its pulse, from black.</summary>
@@ -47,8 +50,13 @@ public sealed class WorldMenu
 
     /// <param name="place">The chunk the player is in, or none, as in a cut-scene's stage.</param>
     /// <param name="outdoors">Whether the sky is the outdoor one, which the party's ring needs.</param>
-    public WorldMenu(PluginSet plugins, GameState game, ChunkRef? place, bool outdoors)
+    /// <summary>What Camp says while the party is already camped, the remade game's, as the original has no menu at camp.</summary>
+    public const string AlreadyCamping = "The party is already camped.";
+
+    /// <param name="atCamp">Whether the party is already at camp, with the menu open over the camp screen: Camp is disabled then.</param>
+    public WorldMenu(PluginSet plugins, GameState game, ChunkRef? place, bool outdoors, bool atCamp = false)
     {
+        Camping = atCamp;
         _game = game;
         _text = MenuText.From(plugins);
         Map = plugins.Singleton<WorldMapRecord>();
@@ -139,6 +147,11 @@ public sealed class WorldMenu
         }
         if (Cursor == WorldChoice.Camp)
         {
+            if (Camping)
+            {
+                Overlay.Say(AlreadyCamping);
+                return null;
+            }
             if (_campFactor > 0)
                 return PauseExit.Camp;
             Overlay.Say(_cannotCamp);

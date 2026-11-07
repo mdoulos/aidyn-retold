@@ -19,6 +19,9 @@ public partial class WorldTabView : Control
     private static readonly Vector2I SeasonName = new(160, 40);
     private const int SeasonRight = 260;
     private static readonly Vector2I Camp = new(215, 155), Journal = new(192, 174);
+
+    /// <summary>Camp's colour while the party is already camped: the text's at a third, the remade game's.</summary>
+    private static readonly Rgba Disabled = WorldMenu.TextColor with { A = 90 };
     private const int TodaySize = 17;
 
     /// <summary>
@@ -90,7 +93,7 @@ public partial class WorldTabView : Control
         var cursor = Active ? Menu.Pulse.Now(PartyMenu.HighlightFrom, PartyMenu.HighlightColor) : WorldMenu.TextColor;
         if (Menu.OriginalLook)
         {
-            _ui.Image(this, MenuImages.CampTitle, Camp.X, Camp.Y, color: Menu.Cursor == WorldChoice.Camp ? cursor : WorldMenu.TextColor);
+            _ui.Image(this, MenuImages.CampTitle, Camp.X, Camp.Y, color: Menu.Camping ? Disabled : Menu.Cursor == WorldChoice.Camp ? cursor : WorldMenu.TextColor);
             _ui.Image(this, MenuImages.JournalTitle, Journal.X, Journal.Y, color: Menu.Cursor == WorldChoice.Journal ? cursor : WorldMenu.TextColor);
         }
         else
@@ -104,7 +107,7 @@ public partial class WorldTabView : Control
 
             void Title(string text, WorldChoice choice, int top) =>
                 _ui.Text(this, font, text, right - font.ExactWidth(text), top - (int)MathF.Round(font.Middle - font.Capitals / 2),
-                    Menu.Cursor == choice ? cursor : WorldMenu.TextColor);
+                    choice == WorldChoice.Camp && Menu.Camping ? Disabled : Menu.Cursor == choice ? cursor : WorldMenu.TextColor);
         }
         if (Veil > 0)
             _ui.Tab(this, PauseTab.World, PlainPatches, new Rgba(255, 255, 255, (byte)(Veil * 255)), plain: true);

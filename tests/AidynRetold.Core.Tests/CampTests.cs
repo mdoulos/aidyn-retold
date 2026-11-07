@@ -288,23 +288,47 @@ public class CampTests
         new(party, null, null, CampActivities.Offered([Brewing, Smithing], [Tonic], party), [Tonic], baseHours, Characters.D100(rolls.Length == 0 ? [1, 1, 1, 1, 1, 1] : rolls));
 
     [Fact]
-    public void TheScreenListsTheActivitiesThenRestWithTheHoursAndEachThingMadeAddsItsActivitysHours()
+    public void TheScreenOpensOnTheCampTabWhereAIsRestAndTheTriggersWalkTheFiveTabsRound()
+    {
+        var (party, _, _) = Camp();
+        var screen = Screen(party);
+        Assert.Equal(CampTab.Camp, screen.Tab);
+        Assert.Equal("Rest (8 hours)", screen.RestLabel);
+        Assert.Equal(2, screen.Members.Count);
+        Assert.Null(screen.Empty);
+
+        Assert.True(screen.Press(MenuAction.TabNext));
+        Assert.Equal(CampTab.Food, screen.Tab);
+        Assert.Null(screen.Current);
+        Assert.Equal(CampMenu.NobodyCan, screen.Empty);
+        Assert.True(screen.Press(MenuAction.Right));
+        Assert.Equal(CampTab.Potions, screen.Tab);
+        Assert.True(screen.Press(MenuAction.Right));
+        Assert.Equal(CampTab.Weapons, screen.Tab);
+        Assert.Equal("", screen.Empty);
+        Assert.True(screen.Press(MenuAction.Right));
+        Assert.Equal(CampTab.Armor, screen.Tab);
+        Assert.Equal(CampMenu.NobodyCan, screen.Empty);
+        Assert.True(screen.Press(MenuAction.Right));
+        Assert.Equal(CampTab.Camp, screen.Tab);
+        Assert.True(screen.Press(MenuAction.TabPrevious));
+        Assert.Equal(CampTab.Armor, screen.Tab);
+
+        screen.Show(CampTab.Camp);
+        Assert.True(screen.Press(MenuAction.Accept));
+        Assert.Equal(CampChoice.Rest, screen.Choice);
+        Assert.False(screen.Press(MenuAction.Up));
+    }
+
+    [Fact]
+    public void ThePotionsTabOffersTheAlchemistsRecipesAndEachThingMadeAddsItsActivitysHours()
     {
         var (party, alchemist, _) = Camp();
         var screen = Screen(party);
-        Assert.Equal(["Making armor", "Brewing", "Rest (8 hours)"], screen.Rows.Select(r => r.Text));
-        Assert.Equal([false, true, true], screen.Rows.Select(r => r.Enabled));
-        Assert.Equal(CampMenu.NobodyCan, screen.Rows[0].Note);
-        Assert.Equal("Alaron, 1 to make", screen.Rows[1].Note);
-
-        // A on the armor row says why; down and A opens brewing on the Alchemist.
-        Assert.True(screen.Press(MenuAction.Accept));
-        Assert.Equal(CampMenu.NobodyCan, screen.Message);
-        Assert.Null(screen.Open);
-        Assert.True(screen.Press(MenuAction.Down));
-        Assert.True(screen.Press(MenuAction.Accept));
+        screen.Show(CampTab.Potions);
         Assert.Same(alchemist, screen.Member);
         Assert.Equal([Tonic], screen.Recipes);
+        Assert.Null(screen.Empty);
 
         // Two tonics: two herbs used, two hours each.
         Assert.True(screen.Press(MenuAction.Accept));
@@ -316,17 +340,13 @@ public class CampTests
         Assert.Equal(1, party.Inventory.Count(Reagent.Id));
         Assert.Equal(2, screen.Made["Tonic"]);
         Assert.Equal(2, screen.Log.Count(l => l == "Tonic is ready."));
+        Assert.Equal("Rest (12 hours)", screen.RestLabel);
 
-        // Back to the rows, where Rest now says 12, and A on it rests.
-        Assert.True(screen.Press(MenuAction.Back));
-        Assert.Null(screen.Open);
-        Assert.Equal(CampChoice.None, screen.Choice);
-        Assert.Equal("Rest (12 hours)", screen.Rows[^1].Text);
-        Assert.True(screen.Press(MenuAction.Down));
-        Assert.True(screen.OnRest);
+        // A on Armor, which nobody can do, only says so.
+        screen.Show(CampTab.Armor);
         Assert.True(screen.Press(MenuAction.Accept));
-        Assert.Equal(CampChoice.Rest, screen.Choice);
-        Assert.False(screen.Press(MenuAction.Up));
+        Assert.Equal(CampMenu.NobodyCan, screen.Message);
+        Assert.Equal(12, screen.Hours);
     }
 
     [Fact]
@@ -335,8 +355,7 @@ public class CampTests
         var (party, _, _) = Camp(herbs: 1);
         // A roll of 100 fails against Intelligence × 3 + Alchemist × 6, 72; the herb is used up all the same, as the original's brewing uses it.
         var screen = Screen(party, 8, 100, 1);
-        screen.Press(MenuAction.Down);
-        screen.Press(MenuAction.Accept);
+        screen.Show(CampTab.Potions);
         Assert.True(screen.Press(MenuAction.Accept));
         Assert.Equal("Alaron fails.", screen.Message);
         Assert.Equal(8, screen.Hours);
@@ -347,7 +366,7 @@ public class CampTests
     }
 
     [Fact]
-    public void BAtTheTopBreaksCampAndTheTalkTakesThePressesWhileItShows()
+    public void BBreaksCampAndTheTalkTakesThePressesWhileItShows()
     {
         var (party, _, _) = Camp();
         var screen = Screen(party);
@@ -360,17 +379,14 @@ public class CampTests
     }
 
     [Fact]
-    public void CLeftAndCRightChangeWhoBrewsAmongThoseWithTheSkillAndTheMouseCanPointAtRows()
+    public void CLeftAndCRightChangeWhoBrewsAmongThoseWithTheSkillAndTheMouseCanPointAtRecipes()
     {
         var (party, alchemist, fighter) = Camp();
-        // Give the fighter the skill too, lower, by the rules: a second alchemist at 1.
+        // A second alchemist at 1.
         var second = Characters.Create(Characters.Alaron() with { Id = Becan, Name = "Becan", Skills = new SkillLevels(1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 3, 1) });
         party.Add(second);
         var screen = Screen(party);
-        Assert.True(screen.Point(1));
-        Assert.Equal(1, screen.Cursor);
-        Assert.False(screen.Point(5));
-        screen.Press(MenuAction.Accept);
+        screen.Show(CampTab.Potions);
         Assert.Same(alchemist, screen.Member);
         Assert.True(screen.Press(MenuAction.MemberRight));
         Assert.Same(second, screen.Member);

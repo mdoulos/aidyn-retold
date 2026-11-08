@@ -62,6 +62,7 @@ are the remake's look ([options](options.md#graphic-quality)).
 
 - **Redrawn pictures.** Aidyn ReChronicled's redrawn portraits, item icons, empty slots, titles and HUD pieces stand in the original's, drawn
   at the original's size and sharper ([ADR 0034](../adr/0034-retold-and-rechronicled-collaborate.md), [ui](../systems/ui.md#the-ports-layout)).
+  Alaron's portrait is the owner's own instead (Nov 7, 2026), kept out of ReChronicled's set so rebuilding that leaves it be.
 - **A picture for each potion and each scroll.** The original draws every potion as one flask and every scroll as one scroll. Retold has
   each potion's own bottle (conical flasks with a ribbon for the four flasks, a slanted bottle for Healing, a round one for Curing, square
   ones for Stamina, Antidote and Restore, tubes for the rest, the new Intellect, Determination and Ingenuity among them), and each scroll rolled with a ribbon of its spell's school's colour: green

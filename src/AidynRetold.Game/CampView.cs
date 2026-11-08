@@ -443,6 +443,9 @@ public partial class CampView : Control
         FrontLight.QueueRedraw();
         PartyLight.QueueRedraw();
         Shadows.QueueRedraw();
+        // The figures idle every frame (Idle).
+        PartyBehind.QueueRedraw();
+        PartyFront.QueueRedraw();
         LightFigures();
     }
 
@@ -766,6 +769,64 @@ public partial class CampView : Control
             DrawOverlay(canvas, camp, site, fit);
     }
 
+    /// <summary>
+    /// A figure's stance as it idles at a moment, the user's design (Nov 8, 2026), to give the still images some life: every 2 to 3 seconds
+    /// it settles toward a new stance, easing into it over the whole gap so it never quite stops, each figure on its own times (its slot and
+    /// the camp's seed), and it breathes under that. A stance is a lean, the top over to a side by up to 2.5% of its height, its feet
+    /// planted; a stretch, up or down by up to about 1%, its width the other way by half as much; and a turn, its top a little wider or
+    /// narrower than its foot, by up to 3%, as if it half turned.
+    /// </summary>
+    private static (float Lean, float Stretch, float Turn) Idle(float seconds, int seed)
+    {
+        // The stances' times: the k-th in the first IdleSlack of its own IdleSlot, so they come 2 to 3 seconds apart.
+        float When(int k) => IdleSlot * k + IdleSlack * Hash(k, seed);
+        var k = (int)MathF.Floor(seconds / IdleSlot);
+        if (When(k) > seconds)
+            k--;
+        var u = Smooth(Math.Clamp((seconds - When(k)) / (When(k + 1) - When(k)), 0, 1));
+        float Toward(int axis) => Mathf.Lerp(Hash(k, seed * 3 + axis * 101) * 2 - 1, Hash(k + 1, seed * 3 + axis * 101) * 2 - 1, u);
+        var breath = IdleBreath * MathF.Sin(MathF.Tau * seconds / (IdleBreathSeconds + Hash(0, seed + 5)) + seed);
+        return (Toward(0) * IdleLean, Toward(1) * IdleStretch + breath, Toward(2) * IdleTurn);
+    }
+
+    /// <summary>
+    /// The idling's times and sizes: a stance every <see cref="IdleSlot"/> seconds, within <see cref="IdleSlack"/> of it, so 2 to 3 apart;
+    /// the most a figure leans, stretches and turns, against its height; and its breath, how much and how often, a second's spread
+    /// between figures.
+    /// </summary>
+    private const float IdleSlot = 2.5f, IdleSlack = 0.5f, IdleLean = 0.025f, IdleStretch = 0.01f, IdleTurn = 0.03f,
+        IdleBreath = 0.005f, IdleBreathSeconds = 3.6f;
+
+    /// <summary>
+    /// A figure drawn in its idling stance (<see cref="Idle"/>): its image bent as a stack of thin strips from its foot up, so the lean
+    /// curves from the feet and the turn's taper shows no seam, its feet staying where they stand. Drawn in this control's own pixels, so the
+    /// figures' light finds where each part of it is (<see cref="FigureShader"/>); mirrored by its texture's coordinates.
+    /// </summary>
+    private static void DrawFigure(CanvasItem canvas, Texture2D image, Rect2 area, bool mirrored, Vector2 foot, Color light,
+        (float Lean, float Stretch, float Turn) stance)
+    {
+        const int Strips = 10;
+        var height = area.Size.Y;
+        Vector2 Bend(float x, float y)
+        {
+            var up = foot.Y - y;
+            var t = Math.Max(0, up / height);
+            var across = (x - foot.X) * (1 - stance.Stretch * 0.5f + stance.Turn * (t - 0.4f));
+            return new Vector2(foot.X + across + stance.Lean * height * MathF.Pow(t, 1.5f), foot.Y - up * (1 + stance.Stretch));
+        }
+        var (left, right) = mirrored ? (1f, 0f) : (0f, 1f);
+        var colors = new[] { light, light, light, light };
+        for (var i = 0; i < Strips; i++)
+        {
+            // From the top down: the strip's top and its foot as shares of the image.
+            float top = (float)i / Strips, under = (float)(i + 1) / Strips;
+            float y0 = area.Position.Y + top * height, y1 = area.Position.Y + under * height;
+            Vector2[] points = [Bend(area.Position.X, y0), Bend(area.End.X, y0), Bend(area.End.X, y1), Bend(area.Position.X, y1)];
+            Vector2[] uvs = [new(left, top), new(right, top), new(right, under), new(left, under)];
+            canvas.DrawPolygon(points, colors, uvs, image);
+        }
+    }
+
     /// <summary>The figures in front of the fire, over its layers, with the firelight added to them by their child (<see cref="PartyLight"/>).</summary>
     private void PaintPartyFront(CanvasItem canvas)
     {
@@ -980,9 +1041,8 @@ public partial class CampView : Control
             if (placement.Image is { } pose && Lit(pose) is { } image)
             {
                 var (area, _) = Placed(placement, pose, image, site, fit);
-                // A negative width draws the image mirrored in the same place (UiPainter.Image).
-                var rect = placement.Mirrored ? area with { Size = new Vector2(-area.Size.X, area.Size.Y) } : area;
-                canvas.DrawTextureRect(image, rect, false, LightData(site, placement.Slot, foot, pixel));
+                var seed = site.Slots.ToList().FindIndex(s => s.Id == placement.Slot.Id) * 7919 + (int)(Camp!.Seed % 9973);
+                DrawFigure(canvas, image, area, placement.Mirrored, foot, LightData(site, placement.Slot, foot, pixel), Idle(Seconds, seed));
             }
             else if (ShowOverlay)
             {

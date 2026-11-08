@@ -57,11 +57,16 @@ public static class CampPoses
 public sealed record CampPoint(float X, float Y);
 
 /// <summary>
-/// A piece laid over a campsite's picture at one of its anchors, the user's art (Nov 7, 2026): the fire pit at the fire, the tripod at
-/// the pot. <paramref name="Anchor"/> is the point of the image, as shares of its width and height, that sits on the anchor, and
-/// <paramref name="Width"/> how wide the whole image is drawn, in the picture's pixels, its height kept to its shape.
+/// The campfire laid over a campsite's picture, the user's art (Nov 7, 2026): one image of the stones, the logs and their fire, the
+/// tripod and its pot, laid with <paramref name="Anchor"/>, its fire's middle as shares of its width and height, on the picture's
+/// fire, <paramref name="Width"/> of the picture's pixels wide, its height kept to its shape.
 /// </summary>
-public sealed record CampProp(RecordId Image, CampPoint Anchor, float Width);
+/// <param name="Pot">
+/// The pot alone, an image the same size as <paramref name="Image"/> laid on the same spot, over the flames that burn behind the pot
+/// and under those that burn in front of it.
+/// </param>
+/// <param name="Rim">The middle of the pot's rim, as shares of the image, where the smoke rises from.</param>
+public sealed record CampfireArt(RecordId Image, CampPoint Anchor, float Width, RecordId? Pot = null, CampPoint? Rim = null);
 
 /// <summary>A rectangle in a campsite's picture, as shares of its width and height, 0 to 1.</summary>
 public sealed record CampRect(float X, float Y, float Width, float Height);
@@ -98,7 +103,10 @@ public sealed record CampLayout(int Size, IReadOnlyList<string> Slots);
 /// <param name="Fire">The fire's base, which every biome's picture keeps in the same place.</param>
 /// <param name="Slots">The candidate anchors, at least seven for a party of up to five to vary over.</param>
 /// <param name="Layouts">The curated layouts, by party size; a size with none falls back to the slots in order.</param>
-/// <param name="Pot">The cooking pot's bottom, where the tripod's pot hangs and a fire-tending figure's hands reach, if the picture has one.</param>
+/// <param name="Pot">
+/// The cooking pot's bottom as marked on the picture, where a fire-tending figure's hands reach, if the picture has one. The campfire's
+/// art draws its own pot where it hangs in the art (<see cref="CampfireArt"/>).
+/// </param>
 /// <param name="SafeUi">Where the menu may be drawn without covering the fire or the figures.</param>
 /// <param name="Terrains">The terrains (<c>aidyn:terrain/n</c>'s indices) this campsite is shown on; a campsite with none is the fallback for the rest.</param>
 /// <param name="Ambient">A tint laid over the figures for the biome's light, restrained; none leaves them as painted.</param>
@@ -119,11 +127,10 @@ public sealed record CampLayout(int Size, IReadOnlyList<string> Slots);
 /// The music while the camp shows, in the music's volume; none is silence. Trek's music stops as the camp opens, the user's choice
 /// (Nov 7, 2026), and comes back as it closes; the camp gets music of its own later.
 /// </param>
-/// <param name="FirePit">
-/// The fire pit, its stones and logs, laid over the picture with its flames' middle on <paramref name="Fire"/>, under the screen's own
-/// flames, for a picture with no fire painted in.
+/// <param name="Campfire">
+/// The campfire, for a picture with none painted in: laid over the picture with its fire's middle on <paramref name="Fire"/>, under the
+/// screen's own flames, smoke and embers.
 /// </param>
-/// <param name="Tripod">The tripod and its pot, laid over the picture with the pot's bottom on <paramref name="Pot"/>, under the flames.</param>
 public sealed record CampsiteRecord(
     RecordId Id,
     string Name,
@@ -142,10 +149,9 @@ public sealed record CampsiteRecord(
     RecordId? Sound = null,
     float SoundVolume = 1,
     RecordId? Music = null,
-    CampProp? FirePit = null,
-    CampProp? Tripod = null)
+    CampfireArt? Campfire = null)
 {
-    /// <summary>The depth the fire stands at among the slots': a slot under it is drawn behind the pit and the tripod, one over it in front.</summary>
+    /// <summary>The depth the fire stands at among the slots': a slot under it is drawn behind the campfire, one over it in front.</summary>
     public const int FireDepth = 100;
 
     /// <summary>A slot by its name, or null.</summary>

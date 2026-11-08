@@ -122,6 +122,7 @@ public partial class CampView : Control
         Band.Painter = PaintBand;
         Top.Painter = PaintTop;
         Glow.Painter = PaintGlow;
+        FireBehind.Painter = PaintFireBehind;
         Fire.Painter = PaintFire;
     }
 
@@ -131,7 +132,13 @@ public partial class CampView : Control
     /// <summary>The debug marks over everything: the buttons and the rule-of-thirds lines; the layer puts it over the scroll.</summary>
     public PaintedControl Top { get; } = new() { Name = "Camp marks", MouseFilter = MouseFilterEnum.Ignore };
 
-    /// <summary>The firelight over the picture, added to it (<see cref="PaintGlow"/>); the layer puts it over this control.</summary>
+    /// <summary>
+    /// The flames behind the campfire's pot and the pot over them (<see cref="PaintFireBehind"/>), under the firelight, so the pot is lit
+    /// as the rest of the campfire is; the layer puts it over this control.
+    /// </summary>
+    public PaintedControl FireBehind { get; } = new() { Name = "Camp fire behind the pot", MouseFilter = MouseFilterEnum.Ignore };
+
+    /// <summary>The firelight over the picture, added to it (<see cref="PaintGlow"/>); the layer puts it over the flames behind the pot.</summary>
     public PaintedControl Glow { get; } = new()
     {
         Name = "Camp firelight",
@@ -139,7 +146,7 @@ public partial class CampView : Control
         Material = new CanvasItemMaterial { BlendMode = CanvasItemMaterial.BlendModeEnum.Add },
     };
 
-    /// <summary>The smoke and the flames over the painted fire (<see cref="PaintFire"/>); the layer puts it over the firelight.</summary>
+    /// <summary>The smoke, the flames in front of the pot and the embers (<see cref="PaintFire"/>); the layer puts it over the firelight.</summary>
     public PaintedControl Fire { get; } = new() { Name = "Camp fire", MouseFilter = MouseFilterEnum.Ignore };
 
     /// <summary>Where the picture was drawn last, and its campsite, which the fire is placed on.</summary>
@@ -325,6 +332,7 @@ public partial class CampView : Control
         if (Camp is null)
             return;
         Glow.QueueRedraw();
+        FireBehind.QueueRedraw();
         Fire.QueueRedraw();
     }
 
@@ -345,15 +353,11 @@ public partial class CampView : Control
         (_fit, _site) = (fit, site);
         if (site is not null && _ui.Images.Get(site.Image) is { } picture)
             DrawTextureRect(picture, fit, false);
-        // The figures behind the fire, the fire pit and the tripod, then the figures in front of it (CampsiteRecord.FireDepth).
+        // The figures behind the fire, the campfire, then the figures in front of it (CampsiteRecord.FireDepth).
         if (camp.Arrangement is { } behind && site is not null)
             DrawParty(behind, site, fit, front: false);
-        if (site is not null)
-        {
-            DrawProp(site.FirePit, site, fit, site.Fire);
-            if (site.Pot is { } potPoint)
-                DrawProp(site.Tripod, site, fit, potPoint);
-        }
+        if (site?.Campfire is { } campfire && _ui.Images.Get(campfire.Image) is { } campfireImage)
+            DrawTextureRect(campfireImage, CampfireRect(campfire, campfireImage, site, fit), false);
         if (camp.Arrangement is { } inFront && site is not null)
             DrawParty(inFront, site, fit, front: true);
         // The vignette as painted: a transparent image with its dark at its own alpha, laid over the picture pixel for pixel.
@@ -522,17 +526,16 @@ public partial class CampView : Control
     private static Vector2 At(Rect2 fit, float x, float y) => fit.Position + new Vector2(fit.Size.X * x, fit.Size.Y * y);
 
     /// <summary>
-    /// A piece laid over the picture at an anchor, the user's art: its image's anchor point on the anchor, as wide as the record says in
-    /// the picture's pixels, scaled with the picture as it's drawn.
+    /// Where the campfire's art is drawn, the user's (Nov 7, 2026): its fire's middle on the picture's fire, as wide as the record says in
+    /// the picture's pixels, its height kept to its shape, scaled with the picture as it's drawn. Its pot is drawn the same size on the
+    /// same spot.
     /// </summary>
-    private void DrawProp(CampProp? prop, CampsiteRecord site, Rect2 fit, CampPoint anchor)
+    private static Rect2 CampfireRect(CampfireArt campfire, Texture2D image, CampsiteRecord site, Rect2 fit)
     {
-        if (prop is null || _ui.Images.Get(prop.Image) is not { } image)
-            return;
         var pixel = fit.Size.X / site.Width;
-        var size = new Vector2(prop.Width, prop.Width * image.GetHeight() / image.GetWidth()) * pixel;
-        var at = At(fit, anchor.X, anchor.Y) - new Vector2(prop.Anchor.X * size.X, prop.Anchor.Y * size.Y);
-        DrawTextureRect(image, new Rect2(at, size), false);
+        var size = new Vector2(campfire.Width, campfire.Width * image.GetHeight() / image.GetWidth()) * pixel;
+        var at = At(fit, site.Fire.X, site.Fire.Y) - new Vector2(campfire.Anchor.X * size.X, campfire.Anchor.Y * size.Y);
+        return new Rect2(at, size);
     }
 
     /// <summary>The party's figures behind the fire or in front of it, by their slots' depths against the fire's.</summary>
@@ -564,30 +567,33 @@ public partial class CampView : Control
         }
     }
 
-    // The fire over the painted one, the user's choice (Nov 7, 2026): flames from the user's sheet of them (art-flames-flicker, cut into
-    // camp_flame_00 to 13, the first seven tall and the rest short), smoke from the sheet of plumes, faint, and the firelight. "Later that
-    // will change", the user said: the picture is to have its fire painted out, and these are to stand on the logs in its place. Sizes
-    // and offsets are in the picture's pixels, from the fire's anchor (CampsiteRecord.Fire), and scaled with it as it's drawn.
+    // The fire, the user's choice (Nov 7, 2026): over the campfire's art (CampsiteRecord.Campfire) and its painted flames, flames from the
+    // user's sheet of them (art-flames-flicker, cut into camp_flame_00 to 13, the first seven tall and the rest short), some behind its
+    // pot and some in front; smoke from the sheet of plumes, faint; embers from the sheet of them (art-flames-embers, cut into
+    // camp_ember_00 to 15, the first eight round and the rest streaks); and the firelight. Sizes and offsets are in the picture's pixels,
+    // from the fire's anchor (CampsiteRecord.Fire), and scaled with it as it's drawn.
 
     private static readonly RecordId[] Flames = [.. Enumerable.Range(0, 14).Select(i => RecordId.Parse($"acre:image/camp_flame_{i:00}"))];
     private static readonly RecordId[] Smokes = [.. Enumerable.Range(0, 12).Select(i => RecordId.Parse($"acre:image/camp_smoke_{i:00}"))];
+    private static readonly RecordId[] Embers = [.. Enumerable.Range(0, 16).Select(i => RecordId.Parse($"acre:image/camp_ember_{i:00}"))];
 
     /// <summary>
     /// The flames across the pit, back to front: each one's offset from the fire's anchor, its height, whether it's drawn from the tall
-    /// flames or the short, and how many shapes a second it changes through.
+    /// flames or the short, how many shapes a second it changes through, and whether it burns in front of the campfire's pot, over its
+    /// pot layer, or behind it, under the pot, the user's design (Nov 7, 2026).
     /// </summary>
-    private static readonly (float X, float Height, bool Tall, float Rate)[] FlameLayout =
+    private static readonly (float X, float Height, bool Tall, float Rate, bool Over)[] FlameLayout =
     [
-        (-21, 24, false, 7.5f), (21, 24, false, 8.5f), (-10, 37, true, 6.5f), (10, 37, true, 7f), (0, 50, true, 6f),
+        (-16, 22, false, 7.5f, true), (16, 24, false, 8.5f, true), (-7, 38, true, 6.5f, false), (0, 44, true, 6f, false), (7, 34, true, 7f, true),
     ];
 
     /// <summary>
-    /// How far under the fire's anchor the flames' feet are: half the tallest flame, so the fire's middle is on the anchor, the user's
-    /// point (Nov 7, 2026); how wide a flame is drawn of its sprite's shape; and how opaque.
+    /// How far under the fire's anchor the flames' feet are: on the campfire's logs, as its art is drawn; how wide a flame is drawn of its
+    /// sprite's shape; and how opaque.
     /// </summary>
-    private const float FlameDrop = 25, FlameWidth = 0.9f, FlameAlpha = 0.92f;
+    private const float FlameDrop = 14, FlameWidth = 0.9f, FlameAlpha = 0.92f;
 
-    /// <summary>How far over the pot's bottom the smoke starts: its rim, as the tripod is drawn.</summary>
+    /// <summary>How far over the campsite's pot's bottom the smoke starts, with no campfire art to give the pot's rim: its rim.</summary>
     private const float SmokeFromPot = 30;
 
     /// <summary>The smoke: how many plumes rise at once, how long each takes, how far it rises and how tall it grows, and how faint it is.</summary>
@@ -636,9 +642,22 @@ public partial class CampView : Control
         0.92f + 0.09f * MathF.Sin(seconds * 2.3f) + 0.06f * Noise(seconds * 2.1f, 11) + 0.05f * Noise(seconds * 9f, 23);
 
     /// <summary>
-    /// The smoke, then the flames over the painted fire. The smoke rises from over the pot in a few plumes at once, each faint, growing
-    /// and drifting as it rises and fading in and out, a different plume each time round. Each flame changes through the sheet's shapes,
-    /// one fading into the next, its height flickering and its tip swaying, its foot on the logs.
+    /// The flames behind the campfire's pot, then its pot over them, the same size as the campfire on the same spot, so they burn up
+    /// behind it, the user's design (Nov 7, 2026).
+    /// </summary>
+    private void PaintFireBehind(CanvasItem canvas)
+    {
+        if (Camp is null || _site is not { } site || site.Width <= 0)
+            return;
+        var pixel = _fit.Size.X / site.Width;
+        PaintFlames(canvas, At(_fit, site.Fire.X, site.Fire.Y), pixel, Seconds, over: false);
+        if (site.Campfire is { Pot: { } potImage } campfire && _ui.Images.Get(potImage) is { } pot && _ui.Images.Get(campfire.Image) is { } image)
+            canvas.DrawTextureRect(pot, CampfireRect(campfire, image, site, _fit), false);
+    }
+
+    /// <summary>
+    /// The smoke, then the flames in front of the pot, then the embers. The smoke rises from the pot's rim in a few plumes at once, each
+    /// faint, growing and drifting as it rises and fading in and out, a different plume each time round.
     /// </summary>
     private void PaintFire(CanvasItem canvas)
     {
@@ -646,7 +665,7 @@ public partial class CampView : Control
             return;
         var pixel = _fit.Size.X / site.Width;
         var fire = At(_fit, site.Fire.X, site.Fire.Y);
-        var pot = site.Pot is { } p ? At(_fit, p.X, p.Y) : fire - new Vector2(0, 40 * pixel);
+        var rim = Rim(site, fire, pixel);
         var seconds = Seconds;
         for (var i = 0; i < SmokePlumes; i++)
         {
@@ -658,14 +677,37 @@ public partial class CampView : Control
             var height = Mathf.Lerp(SmokeFrom, SmokeTo, u) * pixel;
             var width = height * smoke.GetWidth() / smoke.GetHeight();
             var drift = (8 + 18 * Noise(round + u * 2, i + 40)) * u * pixel;
-            var foot = pot + new Vector2(drift + (Hash(round, i) - 0.5f) * 16 * pixel, -(SmokeFromPot + SmokeRise * u) * pixel);
+            var foot = rim + new Vector2(drift + (Hash(round, i) - 0.5f) * 16 * pixel, -SmokeRise * u * pixel);
             var alpha = SmokeAlpha * MathF.Pow(MathF.Sin(MathF.PI * u), 1.5f);
             var mirror = Hash(round, i + 90) < 0.5f;
             var rect = new Rect2(foot.X - width / 2, foot.Y - height, width, height);
             canvas.DrawTextureRect(smoke, mirror ? new Rect2(rect.End.X, rect.Position.Y, -width, height) : rect, false, new Color(0.95f, 0.9f, 0.84f, alpha));
         }
+        PaintFlames(canvas, fire, pixel, seconds, over: true);
+        PaintEmbers(canvas, fire, pixel, seconds);
+    }
+
+    /// <summary>Where the smoke rises from: the pot's rim as the campfire's art draws it, else over the campsite's pot, else over the fire.</summary>
+    private Vector2 Rim(CampsiteRecord site, Vector2 fire, float pixel)
+    {
+        if (site.Campfire is { Rim: { } rim } campfire && _ui.Images.Get(campfire.Image) is { } image)
+        {
+            var drawn = CampfireRect(campfire, image, site, _fit);
+            return drawn.Position + new Vector2(rim.X * drawn.Size.X, rim.Y * drawn.Size.Y);
+        }
+        return site.Pot is { } pot ? At(_fit, pot.X, pot.Y) - new Vector2(0, SmokeFromPot * pixel) : fire - new Vector2(0, 70 * pixel);
+    }
+
+    /// <summary>
+    /// The flames behind the pot or those in front of it (<see cref="FlameLayout"/>). Each changes through the sheet's shapes, one fading
+    /// into the next, its height flickering and its tip swaying, its foot on the logs.
+    /// </summary>
+    private void PaintFlames(CanvasItem canvas, Vector2 fire, float pixel, float seconds, bool over)
+    {
         for (var i = 0; i < FlameLayout.Length; i++)
         {
+            if (FlameLayout[i].Over != over)
+                continue;
             var (x, tall, flicker, rate) = (FlameLayout[i].X, FlameLayout[i].Height, FlameLayout[i].Tall, FlameLayout[i].Rate);
             var shape = seconds * rate + i * 0.37f;
             var step = (int)MathF.Floor(shape);
@@ -678,6 +720,54 @@ public partial class CampView : Control
             Flame(canvas, FlameOf(step + 1, i, flicker), height, FlameAlpha * blend);
         }
         canvas.DrawSetTransform(Vector2.Zero);
+    }
+
+    /// <summary>
+    /// The embers, the user's design (Nov 7, 2026): small, uneven and now and then. Each of a few places in the air tries to send one up
+    /// once a round of its own length; only some tries rise, fewer while the fire's mood, a slow wander, is low, so some stretches have
+    /// none and some two or three close together, one every two seconds or so on the whole. How many places, how long a round is, the
+    /// share of tries that rise as the fire's mood is middling, the seconds an ember is in the air at least and at most, and how large
+    /// it's drawn: the picture's pixels to the sheet's, so its bright core is a pixel or three with its glow round it.
+    /// </summary>
+    private const int EmberPlaces = 6;
+    private const float EmberRound = 2.8f, EmberChance = 0.27f, EmberShortest = 0.8f, EmberLongest = 1.9f, EmberScale = 0.3f;
+
+    /// <summary>
+    /// The embers rising from the fire. Each starts among the flames and rises fast, slowing as it cools, wandering and drifting off to a
+    /// side; it shows at once, twinkles and fades slowly, reddening and shrinking as it goes; each is its own size and brightness, and
+    /// rises its own height.
+    /// </summary>
+    private void PaintEmbers(CanvasItem canvas, Vector2 fire, float pixel, float seconds)
+    {
+        var mood = 0.5f + 0.5f * Noise(seconds * 0.15f, 307);
+        for (var i = 0; i < EmberPlaces; i++)
+        {
+            var seed = i * 17;
+            var length = EmberRound * (0.75f + 0.6f * Hash(i, 301));
+            var age = seconds / length + Hash(i, 302);
+            var round = (int)MathF.Floor(age);
+            if (Hash(round, seed + 3) > EmberChance * (0.3f + 1.4f * mood))
+                continue;
+            // Its seconds in the air, and when in the round it rises.
+            var life = MathF.Min(length, Mathf.Lerp(EmberShortest, EmberLongest, Hash(round, seed + 4)));
+            var u = ((age - round) * length - (length - life) * Hash(round, seed + 5)) / life;
+            if (u is < 0 or > 1 || _ui.Images.Get(Embers[(int)(Hash(round, seed + 6) * Embers.Length)]) is not { } ember)
+                continue;
+            var lean = (Hash(round, seed + 7) - 0.5f) * 70;
+            var rise = (45 + 120 * Hash(round, seed + 8)) * (1 - (1 - u) * (1 - u));
+            var wander = 9 * Noise(seconds * 1.6f + i * 4.3f, seed + 9) * u;
+            var from = new Vector2((Hash(round, seed + 10) - 0.5f) * 34, 4 - 20 * Hash(round, seed + 11));
+            var at = fire + (from + new Vector2(lean * u + wander, -rise)) * pixel;
+            var shown = Smooth(MathF.Min(1, u / 0.1f)) * (1 - Smooth(MathF.Max(0, (u - 0.35f) / 0.65f)));
+            var alpha = (0.3f + 0.7f * Hash(round, seed + 12)) * shown * (0.7f + 0.3f * Noise(seconds * 11 + i * 7, seed + 13));
+            if (alpha <= 0.01f)
+                continue;
+            var size = new Vector2(ember.GetWidth(), ember.GetHeight()) * EmberScale * (0.6f + 0.8f * Hash(round, seed + 14)) * (1 - 0.4f * u) * pixel;
+            // The streaks lean up and to the right on the sheet: one drifting left is mirrored.
+            var rect = new Rect2(at - size / 2, size);
+            canvas.DrawTextureRect(ember, lean < 0 ? new Rect2(rect.End.X, rect.Position.Y, -size.X, size.Y) : rect, false,
+                new Color(1, 1 - 0.3f * u, 1 - 0.45f * u, alpha));
+        }
     }
 
     /// <summary>A flame's sprite for a step of its changing, chosen from the tall or the short by a hash of the step, and whether it's mirrored.</summary>
@@ -1144,8 +1234,11 @@ public partial class CampLayer : CanvasLayer
         _scroll = PauseScrollView.Create(plugins, _models);
         _view = new CampView(plugins, _scroll) { Click = _screen.Click };
         _view.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-        // The picture, the firelight and the fire over it, then the band, the rollers over the band's edges, and the debug marks over all.
+        // The picture, the flames behind the pot and the pot, the firelight, and the fire in front over it, then the band, the rollers
+        // over the band's edges, and the debug marks over all.
         _screen.Canvas.AddChild(_view);
+        _view.FireBehind.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        _screen.Canvas.AddChild(_view.FireBehind);
         _view.Glow.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         _screen.Canvas.AddChild(_view.Glow);
         _view.Fire.SetAnchorsPreset(Control.LayoutPreset.FullRect);

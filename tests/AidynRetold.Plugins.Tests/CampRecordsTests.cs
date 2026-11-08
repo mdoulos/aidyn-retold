@@ -9,7 +9,7 @@ public sealed class CampRecordsTests
         [{
           "id": "acre:campsite/forest", "name": "forest", "image": "acre:image/campsite_forest", "width": 1672, "height": 941,
           "fire": { "x": 0.5, "y": 0.6 }, "pot": { "x": 0.5, "y": 0.58 }, "safeUi": { "x": 0.02, "y": 0.72, "width": 0.96, "height": 0.26 },
-          "terrains": [0, 3, 4],
+          "terrains": [0, 3, 4], "figureHeight": 230,
           "campfire": { "image": "acre:image/camp_campfire", "pot": "acre:image/camp_pot", "anchor": { "x": 0.505, "y": 0.75 }, "width": 184,
             "rim": { "x": 0.4975, "y": 0.475 }, "front": "acre:image/camp_rock_front" },
           "slots": [
@@ -23,8 +23,10 @@ public sealed class CampRecordsTests
         """;
 
     private const string Figure = """
-        [{ "id": "acre:campfigure/alaron", "entity": "aidyn:entity/0x023F", "stature": 1.0, "poses": [
-          { "pose": "sit_profile", "image": "acre:image/camp_alaron_sit_profile", "anchorX": 240, "anchorY": 630, "facing": "Right", "mirror": false },
+        [{ "id": "acre:campfigure/alaron", "entity": "aidyn:entity/0x023F", "stature": 1.0, "height": 718, "poses": [
+          { "pose": "sit_profile", "image": "acre:image/camp_alaron_sit_profile_right", "anchorX": 150, "anchorY": 440, "facing": "Right", "mirror": false,
+            "normal": "acre:image/camp_alaron_sit_profile_right_normal" },
+          { "pose": "sit_profile", "image": "acre:image/camp_alaron_sit_profile_left", "anchorX": 340, "anchorY": 438, "facing": "Left" },
           { "pose": "sit_rear", "image": "acre:image/camp_alaron_sit_rear", "anchorX": 200, "anchorY": 600, "facing": "Away" } ] }]
         """;
 
@@ -71,6 +73,9 @@ public sealed class CampRecordsTests
         Assert.Null(snow.Campfire);
         Assert.True(snow.Calibrated);
 
+        Assert.Equal(230, forest.FigureHeight);
+        Assert.Equal(0, snow.FigureHeight);
+
         Assert.Equal(forest.Id, CampsiteRecord.For(set, 3)!.Id);
         Assert.Equal(snow.Id, CampsiteRecord.For(set, 8)!.Id);
         // A terrain neither names takes the first with no terrains of its own, and there's none, so the first of all.
@@ -79,7 +84,12 @@ public sealed class CampRecordsTests
 
         var alaron = set.Get<CampFigureRecord>(RecordId.Parse("acre:campfigure/alaron"));
         Assert.Equal(RecordId.Hex(RecordTypes.Entity, 0x023F), alaron.Entity);
+        Assert.Equal(718, alaron.Height);
         Assert.Equal([CampFacing.Right], alaron.PoseOf(CampPoses.SitProfile)!.Facings);
+        // A pose painted both ways is two images, keyed by the pose and the facing.
+        Assert.Equal(RecordId.Parse("acre:image/camp_alaron_sit_profile_left"), alaron.PoseOf(CampPoses.SitProfile, CampFacing.Left)!.Image);
+        Assert.Equal(RecordId.Parse("acre:image/camp_alaron_sit_profile_right_normal"), alaron.PoseOf(CampPoses.SitProfile, CampFacing.Right)!.Normal);
+        Assert.Null(alaron.PoseOf(CampPoses.SitProfile, CampFacing.Away));
         Assert.Null(alaron.PoseOf(CampPoses.TendFire));
 
         var cooking = Assert.Single(set.All<CampActivityRecord>(RecordTypes.CampActivity));
@@ -101,7 +111,7 @@ public sealed class CampRecordsTests
             temp.Add("acre", ["aidyn"], ("camp/campsites.json", Campsite), ("camp/figures.json", Figure)),
             temp.Add("mymod", ["acre"],
                 ("site.json", """{ "patch": "acre:campsite/forest", "slots": [{ "id": "rear_center", "scale": 0.9 }], "calibrated": true }"""),
-                ("figure.json", """{ "patch": "acre:campfigure/alaron", "poses": [{ "pose": "sit_rear", "anchorX": 210 }] }""")),
+                ("figure.json", """{ "patch": "acre:campfigure/alaron", "poses": [{ "pose": "sit_rear", "facing": "Away", "anchorX": 210 }, { "pose": "sit_profile", "facing": "Left", "anchorY": 436 }] }""")),
         ]);
         Assert.Empty(set.Validate().Problems);
         var forest = set.Get<CampsiteRecord>(RecordId.Parse("acre:campsite/forest"));
@@ -112,5 +122,9 @@ public sealed class CampRecordsTests
         var alaron = set.Get<CampFigureRecord>(RecordId.Parse("acre:campfigure/alaron"));
         Assert.Equal(210, alaron.PoseOf(CampPoses.SitRear)!.AnchorX);
         Assert.Equal(600, alaron.PoseOf(CampPoses.SitRear)!.AnchorY);
+        // The pose facing left is patched; the same pose facing right isn't.
+        Assert.Equal(436, alaron.PoseOf(CampPoses.SitProfile, CampFacing.Left)!.AnchorY);
+        Assert.Equal(440, alaron.PoseOf(CampPoses.SitProfile, CampFacing.Right)!.AnchorY);
+        Assert.Equal(3, alaron.Poses.Count);
     }
 }

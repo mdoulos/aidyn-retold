@@ -19,8 +19,10 @@ public partial class PaintedControl : Control
 /// <summary>
 /// Draws the camp screen (<see cref="CampMenu"/>, the remade game's) on a <see cref="UiScreen"/>'s canvas: the campsite's picture
 /// as wide as the screen and panned between the fire centred and its foot (<see cref="CampMenu.Pan"/>); the party's figures at their
-/// slots, each pose's image scaled by the slot's perspective and the figure's stature, mirrored where the arrangement says, or a marker
-/// where a member has no figure yet; the debug overlay of the fire, the pot, the slots and the safe area while the campsite's anchors
+/// slots, each pose's image scaled to the campsite's one canonical height by the slot's perspective and the figure's stature, mirrored
+/// where the arrangement says, lit by the biome's ambient light and by the fire through its normal map (<see cref="FigureShader"/>),
+/// those behind the fire under it (<see cref="PartyBehind"/>) and those in front over it (<see cref="PartyFront"/>), or a marker where
+/// a member has no figure yet; the debug overlay of the fire, the pot, the slots and the safe area while the campsite's anchors
 /// are placeholders (<see cref="CampsiteRecord.Calibrated"/>) or asked for; and the band: the campsite's safe area as a strip of the
 /// pause menu's parchment between two rollers of its 3D scroll (<see cref="PauseScrollView"/>, drawn smaller and its rollers out at the
 /// band's ends), which unrolls and rolls up as the pause menu's does from its Party tab, with the five tabs down its left on slips of
@@ -128,6 +130,14 @@ public partial class CampView : Control
         FrontLight.Painter = PaintGlow;
         FrontLight.SetAnchorsPreset(LayoutPreset.FullRect);
         Front.AddChild(FrontLight);
+        PartyBehind.Painter = PaintPartyBehind;
+        PartyBehind.Material = _figureLight;
+        Campfire.Painter = PaintCampfire;
+        PartyFront.Painter = PaintPartyFront;
+        PartyFront.Material = _figureLight;
+        PartyLight.Painter = PaintGlow;
+        PartyLight.SetAnchorsPreset(LayoutPreset.FullRect);
+        PartyFront.AddChild(PartyLight);
     }
 
     /// <summary>The band's control, cut at the rollers, placed by <see cref="_Draw"/>: the layer puts it over this control and under the scroll.</summary>
@@ -175,6 +185,38 @@ public partial class CampView : Control
         Material = new CanvasItemMaterial { BlendMode = CanvasItemMaterial.BlendModeEnum.Add },
     };
 
+    /// <summary>
+    /// The figures behind the fire (<see cref="PaintPartyBehind"/>), lit (<see cref="FigureShader"/>); the layer puts it over this control,
+    /// which draws the picture, and under <see cref="Campfire"/>.
+    /// </summary>
+    public PaintedControl PartyBehind { get; } = new() { Name = "Camp figures behind the fire", MouseFilter = MouseFilterEnum.Ignore };
+
+    /// <summary>The campfire's art over the figures behind it, the vignette over both and the debug overlay (<see cref="PaintCampfire"/>).</summary>
+    public PaintedControl Campfire { get; } = new() { Name = "Camp campfire", MouseFilter = MouseFilterEnum.Ignore };
+
+    /// <summary>
+    /// The figures in front of the fire (<see cref="PaintPartyFront"/>), lit as those behind it are, over the flames, the embers and the
+    /// front stones, which they stand before; the layer puts it over <see cref="Front"/>. Its child, <see cref="PartyLight"/>, is cut to
+    /// the figures' shapes (ClipChildren).
+    /// </summary>
+    public PaintedControl PartyFront { get; } = new()
+    {
+        Name = "Camp figures in front of the fire",
+        MouseFilter = MouseFilterEnum.Ignore,
+        ClipChildren = ClipChildrenMode.AndDraw,
+    };
+
+    /// <summary>
+    /// The firelight again on the figures in front of the fire only, added to them as <see cref="Glow"/> is to those behind it, which it's
+    /// over, so they're lit alike (<see cref="PaintGlow"/>, cut to <see cref="PartyFront"/>'s figures).
+    /// </summary>
+    public PaintedControl PartyLight { get; } = new()
+    {
+        Name = "Camp figures' firelight",
+        MouseFilter = MouseFilterEnum.Ignore,
+        Material = new CanvasItemMaterial { BlendMode = CanvasItemMaterial.BlendModeEnum.Add },
+    };
+
     /// <summary>Where the picture was drawn last, and its campsite, which the fire is placed on.</summary>
     private Rect2 _fit;
     private CampsiteRecord? _site;
@@ -189,16 +231,20 @@ public partial class CampView : Control
     public Action<MenuAction>? Click { get; set; }
 
     /// <summary>
-    /// Whether the debug buttons are drawn, at the top right: a debug build's. Talk starts a camp talk (<see cref="TalkRequested"/>),
-    /// and Debug shows the technical text and marks that won't be in the game (<see cref="ShowOverlay"/>), off until it's clicked.
+    /// Whether the debug buttons are drawn, at the top right: a debug build's. Poses sits or stands the figures afresh
+    /// (<see cref="PosesRequested"/>), Talk starts a camp talk (<see cref="TalkRequested"/>), and Debug shows the technical text and marks
+    /// that won't be in the game (<see cref="ShowOverlay"/>), off until it's clicked.
     /// </summary>
     public bool DebugButtons { get; set; }
 
     /// <summary>The Talk button was clicked: a camp talk is to show.</summary>
     public Action? TalkRequested { get; set; }
 
-    /// <summary>Where the Talk and Debug buttons were drawn, or empty.</summary>
-    private Rect2 _talkButton, _debugButton;
+    /// <summary>The Poses button was clicked: the figures are to sit or stand afresh, the user's (Nov 7, 2026).</summary>
+    public Action? PosesRequested { get; set; }
+
+    /// <summary>Where the Poses, Talk and Debug buttons were drawn, or empty.</summary>
+    private Rect2 _posesButton, _talkButton, _debugButton;
 
     public override void _Notification(int what)
     {
@@ -240,6 +286,11 @@ public partial class CampView : Control
         else if (button.ButtonIndex == MouseButton.Left && _talkButton.HasArea() && _talkButton.HasPoint(button.Position))
         {
             TalkRequested?.Invoke();
+            AcceptEvent();
+        }
+        else if (button.ButtonIndex == MouseButton.Left && _posesButton.HasArea() && _posesButton.HasPoint(button.Position))
+        {
+            PosesRequested?.Invoke();
             AcceptEvent();
         }
         else if (button.ButtonIndex == MouseButton.Left && _debugButton.HasArea() && _debugButton.HasPoint(button.Position))
@@ -362,6 +413,8 @@ public partial class CampView : Control
         Fire.QueueRedraw();
         Front.QueueRedraw();
         FrontLight.QueueRedraw();
+        PartyLight.QueueRedraw();
+        LightFigures();
     }
 
     public override void _Draw()
@@ -381,18 +434,12 @@ public partial class CampView : Control
         (_fit, _site) = (fit, site);
         if (site is not null && _ui.Images.Get(site.Image) is { } picture)
             DrawTextureRect(picture, fit, false);
-        // The figures behind the fire, the campfire, then the figures in front of it (CampsiteRecord.FireDepth).
-        if (camp.Arrangement is { } behind && site is not null)
-            DrawParty(behind, site, fit, front: false);
-        if (site?.Campfire is { } campfire && _ui.Images.Get(campfire.Image) is { } campfireImage)
-            DrawTextureRect(campfireImage, CampfireRect(campfire, campfireImage, site, fit), false);
-        if (camp.Arrangement is { } inFront && site is not null)
-            DrawParty(inFront, site, fit, front: true);
-        // The vignette as painted: a transparent image with its dark at its own alpha, laid over the picture pixel for pixel.
-        if (site?.Vignette is { } vignette && _ui.Images.Get(vignette) is { } shade)
-            DrawTextureRect(shade, fit, false);
-        if (site is not null && ShowOverlay && !camp.Talking)
-            DrawOverlay(camp, site, fit);
+        // The figures behind the fire, the campfire and the vignette over them, and the figures in front of the fire over its layers
+        // (CampsiteRecord.FireDepth), each on its own control, drawn as the picture pans.
+        PartyBehind.QueueRedraw();
+        Campfire.QueueRedraw();
+        PartyFront.QueueRedraw();
+        LightFigures();
         _band = BandRect(site, fit, size);
         Render(true);
         LayBand(camp);
@@ -486,13 +533,15 @@ public partial class CampView : Control
     /// <summary>The debug marks over everything: the buttons at the top right, and the rule-of-thirds lines over the whole screen, as the user drew them, with the overlay.</summary>
     private void PaintTop(CanvasItem canvas)
     {
-        _talkButton = _debugButton = default;
+        _posesButton = _talkButton = _debugButton = default;
         if (Camp is not { Talking: false } camp)
             return;
         if (DebugButtons && camp.Choice == CampChoice.None && !camp.TalkPending)
         {
             _debugButton = DrawButton(canvas, new Rect2(Size.X - 36, 3, 32, 11), "Debug", ShowOverlay);
             _talkButton = DrawButton(canvas, new Rect2(Size.X - 70, 3, 30, 11), "Talk", false);
+            if (camp.Arrangement is not null)
+                _posesButton = DrawButton(canvas, new Rect2(Size.X - 107, 3, 33, 11), "Poses", false);
         }
         if (ShowOverlay && _ui.Images.Get(Thirds) is { } thirds)
             canvas.DrawTextureRect(thirds, new Rect2(Vector2.Zero, Size), false);
@@ -566,17 +615,49 @@ public partial class CampView : Control
         return new Rect2(at, size);
     }
 
-    /// <summary>The party's figures behind the fire or in front of it, by their slots' depths against the fire's.</summary>
-    private void DrawParty(CampArrangement arrangement, CampsiteRecord site, Rect2 fit, bool front)
+    /// <summary>The campsite and where its picture is drawn now, as this control draws it, or null with none.</summary>
+    private (CampsiteRecord Site, Rect2 Fit)? Scene() =>
+        Camp is { Site: { Width: > 0, Height: > 0 } site } camp ? (site, Fit(site, Size, camp.Pan)) : null;
+
+    /// <summary>The figures behind the fire, under the campfire.</summary>
+    private void PaintPartyBehind(CanvasItem canvas)
     {
-        // A picture pixel's size on the canvas: a figure's image is painted at the picture's own scale, times the slot's and its stature.
+        if (Camp is { Arrangement: { } arrangement } && Scene() is var (site, fit))
+            DrawParty(canvas, arrangement, site, fit, front: false);
+    }
+
+    /// <summary>The campfire's art, over the figures behind the fire; the vignette as painted over both; and the debug overlay.</summary>
+    private void PaintCampfire(CanvasItem canvas)
+    {
+        if (Camp is not { } camp || Scene() is not var (site, fit))
+            return;
+        if (site.Campfire is { } campfire && _ui.Images.Get(campfire.Image) is { } campfireImage)
+            canvas.DrawTextureRect(campfireImage, CampfireRect(campfire, campfireImage, site, fit), false);
+        // The vignette as painted: a transparent image with its dark at its own alpha, laid over the picture pixel for pixel.
+        if (site.Vignette is { } vignette && _ui.Images.Get(vignette) is { } shade)
+            canvas.DrawTextureRect(shade, fit, false);
+        if (ShowOverlay && !camp.Talking)
+            DrawOverlay(canvas, camp, site, fit);
+    }
+
+    /// <summary>The figures in front of the fire, over its layers, with the firelight added to them by their child (<see cref="PartyLight"/>).</summary>
+    private void PaintPartyFront(CanvasItem canvas)
+    {
+        if (Camp is { Arrangement: { } arrangement } && Scene() is var (site, fit))
+            DrawParty(canvas, arrangement, site, fit, front: true);
+    }
+
+    /// <summary>The party's figures behind the fire or in front of it, by their slots' depths against the fire's.</summary>
+    private void DrawParty(CanvasItem canvas, CampArrangement arrangement, CampsiteRecord site, Rect2 fit, bool front)
+    {
+        // A picture pixel's size on the canvas: a figure's image is scaled to the campsite's canonical height, times the slot's and its stature.
         var pixel = fit.Size.X / site.Width;
         foreach (var placement in arrangement.InDrawOrder.Where(p => p.Slot.Depth > CampsiteRecord.FireDepth == front))
         {
             var foot = At(fit, placement.Slot.X, placement.Slot.Y);
-            if (placement.Image is { } pose && _ui.Images.Get(pose.Image) is { } image)
+            if (placement.Image is { } pose && Lit(pose) is { } image)
             {
-                var scale = pixel * placement.Scale;
+                var scale = pixel * placement.PictureScale(site);
                 var width = image.GetWidth() * scale;
                 var height = image.GetHeight() * scale;
                 var anchorX = placement.Mirrored ? image.GetWidth() - pose.AnchorX : pose.AnchorX;
@@ -584,13 +665,13 @@ public partial class CampView : Control
                 var top = foot.Y - pose.AnchorY * scale;
                 // A negative width draws the image mirrored in the same place (UiPainter.Image).
                 var rect = new Rect2(left, top, placement.Mirrored ? -width : width, height);
-                DrawTextureRect(image, rect, false, Tint(site));
+                canvas.DrawTextureRect(image, rect, false, LightData(site, placement.Slot, foot, pixel));
             }
             else if (ShowOverlay)
             {
                 // No figure to draw yet: nothing in the game, and with the overlay a dot on the anchor with who stands there.
-                DrawCircle(foot, 2, Colors.White);
-                _ui.Text(this, Font(UiPainter.FineText), $"{MemberName(placement.Member)}, {Plain(placement.Pose)}{(placement.Mirrored ? " (mirrored)" : "")}", (int)foot.X - 10, (int)foot.Y - 12, Button);
+                canvas.DrawCircle(foot, 2, Colors.White);
+                _ui.Text(canvas, Font(UiPainter.FineText), $"{MemberName(placement.Member)}, {Plain(placement.Pose)}{(placement.Mirrored ? " (mirrored)" : "")}", (int)foot.X - 10, (int)foot.Y - 12, Button);
             }
         }
     }
@@ -911,31 +992,142 @@ public partial class CampView : Control
         return (h & 0xFFFFFF) / (float)0x1000000;
     }
 
-    /// <summary>The biome's ambient tint over the figures, restrained; white with none.</summary>
-    private static Color Tint(CampsiteRecord site) =>
-        site.Ambient is { } a ? new Color(a.R / 255f, a.G / 255f, a.B / 255f, a.A / 255f) : Colors.White;
+    /// <summary>The biome's ambient light on the figures, multiplied into their colours, its alpha unused; white with none.</summary>
+    private static Color Ambient(CampsiteRecord site) =>
+        site.Ambient is { } a ? new Color(a.R / 255f, a.G / 255f, a.B / 255f) : Colors.White;
 
-    private void DrawOverlay(CampMenu camp, CampsiteRecord site, Rect2 fit)
+    // The figures' light, the user's design (Nov 7, 2026; the campsite brief's section 7): each figure's colours times the biome's ambient
+    // light, and the fire's added over it through the figure's normal map, as a point of light among the flames, warm and flickering
+    // with them. The camp's ground is worked out from the picture's perspective, in figure heights (the campsite's one canonical height):
+    // a slot's scale says how much nearer the camera than the fire it is, the camera standing FireDistance from the fire, so a figure in
+    // front of the fire has the fire behind it, and its back, which faces the viewer, takes little of the light and its edges the most,
+    // and one beside the fire has it on the side that faces it. Below a figure's middle the flames are higher than it, above lower.
+
+    /// <summary>
+    /// How far the camera is from the fire, in figure heights: from the ring of the campfire's stones, 182 of the picture's pixels wide
+    /// and about 40 deep, which looks down on it at about 13 degrees, the camera a figure height and a third over the ground.
+    /// </summary>
+    private const float FireDistance = 5.9f;
+
+    /// <summary>
+    /// The ambient light from above and below, times the biome's: what faces up takes a little more of the canopy's light, and what faces
+    /// down a little less, greener, from the grass (the brief's "do not simply tint every pixel the same colour").
+    /// </summary>
+    private static readonly Color FigureAbove = new(1.12f, 1.1f, 1.06f), FigureBelow = new(0.78f, 0.84f, 0.72f);
+
+    /// <summary>
+    /// The fire's light on the figures: its colour, how strong it is at its strongest, how high the flames' middle is over the ground and how far
+    /// off its light has fallen to half, in figure heights, and how far round a figure's edge it wraps.
+    /// </summary>
+    private static readonly Color FigureFireColor = new(1f, 0.6f, 0.3f);
+    private const float FigureFireStrength = 1.2f, FigureFireRise = 0.12f, FigureFireReach = 1.6f, FigureFireWrap = 0.3f;
+
+    /// <summary>
+    /// The figures' shader: the image's colour times the ambient light, more from above than below, plus the fire's, the fire's as much as the image's normal faces it
+    /// and wrapped a little round, falling off with the distance. A figure's own light comes in its draw's colour, which its image isn't
+    /// tinted by (<see cref="LightData"/>): red how far in front of the fire it stands, green how large a figure height is at its slot,
+    /// blue its ground's row. A mirrored image turns its normals with it. Green in a normal map is up.
+    /// </summary>
+    private const string FigureShader = """
+        shader_type canvas_item;
+        render_mode unshaded;
+
+        uniform vec3 ambient = vec3(1.0);
+        uniform vec3 above = vec3(1.0);
+        uniform vec3 below = vec3(1.0);
+        uniform vec3 fire_color = vec3(1.0, 0.6, 0.3);
+        uniform float fire_strength = 0.0;
+        uniform float fire_x = 0.0;
+        uniform float fire_rise = 0.12;
+        uniform float fire_reach = 1.6;
+        uniform float wrap = 0.3;
+
+        varying vec4 figure;
+        varying vec2 at;
+
+        void vertex() {
+            figure = COLOR;
+            at = VERTEX;
+        }
+
+        void fragment() {
+            vec4 albedo = texture(TEXTURE, UV);
+            vec3 n = texture(NORMAL_TEXTURE, UV).rgb * 2.0 - 1.0;
+            n.x *= dFdx(UV.x) < 0.0 ? -1.0 : 1.0;
+            n = normalize(n);
+            float forward = (figure.r - 0.5) * 8.0;
+            float size = max(figure.g * 256.0, 0.001);
+            float ground = figure.b * 512.0 - 128.0;
+            vec3 to_fire = vec3((fire_x - at.x) / size, fire_rise - (ground - at.y) / size, -forward);
+            float d = length(to_fire);
+            float facing = max(0.0, (dot(n, to_fire / max(d, 0.001)) + wrap) / (1.0 + wrap));
+            float falloff = 1.0 / (1.0 + (d / fire_reach) * (d / fire_reach));
+            vec3 sky = ambient * mix(below, above, n.y * 0.5 + 0.5);
+            COLOR = vec4(albedo.rgb * (sky + fire_color * fire_strength * facing * falloff), albedo.a);
+        }
+        """;
+
+    private static readonly Shader FigureLightShader = new() { Code = FigureShader };
+    private readonly ShaderMaterial _figureLight = new() { Shader = FigureLightShader };
+
+    /// <summary>A figure's image with its normal map, made once: the image alone where it has none, which the shader takes as flat.</summary>
+    private readonly Dictionary<RecordId, Texture2D?> _lit = [];
+
+    private Texture2D? Lit(CampPose pose)
+    {
+        if (_lit.TryGetValue(pose.Image, out var made))
+            return made;
+        var image = _ui.Images.Get(pose.Image);
+        if (pose.Normal is { } normal && image is CanvasTexture { DiffuseTexture: { } diffuse } && _ui.Images.Get(normal) is CanvasTexture { DiffuseTexture: { } map })
+            image = new CanvasTexture { DiffuseTexture = diffuse, NormalTexture = map, TextureFilter = TextureFilterEnum.LinearWithMipmaps };
+        return _lit[pose.Image] = image;
+    }
+
+    /// <summary>A figure's own light, in its draw's colour for the shader: how far in front of the fire its slot is, how large a figure height is there, and its ground's row.</summary>
+    private static Color LightData(CampsiteRecord site, CampSlot slot, Vector2 foot, float pixel)
+    {
+        var forward = slot.Scale > 0 ? FireDistance * (1 - 1 / slot.Scale) : 0;
+        var height = pixel * (site.FigureHeight > 0 ? site.FigureHeight : 230) * slot.Scale;
+        return new Color(Math.Clamp(forward / 8 + 0.5f, 0, 1), Math.Clamp(height / 256, 0, 1), Math.Clamp((foot.Y + 128) / 512, 0, 1));
+    }
+
+    /// <summary>The figures' light as the fire burns now: the biome's ambient, the fire's place and its strength, every frame.</summary>
+    private void LightFigures()
+    {
+        if (Scene() is not var (site, fit))
+            return;
+        _figureLight.SetShaderParameter("ambient", Ambient(site));
+        _figureLight.SetShaderParameter("above", FigureAbove);
+        _figureLight.SetShaderParameter("below", FigureBelow);
+        _figureLight.SetShaderParameter("fire_color", FigureFireColor);
+        _figureLight.SetShaderParameter("fire_strength", FigureFireStrength * FireStrength(Seconds));
+        _figureLight.SetShaderParameter("fire_x", At(fit, site.Fire.X, site.Fire.Y).X);
+        _figureLight.SetShaderParameter("fire_rise", FigureFireRise);
+        _figureLight.SetShaderParameter("fire_reach", FigureFireReach);
+        _figureLight.SetShaderParameter("wrap", FigureFireWrap);
+    }
+
+    private void DrawOverlay(CanvasItem canvas, CampMenu camp, CampsiteRecord site, Rect2 fit)
     {
         var green = new Color(Overlay.R / 255f, Overlay.G / 255f, Overlay.B / 255f);
         var fire = At(fit, site.Fire.X, site.Fire.Y);
-        DrawLine(fire - new Vector2(6, 0), fire + new Vector2(6, 0), Colors.OrangeRed, 1);
-        DrawLine(fire - new Vector2(0, 6), fire + new Vector2(0, 6), Colors.OrangeRed, 1);
+        canvas.DrawLine(fire - new Vector2(6, 0), fire + new Vector2(6, 0), Colors.OrangeRed, 1);
+        canvas.DrawLine(fire - new Vector2(0, 6), fire + new Vector2(0, 6), Colors.OrangeRed, 1);
         if (site.Pot is { } pot)
-            DrawArc(At(fit, pot.X, pot.Y), 4, 0, Mathf.Tau, 16, Colors.Orange, 1);
+            canvas.DrawArc(At(fit, pot.X, pot.Y), 4, 0, Mathf.Tau, 16, Colors.Orange, 1);
         if (site.SafeUi is { } safe)
-            DrawRect(new Rect2(At(fit, safe.X, safe.Y), new Vector2(fit.Size.X * safe.Width, fit.Size.Y * safe.Height)), green with { A = 0.6f }, false, 1);
+            canvas.DrawRect(new Rect2(At(fit, safe.X, safe.Y), new Vector2(fit.Size.X * safe.Width, fit.Size.Y * safe.Height)), green with { A = 0.6f }, false, 1);
         var fine = Font(UiPainter.FineText);
         var taken = camp.Arrangement?.Placements.ToDictionary(p => p.Slot.Id, p => p) ?? [];
         foreach (var slot in site.Slots)
         {
             var at = At(fit, slot.X, slot.Y);
             var used = taken.ContainsKey(slot.Id);
-            DrawArc(at, 3, 0, Mathf.Tau, 12, used ? green : green with { A = 0.5f }, 1);
-            DrawLine(at - new Vector2(0, 3), at + new Vector2(0, 3), green with { A = 0.6f }, 1);
+            canvas.DrawArc(at, 3, 0, Mathf.Tau, 12, used ? green : green with { A = 0.5f }, 1);
+            canvas.DrawLine(at - new Vector2(0, 3), at + new Vector2(0, 3), green with { A = 0.6f }, 1);
             if (slot.Interaction is { } hand)
-                DrawLine(at, At(fit, hand.X, hand.Y), Colors.Orange with { A = 0.5f }, 1);
-            _ui.Text(this, fine, $"{Plain(slot.Id)} x{slot.Scale:0.00} d{slot.Depth}", (int)at.X + 4, (int)at.Y - 4, used ? Overlay : Dim);
+                canvas.DrawLine(at, At(fit, hand.X, hand.Y), Colors.Orange with { A = 0.5f }, 1);
+            _ui.Text(canvas, fine, $"{Plain(slot.Id)} x{slot.Scale:0.00} d{slot.Depth}", (int)at.X + 4, (int)at.Y - 4, used ? Overlay : Dim);
         }
         var line = 2;
         var lines = new List<(string Text, Rgba Color)>
@@ -950,7 +1142,7 @@ public partial class CampView : Control
             lines.Add((note, Warn));
         foreach (var (text, color) in lines)
         {
-            _ui.Text(this, fine, text, 3, line, color);
+            _ui.Text(canvas, fine, text, 3, line, color);
             line += 7;
         }
     }
@@ -1336,9 +1528,14 @@ public partial class CampLayer : CanvasLayer
         _scroll = PauseScrollView.Create(plugins, _models);
         _view = new CampView(plugins, _scroll) { Click = _screen.Click };
         _view.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-        // The picture, the flames behind the pot and the pot, the firelight, the fire in front over it and the front stones with their
-        // own firelight, then the band, the rollers over the band's edges, and the debug marks over all.
+        // The picture with the figures behind the fire and the campfire, the flames behind the pot and the pot, the firelight, the fire
+        // in front over it, the front stones with their own firelight and the figures in front of the fire with theirs, then the band,
+        // the rollers over the band's edges, and the debug marks over all.
         _screen.Canvas.AddChild(_view);
+        _view.PartyBehind.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        _screen.Canvas.AddChild(_view.PartyBehind);
+        _view.Campfire.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        _screen.Canvas.AddChild(_view.Campfire);
         _view.FireBehind.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         _screen.Canvas.AddChild(_view.FireBehind);
         _view.Glow.SetAnchorsPreset(Control.LayoutPreset.FullRect);
@@ -1347,6 +1544,8 @@ public partial class CampLayer : CanvasLayer
         _screen.Canvas.AddChild(_view.Fire);
         _view.Front.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         _screen.Canvas.AddChild(_view.Front);
+        _view.PartyFront.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        _screen.Canvas.AddChild(_view.PartyFront);
         _screen.Canvas.AddChild(_view.Band);
         if (_scroll is not null)
         {
@@ -1397,6 +1596,13 @@ public partial class CampLayer : CanvasLayer
     {
         add => _view.TalkRequested += value;
         remove => _view.TalkRequested -= value;
+    }
+
+    /// <summary>The debug Poses button was clicked: the figures are to sit or stand afresh (<see cref="Core.GameSession.ReposeCamp"/>).</summary>
+    public event Action? PosesRequested
+    {
+        add => _view.PosesRequested += value;
+        remove => _view.PosesRequested -= value;
     }
 
     /// <summary>Whether the debug overlay is drawn whatever the campsite says.</summary>

@@ -154,6 +154,9 @@ public sealed class GameSession
     /// <summary>Trek's music as the camp opened, which comes back as it closes (<see cref="CampsiteRecord.Music"/>).</summary>
     private RecordId? _musicBeforeCamp;
 
+    /// <summary>The stream the debug Poses button draws the camp's poses from, begun from the camp's seed as it opens (<see cref="ReposeCamp"/>).</summary>
+    private Rng.Lcg _campPoses = new();
+
     /// <summary>How many ticks the campsite's loop fades in and out over: a second.</summary>
     public const int CampLoopFadeTicks = 60;
 
@@ -312,6 +315,12 @@ public sealed class GameSession
 
     /// <summary>Whether the cinematic stands still where it is, not stepped, for a screenshot.</summary>
     public bool CinematicHeld { get; set; }
+
+    /// <summary>
+    /// A figure the camp shows at every slot it fits in place of the party (<see cref="CampArranger.Preview"/>), for judging its art
+    /// round the fire: a launch's (<c>--camp-figure</c>), none in the game.
+    /// </summary>
+    public RecordId? CampFigure { get; set; }
 
     /// <summary>The installed plugins' triggers, which the session fires its events on (roadmap 2.10).</summary>
     public Triggers Triggers => _triggers ??= LoadTriggers();
@@ -1047,7 +1056,13 @@ public sealed class GameSession
         var seed = CampSeed.Of(day, chunk is { } here ? $"{here.MapSet}/{here.Row},{here.Column}" : "", party);
         var site = CampsiteRecord.For(Game.Plugins, terrain);
         var figures = Game.Plugins.All<CampFigureRecord>(RecordTypes.CampFigure).GroupBy(f => f.Entity).ToDictionary(g => g.Key, g => g.First());
-        var arrangement = site is null ? null : CampArranger.Arrange(site, party, id => figures.GetValueOrDefault(id), seed);
+        var preview = CampFigure is { } shown ? Game.Plugins.TryGet<CampFigureRecord>(shown) : null;
+        if (CampFigure is { } missing && preview is null)
+            _host.Log($"Camp: no figure {missing} to show.");
+        var arrangement = site is null ? null
+            : preview is not null ? CampArranger.Preview(site, preview, seed)
+            : CampArranger.Arrange(site, party, id => figures.GetValueOrDefault(id), seed);
+        _campPoses = new Rng.Lcg(seed ^ 0x9E3779B9);
         foreach (var note in arrangement?.Diagnostics ?? [])
             _host.Log($"Camp at {site!.Id}: {note}");
         var recipes = Game.Plugins.All<RecipeRecord>(RecordTypes.Recipe).ToList();
@@ -1190,6 +1205,18 @@ public sealed class GameSession
     /// (<see cref="StepCamp"/>); the band comes back as it ends. Whether the band took it.
     /// </summary>
     public bool TriggerCampTalk() => Camp is { } camp && camp.RequestTalk();
+
+    /// <summary>
+    /// The camp screen's debug Poses button, the user's (Nov 7, 2026): every figure round the fire sits or stands afresh, in a pose chosen
+    /// at random among those it has at its slot, everyone where they were (<see cref="CampArranger.Repose"/>). Whether there was a camp.
+    /// </summary>
+    public bool ReposeCamp()
+    {
+        if (Camp is not { Arrangement: { } arrangement } camp)
+            return false;
+        camp.Arrangement = CampArranger.Repose(arrangement, _campPoses);
+        return true;
+    }
 
     /// <summary>
     /// A tick of the campsite's loop, under the camp screen and the pause menu over it alike (<see cref="CampsiteRecord.Sound"/>): it

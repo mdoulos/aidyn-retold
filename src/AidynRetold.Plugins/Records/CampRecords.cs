@@ -11,7 +11,10 @@ namespace AidynRetold.Plugins.Records;
 /// <param name="Order">Where it comes in the camp screen's list; ties by ID.</param>
 public sealed record CampActivityRecord(RecordId Id, string Name, RecordId Skill, string? Description = null, int Order = 0);
 
-/// <summary>Which way a figure faces on the screen: toward the left or right edge, or away from the viewer, into the picture.</summary>
+/// <summary>
+/// Which way a figure faces on the screen: toward the left or right edge, in profile or turned away from the viewer toward that side,
+/// or straight away from the viewer, into the picture.
+/// </summary>
 public enum CampFacing
 {
     Left,
@@ -48,9 +51,12 @@ public static class CampPoses
     /// <summary>Whether the figure sits in the pose, so its apparent height is a seated one's, never scaled to a standing one's.</summary>
     public static bool IsSeated(string pose) => pose is SitProfile or SitRear3Q or SitRear or TendFire;
 
-    /// <summary>The facings a pose can be drawn in: a profile faces left or right, and the rest away.</summary>
+    /// <summary>
+    /// The facings a pose can be drawn in: a profile or a three-quarter rear faces left or right, toward the fire, and the rest away. A
+    /// figure in front of the fire and to its left turns away from the viewer to the right, as the user's art has it (Nov 7, 2026).
+    /// </summary>
     public static IReadOnlyList<CampFacing> FacingsOf(string pose) =>
-        pose is StandProfile or SitProfile ? [CampFacing.Left, CampFacing.Right] : [CampFacing.Away];
+        pose is StandProfile or SitProfile or StandRear3Q or SitRear3Q ? [CampFacing.Left, CampFacing.Right] : [CampFacing.Away];
 }
 
 /// <summary>A point in a campsite's picture, as a share of its width and height, 0 to 1.</summary>
@@ -113,7 +119,10 @@ public sealed record CampLayout(int Size, IReadOnlyList<string> Slots);
 /// </param>
 /// <param name="SafeUi">Where the menu may be drawn without covering the fire or the figures.</param>
 /// <param name="Terrains">The terrains (<c>aidyn:terrain/n</c>'s indices) this campsite is shown on; a campsite with none is the fallback for the rest.</param>
-/// <param name="Ambient">A tint laid over the figures for the biome's light, restrained; none leaves them as painted.</param>
+/// <param name="Ambient">
+/// The biome's light on the figures, multiplied into their colours, restrained, its alpha unused; none leaves them as painted. The
+/// fire's own light comes over it.
+/// </param>
 /// <param name="Calibrated">
 /// Whether the anchors were measured on the picture in the engine, rather than written as placeholders. The camp screen's debug
 /// overlay says so while they aren't.
@@ -135,6 +144,11 @@ public sealed record CampLayout(int Size, IReadOnlyList<string> Slots);
 /// The campfire, for a picture with none painted in: laid over the picture with its fire's middle on <paramref name="Fire"/>, under the
 /// screen's own flames, smoke and embers.
 /// </param>
+/// <param name="FigureHeight">
+/// The one canonical height (the campsite brief's section 4): how tall a standing figure of stature 1 is at a slot of scale 1, the fire's
+/// depth, in the picture's pixels. A figure's images are scaled to it by the figure's own height in them (<see cref="CampFigureRecord.Height"/>);
+/// 0 draws them at the picture's own scale.
+/// </param>
 public sealed record CampsiteRecord(
     RecordId Id,
     string Name,
@@ -153,7 +167,8 @@ public sealed record CampsiteRecord(
     RecordId? Sound = null,
     float SoundVolume = 1,
     RecordId? Music = null,
-    CampfireArt? Campfire = null)
+    CampfireArt? Campfire = null,
+    float FigureHeight = 0)
 {
     /// <summary>The depth the fire stands at among the slots': a slot under it is drawn behind the campfire, one over it in front.</summary>
     public const int FireDepth = 100;
@@ -201,15 +216,26 @@ public sealed record CampPose(string Pose, RecordId Image, int AnchorX, int Anch
 /// </summary>
 /// <param name="Entity">Whose figure it is.</param>
 /// <param name="Stature">The character's height against the one canonical height, 1: a big man above it, a child below.</param>
-/// <param name="Poses">The poses it has, each once.</param>
+/// <param name="Poses">
+/// Its images, each pose once in each facing it's painted in, keyed by both: a figure whose gear differs side to side, as Alaron's
+/// one pauldron does, is painted facing each way rather than mirrored (the user's sheets, Nov 7, 2026).
+/// </param>
+/// <param name="Height">
+/// Its standing height in its images' pixels, crown to soles, all its images painted at one scale: the campsite scales it to its
+/// <see cref="CampsiteRecord.FigureHeight"/>. 0, its images are painted at the picture's own scale.
+/// </param>
 public sealed record CampFigureRecord(
     RecordId Id,
     RecordId Entity,
-    [property: KeyedList(nameof(CampPose.Pose))] IReadOnlyList<CampPose> Poses,
-    float Stature = 1)
+    [property: KeyedList(nameof(CampPose.Pose), nameof(CampPose.Facing))] IReadOnlyList<CampPose> Poses,
+    float Stature = 1,
+    float Height = 0)
 {
-    /// <summary>The figure's image for a pose, or null if it hasn't one.</summary>
+    /// <summary>The figure's first image of a pose, whichever way it faces, or null if it hasn't one.</summary>
     public CampPose? PoseOf(string pose) => Poses.FirstOrDefault(p => p.Pose == pose);
+
+    /// <summary>The figure's image of a pose painted facing a way, or null if it hasn't one.</summary>
+    public CampPose? PoseOf(string pose, CampFacing facing) => Poses.FirstOrDefault(p => p.Pose == pose && p.Facing == facing);
 }
 
 /// <summary>

@@ -52,6 +52,10 @@ are the remake's look ([options](options.md#graphic-quality)).
   front logs laid again over the flames that burn behind them and its front stones over all the flames, animated flames, smoke and
   embers, and firelight added over it, so another biome or another fire changes a piece, not the painting
   ([camping](../systems/camping.md#the-camp-screen)).
+- **The party sits or stands round the camp's fire**, each figure the user's art painted both ways and in the forest's light: a little
+  brighter from above and greener from below, and warm on the side that faces the fire, which flickers with it, through the user's
+  normal maps; one in front of the fire has its back in shadow and its edges lit. Alaron's is the first
+  ([camping](../systems/camping.md#the-camp-screen)).
 
 - **Redrawn pictures.** Aidyn ReChronicled's redrawn portraits, item icons, empty slots, titles and HUD pieces stand in the original's, drawn
   at the original's size and sharper ([ADR 0034](../adr/0034-retold-and-rechronicled-collaborate.md), [ui](../systems/ui.md#the-ports-layout)).

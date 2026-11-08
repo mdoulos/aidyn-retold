@@ -154,7 +154,8 @@ public sealed class CampMenu
 
     public CampsiteRecord? Site { get; }
 
-    public CampArrangement? Arrangement { get; }
+    /// <summary>The party round the fire, which the debug Poses button changes (<see cref="GameSession.ReposeCamp"/>).</summary>
+    public CampArrangement? Arrangement { get; set; }
 
     /// <summary>The camp's seed (<see cref="CampSeed"/>), which the arrangement was chosen by and the night's talk was.</summary>
     public uint Seed { get; init; }

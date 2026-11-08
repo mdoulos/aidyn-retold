@@ -19,6 +19,14 @@ public sealed record CampPlacement(RecordId Member, CampSlot Slot, string Pose, 
 
     /// <summary>How large the figure is drawn: the slot's perspective scale times the figure's stature.</summary>
     public float Scale => Slot.Scale * (Figure?.Stature ?? 1);
+
+    /// <summary>
+    /// How many of the picture's pixels one of the image's is drawn over (the campsite brief's section 4): the scale, times the campsite's
+    /// one canonical height over the figure's own height in its images, where both are given, else 1, the images being painted at the
+    /// picture's scale.
+    /// </summary>
+    public float PictureScale(CampsiteRecord site) =>
+        Scale * (site.FigureHeight > 0 && Figure is { Height: > 0 } figure ? site.FigureHeight / figure.Height : 1);
 }
 
 /// <summary>A party's arrangement at a campsite: a layout, each member at one slot, and what the arranging had to say.</summary>
@@ -89,7 +97,7 @@ public static class CampArranger
         if (candidates.Count > 0)
         {
             // Start where the seed says and go round; the last camp's layout, if another is to be had, comes last.
-            var start = (int)(random.Next() % (uint)candidates.Count);
+            var start = (int)random.Below((uint)candidates.Count);
             var order = Enumerable.Range(0, candidates.Count).Select(i => candidates[(start + i) % candidates.Count]).ToList();
             if (avoid is not null && order.Count > 1 && order.FirstOrDefault(l => l.Slots.SequenceEqual(avoid.Slots)) is { } last)
             {
@@ -143,7 +151,7 @@ public static class CampArranger
         var figure = figures[member];
         // The free slots, tried from where the seed says, so who sits where varies with the day.
         var free = layout.Slots.Where((_, i) => placements[i] is null).Select(id => site.Slot(id)!).ToList();
-        var start = (int)(random.Next() % (uint)free.Count);
+        var start = (int)random.Below((uint)free.Count);
         for (var k = 0; k < free.Count; k++)
         {
             var slot = free[(start + k) % free.Count];
@@ -168,18 +176,55 @@ public static class CampArranger
         return false;
     }
 
-    /// <summary>The poses a figure can take at a slot, with whether each is mirrored: as painted first, mirrored after, in the slot's order of preference.</summary>
+    /// <summary>
+    /// The poses a figure can take at a slot, in the slot's order of preference, each once: its image painted facing the slot's way, else
+    /// one mirrored to face it where both allow.
+    /// </summary>
     private static IEnumerable<(string Pose, bool Mirrored, CampPose Image)> Options(CampFigureRecord figure, CampSlot slot)
     {
         foreach (var pose in slot.Poses)
         {
-            if (figure.PoseOf(pose) is not { } image)
-                continue;
-            if (image.Facing == slot.Facing)
-                yield return (pose, false, image);
-            else if (image.Mirror && slot.Mirror && image.Facings.Contains(slot.Facing))
-                yield return (pose, true, image);
+            if (figure.PoseOf(pose, slot.Facing) is { } painted)
+                yield return (pose, false, painted);
+            else if (slot.Mirror && figure.Poses.FirstOrDefault(p => p.Pose == pose && p.Mirror && p.Facings.Contains(slot.Facing)) is { } flipped)
+                yield return (pose, true, flipped);
         }
+    }
+
+    /// <summary>
+    /// A figure at every slot of a campsite it fits, in place of the party, each in a pose the seed chooses among those it has there: for
+    /// judging a figure's art round the fire (<c>--camp-figure</c>, a launch's), as the user asked for Alaron's (Nov 7, 2026).
+    /// </summary>
+    public static CampArrangement Preview(CampsiteRecord site, CampFigureRecord figure, uint seed)
+    {
+        var random = new Lcg(seed);
+        var placements = new List<CampPlacement>();
+        foreach (var slot in site.Slots)
+        {
+            if (Fit(figure, slot, random) is var (pose, mirrored, image))
+                placements.Add(new CampPlacement(figure.Entity, slot, pose, slot.Facing, mirrored, figure, image));
+        }
+        List<string> notes = placements.Count == 0 ? [$"{figure.Id} fits none of {site.Id}'s slots."] : [];
+        return new CampArrangement(site, new CampLayout(placements.Count, [.. placements.Select(p => p.Slot.Id)]), placements, notes, Fallback: false);
+    }
+
+    /// <summary>
+    /// The arrangement with each figure's pose chosen afresh among those it has at its slot, everyone where they were: the debug Poses
+    /// button's, the user's (Nov 7, 2026). Drawn again until a pose changes, where one can.
+    /// </summary>
+    public static CampArrangement Repose(CampArrangement arrangement, IRandom random)
+    {
+        const int Tries = 16;
+        var placements = arrangement.Placements;
+        for (var attempt = 0; attempt < Tries; attempt++)
+        {
+            placements = [.. arrangement.Placements.Select(p => p.Figure is { } figure && Fit(figure, p.Slot, random) is var (pose, mirrored, image)
+                ? p with { Pose = pose, Mirrored = mirrored, Image = image }
+                : p)];
+            if (placements.Zip(arrangement.Placements).Any(pair => pair.First.Pose != pair.Second.Pose))
+                break;
+        }
+        return arrangement with { Placements = placements };
     }
 
     /// <summary>One of a figure's options at a slot, chosen by the seed, or the preferred pose if it's among them; null with none.</summary>
@@ -190,14 +235,14 @@ public static class CampArranger
             return null;
         if (prefer is not null && options.FirstOrDefault(o => o.Pose == prefer) is { Image: not null } preferred)
             return preferred;
-        return options[(int)(random.Next() % (uint)options.Count)];
+        return options[(int)random.Below((uint)options.Count)];
     }
 
     private static void Shuffle<T>(IList<T> list, IRandom random)
     {
         for (var i = list.Count - 1; i > 0; i--)
         {
-            var j = (int)(random.Next() % (uint)(i + 1));
+            var j = (int)random.Below((uint)(i + 1));
             (list[i], list[j]) = (list[j], list[i]);
         }
     }

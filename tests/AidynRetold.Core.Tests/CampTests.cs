@@ -24,9 +24,9 @@ public class CampTests
         [
             new CampSlot("left_profile", 0.38f, 0.64f, 0.95f, 20, [CampPoses.SitProfile, CampPoses.StandProfile], CampFacing.Right, mirror),
             new CampSlot("right_profile", 0.62f, 0.64f, 0.95f, 20, [CampPoses.SitProfile, CampPoses.StandProfile], CampFacing.Left, mirror),
-            new CampSlot("rear_left", 0.44f, 0.55f, 0.85f, 10, [CampPoses.SitRear3Q, CampPoses.StandRear3Q], CampFacing.Away),
+            new CampSlot("rear_left", 0.44f, 0.55f, 0.85f, 10, [CampPoses.SitRear3Q, CampPoses.StandRear3Q], CampFacing.Right, mirror),
             new CampSlot("rear_center", 0.51f, 0.54f, 0.84f, 10, [CampPoses.SitRear, CampPoses.StandRear, CampPoses.StandRear3Q], CampFacing.Away),
-            new CampSlot("rear_right", 0.58f, 0.55f, 0.85f, 10, [CampPoses.SitRear3Q, CampPoses.StandRear3Q], CampFacing.Away),
+            new CampSlot("rear_right", 0.58f, 0.55f, 0.85f, 10, [CampPoses.SitRear3Q, CampPoses.StandRear3Q], CampFacing.Left, mirror),
             new CampSlot("near_left", 0.42f, 0.70f, 1.05f, 30, [CampPoses.SitRear, CampPoses.SitRear3Q], CampFacing.Away),
             new CampSlot("tend", 0.47f, 0.66f, 1f, 25, [CampPoses.TendFire], CampFacing.Away, Interaction: new CampPoint(0.5f, 0.58f)),
         ],
@@ -40,7 +40,7 @@ public class CampTests
         ],
         Pot: new CampPoint(0.5f, 0.58f), Terrains: [0, 3, 4]);
 
-    /// <summary>A figure with every pose, its profiles painted facing right and mirrorable.</summary>
+    /// <summary>A figure with every pose, its profiles and three-quarter rears painted facing right and mirrorable.</summary>
     private static CampFigureRecord Figure(RecordId entity, bool mirror = true, params string[] poses) => new(
         RecordId.Parse($"acre:campfigure/{entity.Key.ToLowerInvariant()}"), entity,
         [.. (poses.Length == 0 ? CampPoses.All : poses).Select(p => new CampPose(p, Image($"{entity.Key}_{p}"), 100, 300,
@@ -192,6 +192,86 @@ public class CampTests
         Assert.Equal(depths.Order(), depths);
         var abrecan = Assert.Single(arrangement.Placements, p => p.Member == Abrecan);
         Assert.Equal(abrecan.Slot.Scale * 1.15f, abrecan.Scale, 0.0001f);
+        // Images painted at the picture's scale are drawn at it; with the campsite's canonical height and the figure's own in its images,
+        // scaled from one to the other (the user's Alaron, 718 tall in his, to the forest's 230).
+        Assert.Equal(abrecan.Scale, abrecan.PictureScale(site), 0.0001f);
+        var scaled = abrecan with { Figure = big with { Height = 718 } };
+        Assert.Equal(abrecan.Scale, scaled.PictureScale(site), 0.0001f);
+        Assert.Equal(abrecan.Scale * 230f / 718, scaled.PictureScale(site with { FigureHeight = 230 }), 0.0001f);
+    }
+
+    /// <summary>The user's Alaron (Nov 7, 2026): each pose painted facing both ways, never mirrored, as his one pauldron can't be.</summary>
+    private static CampFigureRecord BothWays(RecordId entity) => new(
+        RecordId.Parse($"acre:campfigure/{entity.Key.ToLowerInvariant()}"), entity,
+        [.. new[] { CampPoses.StandProfile, CampPoses.SitProfile, CampPoses.StandRear3Q, CampPoses.SitRear3Q }
+            .SelectMany(p => new[] { CampFacing.Right, CampFacing.Left }.Select(f => new CampPose(p, Image($"{entity.Key}_{p}_{f}"), 100, 300, f)))],
+        Height: 718);
+
+    [Fact]
+    public void AFigurePaintedBothWaysTakesEachSideAsPaintedAndThreeQuarterRearsFaceTheFire()
+    {
+        Assert.Equal([CampFacing.Left, CampFacing.Right], CampPoses.FacingsOf(CampPoses.SitRear3Q));
+        Assert.Equal([CampFacing.Away], CampPoses.FacingsOf(CampPoses.SitRear));
+        var figure = BothWays(Alaron);
+        Assert.Equal(Image($"{Alaron.Key}_{CampPoses.SitProfile}_{CampFacing.Left}"), figure.PoseOf(CampPoses.SitProfile, CampFacing.Left)!.Image);
+        Assert.Null(figure.PoseOf(CampPoses.SitRear, CampFacing.Away));
+        // Where the slots don't allow mirroring, each side still takes the image painted facing its way.
+        var site = Forest(mirror: false);
+        foreach (var id in new[] { "left_profile", "right_profile", "rear_left", "rear_right" })
+            Assert.True(CampArranger.Fits(figure, site.Slot(id)!), id);
+        Assert.False(CampArranger.Fits(figure, site.Slot("rear_center")!));
+        var four = CampArranger.Arrange(site, [Alaron, Brenna, Sholeh, Abrecan], _ => figure, 21);
+        Assert.False(four.Fallback);
+        Assert.All(four.Placements, p =>
+        {
+            Assert.False(p.Mirrored);
+            Assert.Equal(p.Slot.Facing, p.Image!.Facing);
+        });
+    }
+
+    [Fact]
+    public void ThePreviewShowsAFigureAtEverySlotItFitsAndTheSeedSitsOrStandsEachOneOnItsOwn()
+    {
+        var site = Forest();
+        var figure = BothWays(Alaron);
+        var preview = CampArranger.Preview(site, figure, 1234);
+        Assert.Equal(["left_profile", "right_profile", "rear_left", "rear_right"], preview.Placements.Select(p => p.Slot.Id));
+        Assert.Equal(preview.Placements.Select(p => p.Slot.Id), preview.Layout.Slots);
+        Assert.Empty(preview.Diagnostics);
+        Assert.All(preview.Placements, p =>
+        {
+            Assert.Equal(Alaron, p.Member);
+            Assert.Contains(p.Pose, p.Slot.Poses);
+            Assert.Equal(p.Slot.Facing, p.Image!.Facing);
+        });
+        // The seed chooses each slot's pose by its high bits, so the four aren't tied to each other: over a run of seeds, most of the
+        // sixteen ways the four can sit or stand turn up, where the generator's low bit alone would alternate them.
+        var ways = Enumerable.Range(0, 64).Select(seed => string.Join(",", CampArranger.Preview(site, figure, (uint)(seed * 7919 + 1)).Placements.Select(p => p.Pose))).Distinct().Count();
+        Assert.True(ways >= 12, $"{ways} ways");
+        // A figure that fits nowhere is shown nowhere, and that's said.
+        var tender = Figure(Alaron, true, CampPoses.TendFire) with { Poses = [] };
+        Assert.Contains(CampArranger.Preview(site, tender, 1).Diagnostics, d => d.Contains("fits none", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ReposingSitsOrStandsTheFiguresAfreshWhereTheyAreAndChangesAPoseEachTime()
+    {
+        var site = Forest();
+        var figure = BothWays(Alaron);
+        var arrangement = CampArranger.Arrange(site, [Alaron, Brenna, Sholeh, Abrecan], _ => figure, 8);
+        var random = new Rng.Lcg(99);
+        for (var press = 0; press < 20; press++)
+        {
+            var reposed = CampArranger.Repose(arrangement, random);
+            Assert.Equal(arrangement.Layout, reposed.Layout);
+            Assert.Equal(arrangement.Placements.Select(p => (p.Member, p.Slot.Id)), reposed.Placements.Select(p => (p.Member, p.Slot.Id)));
+            Assert.Contains(reposed.Placements.Zip(arrangement.Placements), pair => pair.First.Pose != pair.Second.Pose);
+            Assert.All(reposed.Placements, p => Assert.Equal(p.Pose, p.Image!.Pose));
+            arrangement = reposed;
+        }
+        // One with nothing to change keeps it, a member with no figure kept as they were.
+        var lone = CampArranger.Arrange(site, [Alaron, Brenna], id => id == Alaron ? Figure(Alaron, true, CampPoses.SitProfile, CampPoses.SitRear) : null, 4);
+        Assert.Equal(lone.Placements, CampArranger.Repose(lone, random).Placements);
     }
 
     private static CampTalkRecord Talk(string name, RecordId[]? members = null, RecordId[]? anyone = null, FlagGate[]? flags = null, int[]? terrains = null,

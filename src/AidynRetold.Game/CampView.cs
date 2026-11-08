@@ -912,10 +912,10 @@ public partial class CampView : Control
     /// from the fire, long, flickering with it. Each is a soft blob on the ground from the figure's feet, as wide as its body and a little
     /// of its width, darkest near the feet and fading at its far end and across its edges, laid on the picture's ground so it widens toward
     /// the camera, scaled to the figure as drawn; the sun's is lighter where it runs into the ring between the party and the fire, the
-    /// firelight washing it out (<see cref="Ring"/>). Drawn as a mesh of soft vertices. The user's ask (Nov 8, 2026), as a figure's main
-    /// shadow starts under the middle of its image and left a sitting figure's feet with none: one more for each foot its pose names
-    /// (<see cref="CampPose.Feet"/>), the strongest light's alone: a dark pool along the sole and a trail from it along that light's way,
-    /// blending into the rest, darkest at the sole and fading from it.
+    /// firelight washing it out (<see cref="Ring"/>). Drawn as a mesh of soft vertices. That's for the bulk of the body. The user's ask
+    /// (Nov 8, 2026): anything that touches the ground casts one of its own, each foot and a sitting figure's seat
+    /// (<see cref="CampPose.Contacts"/>), the strongest light's alone: a dark pool along where it touches and a trail from it along that
+    /// light's way, blending into the rest, darkest at the spot it touches and fading from it.
     /// </summary>
     private void CastShadows(CanvasItem canvas, CampsiteRecord site, Rect2 fit, CampLight light, CampPlacement placement, CampFigureRecord figure,
         Texture2D image, Rect2 area, float bottom, float ring)
@@ -960,19 +960,19 @@ public partial class CampView : Control
                 continue;
             }
             Blob(canvas, ground, start, away, length, breadth, caster.Darkness, caster.Light == CampLightKind.Sun ? ring : 0);
-            if (caster != casters[0] || placement.Image?.Feet is not { } feet)
+            if (caster != casters[0] || placement.Image?.Contacts is not { } contacts)
                 continue;
-            // The feet's, on the ground at each sole. No ring: it's the feet's own contact with the ground, and a sitting figure's are inside it.
+            // What touches the ground, at each spot. No ring: it's the figure's own contact with the ground, and a sitting figure's feet are inside it.
             var pixel = area.Size.Y / image.GetHeight();
-            foreach (var sole in feet)
+            foreach (var contact in contacts)
             {
-                var at = area.Position + new Vector2(placement.Mirrored ? image.GetWidth() - sole.X : sole.X, sole.Y) * pixel;
+                var at = area.Position + new Vector2(placement.Mirrored ? image.GetWidth() - contact.X : contact.X, contact.Y) * pixel;
                 if (at.Y <= ground.Horizon)
                     continue;
-                // A pool along the sole, as a sole is too long for the trail alone to reach its toe and heel, and the trail away from the light.
-                var pool = new Vector2(sole.Width * pixel * FootPoolWide, sole.Width * pixel * FootPoolWide * FootPoolFlat);
-                canvas.DrawTextureRect(FootPool, new Rect2(at - pool / 2, pool), false, new Color(0, 0, 0, Math.Min(1, caster.Darkness * FootPoolDark)));
-                Blob(canvas, ground, ground.ToGround(at), away, length * FootShadowLength, sole.Width / figure.Height * drawn * FootShadowWide,
+                // A pool along it, as a sole or a seat is too long for the trail alone to reach its ends, and the trail away from the light.
+                var pool = new Vector2(contact.Width * pixel * ContactPoolWide, contact.Width * pixel * ContactPoolWide * ContactPoolFlat);
+                canvas.DrawTextureRect(ContactPool, new Rect2(at - pool / 2, pool), false, new Color(0, 0, 0, Math.Min(1, caster.Darkness * ContactPoolDark)));
+                Blob(canvas, ground, ground.ToGround(at), away, length * ContactTrailLength, contact.Width / figure.Height * drawn * ContactTrailWide,
                     caster.Darkness, 0, darkestAtStart: true);
             }
         }
@@ -996,7 +996,6 @@ public partial class CampView : Control
         var whole = length + behind;
         var (darkest, fades) = darkestAtStart ? (behind / whole, behind / whole) : (0.15f, 0.5f);
         var from = start - away * behind;
-        const int Along = 16, Across = 8;
         var points = new Vector2[(Along + 1) * (Across + 1)];
         var colors = new Color[points.Length];
         for (var i = 0; i <= Along; i++)
@@ -1012,6 +1011,17 @@ public partial class CampView : Control
                 colors[i * (Across + 1) + j] = new Color(0, 0, 0, darkness * reach * soft * InRing(at, ground.Fire, ring));
             }
         }
+        RenderingServer.CanvasItemAddTriangleArray(canvas.GetCanvasItem(), BlobTriangles, points, colors);
+    }
+
+    /// <summary>How finely a shadow's mesh is cut, along it and across it.</summary>
+    private const int Along = 16, Across = 8;
+
+    /// <summary>A shadow's triangles, the same for all of them, so the many drawn each frame needn't each make their own.</summary>
+    private static readonly int[] BlobTriangles = MeshTriangles();
+
+    private static int[] MeshTriangles()
+    {
         var indices = new int[Along * Across * 6];
         var k = 0;
         for (var i = 0; i < Along; i++)
@@ -1022,7 +1032,7 @@ public partial class CampView : Control
                 indices[k++] = a; indices[k++] = c; indices[k++] = a + 1;
                 indices[k++] = a + 1; indices[k++] = c; indices[k++] = c + 1;
             }
-        RenderingServer.CanvasItemAddTriangleArray(canvas.GetCanvasItem(), indices, points, colors);
+        return indices;
     }
 
     /// <summary>
@@ -1055,15 +1065,15 @@ public partial class CampView : Control
     /// <summary>
     /// The lights' shadows: how wide against a figure height and against the figure's own width, and the fire's length against the figure's
     /// height (its flames are lower than a figure's head, so it'd be endless); the ring round the fire, how flat it lies and how much of a
-    /// sun's shadow shows inside it. A foot's shadow's length against the figure's main shadow and its width against its sole's; the pool along
-    /// the sole, its width against the sole's, how flat it lies, and how dark against the light's shadow, a sole shutting out more light than a
-    /// body's height of air does.
+    /// sun's shadow shows inside it. What touches the ground: its trail's length against the figure's main shadow and its width against the
+    /// spot's; the pool along the spot, its width against the spot's, how flat it lies, and how dark against the light's shadow, a sole or a
+    /// seat on the ground shutting out more light than a body's height of air does.
     /// </summary>
     private const float ShadowBody = 0.4f, ShadowSpread = 0.35f, FireShadowLength = 2.2f, RingAspect = 0.45f, RingShadow = 0.3f,
-        FootShadowLength = 0.4f, FootShadowWide = 1.3f, FootPoolWide = 1.6f, FootPoolFlat = 0.3f, FootPoolDark = 1.4f;
+        ContactTrailLength = 0.4f, ContactTrailWide = 1.3f, ContactPoolWide = 1.6f, ContactPoolFlat = 0.3f, ContactPoolDark = 1.4f;
 
-    /// <summary>A foot's pool: flat across its middle and soft at its rim, so it's dark along the whole sole and not only under its centre.</summary>
-    private static readonly GradientTexture2D FootPool = new()
+    /// <summary>The pool where something touches the ground: flat across its middle and soft at its rim, so it's dark along the whole spot and not only under its centre.</summary>
+    private static readonly GradientTexture2D ContactPool = new()
     {
         Width = 128,
         Height = 128,

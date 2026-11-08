@@ -231,11 +231,14 @@ public sealed record CampsiteRecord(
     }
 }
 
-/// <summary>A foot of a figure's pose on the ground: the middle of its sole in the image's pixels, even where the other foot hides part of it.</summary>
-/// <param name="X">The sole's middle, from the image's left.</param>
-/// <param name="Y">The sole's middle, from the image's top.</param>
-/// <param name="Width">How far the sole spans across the image, in its pixels.</param>
-public sealed record CampFoot(int X, int Y, int Width);
+/// <summary>
+/// Somewhere a figure's pose touches the ground, a foot or a sitting figure's seat: the middle of where it touches in the image's pixels,
+/// even where another part hides some of it.
+/// </summary>
+/// <param name="X">The middle, from the image's left.</param>
+/// <param name="Y">The middle, from the image's top.</param>
+/// <param name="Width">How far it spans across the image, in its pixels.</param>
+public sealed record CampContact(int X, int Y, int Width);
 
 /// <summary>
 /// One of a figure's poses: its image and where its feet or seat touch the ground in it. The image is the figure as painted, neutral,
@@ -251,9 +254,9 @@ public sealed record CampFoot(int X, int Y, int Width);
 /// <param name="LightMask">A directional light mask for the fire's side, the simpler alternative to a normal map.</param>
 /// <param name="HandX">Where the hands or tool reach in the image's pixels, for <see cref="CampPoses.TendFire"/>.</param>
 /// <param name="HandY">As <paramref name="HandX"/>, from the top.</param>
-/// <param name="Feet">Each foot on the ground in the image, for its shadow; a pose with none casts only the shadows of its whole figure.</param>
+/// <param name="Contacts">Everything that touches the ground in the image, each for its own shadow; a pose with none casts only the shadows of its whole figure.</param>
 public sealed record CampPose(string Pose, RecordId Image, int AnchorX, int AnchorY, CampFacing Facing, bool Mirror = false,
-    RecordId? Normal = null, RecordId? LightMask = null, int? HandX = null, int? HandY = null, IReadOnlyList<CampFoot>? Feet = null)
+    RecordId? Normal = null, RecordId? LightMask = null, int? HandX = null, int? HandY = null, IReadOnlyList<CampContact>? Contacts = null)
 {
     /// <summary>The facings this image can show: its own, and the other if it may be mirrored (away stays away).</summary>
     public IEnumerable<CampFacing> Facings => Mirror && Facing != CampFacing.Away ? [Facing, Facing == CampFacing.Left ? CampFacing.Right : CampFacing.Left] : [Facing];

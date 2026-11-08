@@ -149,6 +149,11 @@ public sealed record CampLayout(int Size, IReadOnlyList<string> Slots);
 /// depth, in the picture's pixels. A figure's images are scaled to it by the figure's own height in them (<see cref="CampFigureRecord.Height"/>);
 /// 0 draws them at the picture's own scale.
 /// </param>
+/// <param name="Horizon">
+/// The horizon's row, as a share of the picture's height: what a slot's perspective scale follows, a slot's scale being its row's height
+/// under the horizon over the fire's, and what the ground round the fire is drawn on (the debug overlay's reach of the fire's light). 0
+/// is unknown.
+/// </param>
 public sealed record CampsiteRecord(
     RecordId Id,
     string Name,
@@ -168,7 +173,8 @@ public sealed record CampsiteRecord(
     float SoundVolume = 1,
     RecordId? Music = null,
     CampfireArt? Campfire = null,
-    float FigureHeight = 0)
+    float FigureHeight = 0,
+    float Horizon = 0)
 {
     /// <summary>The depth the fire stands at among the slots': a slot under it is drawn behind the campfire, one over it in front.</summary>
     public const int FireDepth = 100;

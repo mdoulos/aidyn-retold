@@ -1219,6 +1219,24 @@ public sealed class GameSession
     }
 
     /// <summary>
+    /// The camp's debug overlay's choice for a slot, the user's (Nov 7, 2026): a figure standing or seated there, or nobody
+    /// (<see cref="CampArranger.Place"/>). Whether the camp changed: not where the figure has no such pose at the slot.
+    /// </summary>
+    public bool SetCampSlot(string slot, RecordId? figure, bool seated)
+    {
+        if (Camp is not { Arrangement: { } arrangement } camp || arrangement.Site.Slot(slot) is null)
+            return false;
+        var record = figure is { } id ? Game.Plugins.TryGet<CampFigureRecord>(id) : null;
+        if (figure is not null && record is null)
+            return false;
+        var placed = CampArranger.Place(arrangement, slot, record, seated);
+        if (ReferenceEquals(placed, arrangement))
+            return false;
+        camp.Arrangement = placed;
+        return true;
+    }
+
+    /// <summary>
     /// A tick of the campsite's loop, under the camp screen and the pause menu over it alike (<see cref="CampsiteRecord.Sound"/>): it
     /// starts as the camp opens, looped and centred, fades in over a second to its volume times the ambient sounds' volume, starts again if
     /// something stopped it, as a cinematic stops every sound, and fades out over a second once the camp has closed, then stops.

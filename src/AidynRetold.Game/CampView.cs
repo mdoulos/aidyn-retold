@@ -246,6 +246,23 @@ public partial class CampView : Control
     /// <summary>Where the Poses, Talk and Debug buttons were drawn, or empty.</summary>
     private Rect2 _posesButton, _talkButton, _debugButton;
 
+    /// <summary>
+    /// A slot's choice in the debug overlay was made: the slot, and the figure to put there standing or seated, or none to empty it, the
+    /// user's (Nov 7, 2026).
+    /// </summary>
+    public Action<string, RecordId?, bool>? SlotChosen { get; set; }
+
+    /// <summary>What a slot's list offers: nobody, or a figure standing or seated, and whether the figure has that pose there.</summary>
+    private readonly record struct SlotChoice(string Text, RecordId? Figure, bool Seated, bool Possible);
+
+    /// <summary>Where each slot's choice was drawn, the slot whose list is open, and where its list's choices were drawn.</summary>
+    private readonly List<(Rect2 Area, string Slot)> _slotBoxes = [];
+    private string? _openSlot;
+    private readonly List<(Rect2 Area, SlotChoice Choice)> _slotChoices = [];
+
+    /// <summary>The slots' choices under the buttons: their left edge from the screen's right, their rows' height and their label's width.</summary>
+    private const float ChoicesLeft = 107, ChoiceRow = 9, ChoiceLabel = 38;
+
     public override void _Notification(int what)
     {
         if (what == NotificationResized)
@@ -281,6 +298,10 @@ public partial class CampView : Control
         if (button.ButtonIndex == MouseButton.Right)
         {
             Click?.Invoke(MenuAction.Back);
+            AcceptEvent();
+        }
+        else if (button.ButtonIndex == MouseButton.Left && ClickSlotChoices(button.Position))
+        {
             AcceptEvent();
         }
         else if (button.ButtonIndex == MouseButton.Left && _talkButton.HasArea() && _talkButton.HasPoint(button.Position))
@@ -545,8 +566,104 @@ public partial class CampView : Control
         }
         if (ShowOverlay && _ui.Images.Get(Thirds) is { } thirds)
             canvas.DrawTextureRect(thirds, new Rect2(Vector2.Zero, Size), false);
+        _slotBoxes.Clear();
+        _slotChoices.Clear();
+        if (DebugButtons && ShowOverlay && camp.Choice == CampChoice.None && !camp.TalkPending && camp.Arrangement is { } arrangement)
+            DrawSlotChoices(canvas, arrangement);
+        else
+            _openSlot = null;
         if (camp is { Open: true, Tab: CampTab.Camp } && _tip is var (text, area))
             Tip(canvas, text, area);
+    }
+
+    /// <summary>
+    /// The debug overlay's choice for each of the campsite's slots, under the buttons at the top right, the user's (Nov 7, 2026): its name
+    /// and who's there, standing or sitting, or none; a click opens its list of nobody and each figure standing and sitting, those the
+    /// figure has no such pose for at the slot dimmed, and a click on one puts it there (<see cref="SlotChosen"/>).
+    /// </summary>
+    private void DrawSlotChoices(CanvasItem canvas, CampArrangement arrangement)
+    {
+        var fine = Font(UiPainter.FineText);
+        var yellow = new Color(Button.R / 255f, Button.G / 255f, Button.B / 255f);
+        var left = Size.X - ChoicesLeft;
+        var boxWidth = ChoicesLeft - 4 - ChoiceLabel;
+        var top = 17f;
+        Rect2? open = null;
+        foreach (var slot in arrangement.Site.Slots)
+        {
+            var placed = arrangement.Placements.FirstOrDefault(p => p.Slot.Id == slot.Id);
+            var now = placed is null ? "none"
+                : placed.Figure is null ? $"{MemberName(placed.Member)}, no figure"
+                : $"{MemberName(placed.Figure.Entity)} {(CampPoses.IsSeated(placed.Pose) ? "sitting" : "standing")}";
+            canvas.DrawRect(new Rect2(left, top, ChoiceLabel - 1, ChoiceRow - 1), new Color(0, 0, 0, 0.6f));
+            _ui.Text(canvas, fine, Plain(slot.Id), (int)left + 2, (int)top + 1, Button);
+            var box = new Rect2(left + ChoiceLabel, top, boxWidth, ChoiceRow - 1);
+            canvas.DrawRect(box, slot.Id == _openSlot ? yellow with { A = 0.35f } : new Color(0, 0, 0, 0.6f));
+            canvas.DrawRect(box, yellow with { A = 0.9f }, false, 0.4f);
+            _ui.Text(canvas, fine, now, (int)box.Position.X + 2, (int)top + 1, Button);
+            _ui.Text(canvas, fine, "v", (int)(box.End.X - 5), (int)top + 1, Button);
+            _slotBoxes.Add((box, slot.Id));
+            if (slot.Id == _openSlot)
+                open = box;
+            top += ChoiceRow;
+        }
+        if (open is not { } under || arrangement.Site.Slot(_openSlot!) is not { } chosen)
+            return;
+        // The open list, over the rows under its slot.
+        List<SlotChoice> choices = [new("none", null, false, true)];
+        foreach (var figure in _plugins.All<CampFigureRecord>(RecordTypes.CampFigure).OrderBy(f => f.Id.ToString(), StringComparer.Ordinal))
+        {
+            var name = MemberName(figure.Entity);
+            choices.Add(new($"{name} standing", figure.Id, false, CampArranger.Pick(figure, chosen, seated: false) is not null));
+            choices.Add(new($"{name} sitting", figure.Id, true, CampArranger.Pick(figure, chosen, seated: true) is not null));
+        }
+        var y = under.End.Y + 1;
+        var list = new Rect2(under.Position.X, y, under.Size.X, choices.Count * ChoiceRow);
+        canvas.DrawRect(list, new Color(0.05f, 0.04f, 0.03f));
+        canvas.DrawRect(list, yellow with { A = 0.9f }, false, 0.4f);
+        foreach (var choice in choices)
+        {
+            var row = new Rect2(list.Position.X, y, list.Size.X, ChoiceRow);
+            _ui.Text(canvas, fine, choice.Text, (int)row.Position.X + 2, (int)y + 1, choice.Possible ? Button : Dim);
+            _slotChoices.Add((row, choice));
+            y += ChoiceRow;
+        }
+    }
+
+    /// <summary>
+    /// A click on the slots' choices: in the open list, its choice made if the figure can take it, and the list shut; on a slot's box, its
+    /// list opened, or shut if it was; elsewhere, an open list shut. Whether the click was theirs.
+    /// </summary>
+    private bool ClickSlotChoices(Vector2 at)
+    {
+        if (_openSlot is { } slot)
+        {
+            foreach (var (area, choice) in _slotChoices)
+            {
+                if (!area.HasPoint(at))
+                    continue;
+                if (choice.Possible)
+                {
+                    _openSlot = null;
+                    SlotChosen?.Invoke(slot, choice.Figure, choice.Seated);
+                }
+                Top.QueueRedraw();
+                return true;
+            }
+        }
+        foreach (var (area, id) in _slotBoxes)
+        {
+            if (!area.HasPoint(at))
+                continue;
+            _openSlot = _openSlot == id ? null : id;
+            Top.QueueRedraw();
+            return true;
+        }
+        if (_openSlot is null)
+            return false;
+        _openSlot = null;
+        Top.QueueRedraw();
+        return true;
     }
 
     /// <summary>
@@ -1016,15 +1133,16 @@ public partial class CampView : Control
     private static readonly Color FigureAbove = new(1.12f, 1.1f, 1.06f), FigureBelow = new(0.78f, 0.84f, 0.72f);
 
     /// <summary>
-    /// The fire's light on the figures: its colour, how strong it is at its strongest, how high the flames' middle is over the ground and how far
-    /// off its light has fallen to half, in figure heights, and how far round a figure's edge it wraps.
+    /// The fire's light on the figures: its colour, how strong it is at its strongest, how high the flames' middle is over the ground, how far
+    /// its light reaches, fading smoothly to nothing there, in figure heights (the debug overlay draws it on the ground, the user's ask,
+    /// Nov 7, 2026), and how far round a figure's edge it wraps.
     /// </summary>
     private static readonly Color FigureFireColor = new(1f, 0.6f, 0.3f);
-    private const float FigureFireStrength = 1.2f, FigureFireRise = 0.12f, FigureFireReach = 1.6f, FigureFireWrap = 0.3f;
+    private const float FigureFireStrength = 1.2f, FigureFireRise = 0.12f, FigureFireRadius = 2.75f, FigureFireWrap = 0.3f;
 
     /// <summary>
-    /// The figures' shader: the image's colour times the ambient light, more from above than below, plus the fire's, the fire's as much as the image's normal faces it
-    /// and wrapped a little round, falling off with the distance. A figure's own light comes in its draw's colour, which its image isn't
+    /// The figures' shader: the image's colour times the ambient light, more from above than below, plus the fire's, the fire's as much as
+    /// the image's normal faces it and wrapped a little round, fading with the distance to nothing at its reach. A figure's own light comes in its draw's colour, which its image isn't
     /// tinted by (<see cref="LightData"/>): red how far in front of the fire it stands, green how large a figure height is at its slot,
     /// blue its ground's row. A mirrored image turns its normals with it. Green in a normal map is up.
     /// </summary>
@@ -1039,7 +1157,7 @@ public partial class CampView : Control
         uniform float fire_strength = 0.0;
         uniform float fire_x = 0.0;
         uniform float fire_rise = 0.12;
-        uniform float fire_reach = 1.6;
+        uniform float fire_radius = 2.75;
         uniform float wrap = 0.3;
 
         varying vec4 figure;
@@ -1061,7 +1179,8 @@ public partial class CampView : Control
             vec3 to_fire = vec3((fire_x - at.x) / size, fire_rise - (ground - at.y) / size, -forward);
             float d = length(to_fire);
             float facing = max(0.0, (dot(n, to_fire / max(d, 0.001)) + wrap) / (1.0 + wrap));
-            float falloff = 1.0 / (1.0 + (d / fire_reach) * (d / fire_reach));
+            float near = clamp(1.0 - (d / fire_radius) * (d / fire_radius), 0.0, 1.0);
+            float falloff = near * near;
             vec3 sky = ambient * mix(below, above, n.y * 0.5 + 0.5);
             COLOR = vec4(albedo.rgb * (sky + fire_color * fire_strength * facing * falloff), albedo.a);
         }
@@ -1103,8 +1222,42 @@ public partial class CampView : Control
         _figureLight.SetShaderParameter("fire_strength", FigureFireStrength * FireStrength(Seconds));
         _figureLight.SetShaderParameter("fire_x", At(fit, site.Fire.X, site.Fire.Y).X);
         _figureLight.SetShaderParameter("fire_rise", FigureFireRise);
-        _figureLight.SetShaderParameter("fire_reach", FigureFireReach);
+        _figureLight.SetShaderParameter("fire_radius", FigureFireRadius);
         _figureLight.SetShaderParameter("wrap", FigureFireWrap);
+    }
+
+    /// <summary>
+    /// How far the fire's light on the figures reaches, a thin ring on the ground round the fire, the user's ask (Nov 7, 2026): a circle on
+    /// the ground, so drawn in the picture's perspective, nearer the camera lower and wider (<see cref="FireDistance"/>, the campsite's
+    /// horizon and canonical height). A figure standing on it has its feet at the light's reach and the rest of it just past. Nothing
+    /// where the campsite hasn't its horizon or its height.
+    /// </summary>
+    private void FireReach(CanvasItem canvas, CampsiteRecord site, Rect2 fit)
+    {
+        if (site.Horizon <= 0 || site.FigureHeight <= 0)
+            return;
+        var pixel = fit.Size.X / site.Width;
+        var fire = At(fit, site.Fire.X, site.Fire.Y);
+        var horizon = fit.Position.Y + fit.Size.Y * site.Horizon;
+        // On the ground, the light's reach less the flames' height over it.
+        var radius = MathF.Sqrt(FigureFireRadius * FigureFireRadius - FigureFireRise * FigureFireRise);
+        const int Steps = 96;
+        var ring = new Vector2[Steps + 1];
+        for (var i = 0; i <= Steps; i++)
+        {
+            var angle = Mathf.Tau * i / Steps;
+            var across = radius * MathF.Cos(angle);
+            var forward = radius * MathF.Sin(angle);
+            // A point nearer the camera than the fire by forward stands at this scale, its row as far under the horizon again.
+            var scale = 1 / (1 - forward / FireDistance);
+            ring[i] = new Vector2(fire.X + across * site.FigureHeight * pixel * scale, horizon + (fire.Y - horizon) * scale);
+        }
+        canvas.DrawPolyline(ring, new Color(1f, 0.62f, 0.25f, 0.85f), 0.3f, true);
+        // Named over its left end, clear of the band, which its front can run under, and of the buttons.
+        const string Name = "fire light's reach";
+        var fine = Font(UiPainter.FineText);
+        var end = ring[Steps / 2];
+        _ui.Text(canvas, fine, Name, (int)end.X + 2, (int)end.Y - 7, Warn);
     }
 
     private void DrawOverlay(CanvasItem canvas, CampMenu camp, CampsiteRecord site, Rect2 fit)
@@ -1129,6 +1282,7 @@ public partial class CampView : Control
                 canvas.DrawLine(at, At(fit, hand.X, hand.Y), Colors.Orange with { A = 0.5f }, 1);
             _ui.Text(canvas, fine, $"{Plain(slot.Id)} x{slot.Scale:0.00} d{slot.Depth}", (int)at.X + 4, (int)at.Y - 4, used ? Overlay : Dim);
         }
+        FireReach(canvas, site, fit);
         var line = 2;
         var lines = new List<(string Text, Rgba Color)>
         {
@@ -1603,6 +1757,13 @@ public partial class CampLayer : CanvasLayer
     {
         add => _view.PosesRequested += value;
         remove => _view.PosesRequested -= value;
+    }
+
+    /// <summary>A slot's choice in the debug overlay was made: the slot, and the figure for it standing or seated, or none (<see cref="Core.GameSession.SetCampSlot"/>).</summary>
+    public event Action<string, RecordId?, bool>? SlotChosen
+    {
+        add => _view.SlotChosen += value;
+        remove => _view.SlotChosen -= value;
     }
 
     /// <summary>Whether the debug overlay is drawn whatever the campsite says.</summary>

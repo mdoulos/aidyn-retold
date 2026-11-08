@@ -209,6 +209,33 @@ public static class CampArranger
     }
 
     /// <summary>
+    /// The pose a figure takes at a slot standing or seated (<see cref="CampPoses.IsSeated"/>): the first such the slot takes and the figure
+    /// has facing its way, as painted or mirrored where both allow; null with none.
+    /// </summary>
+    public static (string Pose, bool Mirrored, CampPose Image)? Pick(CampFigureRecord figure, CampSlot slot, bool seated) =>
+        Options(figure, slot).Where(o => CampPoses.IsSeated(o.Pose) == seated).Select(o => ((string, bool, CampPose)?)o).FirstOrDefault();
+
+    /// <summary>
+    /// The arrangement with a slot given to a figure, standing or seated (<see cref="Pick"/>), in place of whoever was there, or emptied
+    /// with none: the debug overlay's choice for each slot, the user's (Nov 7, 2026). The layout is the slots then taken, in the campsite's
+    /// order. Unchanged where the figure has no such pose there.
+    /// </summary>
+    public static CampArrangement Place(CampArrangement arrangement, string slotId, CampFigureRecord? figure, bool seated)
+    {
+        var site = arrangement.Site;
+        var slot = site.Slot(slotId) ?? throw new ArgumentException($"{site.Id} has no slot {slotId}.", nameof(slotId));
+        var placements = arrangement.Placements.Where(p => p.Slot.Id != slotId).ToList();
+        if (figure is not null)
+        {
+            if (Pick(figure, slot, seated) is not var (pose, mirrored, image))
+                return arrangement;
+            placements.Add(new CampPlacement(figure.Entity, slot, pose, slot.Facing, mirrored, figure, image));
+        }
+        placements = [.. placements.OrderBy(p => site.Slots.ToList().FindIndex(s => s.Id == p.Slot.Id))];
+        return arrangement with { Placements = placements, Layout = new CampLayout(placements.Count, [.. placements.Select(p => p.Slot.Id)]) };
+    }
+
+    /// <summary>
     /// The arrangement with each figure's pose chosen afresh among those it has at its slot, everyone where they were: the debug Poses
     /// button's, the user's (Nov 7, 2026). Drawn again until a pose changes, where one can.
     /// </summary>

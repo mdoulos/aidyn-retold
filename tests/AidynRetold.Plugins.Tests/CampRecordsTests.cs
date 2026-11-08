@@ -9,7 +9,7 @@ public sealed class CampRecordsTests
         [{
           "id": "acre:campsite/forest", "name": "forest", "image": "acre:image/campsite_forest", "width": 1672, "height": 941,
           "fire": { "x": 0.5, "y": 0.6 }, "pot": { "x": 0.5, "y": 0.58 }, "safeUi": { "x": 0.02, "y": 0.72, "width": 0.96, "height": 0.26 },
-          "terrains": [0, 3, 4], "figureHeight": 230,
+          "terrains": [0, 3, 4], "figureHeight": 230, "horizon": 0.3055,
           "campfire": { "image": "acre:image/camp_campfire", "pot": "acre:image/camp_pot", "anchor": { "x": 0.505, "y": 0.75 }, "width": 184,
             "rim": { "x": 0.4975, "y": 0.475 }, "front": "acre:image/camp_rock_front" },
           "slots": [
@@ -74,7 +74,9 @@ public sealed class CampRecordsTests
         Assert.True(snow.Calibrated);
 
         Assert.Equal(230, forest.FigureHeight);
+        Assert.Equal(0.3055f, forest.Horizon);
         Assert.Equal(0, snow.FigureHeight);
+        Assert.Equal(0, snow.Horizon);
 
         Assert.Equal(forest.Id, CampsiteRecord.For(set, 3)!.Id);
         Assert.Equal(snow.Id, CampsiteRecord.For(set, 8)!.Id);

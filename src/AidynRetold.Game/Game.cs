@@ -421,6 +421,11 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
             if (_session is { } playing && playing.ReposeCamp())
                 ShowPressed(playing);
         };
+        _camp.SlotChosen += (slot, figure, seated) =>
+        {
+            if (_session is { } playing && playing.SetCampSlot(slot, figure, seated))
+                ShowPressed(playing);
+        };
         AddChild(_camp);
         _cinematic = new CinematicLayer(plugins, _models!, _audio!);
         AddChild(_cinematic);

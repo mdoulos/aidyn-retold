@@ -274,6 +274,32 @@ public class CampTests
         Assert.Equal(lone.Placements, CampArranger.Repose(lone, random).Placements);
     }
 
+    [Fact]
+    public void TheDebugChoiceForASlotPutsAFigureThereStandingOrSittingOrEmptiesIt()
+    {
+        var site = Forest();
+        var figure = BothWays(Alaron);
+        Assert.Equal(CampPoses.StandProfile, CampArranger.Pick(figure, site.Slot("left_profile")!, seated: false)!.Value.Pose);
+        Assert.Equal(CampPoses.SitRear3Q, CampArranger.Pick(figure, site.Slot("rear_right")!, seated: true)!.Value.Pose);
+        Assert.Null(CampArranger.Pick(figure, site.Slot("rear_center")!, seated: true));
+
+        var preview = CampArranger.Preview(site, figure, 5);
+        // Sitting at the left profile, whatever it was; then standing; the layout the slots taken, in the campsite's order.
+        var sitting = CampArranger.Place(preview, "left_profile", figure, seated: true);
+        Assert.Equal(CampPoses.SitProfile, Assert.Single(sitting.Placements, p => p.Slot.Id == "left_profile").Pose);
+        var standing = CampArranger.Place(sitting, "left_profile", figure, seated: false);
+        Assert.Equal(CampPoses.StandProfile, Assert.Single(standing.Placements, p => p.Slot.Id == "left_profile").Pose);
+        Assert.Equal(preview.Layout.Slots, standing.Layout.Slots);
+        // Emptied, and filled again at the end of the campsite's order rather than the list's.
+        var emptied = CampArranger.Place(standing, "left_profile", null, false);
+        Assert.Equal(["right_profile", "rear_left", "rear_right"], emptied.Layout.Slots);
+        Assert.Equal(3, emptied.Layout.Size);
+        Assert.Equal(["left_profile", "right_profile", "rear_left", "rear_right"], CampArranger.Place(emptied, "left_profile", figure, true).Layout.Slots);
+        // A pose the figure hasn't there changes nothing; a slot the campsite hasn't is refused.
+        Assert.Same(emptied, CampArranger.Place(emptied, "rear_center", figure, seated: true));
+        Assert.Throws<ArgumentException>(() => CampArranger.Place(emptied, "nowhere", figure, true));
+    }
+
     private static CampTalkRecord Talk(string name, RecordId[]? members = null, RecordId[]? anyone = null, FlagGate[]? flags = null, int[]? terrains = null,
         RecordId? done = null, int weight = 1) =>
         new(RecordId.Parse($"acre:camptalk/{name}"), RecordId.Parse($"acre:dialogue/{name}"), members, anyone, flags, terrains, done, weight);

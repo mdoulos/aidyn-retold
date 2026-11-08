@@ -66,7 +66,11 @@ public sealed record CampPoint(float X, float Y);
 /// and under those that burn in front of it.
 /// </param>
 /// <param name="Rim">The middle of the pot's rim, as shares of the image, where the smoke rises from.</param>
-public sealed record CampfireArt(RecordId Image, CampPoint Anchor, float Width, RecordId? Pot = null, CampPoint? Rim = null);
+/// <param name="Front">
+/// The stones in front of the fire, an image the same size as <paramref name="Image"/> laid on the same spot over all the flames,
+/// hiding their feet, the user's art (Nov 7, 2026).
+/// </param>
+public sealed record CampfireArt(RecordId Image, CampPoint Anchor, float Width, RecordId? Pot = null, CampPoint? Rim = null, RecordId? Front = null);
 
 /// <summary>A rectangle in a campsite's picture, as shares of its width and height, 0 to 1.</summary>
 public sealed record CampRect(float X, float Y, float Width, float Height);

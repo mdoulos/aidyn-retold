@@ -124,6 +124,10 @@ public partial class CampView : Control
         Glow.Painter = PaintGlow;
         FireBehind.Painter = PaintFireBehind;
         Fire.Painter = PaintFire;
+        Front.Painter = PaintFront;
+        FrontLight.Painter = PaintGlow;
+        FrontLight.SetAnchorsPreset(LayoutPreset.FullRect);
+        Front.AddChild(FrontLight);
     }
 
     /// <summary>The band's control, cut at the rollers, placed by <see cref="_Draw"/>: the layer puts it over this control and under the scroll.</summary>
@@ -148,6 +152,28 @@ public partial class CampView : Control
 
     /// <summary>The smoke, the flames in front of the pot and the embers (<see cref="PaintFire"/>); the layer puts it over the firelight.</summary>
     public PaintedControl Fire { get; } = new() { Name = "Camp fire", MouseFilter = MouseFilterEnum.Ignore };
+
+    /// <summary>
+    /// The stones in front of the fire (<see cref="PaintFront"/>), over the flames and the embers, hiding the flames' feet; the layer
+    /// puts it over <see cref="Fire"/>. Its child, <see cref="FrontLight"/>, is cut to the stones' shape (ClipChildren).
+    /// </summary>
+    public PaintedControl Front { get; } = new()
+    {
+        Name = "Camp fire's front stones",
+        MouseFilter = MouseFilterEnum.Ignore,
+        ClipChildren = ClipChildrenMode.AndDraw,
+    };
+
+    /// <summary>
+    /// The firelight again on the front stones only, added to them as <see cref="Glow"/> is to the stones behind, which it's under, so
+    /// they're lit alike (<see cref="PaintGlow"/>, cut to <see cref="Front"/>'s stones).
+    /// </summary>
+    public PaintedControl FrontLight { get; } = new()
+    {
+        Name = "Camp fire's front stones' firelight",
+        MouseFilter = MouseFilterEnum.Ignore,
+        Material = new CanvasItemMaterial { BlendMode = CanvasItemMaterial.BlendModeEnum.Add },
+    };
 
     /// <summary>Where the picture was drawn last, and its campsite, which the fire is placed on.</summary>
     private Rect2 _fit;
@@ -334,6 +360,8 @@ public partial class CampView : Control
         Glow.QueueRedraw();
         FireBehind.QueueRedraw();
         Fire.QueueRedraw();
+        Front.QueueRedraw();
+        FrontLight.QueueRedraw();
     }
 
     public override void _Draw()
@@ -554,8 +582,8 @@ public partial class CampView : Control
                 var anchorX = placement.Mirrored ? image.GetWidth() - pose.AnchorX : pose.AnchorX;
                 var left = foot.X - anchorX * scale;
                 var top = foot.Y - pose.AnchorY * scale;
-                // A negative width draws the image mirrored.
-                var rect = placement.Mirrored ? new Rect2(left + width, top, -width, height) : new Rect2(left, top, width, height);
+                // A negative width draws the image mirrored in the same place (UiPainter.Image).
+                var rect = new Rect2(left, top, placement.Mirrored ? -width : width, height);
                 DrawTextureRect(image, rect, false, Tint(site));
             }
             else if (ShowOverlay)
@@ -613,7 +641,7 @@ public partial class CampView : Control
     /// <see cref="WindSlack"/>, so turns come 10 to 20 seconds apart; a turn takes <see cref="WindTurn"/> seconds; and the wind leans
     /// what it moves <see cref="WindLean"/> degrees.
     /// </summary>
-    private const float WindSlot = 15, WindSlack = 5, WindTurn = 3, WindLean = 15;
+    private const float WindSlot = 15, WindSlack = 5, WindTurn = 3, WindLean = 20;
 
     /// <summary>
     /// The wind's lean at a moment, in radians: to the right over 0, to the left under, 0 when it's still. Each camp's winds are its own,
@@ -713,17 +741,32 @@ public partial class CampView : Control
             var height = Mathf.Lerp(SmokeFrom, SmokeTo, u) * pixel;
             var width = height * smoke.GetWidth() / smoke.GetHeight();
             var rise = SmokeRise * u;
-            var aside = (Hash(round, i) * 2 - 1) * SmokeSpread + SmokeWander * Noise(round + u * 2, i + 40) * u + rise * MathF.Tan(wind);
+            // The wind it leans with: halfway between the wind as it rose from the pot and the wind now, so a plume already up keeps
+            // some of the slant it rose with as the wind turns.
+            var lean = (Wind(seconds - u * SmokeSeconds) + wind) / 2;
+            var aside = (Hash(round, i) * 2 - 1) * SmokeSpread + SmokeWander * Noise(round + u * 2, i + 40) * u + rise * MathF.Tan(lean);
             var foot = rim + new Vector2(aside, -rise) * pixel;
             var alpha = SmokeAlpha * MathF.Pow(MathF.Sin(MathF.PI * u), 1.5f);
             var mirror = Hash(round, i + 90) < 0.5f;
-            canvas.DrawSetTransform(foot, wind);
-            canvas.DrawTextureRect(smoke, mirror ? new Rect2(width / 2, -height, -width, height) : new Rect2(-width / 2, -height, width, height), false,
-                new Color(0.95f, 0.9f, 0.84f, alpha));
+            canvas.DrawSetTransform(foot, lean);
+            // A negative width draws the plume mirrored in the same place (UiPainter.Image), so its foot stays on the rim.
+            canvas.DrawTextureRect(smoke, new Rect2(-width / 2, -height, mirror ? -width : width, height), false, new Color(0.95f, 0.9f, 0.84f, alpha));
         }
         canvas.DrawSetTransform(Vector2.Zero);
         PaintFlames(canvas, fire, pixel, seconds, over: true);
         PaintEmbers(canvas, fire, pixel, seconds);
+    }
+
+    /// <summary>
+    /// The stones in front of the fire, the campfire's front (<see cref="CampfireArt.Front"/>), the same size as the campfire on the same
+    /// spot, over the flames and the embers, hiding the flames' feet and the embers as they leave the logs.
+    /// </summary>
+    private void PaintFront(CanvasItem canvas)
+    {
+        if (Camp is null || _site is not { } site || site.Width <= 0)
+            return;
+        if (site.Campfire is { Front: { } frontImage } campfire && _ui.Images.Get(frontImage) is { } front && _ui.Images.Get(campfire.Image) is { } image)
+            canvas.DrawTextureRect(front, CampfireRect(campfire, image, site, _fit), false);
     }
 
     /// <summary>Where the smoke rises from: the pot's rim as the campfire's art draws it, else over the campsite's pot, else over the fire.</summary>
@@ -811,9 +854,8 @@ public partial class CampView : Control
             if (alpha <= 0.01f)
                 continue;
             var size = new Vector2(ember.GetWidth(), ember.GetHeight()) * EmberScale * (0.6f + 0.8f * Hash(round, seed + 14)) * (1 - 0.4f * u) * pixel;
-            // The streaks lean up and to the right on the sheet: one drifting left is mirrored.
-            var rect = new Rect2(at - size / 2, size);
-            canvas.DrawTextureRect(ember, lean < 0 ? new Rect2(rect.End.X, rect.Position.Y, -size.X, size.Y) : rect, false,
+            // The streaks lean up and to the right on the sheet: one drifting left is mirrored, a negative width drawing it so in the same place.
+            canvas.DrawTextureRect(ember, new Rect2(at - size / 2, new Vector2(lean < 0 ? -size.X : size.X, size.Y)), false,
                 new Color(1, 1 - 0.3f * u, 1 - 0.45f * u, alpha));
         }
     }
@@ -831,9 +873,21 @@ public partial class CampView : Control
         if (alpha <= 0.01f || _ui.Images.Get(flame.Image) is not { } texture)
             return;
         var width = height * texture.GetWidth() / texture.GetHeight() * FlameWidth;
-        var rect = flame.Mirror ? new Rect2(width / 2, -height, -width, height) : new Rect2(-width / 2, -height, width, height);
-        canvas.DrawTextureRect(texture, rect, false, new Color(1, 1, 1, alpha));
+        // Two bands of the sprite: above, as it is; its foot, the bottom FlameFoot of it, fading in from nothing at the bottom to the
+        // flame's own at the band's top, the user's design (Nov 7, 2026).
+        var (left, right) = flame.Mirror ? (1f, 0f) : (0f, 1f);
+        var band = 1 - FlameFoot;
+        var shown = new Color(1, 1, 1, alpha);
+        var clear = new Color(1, 1, 1, 0);
+        var foot = -height * FlameFoot;
+        canvas.DrawPolygon([new(-width / 2, -height), new(width / 2, -height), new(width / 2, foot), new(-width / 2, foot)],
+            [shown, shown, shown, shown], [new(left, 0), new(right, 0), new(right, band), new(left, band)], texture);
+        canvas.DrawPolygon([new(-width / 2, foot), new(width / 2, foot), new(width / 2, 0), new(-width / 2, 0)],
+            [shown, shown, clear, clear], [new(left, band), new(right, band), new(right, 1), new(left, 1)], texture);
     }
+
+    /// <summary>How much of a flame's height, from its foot, fades in from nothing.</summary>
+    private const float FlameFoot = 0.25f;
 
     /// <summary>The seconds the fire has burned, the clock it's animated by.</summary>
     private static float Seconds => Time.GetTicksMsec() / 1000f;
@@ -1282,8 +1336,8 @@ public partial class CampLayer : CanvasLayer
         _scroll = PauseScrollView.Create(plugins, _models);
         _view = new CampView(plugins, _scroll) { Click = _screen.Click };
         _view.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-        // The picture, the flames behind the pot and the pot, the firelight, and the fire in front over it, then the band, the rollers
-        // over the band's edges, and the debug marks over all.
+        // The picture, the flames behind the pot and the pot, the firelight, the fire in front over it and the front stones with their
+        // own firelight, then the band, the rollers over the band's edges, and the debug marks over all.
         _screen.Canvas.AddChild(_view);
         _view.FireBehind.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         _screen.Canvas.AddChild(_view.FireBehind);
@@ -1291,6 +1345,8 @@ public partial class CampLayer : CanvasLayer
         _screen.Canvas.AddChild(_view.Glow);
         _view.Fire.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         _screen.Canvas.AddChild(_view.Fire);
+        _view.Front.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        _screen.Canvas.AddChild(_view.Front);
         _screen.Canvas.AddChild(_view.Band);
         if (_scroll is not null)
         {

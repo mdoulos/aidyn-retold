@@ -11,7 +11,7 @@ public sealed class CampRecordsTests
           "fire": { "x": 0.5, "y": 0.6 }, "pot": { "x": 0.5, "y": 0.58 }, "safeUi": { "x": 0.02, "y": 0.72, "width": 0.96, "height": 0.26 },
           "terrains": [0, 3, 4],
           "campfire": { "image": "acre:image/camp_campfire", "pot": "acre:image/camp_pot", "anchor": { "x": 0.505, "y": 0.75 }, "width": 184,
-            "rim": { "x": 0.4975, "y": 0.475 } },
+            "rim": { "x": 0.4975, "y": 0.475 }, "front": "acre:image/camp_rock_front" },
           "slots": [
             { "id": "left_profile", "x": 0.38, "y": 0.64, "scale": 0.95, "depth": 20, "poses": ["sit_profile", "stand_profile"], "facing": "Right", "mirror": true },
             { "id": "rear_center", "x": 0.51, "y": 0.54, "scale": 0.84, "depth": 10, "poses": ["sit_rear", "stand_rear"], "facing": "Away" }
@@ -58,6 +58,7 @@ public sealed class CampRecordsTests
         Assert.Equal((RecordId.Parse("acre:image/camp_campfire"), 0.505f, 0.75f, 184f), (campfire.Image, campfire.Anchor.X, campfire.Anchor.Y, campfire.Width));
         Assert.Equal(RecordId.Parse("acre:image/camp_pot"), campfire.Pot);
         Assert.Equal(0.475f, campfire.Rim!.Y);
+        Assert.Equal(RecordId.Parse("acre:image/camp_rock_front"), campfire.Front);
         Assert.Equal(["left_profile", "rear_center"], forest.Slots.Select(s => s.Id));
         Assert.Equal(CampFacing.Right, forest.Slot("left_profile")!.Facing);
         Assert.True(forest.Slot("left_profile")!.Mirror);

@@ -912,7 +912,10 @@ public partial class CampView : Control
     /// from the fire, long, flickering with it. Each is a soft blob on the ground from the figure's feet, as wide as its body and a little
     /// of its width, darkest near the feet and fading at its far end and across its edges, laid on the picture's ground so it widens toward
     /// the camera, scaled to the figure as drawn; the sun's is lighter where it runs into the ring between the party and the fire, the
-    /// firelight washing it out (<see cref="Ring"/>). Drawn as a mesh of soft vertices.
+    /// firelight washing it out (<see cref="Ring"/>). Drawn as a mesh of soft vertices. The user's ask (Nov 8, 2026), as a figure's main
+    /// shadow starts under the middle of its image and left a sitting figure's feet with none: one more for each foot its pose names
+    /// (<see cref="CampPose.Feet"/>), the strongest light's alone: a dark pool along the sole and a trail from it along that light's way,
+    /// blending into the rest, darkest at the sole and fading from it.
     /// </summary>
     private void CastShadows(CanvasItem canvas, CampsiteRecord site, Rect2 fit, CampLight light, CampPlacement placement, CampFigureRecord figure,
         Texture2D image, Rect2 area, float bottom, float ring)
@@ -933,19 +936,44 @@ public partial class CampView : Control
         var rise = tall / 2 - FigureFireRise;
         var near = Math.Clamp(1 - (fromFire * fromFire + rise * rise) / (FigureFireRadius * FigureFireRadius), 0, 1);
         var fire = FigureFireStrength * light.Fire * FireStrength(Seconds) * CampLighting.Luminance(FireLightColor) * near * near;
-        foreach (var caster in CampLighting.Casters(CampLighting.Luminance(light.Ambient), CampLighting.Sunlight(light.Sun), fire))
+        var casters = CampLighting.Casters(CampLighting.Luminance(light.Ambient), CampLighting.Sunlight(light.Sun), fire);
+        foreach (var caster in casters)
         {
+            Vector2 away;
+            float length;
             if (caster.Light == CampLightKind.Sun && light.Sun is { } sun)
             {
                 var level = MathF.Sqrt(sun.X * sun.X + sun.Z * sun.Z);
                 if (level <= 0)
                     continue;
                 // Away from the sun along the ground: z toward the camera, so a sun behind (z below 0) casts toward it.
-                Blob(canvas, ground, start, new Vector2(-sun.X, -sun.Z) / level, tall * level / sun.Y, breadth, caster.Darkness, ring);
+                away = new Vector2(-sun.X, -sun.Z) / level;
+                length = tall * level / sun.Y;
             }
             else if (caster.Light == CampLightKind.Fire && fromFire > 0.05f)
             {
-                Blob(canvas, ground, start, start / fromFire, tall * FireShadowLength, breadth, caster.Darkness, 0);
+                away = start / fromFire;
+                length = tall * FireShadowLength;
+            }
+            else
+            {
+                continue;
+            }
+            Blob(canvas, ground, start, away, length, breadth, caster.Darkness, caster.Light == CampLightKind.Sun ? ring : 0);
+            if (caster != casters[0] || placement.Image?.Feet is not { } feet)
+                continue;
+            // The feet's, on the ground at each sole. No ring: it's the feet's own contact with the ground, and a sitting figure's are inside it.
+            var pixel = area.Size.Y / image.GetHeight();
+            foreach (var sole in feet)
+            {
+                var at = area.Position + new Vector2(placement.Mirrored ? image.GetWidth() - sole.X : sole.X, sole.Y) * pixel;
+                if (at.Y <= ground.Horizon)
+                    continue;
+                // A pool along the sole, as a sole is too long for the trail alone to reach its toe and heel, and the trail away from the light.
+                var pool = new Vector2(sole.Width * pixel * FootPoolWide, sole.Width * pixel * FootPoolWide * FootPoolFlat);
+                canvas.DrawTextureRect(FootPool, new Rect2(at - pool / 2, pool), false, new Color(0, 0, 0, Math.Min(1, caster.Darkness * FootPoolDark)));
+                Blob(canvas, ground, ground.ToGround(at), away, length * FootShadowLength, sole.Width / figure.Height * drawn * FootShadowWide,
+                    caster.Darkness, 0, darkestAtStart: true);
             }
         }
     }
@@ -956,22 +984,29 @@ public partial class CampView : Control
     /// <summary>
     /// One shadow on the ground: from <paramref name="start"/> (figure heights) along <paramref name="away"/> for <paramref name="length"/>,
     /// <paramref name="breadth"/> wide, at most <paramref name="darkness"/> dark, lighter inside the ring round the fire where one's given.
+    /// Darkest a little way along it and fading over its second half, or, <paramref name="darkestAtStart"/>, darkest right at its start and
+    /// fading all the way from there.
     /// </summary>
-    private static void Blob(CanvasItem canvas, Ground ground, Vector2 start, Vector2 away, float length, float breadth, float darkness, float ring)
+    private static void Blob(CanvasItem canvas, Ground ground, Vector2 start, Vector2 away, float length, float breadth, float darkness, float ring,
+        bool darkestAtStart = false)
     {
         var side = new Vector2(-away.Y, away.X);
-        var from = start - away * (breadth * 0.25f);
+        // How far it starts behind its start, for a soft rounded end; the whole of it from there; and where along that it's darkest and starts to fade.
+        var behind = breadth * (darkestAtStart ? 0.5f : 0.25f);
+        var whole = length + behind;
+        var (darkest, fades) = darkestAtStart ? (behind / whole, behind / whole) : (0.15f, 0.5f);
+        var from = start - away * behind;
         const int Along = 16, Across = 8;
         var points = new Vector2[(Along + 1) * (Across + 1)];
         var colors = new Color[points.Length];
         for (var i = 0; i <= Along; i++)
         {
             var u = (float)i / Along;
-            var reach = Mathf.SmoothStep(0, 0.15f, u) * (1 - Mathf.SmoothStep(0.5f, 1, u));
+            var reach = Mathf.SmoothStep(0, darkest, u) * (1 - Mathf.SmoothStep(fades, 1, u));
             for (var j = 0; j <= Across; j++)
             {
                 var v = -1 + 2f * j / Across;
-                var at = ground.ToScreen(from + away * (u * (length + breadth * 0.25f)) + side * (v * breadth / 2));
+                var at = ground.ToScreen(from + away * (u * whole) + side * (v * breadth / 2));
                 var soft = (1 - v * v) * (1 - v * v);
                 points[i * (Across + 1) + j] = at;
                 colors[i * (Across + 1) + j] = new Color(0, 0, 0, darkness * reach * soft * InRing(at, ground.Fire, ring));
@@ -1020,9 +1055,27 @@ public partial class CampView : Control
     /// <summary>
     /// The lights' shadows: how wide against a figure height and against the figure's own width, and the fire's length against the figure's
     /// height (its flames are lower than a figure's head, so it'd be endless); the ring round the fire, how flat it lies and how much of a
-    /// sun's shadow shows inside it.
+    /// sun's shadow shows inside it. A foot's shadow's length against the figure's main shadow and its width against its sole's; the pool along
+    /// the sole, its width against the sole's, how flat it lies, and how dark against the light's shadow, a sole shutting out more light than a
+    /// body's height of air does.
     /// </summary>
-    private const float ShadowBody = 0.4f, ShadowSpread = 0.35f, FireShadowLength = 2.2f, RingAspect = 0.45f, RingShadow = 0.3f;
+    private const float ShadowBody = 0.4f, ShadowSpread = 0.35f, FireShadowLength = 2.2f, RingAspect = 0.45f, RingShadow = 0.3f,
+        FootShadowLength = 0.4f, FootShadowWide = 1.3f, FootPoolWide = 1.6f, FootPoolFlat = 0.3f, FootPoolDark = 1.4f;
+
+    /// <summary>A foot's pool: flat across its middle and soft at its rim, so it's dark along the whole sole and not only under its centre.</summary>
+    private static readonly GradientTexture2D FootPool = new()
+    {
+        Width = 128,
+        Height = 128,
+        Fill = GradientTexture2D.FillEnum.Radial,
+        FillFrom = new Vector2(0.5f, 0.5f),
+        FillTo = new Vector2(1, 0.5f),
+        Gradient = new Gradient
+        {
+            Offsets = [0, 0.55f, 1],
+            Colors = [Colors.White, new Color(1, 1, 1, 0.8f), new Color(1, 1, 1, 0)],
+        },
+    };
 
     /// <summary>
     /// A contact shadow's pool, against the figure's width, how flat it lies (the ground seen at about 13 degrees), and how dark; and its

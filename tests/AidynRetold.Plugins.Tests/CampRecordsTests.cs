@@ -29,7 +29,8 @@ public sealed class CampRecordsTests
         [{ "id": "acre:campfigure/alaron", "entity": "aidyn:entity/0x023F", "stature": 1.0, "height": 718, "poses": [
           { "pose": "sit_profile", "image": "acre:image/camp_alaron_sit_profile_right", "anchorX": 150, "anchorY": 440, "facing": "Right", "mirror": false,
             "normal": "acre:image/camp_alaron_sit_profile_right_normal" },
-          { "pose": "sit_profile", "image": "acre:image/camp_alaron_sit_profile_left", "anchorX": 340, "anchorY": 438, "facing": "Left" },
+          { "pose": "sit_profile", "image": "acre:image/camp_alaron_sit_profile_left", "anchorX": 340, "anchorY": 438, "facing": "Left",
+            "feet": [{ "x": 72, "y": 444, "width": 140 }, { "x": 94, "y": 430, "width": 140 }] },
           { "pose": "sit_rear", "image": "acre:image/camp_alaron_sit_rear", "anchorX": 200, "anchorY": 600, "facing": "Away" } ] }]
         """;
 
@@ -102,6 +103,9 @@ public sealed class CampRecordsTests
         Assert.Equal(RecordId.Parse("acre:image/camp_alaron_sit_profile_right_normal"), alaron.PoseOf(CampPoses.SitProfile, CampFacing.Right)!.Normal);
         Assert.Null(alaron.PoseOf(CampPoses.SitProfile, CampFacing.Away));
         Assert.Null(alaron.PoseOf(CampPoses.TendFire));
+        // Each foot's sole, for its shadow; a pose may name none.
+        Assert.Equal([new CampFoot(72, 444, 140), new CampFoot(94, 430, 140)], alaron.PoseOf(CampPoses.SitProfile, CampFacing.Left)!.Feet);
+        Assert.Null(alaron.PoseOf(CampPoses.SitProfile, CampFacing.Right)!.Feet);
 
         var cooking = Assert.Single(set.All<CampActivityRecord>(RecordTypes.CampActivity));
         Assert.Equal("acre:skill/12", cooking.Skill.ToString());

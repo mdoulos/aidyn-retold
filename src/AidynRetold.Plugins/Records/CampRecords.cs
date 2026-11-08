@@ -78,6 +78,13 @@ public sealed record CampPoint(float X, float Y);
 /// </param>
 public sealed record CampfireArt(RecordId Image, CampPoint Anchor, float Width, RecordId? Pot = null, CampPoint? Rim = null, RecordId? Front = null);
 
+/// <summary>
+/// The sun's light on a campsite's figures, the user's day (Nov 7, 2026): the way to it as the camera sees it, x to the right, y up and z
+/// toward the camera, so a sun behind the trees has z below 0; its colour; and how strong it is, 1 adding its colour at full where a figure
+/// faces it squarely. A low sun behind a figure lights its edges and leaves the side the camera sees in the shade.
+/// </summary>
+public sealed record CampSun(float X, float Y, float Z, Rgba Color, float Strength = 1);
+
 /// <summary>A rectangle in a campsite's picture, as shares of its width and height, 0 to 1.</summary>
 public sealed record CampRect(float X, float Y, float Width, float Height);
 
@@ -154,6 +161,7 @@ public sealed record CampLayout(int Size, IReadOnlyList<string> Slots);
 /// under the horizon over the fire's, and what the ground round the fire is drawn on (the debug overlay's reach of the fire's light). 0
 /// is unknown.
 /// </param>
+/// <param name="Sun">The sun's light on the figures, the picture's own, over the ambient; none, there's no sun.</param>
 public sealed record CampsiteRecord(
     RecordId Id,
     string Name,
@@ -174,7 +182,8 @@ public sealed record CampsiteRecord(
     RecordId? Music = null,
     CampfireArt? Campfire = null,
     float FigureHeight = 0,
-    float Horizon = 0)
+    float Horizon = 0,
+    CampSun? Sun = null)
 {
     /// <summary>The depth the fire stands at among the slots': a slot under it is drawn behind the campfire, one over it in front.</summary>
     public const int FireDepth = 100;

@@ -455,6 +455,8 @@ public partial class CampView : Control
         (_fit, _site) = (fit, site);
         if (site is not null && _ui.Images.Get(site.Image) is { } picture)
             DrawTextureRect(picture, fit, false);
+        if (camp.Arrangement is { } shadowed && site is not null)
+            DrawShadows(this, shadowed, site, fit);
         // The figures behind the fire, the campfire and the vignette over them, and the figures in front of the fire over its layers
         // (CampsiteRecord.FireDepth), each on its own control, drawn as the picture pans.
         PartyBehind.QueueRedraw();
@@ -764,24 +766,56 @@ public partial class CampView : Control
             DrawParty(canvas, arrangement, site, fit, front: true);
     }
 
+    /// <summary>
+    /// Where a figure's image is drawn, its anchor on its slot, scaled to the campsite's canonical height, times the slot's and its stature
+    /// (<see cref="CampPlacement.PictureScale"/>), with its width and its foot.
+    /// </summary>
+    private static (Rect2 Area, Vector2 Foot) Placed(CampPlacement placement, CampPose pose, Texture2D image, CampsiteRecord site, Rect2 fit)
+    {
+        var foot = At(fit, placement.Slot.X, placement.Slot.Y);
+        var scale = fit.Size.X / site.Width * placement.PictureScale(site);
+        var anchorX = placement.Mirrored ? image.GetWidth() - pose.AnchorX : pose.AnchorX;
+        return (new Rect2(foot.X - anchorX * scale, foot.Y - pose.AnchorY * scale, image.GetWidth() * scale, image.GetHeight() * scale), foot);
+    }
+
+    /// <summary>
+    /// The figures' contact shadows, the brief's phase 3, the user's ask (Nov 7, 2026): on the picture, under every figure and the campfire,
+    /// a soft dark pool as wide as the figure, flattened as the ground is seen, and a smaller, darker one where it meets the ground, so it
+    /// sits on the grass rather than over it. A seated figure's runs a little back toward its feet, which are further off than its seat.
+    /// </summary>
+    private void DrawShadows(CanvasItem canvas, CampArrangement arrangement, CampsiteRecord site, Rect2 fit)
+    {
+        foreach (var placement in arrangement.Placements)
+        {
+            if (placement.Image is not { } pose || Lit(pose) is not { } image)
+                continue;
+            var (area, foot) = Placed(placement, pose, image, site, fit);
+            var width = area.Size.X;
+            var middle = new Vector2(area.Position.X + width / 2, foot.Y - width * ShadowFlat * 0.15f);
+            Light(canvas, middle, new Vector2(width * ShadowWide, width * ShadowWide * ShadowFlat), new Color(0, 0, 0, ShadowAlpha));
+            Light(canvas, new Vector2(middle.X, foot.Y), new Vector2(width * ShadowCoreWide, width * ShadowCoreWide * ShadowFlat), new Color(0, 0, 0, ShadowCoreAlpha));
+        }
+    }
+
+    /// <summary>
+    /// A contact shadow's pool, against the figure's width, how flat it lies (the ground seen at about 13 degrees), and how dark; and its
+    /// core where the figure meets the ground.
+    /// </summary>
+    private const float ShadowWide = 1.05f, ShadowFlat = 0.24f, ShadowAlpha = 0.42f, ShadowCoreWide = 0.6f, ShadowCoreAlpha = 0.38f;
+
     /// <summary>The party's figures behind the fire or in front of it, by their slots' depths against the fire's.</summary>
     private void DrawParty(CanvasItem canvas, CampArrangement arrangement, CampsiteRecord site, Rect2 fit, bool front)
     {
-        // A picture pixel's size on the canvas: a figure's image is scaled to the campsite's canonical height, times the slot's and its stature.
+        // A picture pixel's size on the canvas.
         var pixel = fit.Size.X / site.Width;
         foreach (var placement in arrangement.InDrawOrder.Where(p => p.Slot.Depth > CampsiteRecord.FireDepth == front))
         {
             var foot = At(fit, placement.Slot.X, placement.Slot.Y);
             if (placement.Image is { } pose && Lit(pose) is { } image)
             {
-                var scale = pixel * placement.PictureScale(site);
-                var width = image.GetWidth() * scale;
-                var height = image.GetHeight() * scale;
-                var anchorX = placement.Mirrored ? image.GetWidth() - pose.AnchorX : pose.AnchorX;
-                var left = foot.X - anchorX * scale;
-                var top = foot.Y - pose.AnchorY * scale;
+                var (area, _) = Placed(placement, pose, image, site, fit);
                 // A negative width draws the image mirrored in the same place (UiPainter.Image).
-                var rect = new Rect2(left, top, placement.Mirrored ? -width : width, height);
+                var rect = placement.Mirrored ? area with { Size = new Vector2(-area.Size.X, area.Size.Y) } : area;
                 canvas.DrawTextureRect(image, rect, false, LightData(site, placement.Slot, foot, pixel));
             }
             else if (ShowOverlay)
@@ -1132,6 +1166,9 @@ public partial class CampView : Control
     /// </summary>
     private static readonly Color FigureAbove = new(1.12f, 1.1f, 1.06f), FigureBelow = new(0.78f, 0.84f, 0.72f);
 
+    /// <summary>How far round a figure's edge the sun's light wraps (<see cref="CampsiteRecord.Sun"/>).</summary>
+    private const float FigureSunWrap = 0.2f;
+
     /// <summary>
     /// The fire's light on the figures: its colour, how strong it is at its strongest, how high the flames' middle is over the ground, how far
     /// its light reaches, fading smoothly to nothing there, in figure heights (the debug overlay draws it on the ground, the user's ask,
@@ -1141,8 +1178,8 @@ public partial class CampView : Control
     private const float FigureFireStrength = 1.2f, FigureFireRise = 0.12f, FigureFireRadius = 2.75f, FigureFireWrap = 0.3f;
 
     /// <summary>
-    /// The figures' shader: the image's colour times the ambient light, more from above than below, plus the fire's, the fire's as much as
-    /// the image's normal faces it and wrapped a little round, fading with the distance to nothing at its reach. A figure's own light comes in its draw's colour, which its image isn't
+    /// The figures' shader: the image's colour times the ambient light, more from above than below, plus the sun's and the fire's, each as
+    /// much as the image's normal faces it and wrapped a little round, the fire's fading with the distance to nothing at its reach. A figure's own light comes in its draw's colour, which its image isn't
     /// tinted by (<see cref="LightData"/>): red how far in front of the fire it stands, green how large a figure height is at its slot,
     /// blue its ground's row. A mirrored image turns its normals with it. Green in a normal map is up.
     /// </summary>
@@ -1153,6 +1190,9 @@ public partial class CampView : Control
         uniform vec3 ambient = vec3(1.0);
         uniform vec3 above = vec3(1.0);
         uniform vec3 below = vec3(1.0);
+        uniform vec3 sun_dir = vec3(0.0, 0.0, 1.0);
+        uniform vec3 sun_color = vec3(0.0);
+        uniform float sun_wrap = 0.2;
         uniform vec3 fire_color = vec3(1.0, 0.6, 0.3);
         uniform float fire_strength = 0.0;
         uniform float fire_x = 0.0;
@@ -1182,7 +1222,8 @@ public partial class CampView : Control
             float near = clamp(1.0 - (d / fire_radius) * (d / fire_radius), 0.0, 1.0);
             float falloff = near * near;
             vec3 sky = ambient * mix(below, above, n.y * 0.5 + 0.5);
-            COLOR = vec4(albedo.rgb * (sky + fire_color * fire_strength * facing * falloff), albedo.a);
+            float sunlit = max(0.0, (dot(n, sun_dir) + sun_wrap) / (1.0 + sun_wrap));
+            COLOR = vec4(albedo.rgb * (sky + sun_color * sunlit + fire_color * fire_strength * facing * falloff), albedo.a);
         }
         """;
 
@@ -1216,6 +1257,11 @@ public partial class CampView : Control
         if (Scene() is not var (site, fit))
             return;
         _figureLight.SetShaderParameter("ambient", Ambient(site));
+        var sun = site.Sun is { } s && (s.X != 0 || s.Y != 0 || s.Z != 0) ? s : null;
+        _figureLight.SetShaderParameter("sun_dir", sun is null ? Vector3.Back : new Vector3(sun.X, sun.Y, sun.Z).Normalized());
+        _figureLight.SetShaderParameter("sun_color", sun is null ? Colors.Black
+            : new Color(sun.Color.R / 255f * sun.Strength, sun.Color.G / 255f * sun.Strength, sun.Color.B / 255f * sun.Strength));
+        _figureLight.SetShaderParameter("sun_wrap", FigureSunWrap);
         _figureLight.SetShaderParameter("above", FigureAbove);
         _figureLight.SetShaderParameter("below", FigureBelow);
         _figureLight.SetShaderParameter("fire_color", FigureFireColor);

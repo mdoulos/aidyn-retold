@@ -781,7 +781,8 @@ public partial class CampView : Control
     /// <summary>
     /// The figures' contact shadows, the brief's phase 3, the user's ask (Nov 7, 2026): on the picture, under every figure and the campfire,
     /// a soft dark pool as wide as the figure, flattened as the ground is seen, and a smaller, darker one where it meets the ground, so it
-    /// sits on the grass rather than over it. A seated figure's runs a little back toward its feet, which are further off than its seat.
+    /// sits on the grass rather than over it. They lie at the foot of the figure's image, its soles or its seat, not at its anchor, which
+    /// the user's pose points put a little above them; a seated figure's runs a little back toward its feet, further off than its seat.
     /// </summary>
     private void DrawShadows(CanvasItem canvas, CampArrangement arrangement, CampsiteRecord site, Rect2 fit)
     {
@@ -789,11 +790,13 @@ public partial class CampView : Control
         {
             if (placement.Image is not { } pose || Lit(pose) is not { } image)
                 continue;
-            var (area, foot) = Placed(placement, pose, image, site, fit);
+            var (area, _) = Placed(placement, pose, image, site, fit);
             var width = area.Size.X;
-            var middle = new Vector2(area.Position.X + width / 2, foot.Y - width * ShadowFlat * 0.15f);
+            // The image's foot, less the 2 clear pixels round every figure.
+            var ground = area.End.Y - 2 * area.Size.Y / image.GetHeight();
+            var middle = new Vector2(area.Position.X + width / 2, ground - width * ShadowFlat * 0.15f);
             Light(canvas, middle, new Vector2(width * ShadowWide, width * ShadowWide * ShadowFlat), new Color(0, 0, 0, ShadowAlpha));
-            Light(canvas, new Vector2(middle.X, foot.Y), new Vector2(width * ShadowCoreWide, width * ShadowCoreWide * ShadowFlat), new Color(0, 0, 0, ShadowCoreAlpha));
+            Light(canvas, new Vector2(middle.X, ground), new Vector2(width * ShadowCoreWide, width * ShadowCoreWide * ShadowFlat), new Color(0, 0, 0, ShadowCoreAlpha));
         }
     }
 

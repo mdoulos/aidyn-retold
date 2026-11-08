@@ -85,6 +85,14 @@ public sealed record CampfireArt(RecordId Image, CampPoint Anchor, float Width, 
 /// </summary>
 public sealed record CampSun(float X, float Y, float Z, Rgba Color, float Strength = 1);
 
+/// <summary>
+/// A campsite's light from an hour of the day until the next's begins, the user's design (Nov 7, 2026): the ambient on the figures, the
+/// sun if it's up, and how strong the fire's light on the figures is against its full (1), as at night; a day's fire is a touch. The
+/// figures' light and the shadows they cast follow it (the camp's hour).
+/// </summary>
+/// <param name="From">The hour it begins, 0 to 24.</param>
+public sealed record CampLight(float From, Rgba Ambient, CampSun? Sun = null, float Fire = 1);
+
 /// <summary>A rectangle in a campsite's picture, as shares of its width and height, 0 to 1.</summary>
 public sealed record CampRect(float X, float Y, float Width, float Height);
 
@@ -162,6 +170,10 @@ public sealed record CampLayout(int Size, IReadOnlyList<string> Slots);
 /// is unknown.
 /// </param>
 /// <param name="Sun">The sun's light on the figures, the picture's own, over the ambient; none, there's no sun.</param>
+/// <param name="Lights">
+/// The light through the day, each from its hour until the next's, for a campsite whose light changes with the time (<see cref="LightAt"/>);
+/// none, <paramref name="Ambient"/> and <paramref name="Sun"/> all day with the fire at full.
+/// </param>
 public sealed record CampsiteRecord(
     RecordId Id,
     string Name,
@@ -183,13 +195,28 @@ public sealed record CampsiteRecord(
     CampfireArt? Campfire = null,
     float FigureHeight = 0,
     float Horizon = 0,
-    CampSun? Sun = null)
+    CampSun? Sun = null,
+    IReadOnlyList<CampLight>? Lights = null)
 {
     /// <summary>The depth the fire stands at among the slots': a slot under it is drawn behind the campfire, one over it in front.</summary>
     public const int FireDepth = 100;
 
     /// <summary>A slot by its name, or null.</summary>
     public CampSlot? Slot(string id) => Slots.FirstOrDefault(s => s.Id == id);
+
+    /// <summary>
+    /// The light at an hour of the day (0 to 24, wrapping): the last of <see cref="Lights"/> begun by then, the day's last before midnight
+    /// if none has yet; with none, the campsite's <see cref="Ambient"/> (as painted, white, without one) and <see cref="Sun"/>, the fire at
+    /// full.
+    /// </summary>
+    public CampLight LightAt(double hour)
+    {
+        if (Lights is not { Count: > 0 } lights)
+            return new CampLight(0, Ambient ?? new Rgba(255, 255, 255, 255), Sun);
+        var at = (float)(((hour % 24) + 24) % 24);
+        var ordered = lights.OrderBy(l => l.From).ToList();
+        return ordered.LastOrDefault(l => l.From <= at) ?? ordered[^1];
+    }
 
     /// <summary>
     /// The campsite for a terrain: the first whose <see cref="Terrains"/> name it, else the first with none, else the first of all,

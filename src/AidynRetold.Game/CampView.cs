@@ -130,6 +130,7 @@ public partial class CampView : Control
         FrontLight.Painter = PaintGlow;
         FrontLight.SetAnchorsPreset(LayoutPreset.FullRect);
         Front.AddChild(FrontLight);
+        Shadows.Painter = PaintShadows;
         PartyBehind.Painter = PaintPartyBehind;
         PartyBehind.Material = _figureLight;
         Campfire.Painter = PaintCampfire;
@@ -184,6 +185,12 @@ public partial class CampView : Control
         MouseFilter = MouseFilterEnum.Ignore,
         Material = new CanvasItemMaterial { BlendMode = CanvasItemMaterial.BlendModeEnum.Add },
     };
+
+    /// <summary>
+    /// The figures' shadows (<see cref="PaintShadows"/>), on the picture under the figures and the campfire; the layer puts it over this
+    /// control and under <see cref="PartyBehind"/>. Drawn each frame, as the fire's shadows flicker with it.
+    /// </summary>
+    public PaintedControl Shadows { get; } = new() { Name = "Camp shadows", MouseFilter = MouseFilterEnum.Ignore };
 
     /// <summary>
     /// The figures behind the fire (<see cref="PaintPartyBehind"/>), lit (<see cref="FigureShader"/>); the layer puts it over this control,
@@ -435,6 +442,7 @@ public partial class CampView : Control
         Front.QueueRedraw();
         FrontLight.QueueRedraw();
         PartyLight.QueueRedraw();
+        Shadows.QueueRedraw();
         LightFigures();
     }
 
@@ -455,8 +463,7 @@ public partial class CampView : Control
         (_fit, _site) = (fit, site);
         if (site is not null && _ui.Images.Get(site.Image) is { } picture)
             DrawTextureRect(picture, fit, false);
-        if (camp.Arrangement is { } shadowed && site is not null)
-            DrawShadows(this, shadowed, site, fit);
+        Shadows.QueueRedraw();
         // The figures behind the fire, the campfire and the vignette over them, and the figures in front of the fire over its layers
         // (CampsiteRecord.FireDepth), each on its own control, drawn as the picture pans.
         PartyBehind.QueueRedraw();
@@ -784,8 +791,16 @@ public partial class CampView : Control
     /// sits on the grass rather than over it. They lie at the foot of the figure's image, its soles or its seat, not at its anchor, which
     /// the user's pose points put a little above them; a seated figure's runs a little back toward its feet, further off than its seat.
     /// </summary>
-    private void DrawShadows(CanvasItem canvas, CampArrangement arrangement, CampsiteRecord site, Rect2 fit)
+    /// <summary>The figures' shadows on the picture, under them and the campfire, each frame, as the fire's flicker.</summary>
+    private void PaintShadows(CanvasItem canvas)
     {
+        if (Camp is { Arrangement: { } arrangement } camp && Scene() is var (site, fit))
+            DrawShadows(canvas, arrangement, site, fit, site.LightAt(camp.HourOfDay));
+    }
+
+    private void DrawShadows(CanvasItem canvas, CampArrangement arrangement, CampsiteRecord site, Rect2 fit, CampLight light)
+    {
+        var ring = Ring(arrangement, site, fit);
         foreach (var placement in arrangement.Placements)
         {
             if (placement.Image is not { } pose || Lit(pose) is not { } image)
@@ -794,11 +809,159 @@ public partial class CampView : Control
             var width = area.Size.X;
             // The image's foot, less the 2 clear pixels round every figure.
             var ground = area.End.Y - 2 * area.Size.Y / image.GetHeight();
+            if (placement.Figure is { } figure)
+                CastShadows(canvas, site, fit, light, placement, figure, image, area, ground, ring);
             var middle = new Vector2(area.Position.X + width / 2, ground - width * ShadowFlat * 0.15f);
             Light(canvas, middle, new Vector2(width * ShadowWide, width * ShadowWide * ShadowFlat), new Color(0, 0, 0, ShadowAlpha));
             Light(canvas, new Vector2(middle.X, ground), new Vector2(width * ShadowCoreWide, width * ShadowCoreWide * ShadowFlat), new Color(0, 0, 0, ShadowCoreAlpha));
         }
     }
+
+    /// <summary>
+    /// The ground round the fire as the picture's perspective lays it (the campsite's horizon and canonical height, <see cref="FireDistance"/>),
+    /// in figure heights: across from the fire, and toward the camera from it.
+    /// </summary>
+    private readonly record struct Ground(Vector2 Fire, float Horizon, float PerUnit)
+    {
+        public static Ground? Of(CampsiteRecord site, Rect2 fit) =>
+            site.Horizon > 0 && site.FigureHeight > 0
+                ? new Ground(At(fit, site.Fire.X, site.Fire.Y), fit.Position.Y + fit.Size.Y * site.Horizon, site.FigureHeight * fit.Size.X / site.Width)
+                : null;
+
+        /// <summary>How large a figure height is at a row against at the fire's.</summary>
+        public float ScaleAt(float y) => (y - Horizon) / (Fire.Y - Horizon);
+
+        public Vector2 ToGround(Vector2 p)
+        {
+            var s = ScaleAt(p.Y);
+            return new Vector2((p.X - Fire.X) / (PerUnit * s), FireDistance * (1 - 1 / s));
+        }
+
+        public Vector2 ToScreen(Vector2 g)
+        {
+            var s = 1 / (1 - g.Y / FireDistance);
+            return new Vector2(Fire.X + g.X * PerUnit * s, Horizon + (Fire.Y - Horizon) * s);
+        }
+    }
+
+    /// <summary>
+    /// The shadows a figure casts, the user's design (Nov 7, 2026): from each light the scene has that's strong enough on it to cast one,
+    /// as dark as that light's share of all the light on it (<see cref="CampLighting.Casters"/>), so they follow the biome and the time of
+    /// day (<see cref="CampsiteRecord.LightAt"/>): the sun's away from it, as long as the figure's height over the sun's, and the fire's out
+    /// from the fire, long, flickering with it. Each is a soft blob on the ground from the figure's feet, as wide as its body and a little
+    /// of its width, darkest near the feet and fading at its far end and across its edges, laid on the picture's ground so it widens toward
+    /// the camera, scaled to the figure as drawn; the sun's is lighter where it runs into the ring between the party and the fire, the
+    /// firelight washing it out (<see cref="Ring"/>). Drawn as a mesh of soft vertices.
+    /// </summary>
+    private void CastShadows(CanvasItem canvas, CampsiteRecord site, Rect2 fit, CampLight light, CampPlacement placement, CampFigureRecord figure,
+        Texture2D image, Rect2 area, float bottom, float ring)
+    {
+        if (Ground.Of(site, fit) is not { } ground || figure.Height <= 0)
+            return;
+        var foot = new Vector2(area.Position.X + area.Size.X / 2, bottom);
+        if (foot.Y <= ground.Horizon)
+            return;
+        // The figure as drawn against the ground where it stands, in figure heights there.
+        var drawn = placement.Scale / ground.ScaleAt(foot.Y);
+        var tall = image.GetHeight() / figure.Height * drawn;
+        var wide = image.GetWidth() / figure.Height * drawn;
+        var breadth = ShadowBody * drawn + ShadowSpread * wide;
+        var start = ground.ToGround(foot);
+        var fromFire = start.Length();
+        // The fire's light on the figure's middle, as the figures' shader has it.
+        var rise = tall / 2 - FigureFireRise;
+        var near = Math.Clamp(1 - (fromFire * fromFire + rise * rise) / (FigureFireRadius * FigureFireRadius), 0, 1);
+        var fire = FigureFireStrength * light.Fire * FireStrength(Seconds) * CampLighting.Luminance(FireLightColor) * near * near;
+        foreach (var caster in CampLighting.Casters(CampLighting.Luminance(light.Ambient), CampLighting.Sunlight(light.Sun), fire))
+        {
+            if (caster.Light == CampLightKind.Sun && light.Sun is { } sun)
+            {
+                var level = MathF.Sqrt(sun.X * sun.X + sun.Z * sun.Z);
+                if (level <= 0)
+                    continue;
+                // Away from the sun along the ground: z toward the camera, so a sun behind (z below 0) casts toward it.
+                Blob(canvas, ground, start, new Vector2(-sun.X, -sun.Z) / level, tall * level / sun.Y, breadth, caster.Darkness, ring);
+            }
+            else if (caster.Light == CampLightKind.Fire && fromFire > 0.05f)
+            {
+                Blob(canvas, ground, start, start / fromFire, tall * FireShadowLength, breadth, caster.Darkness, 0);
+            }
+        }
+    }
+
+    /// <summary>The fire's light as the shader's colour has it, for its brightness.</summary>
+    private static readonly Rgba FireLightColor = new(255, 153, 77, 255);
+
+    /// <summary>
+    /// One shadow on the ground: from <paramref name="start"/> (figure heights) along <paramref name="away"/> for <paramref name="length"/>,
+    /// <paramref name="breadth"/> wide, at most <paramref name="darkness"/> dark, lighter inside the ring round the fire where one's given.
+    /// </summary>
+    private static void Blob(CanvasItem canvas, Ground ground, Vector2 start, Vector2 away, float length, float breadth, float darkness, float ring)
+    {
+        var side = new Vector2(-away.Y, away.X);
+        var from = start - away * (breadth * 0.25f);
+        const int Along = 16, Across = 8;
+        var points = new Vector2[(Along + 1) * (Across + 1)];
+        var colors = new Color[points.Length];
+        for (var i = 0; i <= Along; i++)
+        {
+            var u = (float)i / Along;
+            var reach = Mathf.SmoothStep(0, 0.15f, u) * (1 - Mathf.SmoothStep(0.5f, 1, u));
+            for (var j = 0; j <= Across; j++)
+            {
+                var v = -1 + 2f * j / Across;
+                var at = ground.ToScreen(from + away * (u * (length + breadth * 0.25f)) + side * (v * breadth / 2));
+                var soft = (1 - v * v) * (1 - v * v);
+                points[i * (Across + 1) + j] = at;
+                colors[i * (Across + 1) + j] = new Color(0, 0, 0, darkness * reach * soft * InRing(at, ground.Fire, ring));
+            }
+        }
+        var indices = new int[Along * Across * 6];
+        var k = 0;
+        for (var i = 0; i < Along; i++)
+            for (var j = 0; j < Across; j++)
+            {
+                var a = i * (Across + 1) + j;
+                var c = a + Across + 1;
+                indices[k++] = a; indices[k++] = c; indices[k++] = a + 1;
+                indices[k++] = a + 1; indices[k++] = c; indices[k++] = c + 1;
+            }
+        RenderingServer.CanvasItemAddTriangleArray(canvas.GetCanvasItem(), indices, points, colors);
+    }
+
+    /// <summary>
+    /// The ring between the party and the fire, the user's (Nov 7, 2026): an ellipse round the fire as flat as the slots round it lie
+    /// (<see cref="RingAspect"/>, the profiles' and the two in front's), through the nearest figure; its size across in this control's
+    /// pixels, or 0 with nobody placed.
+    /// </summary>
+    private static float Ring(CampArrangement arrangement, CampsiteRecord site, Rect2 fit)
+    {
+        var fire = At(fit, site.Fire.X, site.Fire.Y);
+        var nearest = float.MaxValue;
+        foreach (var placement in arrangement.Placements)
+        {
+            var off = At(fit, placement.Slot.X, placement.Slot.Y) - fire;
+            nearest = Math.Min(nearest, MathF.Sqrt(off.X * off.X + off.Y / RingAspect * (off.Y / RingAspect)));
+        }
+        return nearest == float.MaxValue ? 0 : nearest;
+    }
+
+    /// <summary>How much of a shadow shows at a point: <see cref="RingShadow"/> inside the ring, all of it a little way past it, smoothly.</summary>
+    private static float InRing(Vector2 at, Vector2 fire, float ring)
+    {
+        if (ring <= 0)
+            return 1;
+        var off = at - fire;
+        var far = MathF.Sqrt(off.X * off.X + off.Y / RingAspect * (off.Y / RingAspect)) / ring;
+        return Mathf.Lerp(RingShadow, 1, Mathf.SmoothStep(0.85f, 1.4f, far));
+    }
+
+    /// <summary>
+    /// The lights' shadows: how wide against a figure height and against the figure's own width, and the fire's length against the figure's
+    /// height (its flames are lower than a figure's head, so it'd be endless); the ring round the fire, how flat it lies and how much of a
+    /// sun's shadow shows inside it.
+    /// </summary>
+    private const float ShadowBody = 0.4f, ShadowSpread = 0.35f, FireShadowLength = 2.2f, RingAspect = 0.45f, RingShadow = 0.3f;
 
     /// <summary>
     /// A contact shadow's pool, against the figure's width, how flat it lies (the ground seen at about 13 degrees), and how dark; and its
@@ -1146,9 +1309,8 @@ public partial class CampView : Control
         return (h & 0xFFFFFF) / (float)0x1000000;
     }
 
-    /// <summary>The biome's ambient light on the figures, multiplied into their colours, its alpha unused; white with none.</summary>
-    private static Color Ambient(CampsiteRecord site) =>
-        site.Ambient is { } a ? new Color(a.R / 255f, a.G / 255f, a.B / 255f) : Colors.White;
+    /// <summary>The ambient light on the figures, multiplied into their colours, its alpha unused.</summary>
+    private static Color Ambient(Rgba a) => new(a.R / 255f, a.G / 255f, a.B / 255f);
 
     // The figures' light, the user's design (Nov 7, 2026; the campsite brief's section 7): each figure's colours times the biome's ambient
     // light, and the fire's added over it through the figure's normal map, as a point of light among the flames, warm and flickering
@@ -1257,10 +1419,12 @@ public partial class CampView : Control
     /// <summary>The figures' light as the fire burns now: the biome's ambient, the fire's place and its strength, every frame.</summary>
     private void LightFigures()
     {
-        if (Scene() is not var (site, fit))
+        if (Camp is not { } camp || Scene() is not var (site, fit))
             return;
-        _figureLight.SetShaderParameter("ambient", Ambient(site));
-        var sun = site.Sun is { } s && (s.X != 0 || s.Y != 0 || s.Z != 0) ? s : null;
+        // The light at the camp's hour (CampsiteRecord.LightAt): its ambient, its sun and how strong its fire is.
+        var light = site.LightAt(camp.HourOfDay);
+        _figureLight.SetShaderParameter("ambient", Ambient(light.Ambient));
+        var sun = light.Sun is { } s && (s.X != 0 || s.Y != 0 || s.Z != 0) ? s : null;
         _figureLight.SetShaderParameter("sun_dir", sun is null ? Vector3.Back : new Vector3(sun.X, sun.Y, sun.Z).Normalized());
         _figureLight.SetShaderParameter("sun_color", sun is null ? Colors.Black
             : new Color(sun.Color.R / 255f * sun.Strength, sun.Color.G / 255f * sun.Strength, sun.Color.B / 255f * sun.Strength));
@@ -1268,7 +1432,7 @@ public partial class CampView : Control
         _figureLight.SetShaderParameter("above", FigureAbove);
         _figureLight.SetShaderParameter("below", FigureBelow);
         _figureLight.SetShaderParameter("fire_color", FigureFireColor);
-        _figureLight.SetShaderParameter("fire_strength", FigureFireStrength * FireStrength(Seconds));
+        _figureLight.SetShaderParameter("fire_strength", FigureFireStrength * light.Fire * FireStrength(Seconds));
         _figureLight.SetShaderParameter("fire_x", At(fit, site.Fire.X, site.Fire.Y).X);
         _figureLight.SetShaderParameter("fire_rise", FigureFireRise);
         _figureLight.SetShaderParameter("fire_radius", FigureFireRadius);
@@ -1735,6 +1899,8 @@ public partial class CampLayer : CanvasLayer
         // in front over it, the front stones with their own firelight and the figures in front of the fire with theirs, then the band,
         // the rollers over the band's edges, and the debug marks over all.
         _screen.Canvas.AddChild(_view);
+        _view.Shadows.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        _screen.Canvas.AddChild(_view.Shadows);
         _view.PartyBehind.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         _screen.Canvas.AddChild(_view.PartyBehind);
         _view.Campfire.SetAnchorsPreset(Control.LayoutPreset.FullRect);

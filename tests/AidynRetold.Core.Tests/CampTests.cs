@@ -694,4 +694,46 @@ public class CampTests
         Assert.True(screen.PointRecipe(0));
         Assert.False(screen.PointRecipe(1));
     }
+
+    [Fact]
+    public void TheShadowsComeFromTheLightsStrongEnoughToCastThemAsDarkAsTheirShareOfTheLight()
+    {
+        var sun = new CampSun(0.55f, 0.5f, -0.67f, new Rgba(255, 214, 150, 255), 0.85f);
+        // The forest's day: the sun gives about half the light and casts a shadow about half dark; a day's fire, a touch, casts next to none.
+        var ambient = CampLighting.Luminance(new Rgba(160, 158, 142, 255));
+        var day = CampLighting.Casters(ambient, CampLighting.Sunlight(sun), 0.19f);
+        Assert.Equal(CampLightKind.Sun, day[0].Light);
+        Assert.InRange(day[0].Darkness, 0.45f, 0.5f);
+        Assert.True(day.Count == 1 || day[1].Darkness < 0.08f);
+        // A night: no sun, a dim ambient, the fire at full; the fire casts, dark.
+        var night = Assert.Single(CampLighting.Casters(0.25f, CampLighting.Sunlight(null), 0.55f));
+        Assert.Equal(CampLightKind.Fire, night.Light);
+        Assert.InRange(night.Darkness, 0.65f, 0.72f);
+        // A dusk: both cast, the stronger first; a sun under the horizon gives nothing; nothing at all casts nothing.
+        var dusk = CampLighting.Casters(0.3f, 0.4f, 0.35f);
+        Assert.Equal([CampLightKind.Sun, CampLightKind.Fire], dusk.Select(c => c.Light));
+        Assert.Equal(0, CampLighting.Sunlight(sun with { Y = -0.2f }));
+        Assert.Empty(CampLighting.Casters(0, 0, 0));
+        // A light under the faintest share casts nothing; one over the noticed casts its whole share.
+        Assert.Empty(CampLighting.Casters(1, 0.05f, 0));
+        Assert.Equal(0.5f, Assert.Single(CampLighting.Casters(1, 1, 0)).Darkness, 0.0001f);
+    }
+
+    [Fact]
+    public void TheCampsitesLightIsTheOneBegunByTheHourWrappingRoundMidnightOrItsOwnWithoutAny()
+    {
+        var sun = new CampSun(0.5f, 0.5f, -0.7f, new Rgba(255, 220, 160, 255));
+        var plain = Forest() with { Ambient = new Rgba(200, 200, 190, 255), Sun = sun };
+        Assert.Equal(new CampLight(0, new Rgba(200, 200, 190, 255), sun), plain.LightAt(21));
+        Assert.Equal(new Rgba(255, 255, 255, 255), Forest().LightAt(12).Ambient);
+        var night = new CampLight(19, new Rgba(60, 62, 80, 255), Fire: 1);
+        var day = new CampLight(6, new Rgba(160, 158, 142, 255), sun, 0.35f);
+        var lit = Forest() with { Lights = [night, day] };
+        Assert.Same(day, lit.LightAt(6));
+        Assert.Same(day, lit.LightAt(18.9));
+        Assert.Same(night, lit.LightAt(19));
+        Assert.Same(night, lit.LightAt(2));
+        Assert.Same(night, lit.LightAt(-1));
+        Assert.Same(day, lit.LightAt(30));
+    }
 }

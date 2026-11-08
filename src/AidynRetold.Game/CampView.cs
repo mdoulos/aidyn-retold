@@ -580,25 +580,58 @@ public partial class CampView : Control
     /// <summary>
     /// The flames across the pit, back to front: each one's offset from the fire's anchor, its height, whether it's drawn from the tall
     /// flames or the short, how many shapes a second it changes through, and whether it burns in front of the campfire's pot, over its
-    /// pot layer, or behind it, under the pot, the user's design (Nov 7, 2026).
+    /// pot layer, or behind it, under the pot, the user's design (Nov 7, 2026). The campfire's art has no flames of its own, only its
+    /// glowing logs, so these spread across them: low at the ends, taller toward the middle.
     /// </summary>
     private static readonly (float X, float Height, bool Tall, float Rate, bool Over)[] FlameLayout =
     [
-        (-16, 22, false, 7.5f, true), (16, 24, false, 8.5f, true), (-7, 38, true, 6.5f, false), (0, 44, true, 6f, false), (7, 34, true, 7f, true),
+        (-27, 18, false, 7.9f, true), (27, 19, false, 8.3f, true), (-4, 40, true, 6.8f, false), (4, 41, true, 7.3f, false),
+        (-9, 38, true, 6.5f, false), (0, 44, true, 6f, false), (-17, 28, false, 7.5f, true), (17, 29, false, 8.5f, true),
+        (9, 35, true, 7f, true),
     ];
 
     /// <summary>
     /// How far under the fire's anchor the flames' feet are: on the campfire's logs, as its art is drawn; how wide a flame is drawn of its
     /// sprite's shape; and how opaque.
     /// </summary>
-    private const float FlameDrop = 14, FlameWidth = 0.9f, FlameAlpha = 0.92f;
+    private const float FlameDrop = 14, FlameWidth = 1.05f, FlameAlpha = 0.92f;
 
     /// <summary>How far over the campsite's pot's bottom the smoke starts, with no campfire art to give the pot's rim: its rim.</summary>
     private const float SmokeFromPot = 30;
 
-    /// <summary>The smoke: how many plumes rise at once, how long each takes, how far it rises and how tall it grows, and how faint it is.</summary>
+    /// <summary>
+    /// The smoke: how many plumes rise at once, how long each takes, how far it rises and how tall it grows, how faint it is, and how far
+    /// a plume starts from the rim's middle and wanders either side as it rises.
+    /// </summary>
     private const int SmokePlumes = 4;
-    private const float SmokeSeconds = 9, SmokeRise = 190, SmokeFrom = 80, SmokeTo = 160, SmokeAlpha = 0.24f;
+    private const float SmokeSeconds = 9, SmokeRise = 190, SmokeFrom = 80, SmokeTo = 160, SmokeAlpha = 0.24f, SmokeSpread = 4, SmokeWander = 10;
+
+    /// <summary>
+    /// The wind, the user's design (Nov 7, 2026): every 10 to 20 seconds it turns to the left, to still or to the right, chosen afresh
+    /// each time, and eases round over a few seconds, a gentle gust in it. The flames lean with it, and the smoke and the embers rise
+    /// slanting toward its side. Each turn falls in a slot of its own <see cref="WindSlot"/> seconds long, somewhere in its first
+    /// <see cref="WindSlack"/>, so turns come 10 to 20 seconds apart; a turn takes <see cref="WindTurn"/> seconds; and the wind leans
+    /// what it moves <see cref="WindLean"/> degrees.
+    /// </summary>
+    private const float WindSlot = 15, WindSlack = 5, WindTurn = 3, WindLean = 15;
+
+    /// <summary>
+    /// The wind's lean at a moment, in radians: to the right over 0, to the left under, 0 when it's still. Each camp's winds are its own,
+    /// by its seed.
+    /// </summary>
+    private float Wind(float seconds)
+    {
+        var salt = (int)((Camp?.Seed ?? 0) % 9973) * 3;
+        var slot = (int)MathF.Floor(seconds / WindSlot);
+        if (seconds < Turn(slot))
+            slot--;
+        var side = Mathf.Lerp(Side(slot - 1), Side(slot), Smooth(Math.Clamp((seconds - Turn(slot)) / WindTurn, 0, 1)));
+        var gust = 1 + 0.15f * Noise(seconds * 0.4f, 403 + salt);
+        return Mathf.DegToRad(WindLean) * side * gust;
+
+        float Turn(int slot) => slot * WindSlot + WindSlack * Hash(slot, 401 + salt);
+        float Side(int slot) => MathF.Floor(Hash(slot, 402 + salt) * 3) - 1;
+    }
 
     /// <summary>The firelight's soft round, made once: white in the middle fading out to nothing at the edge.</summary>
     private static readonly GradientTexture2D LightRound = new()
@@ -656,8 +689,10 @@ public partial class CampView : Control
     }
 
     /// <summary>
-    /// The smoke, then the flames in front of the pot, then the embers. The smoke rises from the pot's rim in a few plumes at once, each
-    /// faint, growing and drifting as it rises and fading in and out, a different plume each time round.
+    /// The smoke, then the flames in front of the pot, then the embers. The smoke rises from the middle of the pot's rim in a few plumes
+    /// at once, each faint, growing and wandering either side as it rises and fading in and out, a different plume each time round,
+    /// slanting and leaning with the wind (<see cref="Wind"/>). Each plume's foot is the middle of its image's foot, the sheet's plumes
+    /// cut so (Nov 7, 2026), so a mirrored one starts where the rest do.
     /// </summary>
     private void PaintFire(CanvasItem canvas)
     {
@@ -667,6 +702,7 @@ public partial class CampView : Control
         var fire = At(_fit, site.Fire.X, site.Fire.Y);
         var rim = Rim(site, fire, pixel);
         var seconds = Seconds;
+        var wind = Wind(seconds);
         for (var i = 0; i < SmokePlumes; i++)
         {
             var age = seconds / SmokeSeconds + (float)i / SmokePlumes;
@@ -676,13 +712,16 @@ public partial class CampView : Control
                 continue;
             var height = Mathf.Lerp(SmokeFrom, SmokeTo, u) * pixel;
             var width = height * smoke.GetWidth() / smoke.GetHeight();
-            var drift = (8 + 18 * Noise(round + u * 2, i + 40)) * u * pixel;
-            var foot = rim + new Vector2(drift + (Hash(round, i) - 0.5f) * 16 * pixel, -SmokeRise * u * pixel);
+            var rise = SmokeRise * u;
+            var aside = (Hash(round, i) * 2 - 1) * SmokeSpread + SmokeWander * Noise(round + u * 2, i + 40) * u + rise * MathF.Tan(wind);
+            var foot = rim + new Vector2(aside, -rise) * pixel;
             var alpha = SmokeAlpha * MathF.Pow(MathF.Sin(MathF.PI * u), 1.5f);
             var mirror = Hash(round, i + 90) < 0.5f;
-            var rect = new Rect2(foot.X - width / 2, foot.Y - height, width, height);
-            canvas.DrawTextureRect(smoke, mirror ? new Rect2(rect.End.X, rect.Position.Y, -width, height) : rect, false, new Color(0.95f, 0.9f, 0.84f, alpha));
+            canvas.DrawSetTransform(foot, wind);
+            canvas.DrawTextureRect(smoke, mirror ? new Rect2(width / 2, -height, -width, height) : new Rect2(-width / 2, -height, width, height), false,
+                new Color(0.95f, 0.9f, 0.84f, alpha));
         }
+        canvas.DrawSetTransform(Vector2.Zero);
         PaintFlames(canvas, fire, pixel, seconds, over: true);
         PaintEmbers(canvas, fire, pixel, seconds);
     }
@@ -700,10 +739,11 @@ public partial class CampView : Control
 
     /// <summary>
     /// The flames behind the pot or those in front of it (<see cref="FlameLayout"/>). Each changes through the sheet's shapes, one fading
-    /// into the next, its height flickering and its tip swaying, its foot on the logs.
+    /// into the next, its height flickering and its tip swaying, its foot on the logs, and leans with the wind (<see cref="Wind"/>).
     /// </summary>
     private void PaintFlames(CanvasItem canvas, Vector2 fire, float pixel, float seconds, bool over)
     {
+        var wind = Wind(seconds);
         for (var i = 0; i < FlameLayout.Length; i++)
         {
             if (FlameLayout[i].Over != over)
@@ -715,7 +755,8 @@ public partial class CampView : Control
             var height = tall * (0.86f + 0.14f * Noise(seconds * 3.1f, i * 5 + 1)) * pixel;
             var sway = 0.16f * Noise(seconds * 1.4f, i * 7 + 2);
             var foot = fire + new Vector2((x + 1.5f * Noise(seconds * 2.6f, i * 3 + 9)) * pixel, FlameDrop * pixel);
-            canvas.DrawSetTransformMatrix(new Transform2D(new Vector2(1, 0), new Vector2(sway, 1), foot));
+            // The sway skews the flame's tip; the wind turns the whole flame about its foot.
+            canvas.DrawSetTransformMatrix(new Transform2D(wind, foot) * new Transform2D(new Vector2(1, 0), new Vector2(sway, 1), Vector2.Zero));
             Flame(canvas, FlameOf(step, i, flicker), height, FlameAlpha * (1 - blend));
             Flame(canvas, FlameOf(step + 1, i, flicker), height, FlameAlpha * blend);
         }
@@ -727,18 +768,22 @@ public partial class CampView : Control
     /// once a round of its own length; only some tries rise, fewer while the fire's mood, a slow wander, is low, so some stretches have
     /// none and some two or three close together, one every two seconds or so on the whole. How many places, how long a round is, the
     /// share of tries that rise as the fire's mood is middling, the seconds an ember is in the air at least and at most, and how large
-    /// it's drawn: the picture's pixels to the sheet's, so its bright core is a pixel or three with its glow round it.
+    /// it's drawn: the picture's pixels to the sheet's, so its bright core is a pixel or three with its glow round it. Some embers fly
+    /// higher, the user's choice (Nov 7, 2026): the share that do, and how much higher and longer they rise.
     /// </summary>
     private const int EmberPlaces = 6;
     private const float EmberRound = 2.8f, EmberChance = 0.27f, EmberShortest = 0.8f, EmberLongest = 1.9f, EmberScale = 0.3f;
+    private const float EmberHighShare = 0.4f, EmberHigher = 1.35f;
 
     /// <summary>
     /// The embers rising from the fire. Each starts among the flames and rises fast, slowing as it cools, wandering and drifting off to a
-    /// side; it shows at once, twinkles and fades slowly, reddening and shrinking as it goes; each is its own size and brightness, and
-    /// rises its own height.
+    /// side, slanting with the wind (<see cref="Wind"/>), which takes over from its own drift as it blows; it shows at once, twinkles and
+    /// fades slowly, reddening and shrinking as it goes; each is its own size and brightness, and rises its own height.
     /// </summary>
     private void PaintEmbers(CanvasItem canvas, Vector2 fire, float pixel, float seconds)
     {
+        var wind = Wind(seconds);
+        var blowing = MathF.Min(1, MathF.Abs(wind) / Mathf.DegToRad(WindLean));
         var mood = 0.5f + 0.5f * Noise(seconds * 0.15f, 307);
         for (var i = 0; i < EmberPlaces; i++)
         {
@@ -748,13 +793,16 @@ public partial class CampView : Control
             var round = (int)MathF.Floor(age);
             if (Hash(round, seed + 3) > EmberChance * (0.3f + 1.4f * mood))
                 continue;
-            // Its seconds in the air, and when in the round it rises.
-            var life = MathF.Min(length, Mathf.Lerp(EmberShortest, EmberLongest, Hash(round, seed + 4)));
+            // How much higher it flies, its seconds in the air, longer as it flies higher, and when in the round it rises.
+            var higher = Hash(round, seed + 15) < EmberHighShare ? EmberHigher : 1;
+            var life = MathF.Min(length, Mathf.Lerp(EmberShortest, EmberLongest, Hash(round, seed + 4)) * higher);
             var u = ((age - round) * length - (length - life) * Hash(round, seed + 5)) / life;
             if (u is < 0 or > 1 || _ui.Images.Get(Embers[(int)(Hash(round, seed + 6) * Embers.Length)]) is not { } ember)
                 continue;
-            var lean = (Hash(round, seed + 7) - 0.5f) * 70;
-            var rise = (45 + 120 * Hash(round, seed + 8)) * (1 - (1 - u) * (1 - u));
+            // Its own drift to a side, half of it as the wind blows full, and the wind's slant.
+            var height = (45 + 120 * Hash(round, seed + 8)) * higher;
+            var lean = (Hash(round, seed + 7) - 0.5f) * 70 * (1 - 0.5f * blowing) + height * MathF.Tan(wind);
+            var rise = height * (1 - (1 - u) * (1 - u));
             var wander = 9 * Noise(seconds * 1.6f + i * 4.3f, seed + 9) * u;
             var from = new Vector2((Hash(round, seed + 10) - 0.5f) * 34, 4 - 20 * Hash(round, seed + 11));
             var at = fire + (from + new Vector2(lean * u + wander, -rise)) * pixel;

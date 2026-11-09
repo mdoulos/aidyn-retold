@@ -15,7 +15,7 @@ namespace AidynRetold.Game;
 public partial class CampModels : Node
 {
     /// <summary>How much of the model's world each picture shows, wide and high, in the model's units.</summary>
-    public const float ViewWidth = 2, ViewHeight = 2.3f;
+    public const float ViewWidth = 2.3f, ViewHeight = 2.3f;
 
     /// <summary>The height the camera aims at, and how far it looks down: the picture's ground, seen at about 13°.</summary>
     private const float Aim = 0.95f, Pitch = 13 * Mathf.Pi / 180;
@@ -79,9 +79,9 @@ public partial class CampModels : Node
             if (Math.Abs(figure.View.Size.Y - size.Y) > 16)
                 figure.View.Size = size;
             figure.Turn.Rotation = new Vector3(0, Yaw(placement), 0);
-            var model = placement.Figure!.Model!;
-            var clip = SceneNames.Animation(Convert.ToInt32((CampPoses.IsSeated(placement.Pose) ? model.Sit : model.Stand).Key, 16));
-            if (figure.Clip != clip && figure.Player.HasAnimation(clip))
+            var clips = placement.Figure!.Model!.Clips(CampPoses.IsSeated(placement.Pose));
+            var clip = clips.Count == 0 ? null : SceneNames.Animation(Convert.ToInt32(clips[placement.Clip % clips.Count].Key, 16));
+            if (clip is not null && figure.Clip != clip && figure.Player.HasAnimation(clip))
             {
                 figure.Clip = clip;
                 // A clip leaves any bone it keys and the next doesn't as it was: the sit makes his legs longer and thicker, which standing has no keys to undo.

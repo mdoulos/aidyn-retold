@@ -155,11 +155,12 @@ public sealed class CampRecordsTests
             temp.Add("aidyn", null),
             temp.Add("acre", ["aidyn"], ("camp/campsites.json", Campsite), ("camp/figures.json", Figure)),
             temp.Add("mymod", ["acre"],
-                ("figure.json", """{ "patch": "acre:campfigure/alaron", "model": { "actor": "aidyn:actor/0x25F9", "stand": "aidyn:animation/0x25E7", "sit": "acre:animation/0x000c" } }""")),
+                ("figure.json", """{ "patch": "acre:campfigure/alaron", "model": { "actor": "aidyn:actor/0x25F9", "stands": ["aidyn:animation/0x25E7"], "sits": ["acre:animation/0x000c", "acre:animation/0x000d"] } }""")),
         ]);
         var alaron = set.Get<CampFigureRecord>(RecordId.Parse("acre:campfigure/alaron"));
         Assert.Equal(RecordId.Parse("aidyn:actor/0x25F9"), alaron.Model!.Actor);
-        Assert.Equal(RecordId.Parse("acre:animation/0x000c"), alaron.Model.Sit);
+        Assert.Equal([RecordId.Parse("acre:animation/0x000c"), RecordId.Parse("acre:animation/0x000d")], alaron.Model.Clips(seated: true));
+        Assert.Equal([RecordId.Parse("aidyn:animation/0x25E7")], alaron.Model.Clips(seated: false));
         Assert.NotNull(alaron.PoseOf(CampPoses.SitRear));
     }
 }

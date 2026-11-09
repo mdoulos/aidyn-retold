@@ -12,8 +12,9 @@ namespace AidynRetold.Core.Camp;
 /// <param name="Mirrored">Whether its image is drawn mirrored to face that way.</param>
 /// <param name="Figure">The member's figure, or null when the plugins have none for it.</param>
 /// <param name="Image">The pose's image, or null when the figure hasn't it: the screen then has nothing to draw and says so.</param>
+/// <param name="Clip">Which of its model's clips for the pose's kind it plays (<see cref="CampFigureModel.Clips"/>), where it's drawn from a model that has several.</param>
 public sealed record CampPlacement(RecordId Member, CampSlot Slot, string Pose, CampFacing Facing, bool Mirrored, CampFigureRecord? Figure,
-    CampPose? Image)
+    CampPose? Image, int Clip = 0)
 {
     public bool Drawable => Image is not null;
 
@@ -133,7 +134,7 @@ public static class CampArranger
             var pose = slot.Poses.FirstOrDefault(CampPoses.IsKnown) ?? slot.Poses.FirstOrDefault() ?? CampPoses.SitRear;
             var fit = figure is null ? null : Fit(figure, slot, random, prefer: pose);
             placed.Add(fit is var (p, mirrored, image) && image is not null
-                ? new CampPlacement(member, slot, p, slot.Facing, mirrored, figure, image)
+                ? new CampPlacement(member, slot, p, slot.Facing, mirrored, figure, image, ChooseClip(figure!, p, random))
                 : new CampPlacement(member, slot, pose, slot.Facing, false, figure, null));
         }
         return new CampArrangement(site, fallback, placed, notes, Fallback: true);
@@ -163,7 +164,7 @@ public static class CampArranger
             }
             else if (Fit(figure, slot, random) is var (pose, mirrored, image))
             {
-                placements[at] = new CampPlacement(member, slot, pose, slot.Facing, mirrored, figure, image);
+                placements[at] = new CampPlacement(member, slot, pose, slot.Facing, mirrored, figure, image, ChooseClip(figure, pose, random));
             }
             else
             {
@@ -214,7 +215,7 @@ public static class CampArranger
             var least = fitting.Where(f => placements.Count(p => p.Figure == f) == fewest).ToList();
             var figure = least[(int)random.Below((uint)least.Count)];
             if (Fit(figure, slot, random) is var (pose, mirrored, image))
-                placements.Add(new CampPlacement(figure.Entity, slot, pose, slot.Facing, mirrored, figure, image));
+                placements.Add(new CampPlacement(figure.Entity, slot, pose, slot.Facing, mirrored, figure, image, ChooseClip(figure, pose, random)));
         }
         placements = [.. placements.OrderBy(p => site.Slots.ToList().FindIndex(s => s.Id == p.Slot.Id))];
         List<string> notes = placements.Count == 0 ? [$"{string.Join(", ", figures.Select(f => f.Id))} fits none of {site.Id}'s slots."] : [];
@@ -238,7 +239,7 @@ public static class CampArranger
         }
         return next;
 
-        static (string Slot, RecordId Member, string Pose) Shown(CampPlacement p) => (p.Slot.Id, p.Member, p.Pose);
+        static (string Slot, RecordId Member, string Pose, int Clip) Shown(CampPlacement p) => (p.Slot.Id, p.Member, p.Pose, p.Clip);
     }
 
     /// <summary>
@@ -279,9 +280,9 @@ public static class CampArranger
         for (var attempt = 0; attempt < Tries; attempt++)
         {
             placements = [.. arrangement.Placements.Select(p => p.Figure is { } figure && Fit(figure, p.Slot, random) is var (pose, mirrored, image)
-                ? p with { Pose = pose, Mirrored = mirrored, Image = image }
+                ? p with { Pose = pose, Mirrored = mirrored, Image = image, Clip = ChooseClip(figure, pose, random) }
                 : p)];
-            if (placements.Zip(arrangement.Placements).Any(pair => pair.First.Pose != pair.Second.Pose))
+            if (placements.Zip(arrangement.Placements).Any(pair => pair.First.Pose != pair.Second.Pose || pair.First.Clip != pair.Second.Clip))
                 break;
         }
         return arrangement with { Placements = placements };
@@ -297,6 +298,10 @@ public static class CampArranger
             return preferred;
         return options[(int)random.Below((uint)options.Count)];
     }
+
+    /// <summary>One of the clips a figure's model has for a pose's kind, chosen by the seed; 0, and no number drawn, where there's no choice.</summary>
+    private static int ChooseClip(CampFigureRecord figure, string pose, IRandom random) =>
+        figure.Model?.Clips(CampPoses.IsSeated(pose)) is { Count: > 1 } clips ? (int)random.Below((uint)clips.Count) : 0;
 
     private static void Shuffle<T>(IList<T> list, IRandom random)
     {

@@ -280,9 +280,13 @@ public sealed record CampPose(string Pose, RecordId Image, int AnchorX, int Anch
 /// slots it fits, and its shadows and contacts come from them, and taking the model off a figure brings the painting back.
 /// </summary>
 /// <param name="Actor">The actor drawn.</param>
-/// <param name="Stand">The clip it plays standing.</param>
-/// <param name="Sit">The clip it plays seated.</param>
-public sealed record CampFigureModel(RecordId Actor, RecordId Stand, RecordId Sit);
+/// <param name="Stands">The clips it may play standing, the user's (Nov 9, 2026): each placement takes one at random (<c>CampPlacement.Clip</c>).</param>
+/// <param name="Sits">The clips it may play seated, likewise.</param>
+public sealed record CampFigureModel(RecordId Actor, IReadOnlyList<RecordId> Stands, IReadOnlyList<RecordId> Sits)
+{
+    /// <summary>The clips it may play in a pose of the kind: seated or standing.</summary>
+    public IReadOnlyList<RecordId> Clips(bool seated) => seated ? Sits : Stands;
+}
 
 /// <summary>
 /// The figure a character cuts at camp (<c>acre:campfigure/&lt;name&gt;</c>): its poses' images and its stature. A character with

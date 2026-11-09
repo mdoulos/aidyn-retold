@@ -48,6 +48,49 @@ public class CampTests
 
     private static Dictionary<RecordId, CampFigureRecord> Figures(params CampFigureRecord[] figures) => figures.ToDictionary(f => f.Entity);
 
+    /// <summary>A figure drawn from a model that has three clips for sitting and one for standing.</summary>
+    private static CampFigureRecord Modelled(RecordId entity, params string[] poses) => Figure(entity, true, poses) with
+    {
+        Model = new CampFigureModel(RecordId.Parse("aidyn:actor/0x25F9"), [RecordId.Parse("aidyn:animation/0x25E7")],
+            [RecordId.Parse("acre:animation/0x000c"), RecordId.Parse("acre:animation/0x000d"), RecordId.Parse("acre:animation/0x000e")]),
+    };
+
+    [Fact]
+    public void AModelledFigureTakesOneOfItsClipsForItsPoseAtRandomAndTheSameSeedGivesTheSameOne()
+    {
+        var site = Forest();
+        var figure = Modelled(Alaron);
+        var seen = new HashSet<int>();
+        for (uint seed = 1; seed < 200; seed++)
+        {
+            var placements = CampArranger.Preview(site, figure, seed * 7919).Placements;
+            foreach (var p in placements)
+            {
+                if (CampPoses.IsSeated(p.Pose))
+                    seen.Add(p.Clip);
+                else
+                    Assert.Equal(0, p.Clip);
+            }
+            Assert.Equal(placements, CampArranger.Preview(site, figure, seed * 7919).Placements);
+        }
+        Assert.Equal([0, 1, 2], seen.Order());
+    }
+
+    [Fact]
+    public void ReposingCanChangeOnlyWhichClipAFigurePlays()
+    {
+        var figure = Modelled(Alaron, CampPoses.SitProfile);
+        var arrangement = CampArranger.Arrange(Forest(), [Alaron], _ => figure, 4);
+        var random = new Rng.Lcg(99);
+        for (var press = 0; press < 20; press++)
+        {
+            var reposed = CampArranger.Repose(arrangement, random);
+            Assert.Equal(CampPoses.SitProfile, reposed.Placements[0].Pose);
+            Assert.NotEqual(arrangement.Placements[0].Clip, reposed.Placements[0].Clip);
+            arrangement = reposed;
+        }
+    }
+
     [Fact]
     public void TheSeedIsTheSameWhateverOrderThePartyIsListedInAndChangesWithTheDay()
     {

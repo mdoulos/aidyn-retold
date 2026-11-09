@@ -48,7 +48,7 @@ are the remake's look ([options](options.md#graphic-quality)).
 
 ## The art
 
-- **The camp is a picture in pieces**: the user's blank forest, with the user's campfire laid on it at the fire's point, its pot and
+- **The camp is a picture in pieces**: the user's forest with three tents pitched in it, with the user's campfire laid on it at the fire's point, its pot and
   front logs laid again over the flames that burn behind them and its front stones over all the flames, animated flames, smoke and
   embers, and firelight added over it, so another biome or another fire changes a piece, not the painting
   ([camping](../systems/camping.md#the-camp-screen)).

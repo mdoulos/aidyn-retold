@@ -317,10 +317,10 @@ public sealed class GameSession
     public bool CinematicHeld { get; set; }
 
     /// <summary>
-    /// A figure the camp shows at every slot it fits in place of the party (<see cref="CampArranger.Preview"/>), for judging its art
-    /// round the fire: a launch's (<c>--camp-figure</c>), none in the game.
+    /// The figures the camp shows in place of the party, at every slot one of them fits (<see cref="CampArranger.Preview(CampsiteRecord, IReadOnlyList{CampFigureRecord}, uint)"/>),
+    /// for judging their art round the fire: a launch's (<c>--camp-figure</c>), none in the game.
     /// </summary>
-    public RecordId? CampFigure { get; set; }
+    public IReadOnlyList<RecordId> CampFigures { get; set; } = [];
 
     /// <summary>The installed plugins' triggers, which the session fires its events on (roadmap 2.10).</summary>
     public Triggers Triggers => _triggers ??= LoadTriggers();
@@ -1056,11 +1056,11 @@ public sealed class GameSession
         var seed = CampSeed.Of(day, chunk is { } here ? $"{here.MapSet}/{here.Row},{here.Column}" : "", party);
         var site = CampsiteRecord.For(Game.Plugins, terrain);
         var figures = Game.Plugins.All<CampFigureRecord>(RecordTypes.CampFigure).GroupBy(f => f.Entity).ToDictionary(g => g.Key, g => g.First());
-        var preview = CampFigure is { } shown ? Game.Plugins.TryGet<CampFigureRecord>(shown) : null;
-        if (CampFigure is { } missing && preview is null)
+        var previews = CampFigures.Select(id => Game.Plugins.TryGet<CampFigureRecord>(id)).OfType<CampFigureRecord>().ToList();
+        foreach (var missing in CampFigures.Where(id => Game.Plugins.TryGet<CampFigureRecord>(id) is null))
             _host.Log($"Camp: no figure {missing} to show.");
         var arrangement = site is null ? null
-            : preview is not null ? CampArranger.Preview(site, preview, seed)
+            : previews.Count > 0 ? CampArranger.Preview(site, previews, seed)
             : CampArranger.Arrange(site, party, id => figures.GetValueOrDefault(id), seed);
         _campPoses = new Rng.Lcg(seed ^ 0x9E3779B9);
         foreach (var note in arrangement?.Diagnostics ?? [])

@@ -197,7 +197,7 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
         _playing = Playing();
 
         var session = BuildWorld(plugins, game, start);
-        session.CampFigure = options.CampFigure;
+        session.CampFigures = options.CampFigures;
         // After the first terrain and the time, which can change the weather.
         if (options.Weather is { } weather)
         {

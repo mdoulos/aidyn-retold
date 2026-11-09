@@ -34,8 +34,8 @@ namespace AidynRetold.Game;
 /// <c>--cinematic &lt;n&gt;</c> a cinematic, <c>--opening on|off</c> whether a new game plays its opening (by default, when
 /// no option says where to start or drives the run), and <c>--battle &lt;id&gt;</c> a battle with a monster party
 /// (<c>aidyn:voxel/…</c>) where the player stands, or <c>--battle arena,&lt;n&gt;[,ambush]</c> one with that monster
-/// party in arena n, with <c>--radar box</c> to put the battle screen's radar in the log box. <c>--camp-figure &lt;id&gt;</c>
-/// shows that camp figure (<c>acre:campfigure/…</c>) at every slot it fits as a camp opens, in place of the party, for judging its art.
+/// party in arena n, with <c>--radar box</c> to put the battle screen's radar in the log box. <c>--camp-figure &lt;id&gt;,…</c>
+/// shows those camp figures (<c>acre:campfigure/…</c>) at every slot one of them fits as a camp opens, in place of the party, for judging their art.
 /// </remarks>
 public sealed class LaunchOptions(Dictionary<string, string> values)
 {
@@ -217,8 +217,10 @@ public sealed class LaunchOptions(Dictionary<string, string> values)
     /// <summary>A ring of actors around the player, playing their states in turn: <c>members</c> or entity IDs (<see cref="PoseCircleView"/>).</summary>
     public string? Poses => Text("poses");
 
-    /// <summary>A camp figure to show at every slot it fits as a camp opens, in place of the party (<see cref="Core.GameSession.CampFigure"/>).</summary>
-    public RecordId? CampFigure => Text("camp-figure") is { } id ? RecordId.Parse(id) : null;
+    /// <summary>The camp figures to show as a camp opens, in place of the party, at every slot one of them fits (<see cref="Core.GameSession.CampFigures"/>).</summary>
+    public IReadOnlyList<RecordId> CampFigures => Text("camp-figure") is { } ids
+        ? [.. ids.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(id => RecordId.Parse(id))]
+        : [];
 
     /// <summary>A ring of actors around the player to talk to, for their voices: <c>members</c> or entity IDs (<see cref="VoiceCircleView"/>).</summary>
     public string? Voices => Text("voices");

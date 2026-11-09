@@ -43,9 +43,9 @@ public static class CampPoses
     public const string SitRear = "sit_rear";
     /// <summary>Crouched or leaning to tend the fire, the hands toward the shared pot.</summary>
     public const string TendFire = "tend_fire";
-    /// <summary>Standing, turned three-quarters toward the viewer.</summary>
+    /// <summary>Standing across the fire from the viewer, turned three-quarters toward it.</summary>
     public const string StandFront3Q = "stand_front_3q";
-    /// <summary>Seated, turned three-quarters toward the viewer.</summary>
+    /// <summary>Seated across the fire from the viewer, turned three-quarters toward it.</summary>
     public const string SitFront3Q = "sit_front_3q";
 
     public static readonly IReadOnlyList<string> All = [StandProfile, SitProfile, StandRear3Q, SitRear3Q, StandRear, SitRear, TendFire, StandFront3Q, SitFront3Q];

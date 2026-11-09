@@ -192,21 +192,27 @@ public static class CampArranger
     }
 
     /// <summary>
-    /// A figure at every slot of a campsite it fits, in place of the party, each in a pose the seed chooses among those it has there: for
-    /// judging a figure's art round the fire (<c>--camp-figure</c>, a launch's), as the user asked for Alaron's (Nov 7, 2026).
+    /// Figures at every slot of a campsite one of them fits, in place of the party, each in a pose the seed chooses among those it has
+    /// there: for judging their art round the fire (<c>--camp-figure</c>, a launch's), as the user asked for Alaron's (Nov 7, 2026) and
+    /// Becan's beside him (Nov 8, 2026). A slot more than one fits goes to whichever has been placed least so far, the first listed on a
+    /// tie, so each shows where it can.
     /// </summary>
-    public static CampArrangement Preview(CampsiteRecord site, CampFigureRecord figure, uint seed)
+    public static CampArrangement Preview(CampsiteRecord site, IReadOnlyList<CampFigureRecord> figures, uint seed)
     {
         var random = new Lcg(seed);
         var placements = new List<CampPlacement>();
         foreach (var slot in site.Slots)
         {
-            if (Fit(figure, slot, random) is var (pose, mirrored, image))
+            var figure = figures.Where(f => Fits(f, slot)).OrderBy(f => placements.Count(p => p.Figure == f)).FirstOrDefault();
+            if (figure is not null && Fit(figure, slot, random) is var (pose, mirrored, image))
                 placements.Add(new CampPlacement(figure.Entity, slot, pose, slot.Facing, mirrored, figure, image));
         }
-        List<string> notes = placements.Count == 0 ? [$"{figure.Id} fits none of {site.Id}'s slots."] : [];
+        List<string> notes = placements.Count == 0 ? [$"{string.Join(", ", figures.Select(f => f.Id))} fits none of {site.Id}'s slots."] : [];
         return new CampArrangement(site, new CampLayout(placements.Count, [.. placements.Select(p => p.Slot.Id)]), placements, notes, Fallback: false);
     }
+
+    /// <summary>One figure at every slot it fits.</summary>
+    public static CampArrangement Preview(CampsiteRecord site, CampFigureRecord figure, uint seed) => Preview(site, [figure], seed);
 
     /// <summary>
     /// The pose a figure takes at a slot standing or seated (<see cref="CampPoses.IsSeated"/>): the first such the slot takes and the figure

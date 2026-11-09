@@ -149,6 +149,15 @@ public sealed class PlayerMotion
     public bool FellOut { get; private set; }
 
     /// <summary>
+    /// Where the nearest thing he could use is, in the world, or null for none (body <c>+0x110</c>, and <c>+0x10c</c> its distance): what his head
+    /// turns toward (<see cref="HeadTurn"/>). Trek keeps it each tick.
+    /// </summary>
+    public Vector3? LookingAt { get; set; }
+
+    /// <summary>How his head has turned, which the view steps as it poses him, since it turns from where the animation has put his neck.</summary>
+    public HeadTurn Head { get; } = new();
+
+    /// <summary>
     /// The way he faces, in X and Z. The original keeps the opposite, <c>facing</c>, which is why
     /// the camera's goal is along it.
     /// </summary>

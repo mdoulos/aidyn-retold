@@ -344,6 +344,10 @@ public sealed partial class TrekLoop : IMapObjectHost
             else
                 Use.TouchCameras(centre, at);
         }
+        // ProcessVoxelObjects keeps the nearest thing he could use, for his head to turn toward.
+        motion.LookingAt = centre is not null && playing && MapObjectUse.NearestReachable(centre, motion.TouchPoint - centre.Origin) is { } usable
+            ? usable.Position + centre.Origin
+            : null;
         var input = fading || Use.Popup is not null || talking ? new PlayerInput(Vector2.Zero) : readInput();
         // Actor::Move: the stick pushed lowers the portraits, but not while it orbits the camera.
         if (!input.Locked && input.Pushed)

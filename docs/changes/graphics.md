@@ -32,10 +32,12 @@ are the remake's look ([options](options.md#graphic-quality)).
 
 ## Models
 
-- **Alaron is remodelled.** About 1,000 triangles and 23 bones, skinned, with a normal map, fingers and a thumb that close as he runs, and
-  two outfits, plain and armoured, the armoured one while he wears armor that protects. He walks, jogs and runs on the remodel's own
-  animations, and jumps two ways at random, each with its rise, its time in the air and its landing. His original head is emptied, as the
-  remodel's body has its own ([replacing graphics](../replacing-graphics.md#a-skinned-character), [rendering](../systems/rendering.md#outfits)).
+- **Alaron is remodelled.** His body is about 2,500 triangles on 23 bones, skinned, with fingers and a thumb that close as he runs, and his
+  head is a separate model of about 2,500, a face and six pieces of hair, as the original's head was its own scene. Both have colour and normal
+  maps. He walks, jogs and runs on the remodel's own animations, and jumps two ways at random, each with its rise, its time in the air and its
+  landing ([replacing graphics](../replacing-graphics.md#a-skinned-character)). He wears the one outfit, whatever armor he has on.
+- **His hair moves.** It trails behind him as he jogs and runs, flutters with his stride and lifts as he jumps, and settles when he stands or
+  walks. The original's doesn't move ([rendering](../systems/rendering.md)).
 - **Surface Detail: Full** (the default) lights a model that brings a normal map per pixel, through the original's own light model. None of
   the original's models has one, so only a remodel looks different ([rendering](../systems/rendering.md#normal-maps)).
 - **Animation Blending: Smooth** (the default) blends a model with a skeleton into its next animation over 0.18 seconds, where the

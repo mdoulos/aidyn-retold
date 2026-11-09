@@ -46,8 +46,8 @@ looks is in [graphics](graphics.md) or [ui](ui.md), whatever it's of: a potion's
 
 ## What isn't here
 
-- **What the port doesn't do yet.** A few of the original's behaviours aren't ported or don't match yet, such as the lit lighthouse and
-  Alaron's head turning to what he can use. They're gaps rather than changes, and the [roadmap](../roadmap.md#left-over-from-finished-work)
+- **What the port doesn't do yet.** A few of the original's behaviours aren't ported or don't match yet, such as the lit lighthouse.
+  They're gaps rather than changes, and the [roadmap](../roadmap.md#left-over-from-finished-work)
   lists them.
 - **Changes to the story's content.** The retelling's changes and additions to the story are to come; [story](story.md) has what's changed
   so far, which is how the scripts run.

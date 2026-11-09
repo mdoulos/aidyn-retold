@@ -148,11 +148,14 @@ public sealed class Models(PluginSet plugins) : IDisposable
             return null;
         if (actor.Head is { } head && Instantiate(head.Scene) is { } headNode)
         {
-            // The original aligns the head with the locator but keeps it upright, and turns it
-            // toward things the player could use. Parenting it follows the neck, which is close.
+            // The original aligns the head with the locator but keeps it upright. Parenting it follows the neck, which is close, and
+            // its rig turns it toward things the player could use, as the player's view asks.
             var locatorName = SceneNames.Locator(head.Locator);
             if (Nodes.FindAll<Node3D>(node).FirstOrDefault(n => n.Name == locatorName) is { } locator)
+            {
                 locator.AddChild(headNode);
+                HeadRig.Add(node, locator, headNode);
+            }
             else
                 GD.PushWarning($"{actor.Scene} has no {locatorName} for its head.");
         }

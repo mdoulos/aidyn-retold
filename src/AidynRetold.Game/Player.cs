@@ -1,4 +1,5 @@
 using AidynRetold.Core.Movement;
+using AidynRetold.Views;
 using Godot;
 
 namespace AidynRetold.Game;
@@ -10,6 +11,7 @@ namespace AidynRetold.Game;
 public partial class Player : Node3D
 {
     private Node3D? _model;
+    private HeadRig? _head;
 
     public Player(PlayerMotion motion)
     {
@@ -33,6 +35,7 @@ public partial class Player : Node3D
         _model = model;
         Meshes = [.. Nodes.FindAll<GeometryInstance3D>(model)];
         AddChild(model);
+        _head = HeadRig.Of(model);
         Sync();
     }
 
@@ -42,5 +45,8 @@ public partial class Player : Node3D
         Position = Motion.Feet.ToGodot();
         if (_model is not null)
             _model.Rotation = new Vector3(0, Mathf.Atan2(Motion.Heading.X, Motion.Heading.Y), 0);
+        // Bodies.Render: his head turns toward what he could use, from where the animation has put his neck.
+        if (_head?.NeckFacing is { } neck)
+            _head.Turn(Motion.Head.Step(neck, _head.Position, Motion.LookingAt));
     }
 }

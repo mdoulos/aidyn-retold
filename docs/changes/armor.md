@@ -19,9 +19,8 @@ Body armor. Shields are in [shields](shields.md).
 
 ## Looks
 
-- **Armor changes Alaron's outfit.** The remodel wears its armoured outfit while he wears armor that protects, and its plain one
-  otherwise; the original draws one model whatever he wears ([graphics](graphics.md#models),
-  [rendering](../systems/rendering.md#outfits)).
+- **A model can change with armor.** A character's actor can list outfits worn by what it has on ([rendering](../systems/rendering.md#outfits)).
+  Alaron's new model has one outfit, so he looks the same whatever he wears, as in the original ([graphics](graphics.md#models)).
 
 ## In the Party tab
 

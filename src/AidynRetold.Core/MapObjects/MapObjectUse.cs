@@ -221,6 +221,28 @@ public sealed partial class MapObjectUse(GameState game, MenuText text, IMapObje
         };
     }
 
+    /// <summary>
+    /// The nearest object the player could use, which his head turns toward (<c>ProcessVoxelObjects</c>, <c>0x80083838</c>, into the body's
+    /// <c>+0x10c</c> and <c>+0x110</c>): of the objects the grid cell he's in lists, the active ones with <see cref="MapObject.Reachable"/>
+    /// he's within the radius of. Starts from 100 (<c>0x800cdbfc</c>, the distance it holds when there's none), so one that far or farther never counts.
+    /// </summary>
+    /// <param name="at">The player's centre, in the chunk's coordinates.</param>
+    public static MapObject? NearestReachable(LoadedMap map, Vector3 at)
+    {
+        var listed = map.Record.Grid is { } grid ? grid.At(at).Select(i => map[i]).OfType<MapObject>() : map.Objects;
+        MapObject? nearest = null;
+        var best = 100f;
+        foreach (var o in listed)
+        {
+            if (!o.Reachable || !map.IsActive(o.Index))
+                continue;
+            var distance = Vector3.Distance(o.Position, at);
+            if (distance <= o.Radius && distance < best)
+                (nearest, best) = (o, distance);
+        }
+        return nearest;
+    }
+
     /// <summary>A pressed in trek: uses what the player reaches, if anything. False if nothing.</summary>
     public bool UseNearest(LoadedMap map, Vector3 at, Vector2 heading, float radius, (MonsterPartyObject Party, Vector3 At, float Distance)? body = null)
     {

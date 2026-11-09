@@ -31,6 +31,22 @@ public static class Facing
     }
 
     /// <summary>
+    /// Turns <paramref name="from"/> toward <paramref name="to"/> by at most <paramref name="limit"/> radians, the short way, arriving
+    /// exactly when it's within that (<c>Vec3.TurnToward</c>, <c>0x800a15ac</c>). Unlike <see cref="Turn"/>, which is for a turn of a few degrees
+    /// and would overshoot a large one, it holds for any angle.
+    /// </summary>
+    public static Vector2 TurnAtMost(Vector2 from, Vector2 to, float limit)
+    {
+        from = Vector2.Normalize(from);
+        to = Vector2.Normalize(to);
+        var angle = MathF.Atan2(from.X * to.Y - from.Y * to.X, Vector2.Dot(from, to));
+        if (MathF.Abs(angle) <= limit)
+            return to;
+        var (sin, cos) = MathF.SinCos(MathF.CopySign(limit, angle));
+        return new Vector2(cos * from.X - sin * from.Y, sin * from.X + cos * from.Y);
+    }
+
+    /// <summary>
     /// Whether a turn has arrived: <see cref="Turn"/> normalizes what it arrives at again, which can
     /// differ from a unit vector in its last bit.
     /// </summary>

@@ -238,7 +238,7 @@ public partial class CampView : Control
     public Action<MenuAction>? Click { get; set; }
 
     /// <summary>
-    /// Whether the debug buttons are drawn, at the top right: a debug build's. Poses sits or stands the figures afresh
+    /// Whether the debug buttons are drawn, at the top right: a debug build's. Poses draws the figures round the fire afresh
     /// (<see cref="PosesRequested"/>), Talk starts a camp talk (<see cref="TalkRequested"/>), and Debug shows the technical text and marks
     /// that won't be in the game (<see cref="ShowOverlay"/>), off until it's clicked.
     /// </summary>
@@ -247,7 +247,7 @@ public partial class CampView : Control
     /// <summary>The Talk button was clicked: a camp talk is to show.</summary>
     public Action? TalkRequested { get; set; }
 
-    /// <summary>The Poses button was clicked: the figures are to sit or stand afresh, the user's (Nov 7, 2026).</summary>
+    /// <summary>The Poses button was clicked: the figures are to be drawn afresh, the user's (Nov 7, 2026).</summary>
     public Action? PosesRequested { get; set; }
 
     /// <summary>Where the Poses, Talk and Debug buttons were drawn, or empty.</summary>
@@ -2091,7 +2091,7 @@ public partial class CampLayer : CanvasLayer
         remove => _view.TalkRequested -= value;
     }
 
-    /// <summary>The debug Poses button was clicked: the figures are to sit or stand afresh (<see cref="Core.GameSession.ReposeCamp"/>).</summary>
+    /// <summary>The debug Poses button was clicked: the figures are to be drawn afresh (<see cref="Core.GameSession.ReposeCamp"/>).</summary>
     public event Action? PosesRequested
     {
         add => _view.PosesRequested += value;

@@ -154,8 +154,11 @@ public sealed class GameSession
     /// <summary>Trek's music as the camp opened, which comes back as it closes (<see cref="CampsiteRecord.Music"/>).</summary>
     private RecordId? _musicBeforeCamp;
 
-    /// <summary>The stream the debug Poses button draws the camp's poses from, begun from the camp's seed as it opens (<see cref="ReposeCamp"/>).</summary>
+    /// <summary>The stream the debug Poses button draws from, begun from the camp's seed as it opens (<see cref="ReposeCamp"/>).</summary>
     private Rng.Lcg _campPoses = new();
+
+    /// <summary>The figures this camp shows in place of the party, sized (<see cref="CampFigures"/>), or none where it shows the party.</summary>
+    private IReadOnlyList<CampFigureRecord> _campPreviews = [];
 
     /// <summary>How many ticks the campsite's loop fades in and out over: a second.</summary>
     public const int CampLoopFadeTicks = 60;
@@ -317,7 +320,7 @@ public sealed class GameSession
     public bool CinematicHeld { get; set; }
 
     /// <summary>
-    /// The figures the camp shows in place of the party, at every slot one of them fits (<see cref="CampArranger.Preview(CampsiteRecord, IReadOnlyList{CampFigureRecord}, uint)"/>),
+    /// The figures the camp shows in place of the party, five of them at five of the slots they fit (<see cref="CampArranger.Preview(CampsiteRecord, IReadOnlyList{CampFigureRecord}, uint)"/>),
     /// for judging their art round the fire: a launch's (<c>--camp-figure</c>), none in the game.
     /// </summary>
     public IReadOnlyList<RecordId> CampFigures { get; set; } = [];
@@ -1063,6 +1066,7 @@ public sealed class GameSession
             : previews.Count > 0 ? CampArranger.Preview(site, previews, seed)
             : CampArranger.Arrange(site, party, id => figures.GetValueOrDefault(id), seed);
         _campPoses = new Rng.Lcg(seed ^ 0x9E3779B9);
+        _campPreviews = previews;
         foreach (var note in arrangement?.Diagnostics ?? [])
             _host.Log($"Camp at {site!.Id}: {note}");
         var recipes = Game.Plugins.All<RecipeRecord>(RecordTypes.Recipe).ToList();
@@ -1207,14 +1211,17 @@ public sealed class GameSession
     public bool TriggerCampTalk() => Camp is { } camp && camp.RequestTalk();
 
     /// <summary>
-    /// The camp screen's debug Poses button, the user's (Nov 7, 2026): every figure round the fire sits or stands afresh, in a pose chosen
-    /// at random among those it has at its slot, everyone where they were (<see cref="CampArranger.Repose"/>). Whether there was a camp.
+    /// The camp screen's debug Poses button, the user's: figures shown in place of the party are drawn afresh, which slots they fill, who's
+    /// at each and how (Nov 8, 2026; <see cref="CampArranger.Reshuffle"/>); the party itself sits or stands afresh, in a pose chosen at random
+    /// among those each has at its slot, everyone where they were (Nov 7, 2026; <see cref="CampArranger.Repose"/>). Whether there was a camp.
     /// </summary>
     public bool ReposeCamp()
     {
         if (Camp is not { Arrangement: { } arrangement } camp)
             return false;
-        camp.Arrangement = CampArranger.Repose(arrangement, _campPoses);
+        camp.Arrangement = _campPreviews.Count > 0
+            ? CampArranger.Reshuffle(arrangement, _campPreviews, _campPoses)
+            : CampArranger.Repose(arrangement, _campPoses);
         return true;
     }
 

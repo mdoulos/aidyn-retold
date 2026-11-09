@@ -217,7 +217,7 @@ public sealed class LaunchOptions(Dictionary<string, string> values)
     /// <summary>A ring of actors around the player, playing their states in turn: <c>members</c> or entity IDs (<see cref="PoseCircleView"/>).</summary>
     public string? Poses => Text("poses");
 
-    /// <summary>The camp figures to show as a camp opens, in place of the party, at every slot one of them fits (<see cref="Core.GameSession.CampFigures"/>).</summary>
+    /// <summary>The camp figures to show as a camp opens, in place of the party, five of them at five of the slots they fit (<see cref="Core.GameSession.CampFigures"/>).</summary>
     public IReadOnlyList<RecordId> CampFigures => Text("camp-figure") is { } ids
         ? [.. ids.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(id => RecordId.Parse(id))]
         : [];

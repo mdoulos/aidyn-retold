@@ -271,6 +271,72 @@ public class CampTests
     }
 
     [Fact]
+    public void ThePreviewPutsFiveFiguresAtFiveOfTheSixSlotsAndTheSeedChoosesWhichAndWhoAndHow()
+    {
+        var site = SixRoundTheFire();
+        CampFigureRecord[] figures = [BothWays(Alaron), BothWays(Becan), BothWays(Abrecan)];
+        var left = new HashSet<string>();
+        var atProfile = new HashSet<RecordId>();
+        var poses = new HashSet<string>();
+        for (var seed = 1u; seed <= 64; seed++)
+        {
+            var preview = CampArranger.Preview(site, figures, seed * 7919);
+            Assert.Equal(5, preview.Placements.Count);
+            Assert.Equal(5, preview.Layout.Size);
+            Assert.Equal(preview.Placements.Select(p => p.Slot.Id), preview.Layout.Slots);
+            left.Add(Assert.Single(Six.Except(preview.Layout.Slots)));
+            // Three figures over five places is two, two and one, whoever they fall to.
+            Assert.Equal([1, 2, 2], figures.Select(f => preview.Placements.Count(p => p.Member == f.Entity)).Order());
+            Assert.All(preview.Placements, p =>
+            {
+                Assert.Equal(p.Slot.Facing, p.Image!.Facing);
+                Assert.Contains(p.Pose, p.Slot.Poses);
+            });
+            foreach (var placement in preview.Placements.Where(p => p.Slot.Id == "left_profile"))
+            {
+                atProfile.Add(placement.Member);
+                poses.Add(placement.Pose);
+            }
+        }
+        Assert.Equal(Six.Order(), left.Order());
+        Assert.Equal(3, atProfile.Count);
+        Assert.Equal(2, poses.Count);
+    }
+
+    private static readonly string[] Six = ["left_profile", "right_profile", "rear_left", "rear_right", "far_left", "far_right"];
+
+    /// <summary>The forest with six slots a figure painted both ways takes, as many as the ACRE plugin's has round its fire.</summary>
+    private static CampsiteRecord SixRoundTheFire()
+    {
+        var forest = Forest(mirror: false);
+        return forest with { Slots = [.. forest.Slots, forest.Slot("left_profile")! with { Id = "far_left" }, forest.Slot("right_profile")! with { Id = "far_right" }] };
+    }
+
+    [Fact]
+    public void ThePosesButtonDrawsTheFiguresAfreshEachPressAndAnyOfTheSixCanBeLeftEmpty()
+    {
+        var site = SixRoundTheFire();
+        CampFigureRecord[] figures = [BothWays(Alaron), BothWays(Becan), BothWays(Abrecan)];
+        var arrangement = CampArranger.Preview(site, figures, 8);
+        var random = new Rng.Lcg(99);
+        var left = new HashSet<string>();
+        static string Shown(CampArrangement a) => string.Join(",", a.Placements.Select(p => $"{p.Slot.Id}:{p.Member}:{p.Pose}"));
+        for (var press = 0; press < 60; press++)
+        {
+            var next = CampArranger.Reshuffle(arrangement, figures, random);
+            Assert.Equal(5, next.Placements.Count);
+            Assert.NotEqual(Shown(arrangement), Shown(next));
+            left.Add(Assert.Single(Six.Except(next.Layout.Slots)));
+            arrangement = next;
+        }
+        Assert.Equal(Six.Order(), left.Order());
+        // With nothing else to draw, it stays as it is.
+        var lone = Figure(Alaron, false, CampPoses.SitProfile);
+        var only = CampArranger.Preview(Forest(mirror: false), lone, 3);
+        Assert.Equal(only.Placements, CampArranger.Reshuffle(only, [lone], random).Placements);
+    }
+
+    [Fact]
     public void ThePreviewShowsAFigureAtEverySlotItFitsAndTheSeedSitsOrStandsEachOneOnItsOwn()
     {
         var site = Forest();

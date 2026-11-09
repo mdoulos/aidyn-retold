@@ -192,27 +192,54 @@ public static class CampArranger
     }
 
     /// <summary>
-    /// Figures at every slot of a campsite one of them fits, in place of the party, each in a pose the seed chooses among those it has
-    /// there: for judging their art round the fire (<c>--camp-figure</c>, a launch's), as the user asked for Alaron's (Nov 7, 2026) and
-    /// Becan's beside him (Nov 8, 2026). A slot more than one fits goes to whichever has been placed least so far, the first listed on a
-    /// tie, so each shows where it can.
+    /// Figures in place of the party, for judging their art round the fire (<c>--camp-figure</c>, a launch's): a party's worth of them,
+    /// <see cref="MostMembers"/>, at that many of the slots one of them fits, the user's (Nov 8, 2026), or at all of those where there are
+    /// fewer. The seed chooses which slots, who takes each and which of its poses there. Who's chosen among those least placed so far that
+    /// fit, the slots fewest fit going first, so the figures are shared out as evenly as their art allows, however few there are.
     /// </summary>
-    public static CampArrangement Preview(CampsiteRecord site, IReadOnlyList<CampFigureRecord> figures, uint seed)
+    public static CampArrangement Preview(CampsiteRecord site, IReadOnlyList<CampFigureRecord> figures, uint seed) => Preview(site, figures, new Lcg(seed));
+
+    /// <summary>One figure at as many as <see cref="MostMembers"/> of the slots it fits.</summary>
+    public static CampArrangement Preview(CampsiteRecord site, CampFigureRecord figure, uint seed) => Preview(site, [figure], seed);
+
+    private static CampArrangement Preview(CampsiteRecord site, IReadOnlyList<CampFigureRecord> figures, IRandom random)
     {
-        var random = new Lcg(seed);
+        var slots = site.Slots.Where(s => figures.Any(f => Fits(f, s))).ToList();
+        Shuffle(slots, random);
         var placements = new List<CampPlacement>();
-        foreach (var slot in site.Slots)
+        foreach (var slot in slots.Take(MostMembers).OrderBy(s => figures.Count(f => Fits(f, s))))
         {
-            var figure = figures.Where(f => Fits(f, slot)).OrderBy(f => placements.Count(p => p.Figure == f)).FirstOrDefault();
-            if (figure is not null && Fit(figure, slot, random) is var (pose, mirrored, image))
+            var fitting = figures.Where(f => Fits(f, slot)).ToList();
+            var fewest = fitting.Min(f => placements.Count(p => p.Figure == f));
+            var least = fitting.Where(f => placements.Count(p => p.Figure == f) == fewest).ToList();
+            var figure = least[(int)random.Below((uint)least.Count)];
+            if (Fit(figure, slot, random) is var (pose, mirrored, image))
                 placements.Add(new CampPlacement(figure.Entity, slot, pose, slot.Facing, mirrored, figure, image));
         }
+        placements = [.. placements.OrderBy(p => site.Slots.ToList().FindIndex(s => s.Id == p.Slot.Id))];
         List<string> notes = placements.Count == 0 ? [$"{string.Join(", ", figures.Select(f => f.Id))} fits none of {site.Id}'s slots."] : [];
         return new CampArrangement(site, new CampLayout(placements.Count, [.. placements.Select(p => p.Slot.Id)]), placements, notes, Fallback: false);
     }
 
-    /// <summary>One figure at every slot it fits.</summary>
-    public static CampArrangement Preview(CampsiteRecord site, CampFigureRecord figure, uint seed) => Preview(site, [figure], seed);
+    /// <summary>
+    /// The figures shown in place of the party drawn afresh (<see cref="Preview(CampsiteRecord, IReadOnlyList{CampFigureRecord}, uint)"/>):
+    /// which slots they fill, who's at each and how, the debug Poses button's, the user's (Nov 8, 2026). Drawn again until something
+    /// changes, where something can.
+    /// </summary>
+    public static CampArrangement Reshuffle(CampArrangement arrangement, IReadOnlyList<CampFigureRecord> figures, IRandom random)
+    {
+        const int Tries = 16;
+        var next = arrangement;
+        for (var attempt = 0; attempt < Tries; attempt++)
+        {
+            next = Preview(arrangement.Site, figures, random);
+            if (!next.Placements.Select(Shown).SequenceEqual(arrangement.Placements.Select(Shown)))
+                break;
+        }
+        return next;
+
+        static (string Slot, RecordId Member, string Pose) Shown(CampPlacement p) => (p.Slot.Id, p.Member, p.Pose);
+    }
 
     /// <summary>
     /// The pose a figure takes at a slot standing or seated (<see cref="CampPoses.IsSeated"/>): the first such the slot takes and the figure
@@ -243,7 +270,7 @@ public static class CampArranger
 
     /// <summary>
     /// The arrangement with each figure's pose chosen afresh among those it has at its slot, everyone where they were: the debug Poses
-    /// button's, the user's (Nov 7, 2026). Drawn again until a pose changes, where one can.
+    /// button's for the party itself, the user's (Nov 7, 2026). Drawn again until a pose changes, where one can.
     /// </summary>
     public static CampArrangement Repose(CampArrangement arrangement, IRandom random)
     {

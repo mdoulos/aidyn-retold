@@ -102,21 +102,6 @@ public class CampTests
     }
 
     [Fact]
-    public void ReposingCanChangeOnlyWhichClipAFigurePlays()
-    {
-        var figure = Modelled(Alaron, CampPoses.SitProfile);
-        var arrangement = CampArranger.Arrange(Forest(), [Alaron], _ => figure, 4);
-        var random = new Rng.Lcg(99);
-        for (var press = 0; press < 20; press++)
-        {
-            var reposed = CampArranger.Repose(arrangement, random);
-            Assert.Equal(CampPoses.SitProfile, reposed.Placements[0].Pose);
-            Assert.NotEqual(arrangement.Placements[0].Clip, reposed.Placements[0].Clip);
-            arrangement = reposed;
-        }
-    }
-
-    [Fact]
     public void TheSeedIsTheSameWhateverOrderThePartyIsListedInAndChangesWithTheDay()
     {
         var one = CampSeed.Of(12, "aidyn:mapset/0/12,7", [Alaron, Brenna, Sholeh]);
@@ -410,6 +395,61 @@ public class CampTests
         }
     }
 
+    [Fact]
+    public void TheNextNumberedPoseMovesEachFigureOnByOneRoundToTheFirstWhereItIs()
+    {
+        var figure = NinePoses(Alaron);
+        var arrangement = CampArranger.Preview(SixRoundTheFire(), figure, 5);
+        var random = new Rng.Lcg(99);
+        for (var press = 0; press < 20; press++)
+        {
+            var next = CampArranger.NextPoses(arrangement, random);
+            Assert.Equal(arrangement.Placements.Select(p => (p.Slot.Id, p.Pose)), next.Placements.Select(p => (p.Slot.Id, p.Pose)));
+            Assert.All(next.Placements.Zip(arrangement.Placements), pair => Assert.Equal((pair.Second.Clip + 1) % (CampPoses.IsSeated(pair.Second.Pose) ? 7 : 2), pair.First.Clip));
+            arrangement = next;
+        }
+    }
+
+    [Fact]
+    public void AnotherPoseOfTheSameKindKeepsEachFigureSittingOrStandingWhereItIsAndChangesIt()
+    {
+        var figure = NinePoses(Alaron);
+        var arrangement = CampArranger.Preview(SixRoundTheFire(), figure, 5);
+        var random = new Rng.Lcg(99);
+        for (var press = 0; press < 20; press++)
+        {
+            var next = CampArranger.OtherPoses(arrangement, random);
+            Assert.Equal(arrangement.Placements.Select(p => (p.Slot.Id, p.Pose)), next.Placements.Select(p => (p.Slot.Id, p.Pose)));
+            Assert.All(next.Placements.Zip(arrangement.Placements), pair => Assert.NotEqual(pair.Second.Clip, pair.First.Clip));
+            arrangement = next;
+        }
+    }
+
+    [Fact]
+    public void SwappingSitsThoseStandingAndStandsThoseSittingWhereTheyAre()
+    {
+        var figure = NinePoses(Alaron);
+        var arrangement = CampArranger.Preview(SixRoundTheFire(), figure, 5);
+        var random = new Rng.Lcg(99);
+        for (var press = 0; press < 10; press++)
+        {
+            var next = CampArranger.SwapPoses(arrangement, random);
+            Assert.All(next.Placements.Zip(arrangement.Placements), pair =>
+            {
+                Assert.Equal(pair.Second.Slot, pair.First.Slot);
+                Assert.NotEqual(CampPoses.IsSeated(pair.Second.Pose), CampPoses.IsSeated(pair.First.Pose));
+                Assert.Equal(pair.First.Pose, pair.First.Image!.Pose);
+                Assert.InRange(pair.First.Clip, 0, CampPoses.IsSeated(pair.First.Pose) ? 6 : 1);
+            });
+            arrangement = next;
+        }
+        // A painted figure swaps as well, and one with only the one kind at its slot stays as it is.
+        var painted = CampArranger.Preview(SixRoundTheFire(), BothWays(Alaron), 5);
+        Assert.All(CampArranger.SwapPoses(painted, random).Placements.Zip(painted.Placements), pair => Assert.NotEqual(CampPoses.IsSeated(pair.Second.Pose), CampPoses.IsSeated(pair.First.Pose)));
+        var seatedOnly = CampArranger.Arrange(Forest(), [Alaron], _ => Figure(Alaron, true, CampPoses.SitProfile), 4);
+        Assert.Equal(seatedOnly.Placements, CampArranger.SwapPoses(seatedOnly, random).Placements);
+    }
+
     private static readonly string[] Six = ["left_profile", "right_profile", "rear_left", "rear_right", "far_left", "far_right"];
 
     /// <summary>The forest with six slots a figure painted both ways takes, as many as the ACRE plugin's has round its fire.</summary>
@@ -462,27 +502,6 @@ public class CampTests
         // A figure that fits nowhere is shown nowhere, and that's said.
         var tender = Figure(Alaron, true, CampPoses.TendFire) with { Poses = [] };
         Assert.Contains(CampArranger.Preview(site, tender, 1).Diagnostics, d => d.Contains("fits none", StringComparison.Ordinal));
-    }
-
-    [Fact]
-    public void ReposingSitsOrStandsTheFiguresAfreshWhereTheyAreAndChangesAPoseEachTime()
-    {
-        var site = Forest();
-        var figure = BothWays(Alaron);
-        var arrangement = CampArranger.Arrange(site, [Alaron, Brenna, Sholeh, Abrecan], _ => figure, 8);
-        var random = new Rng.Lcg(99);
-        for (var press = 0; press < 20; press++)
-        {
-            var reposed = CampArranger.Repose(arrangement, random);
-            Assert.Equal(arrangement.Layout, reposed.Layout);
-            Assert.Equal(arrangement.Placements.Select(p => (p.Member, p.Slot.Id)), reposed.Placements.Select(p => (p.Member, p.Slot.Id)));
-            Assert.Contains(reposed.Placements.Zip(arrangement.Placements), pair => pair.First.Pose != pair.Second.Pose);
-            Assert.All(reposed.Placements, p => Assert.Equal(p.Pose, p.Image!.Pose));
-            arrangement = reposed;
-        }
-        // One with nothing to change keeps it, a member with no figure kept as they were.
-        var lone = CampArranger.Arrange(site, [Alaron, Brenna], id => id == Alaron ? Figure(Alaron, true, CampPoses.SitProfile, CampPoses.SitRear) : null, 4);
-        Assert.Equal(lone.Placements, CampArranger.Repose(lone, random).Placements);
     }
 
     [Fact]

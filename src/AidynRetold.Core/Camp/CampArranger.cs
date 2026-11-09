@@ -31,6 +31,22 @@ public sealed record CampPlacement(RecordId Member, CampSlot Slot, string Pose, 
         Scale * (site.FigureHeight > 0 && Figure is { Height: > 0 } figure ? site.FigureHeight / figure.Height : 1);
 }
 
+/// <summary>What the camp's debug Poses button's list does to the figures, the user's (Nov 9, 2026).</summary>
+public enum CampPoseChange
+{
+    /// <summary>New poses, and new places for them.</summary>
+    Random,
+
+    /// <summary>Each to its next numbered pose of the kind it's in.</summary>
+    Next,
+
+    /// <summary>Each to another pose of the kind it's in, at random.</summary>
+    SameKind,
+
+    /// <summary>Those standing sit, and those sitting stand.</summary>
+    Swap,
+}
+
 /// <summary>A party's arrangement at a campsite: a layout, each member at one slot, and what the arranging had to say.</summary>
 /// <param name="Fallback">Whether no layout took the party and the known-safe fallback was used, with a diagnostic saying why.</param>
 public sealed record CampArrangement(CampsiteRecord Site, CampLayout Layout, IReadOnlyList<CampPlacement> Placements,
@@ -282,27 +298,41 @@ public static class CampArranger
     }
 
     /// <summary>
-    /// The arrangement with each figure's pose chosen afresh among those it has at its slot, everyone where they were: the debug Poses
-    /// button's for the party itself, the user's (Nov 7, 2026). Drawn again until everyone with a figure is doing something else, the user's
-    /// (Nov 9, 2026), or failing that keeping the draw that changed the most, where one can change at all.
+    /// Each figure moved on to the next numbered of its model's poses of the kind it's in, the first after the last, everyone where they are: one of the debug Poses button's,
+    /// the user's (Nov 9, 2026). A figure with no model, or one pose of the kind, stays as it is.
     /// </summary>
-    public static CampArrangement Repose(CampArrangement arrangement, IRandom random)
+    public static CampArrangement NextPoses(CampArrangement arrangement, IRandom random) =>
+        arrangement with { Placements = [.. arrangement.Placements.Select(p => ModelPoses(p) is { Count: > 1 } poses ? Posed(p, (p.Clip + 1) % poses.Count, poses, random) : p)] };
+
+    /// <summary>Each figure moved at random to another of its model's poses of the kind it's in, sitting if it was sitting and standing if it was standing, everyone where they are: another of the button's.</summary>
+    public static CampArrangement OtherPoses(CampArrangement arrangement, IRandom random) =>
+        Drawn(arrangement, random, p => ModelPoses(p) is { Count: > 1 } poses ? Posed(p, (p.Clip + 1 + (int)random.Below((uint)poses.Count - 1)) % poses.Count, poses, random) : p);
+
+    /// <summary>Those standing sit and those sitting stand, each where it is, in a pose of the other kind chosen at random: another of the button's. A figure with no such pose at its slot stays as it is.</summary>
+    public static CampArrangement SwapPoses(CampArrangement arrangement, IRandom random) =>
+        Drawn(arrangement, random, p => p.Figure is { } figure && Pick(figure, p.Slot, !CampPoses.IsSeated(p.Pose)) is var (pose, mirrored, image)
+            ? Varied(p with { Pose = pose, Mirrored = mirrored, Image = image }, random)
+            : p);
+
+    /// <summary>A change made to every placement, made again, while it can be, until no two of a modelled figure's placements of a kind are in the same pose.</summary>
+    private static CampArrangement Drawn(CampArrangement arrangement, IRandom random, Func<CampPlacement, CampPlacement> change)
     {
         const int Tries = 32;
-        var best = arrangement.Placements;
-        var bestChanged = 0;
-        var figures = arrangement.Placements.Count(p => p.Figure is not null);
-        for (var attempt = 0; attempt < Tries && bestChanged < figures; attempt++)
+        List<CampPlacement> placements = [];
+        for (var attempt = 0; attempt < Tries; attempt++)
         {
-            List<CampPlacement> placements = [.. arrangement.Placements.Select(p => p.Figure is { } figure && Fit(figure, p.Slot, random) is var (pose, mirrored, image)
-                ? Varied(p with { Pose = pose, Mirrored = mirrored, Image = image }, random)
-                : p)];
-            var changed = placements.Zip(arrangement.Placements).Count(pair => pair.First.Pose != pair.Second.Pose || pair.First.Clip != pair.Second.Clip);
-            if (changed > bestChanged)
-                (best, bestChanged) = (placements, changed);
+            placements = [.. arrangement.Placements.Select(change)];
+            if (placements.Where(p => p.Figure?.Model is not null).GroupBy(p => (p.Member, CampPoses.IsSeated(p.Pose))).All(same => same.Select(p => p.Clip).Distinct().Count() == same.Count()))
+                break;
         }
-        return arrangement with { Placements = best };
+        return arrangement with { Placements = placements };
     }
+
+    /// <summary>The poses a placement's model has of the kind it's in, or null with no model.</summary>
+    private static IReadOnlyList<CampModelPose>? ModelPoses(CampPlacement placement) => placement.Figure?.Model?.Poses(CampPoses.IsSeated(placement.Pose));
+
+    private static CampPlacement Posed(CampPlacement placement, int clip, IReadOnlyList<CampModelPose> poses, IRandom random) =>
+        placement with { Clip = clip, Lean = Lean(poses[clip], random) };
 
     /// <summary>One of a figure's options at a slot, chosen by the seed, or the preferred pose if it's among them; null with none.</summary>
     private static (string Pose, bool Mirrored, CampPose Image)? Fit(CampFigureRecord figure, CampSlot slot, IRandom random, string? prefer = null)

@@ -417,9 +417,9 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
             if (_session is { } playing && playing.TriggerCampTalk())
                 ShowPressed(playing);
         };
-        _camp.PosesRequested += () =>
+        _camp.PosesRequested += change =>
         {
-            if (_session is { } playing && playing.ReposeCamp())
+            if (_session is { } playing && playing.ReposeCamp(change))
                 ShowPressed(playing);
         };
         _camp.SlotChosen += (slot, figure, seated) =>

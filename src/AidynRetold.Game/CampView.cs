@@ -257,7 +257,7 @@ public partial class CampView : Control
     public Action<MenuAction>? Click { get; set; }
 
     /// <summary>
-    /// Whether the debug buttons are drawn, at the top right: a debug build's. Poses draws the figures round the fire afresh
+    /// Whether the debug buttons are drawn, at the top right: a debug build's. Poses opens a list of ways to change the figures round the fire
     /// (<see cref="PosesRequested"/>), Talk starts a camp talk (<see cref="TalkRequested"/>), and Debug shows the technical text and marks
     /// that won't be in the game (<see cref="ShowOverlay"/>), off until it's clicked.
     /// </summary>
@@ -266,8 +266,24 @@ public partial class CampView : Control
     /// <summary>The Talk button was clicked: a camp talk is to show.</summary>
     public Action? TalkRequested { get; set; }
 
-    /// <summary>The Poses button was clicked: the figures are to be drawn afresh, the user's (Nov 7, 2026).</summary>
-    public Action? PosesRequested { get; set; }
+    /// <summary>A choice was made from the Poses button's list: how the figures are to change, the user's (Nov 9, 2026).</summary>
+    public Action<CampPoseChange>? PosesRequested { get; set; }
+
+    /// <summary>What the Poses button's list offers.</summary>
+    private static readonly (string Text, CampPoseChange Change)[] PoseChanges =
+    [
+        ("Random poses and positions", CampPoseChange.Random),
+        ("Next numbered pose", CampPoseChange.Next),
+        ("Random pose, same type", CampPoseChange.SameKind),
+        ("Standing sit, seated stand", CampPoseChange.Swap),
+    ];
+
+    /// <summary>Whether the Poses button's list is open, and where its choices were drawn.</summary>
+    private bool _posesOpen;
+    private readonly List<(Rect2 Area, CampPoseChange Change)> _posesChoices = [];
+
+    /// <summary>The Poses button's list: its width and its rows' height.</summary>
+    private const float PosesListWidth = 54, PosesRow = 10;
 
     /// <summary>Where the Poses, Talk and Debug buttons were drawn, or empty.</summary>
     private Rect2 _posesButton, _talkButton, _debugButton;
@@ -326,6 +342,10 @@ public partial class CampView : Control
             Click?.Invoke(MenuAction.Back);
             AcceptEvent();
         }
+        else if (button.ButtonIndex == MouseButton.Left && ClickPoses(button.Position))
+        {
+            AcceptEvent();
+        }
         else if (button.ButtonIndex == MouseButton.Left && ClickSlotChoices(button.Position))
         {
             AcceptEvent();
@@ -333,11 +353,6 @@ public partial class CampView : Control
         else if (button.ButtonIndex == MouseButton.Left && _talkButton.HasArea() && _talkButton.HasPoint(button.Position))
         {
             TalkRequested?.Invoke();
-            AcceptEvent();
-        }
-        else if (button.ButtonIndex == MouseButton.Left && _posesButton.HasArea() && _posesButton.HasPoint(button.Position))
-        {
-            PosesRequested?.Invoke();
             AcceptEvent();
         }
         else if (button.ButtonIndex == MouseButton.Left && _debugButton.HasArea() && _debugButton.HasPoint(button.Position))
@@ -599,7 +614,7 @@ public partial class CampView : Control
             _debugButton = DrawButton(canvas, new Rect2(Size.X - 36, 3, 32, 11), "Debug", ShowOverlay);
             _talkButton = DrawButton(canvas, new Rect2(Size.X - 70, 3, 30, 11), "Talk", false);
             if (camp.Arrangement is not null)
-                _posesButton = DrawButton(canvas, new Rect2(Size.X - 107, 3, 33, 11), "Poses", false);
+                _posesButton = DrawButton(canvas, new Rect2(Size.X - 107, 3, 33, 11), "Poses", _posesOpen);
         }
         if (ShowOverlay && _ui.Images.Get(Thirds) is { } thirds)
             canvas.DrawTextureRect(thirds, new Rect2(Vector2.Zero, Size), false);
@@ -609,6 +624,11 @@ public partial class CampView : Control
             DrawSlotChoices(canvas, arrangement);
         else
             _openSlot = null;
+        _posesChoices.Clear();
+        if (_posesOpen && _posesButton.HasArea())
+            DrawPosesList(canvas);
+        else
+            _posesOpen = false;
         if (camp is { Open: true, Tab: CampTab.Camp } && _tip is var (text, area))
             Tip(canvas, text, area);
     }
@@ -665,6 +685,44 @@ public partial class CampView : Control
             _slotChoices.Add((row, choice));
             y += ChoiceRow;
         }
+    }
+
+    /// <summary>The list under the Poses button, over everything else up here.</summary>
+    private void DrawPosesList(CanvasItem canvas)
+    {
+        var fine = Font(UiPainter.FineText);
+        var yellow = new Color(Button.R / 255f, Button.G / 255f, Button.B / 255f);
+        var (x, y) = (_posesButton.Position.X, _posesButton.End.Y + 1);
+        var list = new Rect2(x, y, PosesListWidth, PoseChanges.Length * PosesRow);
+        canvas.DrawRect(list, new Color(0.05f, 0.04f, 0.03f));
+        canvas.DrawRect(list, yellow with { A = 0.9f }, false, 0.4f);
+        foreach (var (text, change) in PoseChanges)
+        {
+            _ui.Text(canvas, fine, text, (int)x + 3, (int)y + 1, Button);
+            _posesChoices.Add((new Rect2(x, y, PosesListWidth, PosesRow), change));
+            y += PosesRow;
+        }
+    }
+
+    /// <summary>A click on the Poses button, which opens its list or shuts it; on one of the list's choices, which is made and shuts it; or elsewhere with it open, which shuts it. Whether the click was theirs.</summary>
+    private bool ClickPoses(Vector2 at)
+    {
+        if (_posesButton.HasArea() && _posesButton.HasPoint(at))
+        {
+            _posesOpen = !_posesOpen;
+            Top.QueueRedraw();
+            return true;
+        }
+        if (!_posesOpen)
+            return false;
+        _posesOpen = false;
+        Top.QueueRedraw();
+        foreach (var (area, change) in _posesChoices)
+        {
+            if (area.HasPoint(at))
+                PosesRequested?.Invoke(change);
+        }
+        return true;
     }
 
     /// <summary>
@@ -2206,8 +2264,8 @@ public partial class CampLayer : CanvasLayer
         remove => _view.TalkRequested -= value;
     }
 
-    /// <summary>The debug Poses button was clicked: the figures are to be drawn afresh (<see cref="Core.GameSession.ReposeCamp"/>).</summary>
-    public event Action? PosesRequested
+    /// <summary>A choice was made from the debug Poses button's list (<see cref="Core.GameSession.ReposeCamp"/>).</summary>
+    public event Action<CampPoseChange>? PosesRequested
     {
         add => _view.PosesRequested += value;
         remove => _view.PosesRequested -= value;

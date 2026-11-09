@@ -1058,7 +1058,7 @@ public sealed class GameSession
         var day = (int)(Game.Clock.Time / GameClock.Day);
         var seed = CampSeed.Of(day, chunk is { } here ? $"{here.MapSet}/{here.Row},{here.Column}" : "", party);
         var site = CampsiteRecord.For(Game.Plugins, terrain);
-        var figures = Game.Plugins.All<CampFigureRecord>(RecordTypes.CampFigure).Where(f => !f.Hidden).Select(Sized).GroupBy(f => f.Entity).ToDictionary(g => g.Key, g => g.First());
+        var figures = FiguresByEntity();
         var previews = CampFigures.Select(id => Game.Plugins.TryGet<CampFigureRecord>(id)).OfType<CampFigureRecord>().Where(f => !f.Hidden).Select(Sized).ToList();
         foreach (var missing in CampFigures.Where(id => Game.Plugins.TryGet<CampFigureRecord>(id) is null))
             _host.Log($"Camp: no figure {missing} to show.");
@@ -1211,19 +1211,28 @@ public sealed class GameSession
     public bool TriggerCampTalk() => Camp is { } camp && camp.RequestTalk();
 
     /// <summary>
-    /// The camp screen's debug Poses button, the user's: figures shown in place of the party are drawn afresh, which slots they fill, who's
-    /// at each and how (Nov 8, 2026; <see cref="CampArranger.Reshuffle"/>); the party itself sits or stands afresh, in a pose chosen at random
-    /// among those each has at its slot, everyone where they were (Nov 7, 2026; <see cref="CampArranger.Repose"/>). Whether there was a camp.
+    /// A choice from the camp screen's debug Poses button's list, the user's (Nov 9, 2026; <see cref="CampPoseChange"/>). At random, figures shown in place of the party are drawn
+    /// afresh, which slots they fill, who's at each and how (<see cref="CampArranger.Reshuffle"/>), and the party itself is arranged afresh; the others change each figure's pose
+    /// where it is. Whether there was a camp.
     /// </summary>
-    public bool ReposeCamp()
+    public bool ReposeCamp(CampPoseChange change = CampPoseChange.Random)
     {
         if (Camp is not { Arrangement: { } arrangement } camp)
             return false;
-        camp.Arrangement = _campPreviews.Count > 0
-            ? CampArranger.Reshuffle(arrangement, _campPreviews, _campPoses)
-            : CampArranger.Repose(arrangement, _campPoses);
+        camp.Arrangement = change switch
+        {
+            CampPoseChange.Next => CampArranger.NextPoses(arrangement, _campPoses),
+            CampPoseChange.SameKind => CampArranger.OtherPoses(arrangement, _campPoses),
+            CampPoseChange.Swap => CampArranger.SwapPoses(arrangement, _campPoses),
+            _ when _campPreviews.Count > 0 => CampArranger.Reshuffle(arrangement, _campPreviews, _campPoses),
+            _ => CampArranger.Arrange(arrangement.Site, [.. Game.Party.Members.Select(m => m.Entity)], FiguresByEntity().GetValueOrDefault, _campPoses.Next(), arrangement.Layout),
+        };
         return true;
     }
+
+    /// <summary>The camp's figures, sized, by whose they are, those set aside left out (<see cref="CampFigureRecord.Hidden"/>).</summary>
+    private Dictionary<RecordId, CampFigureRecord> FiguresByEntity() =>
+        Game.Plugins.All<CampFigureRecord>(RecordTypes.CampFigure).Where(f => !f.Hidden).Select(Sized).GroupBy(f => f.Entity).ToDictionary(g => g.Key, g => g.First());
 
     /// <summary>A camp figure as its entity's body sizes it (<see cref="CampFigureRecord.Sized"/>).</summary>
     private CampFigureRecord Sized(CampFigureRecord figure) => figure.Sized(Game.Plugins.TryGet<EntityRecord>(figure.Entity));

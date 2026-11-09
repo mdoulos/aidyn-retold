@@ -280,13 +280,25 @@ public sealed record CampPose(string Pose, RecordId Image, int AnchorX, int Anch
 /// slots it fits, and its shadows and contacts come from them, and taking the model off a figure brings the painting back.
 /// </summary>
 /// <param name="Actor">The actor drawn.</param>
-/// <param name="Stands">The clips it may play standing, the user's (Nov 9, 2026): each placement takes one at random (<c>CampPlacement.Clip</c>).</param>
-/// <param name="Sits">The clips it may play seated, likewise.</param>
-public sealed record CampFigureModel(RecordId Actor, IReadOnlyList<RecordId> Stands, IReadOnlyList<RecordId> Sits)
+/// <param name="Stands">The poses it may take standing, the user's (Nov 9, 2026): each placement takes one at random (<c>CampPlacement.Clip</c>).</param>
+/// <param name="Sits">The poses it may take seated, likewise.</param>
+public sealed record CampFigureModel(RecordId Actor, IReadOnlyList<CampModelPose> Stands, IReadOnlyList<CampModelPose> Sits)
 {
-    /// <summary>The clips it may play in a pose of the kind: seated or standing.</summary>
-    public IReadOnlyList<RecordId> Clips(bool seated) => seated ? Sits : Stands;
+    /// <summary>The poses it may take of the kind: seated or standing.</summary>
+    public IReadOnlyList<CampModelPose> Poses(bool seated) => seated ? Sits : Stands;
 }
+
+/// <summary>
+/// A pose a figure's 3D model can take at camp, the user's (Nov 9, 2026): a clip, and the versions of it that it varies between, which are other clips of the same length, each
+/// solved on its own so the hands stay where they're put as it blends.
+/// </summary>
+/// <param name="Clip">The pose.</param>
+/// <param name="Upright">The pose sitting straighter: each placement is a random share of the way to it (<c>CampPlacement.Lean</c>).</param>
+/// <param name="Shifted">The pose with its hands elsewhere, which the figure moves to and back every so often.</param>
+/// <param name="ShiftedUpright">That sitting straighter, where a pose has both.</param>
+/// <param name="ShiftMin">The fewest seconds it stays before moving.</param>
+/// <param name="ShiftMax">The most.</param>
+public sealed record CampModelPose(RecordId Clip, RecordId? Upright = null, RecordId? Shifted = null, RecordId? ShiftedUpright = null, float ShiftMin = 10, float ShiftMax = 30);
 
 /// <summary>
 /// The figure a character cuts at camp (<c>acre:campfigure/&lt;name&gt;</c>): its poses' images and its stature. A character with

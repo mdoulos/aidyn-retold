@@ -155,12 +155,16 @@ public sealed class CampRecordsTests
             temp.Add("aidyn", null),
             temp.Add("acre", ["aidyn"], ("camp/campsites.json", Campsite), ("camp/figures.json", Figure)),
             temp.Add("mymod", ["acre"],
-                ("figure.json", """{ "patch": "acre:campfigure/alaron", "model": { "actor": "aidyn:actor/0x25F9", "stands": ["aidyn:animation/0x25E7"], "sits": ["acre:animation/0x000c", "acre:animation/0x000d"] } }""")),
+                ("figure.json", """{ "patch": "acre:campfigure/alaron", "model": { "actor": "aidyn:actor/0x25F9", "stands": [{ "clip": "aidyn:animation/0x25E7" }], "sits": [{ "clip": "acre:animation/0x000c" }, { "clip": "acre:animation/0x000d", "upright": "acre:animation/0x000e", "shifted": "acre:animation/0x000f" }] } }""")),
         ]);
         var alaron = set.Get<CampFigureRecord>(RecordId.Parse("acre:campfigure/alaron"));
         Assert.Equal(RecordId.Parse("aidyn:actor/0x25F9"), alaron.Model!.Actor);
-        Assert.Equal([RecordId.Parse("acre:animation/0x000c"), RecordId.Parse("acre:animation/0x000d")], alaron.Model.Clips(seated: true));
-        Assert.Equal([RecordId.Parse("aidyn:animation/0x25E7")], alaron.Model.Clips(seated: false));
+        Assert.Equal([RecordId.Parse("acre:animation/0x000c"), RecordId.Parse("acre:animation/0x000d")], alaron.Model.Poses(seated: true).Select(p => p.Clip));
+        Assert.Equal([RecordId.Parse("aidyn:animation/0x25E7")], alaron.Model.Poses(seated: false).Select(p => p.Clip));
+        var varies = alaron.Model.Poses(seated: true)[1];
+        Assert.Equal(RecordId.Parse("acre:animation/0x000e"), varies.Upright);
+        Assert.Equal(RecordId.Parse("acre:animation/0x000f"), varies.Shifted);
+        Assert.Equal((10, 30), (varies.ShiftMin, varies.ShiftMax));
         Assert.NotNull(alaron.PoseOf(CampPoses.SitRear));
     }
 }

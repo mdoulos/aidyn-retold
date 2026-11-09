@@ -51,9 +51,34 @@ public class CampTests
     /// <summary>A figure drawn from a model that has three clips for sitting and one for standing.</summary>
     private static CampFigureRecord Modelled(RecordId entity, params string[] poses) => Figure(entity, true, poses) with
     {
-        Model = new CampFigureModel(RecordId.Parse("aidyn:actor/0x25F9"), [RecordId.Parse("aidyn:animation/0x25E7")],
-            [RecordId.Parse("acre:animation/0x000c"), RecordId.Parse("acre:animation/0x000d"), RecordId.Parse("acre:animation/0x000e")]),
+        Model = new CampFigureModel(RecordId.Parse("aidyn:actor/0x25F9"), [new CampModelPose(RecordId.Parse("aidyn:animation/0x25E7"))],
+            [new CampModelPose(RecordId.Parse("acre:animation/0x000c")), new CampModelPose(RecordId.Parse("acre:animation/0x000d")), new CampModelPose(RecordId.Parse("acre:animation/0x000e"))]),
     };
+
+    [Fact]
+    public void AModelledPoseThatCanSitStraighterTakesARandomShareOfTheWayAndOneThatCantStaysAsItIs()
+    {
+        var site = Forest();
+        var figure = Figure(Alaron) with
+        {
+            Model = new CampFigureModel(RecordId.Parse("aidyn:actor/0x25F9"), [new CampModelPose(RecordId.Parse("aidyn:animation/0x25E7"))],
+                [new CampModelPose(RecordId.Parse("acre:animation/0x000c"), Upright: RecordId.Parse("acre:animation/0x000d"))]),
+        };
+        var leans = new List<float>();
+        for (uint seed = 1; seed < 200; seed++)
+        {
+            foreach (var p in CampArranger.Preview(site, figure, seed * 7919).Placements)
+            {
+                if (CampPoses.IsSeated(p.Pose))
+                    leans.Add(p.Lean);
+                else
+                    Assert.Equal(0, p.Lean);
+            }
+        }
+        Assert.All(leans, lean => Assert.InRange(lean, 0, 1));
+        Assert.Contains(leans, lean => lean < 0.25f);
+        Assert.Contains(leans, lean => lean > 0.75f);
+    }
 
     [Fact]
     public void AModelledFigureTakesOneOfItsClipsForItsPoseAtRandomAndTheSameSeedGivesTheSameOne()

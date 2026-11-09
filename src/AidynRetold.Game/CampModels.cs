@@ -38,7 +38,27 @@ public partial class CampModels : Node
         public double Clock { get; set; } = clock;
 
         public string? Clip { get; set; }
+
+        /// <summary>The versions of its pose it blends between, or null for a pose that has none.</summary>
+        public Variation? Varied { get; set; }
+
+        /// <summary>Whether it's moving to, or staying in, its pose's shifted version.</summary>
+        public bool ShiftedTo { get; set; }
+
+        /// <summary>How far it has moved to the shifted version, 0 to 1.</summary>
+        public double Shift { get; set; }
+
+        /// <summary>The seconds until it moves again.</summary>
+        public double ShiftIn { get; set; }
     }
+
+    /// <summary>A pose's clips to blend, and each bone track of the main one with where it is in the others, -1 for nowhere.</summary>
+    private sealed record Variation(Skeleton3D Skeleton, Animation Main, Animation? Upright, Animation? Shifted, Animation? ShiftedUpright, BoneTrack[] Tracks, float ShiftMin, float ShiftMax);
+
+    private readonly record struct BoneTrack(int Bone, Animation.TrackType Kind, int Main, int Upright, int Shifted, int ShiftedUpright);
+
+    /// <summary>How long a figure takes to move its hands to their other place, in seconds.</summary>
+    private const double ShiftSeconds = 1.4;
 
     private readonly PluginSet _plugins = null!;
     private readonly Models _models = null!;
@@ -79,8 +99,9 @@ public partial class CampModels : Node
             if (Math.Abs(figure.View.Size.Y - size.Y) > 16)
                 figure.View.Size = size;
             figure.Turn.Rotation = new Vector3(0, Yaw(placement), 0);
-            var clips = placement.Figure!.Model!.Clips(CampPoses.IsSeated(placement.Pose));
-            var clip = clips.Count == 0 ? null : SceneNames.Animation(Convert.ToInt32(clips[placement.Clip % clips.Count].Key, 16));
+            var poses = placement.Figure!.Model!.Poses(CampPoses.IsSeated(placement.Pose));
+            var pose = poses.Count == 0 ? null : poses[placement.Clip % poses.Count];
+            var clip = pose is null ? null : ClipName(pose.Clip);
             if (clip is not null && figure.Clip != clip && figure.Player.HasAnimation(clip))
             {
                 figure.Clip = clip;
@@ -89,11 +110,89 @@ public partial class CampModels : Node
                     skeleton.ResetBonePoses();
                 figure.Player.Play(clip);
                 figure.Player.Pause();
+                figure.Varied = Vary(figure, pose!);
+                figure.ShiftedTo = false;
+                figure.Shift = 0;
+                figure.ShiftIn = figure.Varied is { } made2 ? Wait(made2) : 0;
             }
             if (figure.Clip is { } playing)
             {
                 figure.Clock += delta;
-                figure.Player.Seek(figure.Clock % figure.Player.GetAnimation(playing).Length, update: true);
+                var time = figure.Clock % figure.Player.GetAnimation(playing).Length;
+                figure.Player.Seek(time, update: true);
+                if (figure.Varied is { } varied)
+                    Blend(figure, varied, placement.Lean, delta, time);
+            }
+        }
+    }
+
+    private static string ClipName(RecordId clip) => SceneNames.Animation(Convert.ToInt32(clip.Key, 16));
+
+    private static double Wait(Variation varied) => varied.ShiftMin + Random.Shared.NextDouble() * (varied.ShiftMax - varied.ShiftMin);
+
+    /// <summary>The clips a pose varies between, with its bones' tracks in each, or null if it has none to vary between.</summary>
+    private static Variation? Vary(Figure figure, CampModelPose pose)
+    {
+        Animation? Of(RecordId? id) => id is { } clip && figure.Player.HasAnimation(ClipName(clip)) ? figure.Player.GetAnimation(ClipName(clip)) : null;
+        var (main, upright, shifted, both) = (Of(pose.Clip), Of(pose.Upright), Of(pose.Shifted), Of(pose.ShiftedUpright));
+        if (main is null || (upright is null && shifted is null))
+            return null;
+        var skeletons = Nodes.FindAll<Skeleton3D>(figure.Model).ToList();
+        Skeleton3D? body = null;
+        var tracks = new List<BoneTrack>();
+        for (var i = 0; i < main.GetTrackCount(); i++)
+        {
+            var kind = main.TrackGetType(i);
+            var path = main.TrackGetPath(i);
+            if (kind is not (Animation.TrackType.Rotation3D or Animation.TrackType.Position3D or Animation.TrackType.Scale3D) || path.GetSubNameCount() != 1)
+                continue;
+            var name = path.GetSubName(0).ToString();
+            body ??= skeletons.FirstOrDefault(s => s.FindBone(name) >= 0);
+            if (body?.FindBone(name) is >= 0 and var bone)
+                tracks.Add(new BoneTrack(bone, kind, i, upright?.FindTrack(path, kind) ?? -1, shifted?.FindTrack(path, kind) ?? -1, both?.FindTrack(path, kind) ?? -1));
+        }
+        return body is null ? null : new Variation(body, main, upright, shifted, both, [.. tracks], pose.ShiftMin, pose.ShiftMax);
+    }
+
+    /// <summary>
+    /// Sets its bones to the blend of its pose's versions for now: how upright this placement sits, and how far it has moved toward the shifted version, which it does every so
+    /// often and back. Over the main clip, which has already posed whatever isn't a bone.
+    /// </summary>
+    private static void Blend(Figure figure, Variation varied, float lean, double delta, double time)
+    {
+        if (varied.Shifted is not null)
+        {
+            figure.ShiftIn -= delta;
+            if (figure.ShiftIn <= 0)
+            {
+                figure.ShiftedTo = !figure.ShiftedTo;
+                figure.ShiftIn = Wait(varied);
+            }
+            figure.Shift = Mathf.MoveToward(figure.Shift, figure.ShiftedTo ? 1 : 0, delta / ShiftSeconds);
+        }
+        var shift = (float)Mathf.SmoothStep(0.0, 1.0, figure.Shift);
+        Quaternion Turn(Animation? clip, int track, Quaternion instead) => clip is null || track < 0 ? instead : clip.RotationTrackInterpolate(track, time).Normalized();
+        Vector3 Place(Animation? clip, int track, Vector3 instead) => clip is null || track < 0 ? instead : clip.PositionTrackInterpolate(track, time);
+        Vector3 Size(Animation? clip, int track, Vector3 instead) => clip is null || track < 0 ? instead : clip.ScaleTrackInterpolate(track, time);
+        foreach (var t in varied.Tracks)
+        {
+            if (t.Kind == Animation.TrackType.Rotation3D)
+            {
+                var main = Turn(varied.Main, t.Main, Quaternion.Identity);
+                var shifted = Turn(varied.Shifted, t.Shifted, main);
+                varied.Skeleton.SetBonePoseRotation(t.Bone, main.Slerp(Turn(varied.Upright, t.Upright, main), lean).Slerp(shifted.Slerp(Turn(varied.ShiftedUpright, t.ShiftedUpright, shifted), lean), shift));
+            }
+            else if (t.Kind == Animation.TrackType.Position3D)
+            {
+                var main = Place(varied.Main, t.Main, Vector3.Zero);
+                var shifted = Place(varied.Shifted, t.Shifted, main);
+                varied.Skeleton.SetBonePosePosition(t.Bone, main.Lerp(Place(varied.Upright, t.Upright, main), lean).Lerp(shifted.Lerp(Place(varied.ShiftedUpright, t.ShiftedUpright, shifted), lean), shift));
+            }
+            else
+            {
+                var main = Size(varied.Main, t.Main, Vector3.One);
+                var shifted = Size(varied.Shifted, t.Shifted, main);
+                varied.Skeleton.SetBonePoseScale(t.Bone, main.Lerp(Size(varied.Upright, t.Upright, main), lean).Lerp(shifted.Lerp(Size(varied.ShiftedUpright, t.ShiftedUpright, shifted), lean), shift));
             }
         }
     }

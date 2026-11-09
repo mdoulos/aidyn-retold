@@ -38,6 +38,9 @@ are the remake's look ([options](options.md#graphic-quality)).
   landing ([replacing graphics](../replacing-graphics.md#a-skinned-character)). He wears the one outfit, whatever armor he has on.
 - **His hair moves.** It trails behind him as he jogs and runs, flutters with his stride and lifts as he jumps, and settles when he stands or
   walks. The original's doesn't move ([rendering](../systems/rendering.md)).
+- **His neck bends.** The foot of his neck stays in his collar while his head turns and nods.
+- **His hands are never quite still.** While he stands, his fingers, thumbs and wrists move a little, and his thumbs lie closer to his fingers than the
+  remodel's did. The animations are otherwise the remodel's.
 - **Surface Detail: Full** (the default) lights a model that brings a normal map per pixel, through the original's own light model. None of
   the original's models has one, so only a remodel looks different ([rendering](../systems/rendering.md#normal-maps)).
 - **Animation Blending: Smooth** (the default) blends a model with a skeleton into its next animation over 0.18 seconds, where the

@@ -6,7 +6,9 @@ namespace AidynRetold.Views;
 /// An actor's separate head, hung from its locator: turns it across the ground as the core's <c>HeadTurn</c> says, keeping what the animation does to
 /// the neck, and lets the pieces of hair in it (<c>hair_1</c> and so on, each node's origin the piece's root on the scalp) move with the head: they
 /// trail behind him as he jogs and runs, flutter with his stride, and lift and press down as he jumps. Standing or walking, they settle. The hair
-/// is the remade game's addition, and only a head that has such nodes moves any.
+/// is the remade game's addition, and only a head that has such nodes moves any. A head skinned to joints of its own called <c>neck base</c> and <c>neck top</c>
+/// bends at the neck: the base is kept with the chest, where the <c>neck anchor</c> node says, and the rest goes with the head, so the head can turn and nod while the
+/// foot of the neck stays in the collar.
 /// </summary>
 /// <remarks>Works out each frame from where the head has actually gone, so it answers to whatever moves him, with no word from the core.</remarks>
 public partial class HeadRig : Node
@@ -30,6 +32,9 @@ public partial class HeadRig : Node
     /// <summary>How the head's own model is turned inside what hangs from the locator: its space is Y up, facing +Z.</summary>
     private readonly Quaternion _fit = Quaternion.Identity;
     private Piece[] _hair = [];
+
+    /// <summary>The body's skeleton and its neck and head bones, the head's own skeleton and the joint at the neck's foot, and where the head's root stands in the body's neck bone in his standing pose; null without a neck that bends.</summary>
+    private (Skeleton3D Body, int Neck, int Head, Skeleton3D Own, int Foot, Transform3D Anchor, Node3D Inner)? _bend;
     private Vector3 _last;
     private Vector3 _velocity;
     private bool _placed;
@@ -131,6 +136,23 @@ public partial class HeadRig : Node
             hair.Add(new Piece(node, reach.LengthSquared() > 1e-8f ? reach.Normalized() : Vector3.Down, hair.Count * 1.7f));
         }
         _hair = [.. hair];
+        // After whatever poses the body each frame.
+        ProcessPriority = 100;
+        if (_head.GetChildCount() == 1 && _head.GetChild(0) is Node3D inner && inner.GetNodeOrNull<Node3D>("neck anchor") is { } anchor
+            && Nodes.FindAll<Skeleton3D>(_head).FirstOrDefault() is { } own && own.FindBone("neck base") is >= 0 and var foot
+            && _locator.GetParent() is BoneAttachment3D { BoneIdx: >= 0 } attached && attached.GetSkeleton() is { } body && body.FindBone("neck") is >= 0 and var neck)
+            _bend = (body, neck, attached.BoneIdx, own, foot, anchor.Transform, inner);
+    }
+
+    public override void _Process(double delta)
+    {
+        if (_bend is not var (body, neck, head, own, foot, anchor, inner))
+            return;
+        // Both in the body's skeleton's space, so wherever he stands cancels out: the head's root as it is now, and where the foot of the neck belongs, with the chest.
+        var root = body.GetBoneGlobalPose(head) * _locator.Transform * _head.Transform * inner.Transform;
+        var pose = root.AffineInverse() * (body.GetBoneGlobalPose(neck) * anchor);
+        own.SetBonePosePosition(foot, pose.Origin);
+        own.SetBonePoseRotation(foot, pose.Basis.Orthonormalized().GetRotationQuaternion());
     }
 
     public override void _PhysicsProcess(double delta)

@@ -29,7 +29,7 @@ original's bugs fixed here are in [bug fixes](bug-fixes.md#mechanics).
 ## Moving
 
 - **Jump.** The original has no jump outside its `!flea` cheat. Retold's player jumps (Space, and any controller button bound to it) with the
-  cheat's strength, from the ground only, a press up to 6 ticks before landing kept, and climbs a ledge up to about 1.5. It's always on; a mod's map
+  cheat's strength, from the ground only, a press up to 6 ticks before landing kept, comes down faster than it went up, and climbs a ledge up to about 1.5. It's always on; a mod's map
   can forbid it (`noJump`) ([movement](../systems/movement.md#movement-and-collision)).
 - **Full run.** A third gait past the run: Shift, or a click of the left stick, asks the actor for request 26. Alaron's remodel has one, 50%
   faster than the original's run; an actor without one runs as before. A battle doesn't use it

@@ -75,10 +75,16 @@ public sealed class PlayerMotion
 
     /// <summary>
     /// His upward speed a tick as he jumps: the original's own, its <c>!flea</c> cheat's jump's (<c>Body.ApplyInput</c>, the 0.084 at
-    /// <c>0x800CDC58</c>, added at <c>0x80015080</c>), which gravity brings to <see cref="JumpHeight"/> after 28 ticks, about 0.93 s in
-    /// the air on the flat.
+    /// <c>0x800CDC58</c>, added at <c>0x80015080</c>), which gravity brings to <see cref="JumpHeight"/> after 28 ticks, then
+    /// <see cref="JumpFallPull"/> brings him back in 16, about 0.73 s in the air on the flat.
     /// </summary>
     public const float JumpSpeed = 0.084f;
+
+    /// <summary>How many times gravity pulls him as a jump comes down, the user's (Nov 9, 2026): at gravity's own he hung in the air, 28 ticks down as well as up.</summary>
+    public const float JumpFallPull = 3;
+
+    /// <summary>The falling speed a tick that pull stops at, just past where a jump on the flat lands: off a cliff he goes on by gravity alone, as a fall too long is the world's edge (<see cref="FallLimit"/>).</summary>
+    public const float JumpFallMost = 0.15f;
 
     /// <summary>
     /// How high a jump lifts his sphere's centre above where it left the ground, as each tick adds gravity and then moves: 1.134. His
@@ -215,6 +221,9 @@ public sealed class PlayerMotion
         Control(input, look);
         StartJump(world, input);
 
+        if (Jumping && Sphere.Velocity.Y <= 0 && Sphere.Velocity.Y > -JumpFallMost)
+            Sphere.Velocity.Y -= Body.Gravity * (JumpFallPull - 1);
+
         var height = Sphere.Position.Y;
         SpherePhysics.Step(world, Sphere);
         if (Jumping)
@@ -223,7 +232,11 @@ public sealed class PlayerMotion
             // slides down as he would have walked onto it. A wall he's against faces across, and doesn't end it; the floor under it
             // does, whatever he last touched. Until then, the trigger floors under him down to where he left the ground.
             if (Sphere.Velocity.Y <= 0 && (Grounded || Below(world, 0.1f, 0.05f)) || ++_jumpTicks >= JumpMostTicks)
+            {
                 Jumping = false;
+                Land(world);
+                height = Sphere.Position.Y;
+            }
             else
                 SpherePhysics.TreadBelow(world, Sphere, _takeoff - Radius - 0.25f);
         }
@@ -300,6 +313,18 @@ public sealed class PlayerMotion
         Sphere.Velocity.Y = JumpSpeed;
         _fellLastTick = false;
         Pinned = 0;
+    }
+
+    /// <summary>
+    /// Sets him on what's under him as a jump ends, stopped. Collision looks ahead along a sphere's speed, so at a jump's it stops him up to about 0.1 short of the ground, where
+    /// a sphere that touches something and barely moves stays (<see cref="SpherePhysics.Step"/>).
+    /// </summary>
+    private void Land(CollisionWorld world)
+    {
+        if (!SpherePhysics.SweepNearest(world, Sphere.Position, Sphere.Position - new Vector3(0, 0.2f, 0), Radius, skipSeeThrough: false, 0.05f, out var point, out var normal))
+            return;
+        Sphere.Position = point + normal * Radius;
+        Sphere.Velocity.Y = 0;
     }
 
     /// <summary>Whether something facing at least <paramref name="up"/> upward is within <paramref name="depth"/> below his sphere.</summary>

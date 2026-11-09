@@ -38,13 +38,31 @@ public sealed class JumpTests
             player.Step(world, new MoveInput(Vector2.Zero), East, motion);
             top = MathF.Max(top, player.Sphere.Position.Y);
         }
-        // The flea cheat's lift: 1.134, about 0.93 s in the air.
+        // The flea cheat's lift: 1.134, about 0.73 s in the air.
         Assert.Equal(1.134f, PlayerMotion.JumpHeight, 0.001f);
         Assert.InRange(top - start.Y, PlayerMotion.JumpHeight - 0.02f, PlayerMotion.JumpHeight + 0.01f);
-        Assert.InRange(ticks, 52, 60);
+        Assert.InRange(ticks, 40, 48);
         for (var i = 0; i < 10; i++)
             player.Step(world, new MoveInput(Vector2.Zero), East, motion);
         Assert.InRange(Vector3.Distance(player.Sphere.Position, start), 0, 0.02f);
+    }
+
+    [Fact]
+    public void AJumpComesDownFasterThanItWentUp()
+    {
+        var world = Worlds.Flat();
+        var motion = new SteadyMotion(0.06f);
+        var player = Standing(world, motion);
+
+        player.Step(world, new MoveInput(Vector2.Zero, Jump: true), East, motion);
+        var rising = 1;
+        for (; player.Sphere.Velocity.Y > 0 && rising < 200; rising++)
+            player.Step(world, new MoveInput(Vector2.Zero), East, motion);
+        var falling = 0;
+        for (; player.Jumping && falling < 200; falling++)
+            player.Step(world, new MoveInput(Vector2.Zero), East, motion);
+        Assert.InRange(rising, 26, 30);
+        Assert.InRange(falling, 13, 18);
     }
 
     [Theory]

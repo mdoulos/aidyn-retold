@@ -2,6 +2,27 @@ using System.Text.Json.Serialization;
 
 namespace AidynRetold.Plugins.Records;
 
+/// <summary>How broad a body is, the user's sizes for the party (Nov 8, 2026), which set how wide a shadow it casts.</summary>
+public enum BodySize
+{
+    NormalMan,
+    NormalWoman,
+    LargeMan,
+    GiantMan,
+}
+
+/// <summary>What a <see cref="BodySize"/> does.</summary>
+public static class BodySizes
+{
+    /// <summary>How wide a body's shadow is against a normal one's, the user's (Nov 8, 2026): a large man's 25% wider, a giant man's 50%; no size given is normal.</summary>
+    public static float ShadowWidth(BodySize? body) => body switch
+    {
+        BodySize.LargeMan => 1.25f,
+        BodySize.GiantMan => 1.5f,
+        _ => 1,
+    };
+}
+
 /// <summary>
 /// An entity (<c>aidyn:entity/0x…</c>): a party member, NPC, trainer or enemy, with the character
 /// sheet it starts with (<c>EntityDB::Load</c>, <c>Entity::Init</c>). A trainer teaches from its own
@@ -50,6 +71,7 @@ namespace AidynRetold.Plugins.Records;
 /// The gear it wears as it starts, the port's own (the original's entities wear none; the importer writes none): a party member's as it
 /// joins, each put on by the rules, so one it can't wear is left. The editor's entity page sets it.
 /// </param>
+/// <param name="BodySize">How broad its body is, which sets how wide a shadow it casts at camp, the port's own (the importer writes none); none is a normal body's (<see cref="BodySizes.ShadowWidth"/>).</param>
 public sealed record EntityRecord(
     RecordId Id,
     string Name,
@@ -85,7 +107,8 @@ public sealed record EntityRecord(
     float? VoicePitch = null,
     string? VoiceTone = null,
     BlipCadence? VoiceCadence = null,
-    IReadOnlyList<RecordId>? Gear = null)
+    IReadOnlyList<RecordId>? Gear = null,
+    BodySize? BodySize = null)
 {
     /// <summary>
     /// Which of the four kinds the editor lists it under (<see cref="EntityKind"/>), from the entity DB's own groups: the Party group

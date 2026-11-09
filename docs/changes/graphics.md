@@ -59,7 +59,7 @@ are the remake's look ([options](options.md#graphic-quality)).
   lights strong enough to cast one, as dark as its share of the light: in the day the sun's, away from it, lighter where it crosses
   the firelit ground round the fire; at night it would be the fire's, out from it. Whatever touches the ground has a shadow of its own
   too, each foot and a sitting figure's seat, darkest at the spot it touches and blending into the rest. They idle, each leaning, breathing and half turning a little every few seconds, its feet
-  planted. Alaron's is the first
+  planted. Each stands as tall as the game's own height for them, which sets how long their shadows run, and each party member has a body size, normal, large or giant, which sets how wide: a large man's is about a quarter wider and a giant's about half. Alaron's and Becan's are the first
   ([camping](../systems/camping.md#the-camp-screen)).
 
 - **Redrawn pictures.** Aidyn ReChronicled's redrawn portraits, item icons, empty slots, titles and HUD pieces stand in the original's, drawn

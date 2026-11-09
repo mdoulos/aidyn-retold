@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace AidynRetold.Plugins.Records;
 
 /// <summary>
@@ -272,7 +274,10 @@ public sealed record CampPose(string Pose, RecordId Image, int AnchorX, int Anch
 /// no figure is placed all the same, and the camp screen says it has nothing to draw.
 /// </summary>
 /// <param name="Entity">Whose figure it is.</param>
-/// <param name="Stature">The character's height against the one canonical height, 1: a big man above it, a child below.</param>
+/// <param name="Stature">
+/// The character's height against the one canonical height, 1: a big man above it, a child below. None takes it from the entity's body
+/// (<see cref="Sized"/>).
+/// </param>
 /// <param name="Poses">
 /// Its images, each pose once in each facing it's painted in, keyed by both: a figure whose gear differs side to side, as Alaron's
 /// one pauldron does, is painted facing each way rather than mirrored (the user's sheets, Nov 7, 2026).
@@ -285,9 +290,27 @@ public sealed record CampFigureRecord(
     RecordId Id,
     RecordId Entity,
     [property: KeyedList(nameof(CampPose.Pose), nameof(CampPose.Facing))] IReadOnlyList<CampPose> Poses,
-    float Stature = 1,
+    float? Stature = null,
     float Height = 0)
 {
+    /// <summary>The height in the world a stature of 1 stands for: Alaron's, his model's 1.82 at his scale of 1.</summary>
+    public const float CanonicalHeight = 1.82f;
+
+    /// <summary>How wide its shadows are against a normal body's, from its entity (<see cref="Sized"/>).</summary>
+    [JsonIgnore]
+    public float ShadowWidth { get; init; } = 1;
+
+    /// <summary>
+    /// The figure as its entity's body sizes it, the user's design (Nov 8, 2026): unless it gives its own, its stature is the entity's height
+    /// in the world, its model's height times its scale, against the canonical one, which sets how large it's drawn and so how long its
+    /// shadows run; and how wide they are comes from the entity's <see cref="BodySize"/>. No entity, or a body with no height, stands at 1.
+    /// </summary>
+    public CampFigureRecord Sized(EntityRecord? entity) => this with
+    {
+        Stature = Stature ?? (entity?.Body is { Height: > 0, Scale: > 0 } body ? body.Height * body.Scale / CanonicalHeight : 1),
+        ShadowWidth = BodySizes.ShadowWidth(entity?.BodySize),
+    };
+
     /// <summary>The figure's first image of a pose, whichever way it faces, or null if it hasn't one.</summary>
     public CampPose? PoseOf(string pose) => Poses.FirstOrDefault(p => p.Pose == pose);
 

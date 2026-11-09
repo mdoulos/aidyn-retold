@@ -929,7 +929,8 @@ public partial class CampView : Control
         var drawn = placement.Scale / ground.ScaleAt(foot.Y);
         var tall = image.GetHeight() / figure.Height * drawn;
         var wide = image.GetWidth() / figure.Height * drawn;
-        var breadth = ShadowBody * drawn + ShadowSpread * wide;
+        // Its length follows how tall it's drawn (tall, below); its width, its body's size as well, the user's (Nov 8, 2026).
+        var breadth = (ShadowBody * drawn + ShadowSpread * wide) * figure.ShadowWidth;
         var start = ground.ToGround(foot);
         var fromFire = start.Length();
         // The fire's light on the figure's middle, as the figures' shader has it.

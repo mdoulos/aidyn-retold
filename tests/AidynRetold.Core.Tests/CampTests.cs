@@ -236,6 +236,28 @@ public class CampTests
     }
 
     [Fact]
+    public void AFigureStandsAsTallAsItsEntityAndItsBodySizeSetsHowWideItsShadowsAre()
+    {
+        var figure = BothWays(Becan);
+        var becan = Characters.Alaron() with { Body = new EntityBody(Image("actor"), 0.7f, 0.907f, 2.04f), BodySize = BodySize.LargeMan };
+        var sized = figure.Sized(becan);
+        Assert.Equal(2.04f * 0.907f / 1.82f, sized.Stature!.Value, 0.0001f);
+        Assert.Equal(1.25f, sized.ShadowWidth);
+        var placement = CampArranger.Preview(Forest(), sized, 1).Placements[0];
+        Assert.Equal(placement.Slot.Scale * sized.Stature.Value, placement.Scale, 0.0001f);
+        // The canonical height is a stature of 1, and no size given is a normal body's.
+        var alaron = figure.Sized(Characters.Alaron() with { Body = new EntityBody(Image("actor"), 0.7f, 1, CampFigureRecord.CanonicalHeight) });
+        Assert.Equal(1, alaron.Stature!.Value, 0.0001f);
+        Assert.Equal(1, alaron.ShadowWidth);
+        Assert.Equal(1, BodySizes.ShadowWidth(BodySize.NormalMan));
+        Assert.Equal(1, BodySizes.ShadowWidth(BodySize.NormalWoman));
+        Assert.Equal(1.5f, BodySizes.ShadowWidth(BodySize.GiantMan));
+        // A stature of the figure's own stands, and with no entity it stands at 1.
+        Assert.Equal(1.15f, (figure with { Stature = 1.15f }).Sized(becan).Stature!.Value, 0.0001f);
+        Assert.Equal(1, figure.Sized(null).Stature!.Value, 0.0001f);
+    }
+
+    [Fact]
     public void ThePreviewOfSeveralFiguresFillsEverySlotOneOfThemFitsAndSharesOutThoseMoreThanOneDoes()
     {
         var site = Forest(mirror: false);

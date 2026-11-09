@@ -1055,8 +1055,8 @@ public sealed class GameSession
         var day = (int)(Game.Clock.Time / GameClock.Day);
         var seed = CampSeed.Of(day, chunk is { } here ? $"{here.MapSet}/{here.Row},{here.Column}" : "", party);
         var site = CampsiteRecord.For(Game.Plugins, terrain);
-        var figures = Game.Plugins.All<CampFigureRecord>(RecordTypes.CampFigure).GroupBy(f => f.Entity).ToDictionary(g => g.Key, g => g.First());
-        var previews = CampFigures.Select(id => Game.Plugins.TryGet<CampFigureRecord>(id)).OfType<CampFigureRecord>().ToList();
+        var figures = Game.Plugins.All<CampFigureRecord>(RecordTypes.CampFigure).Select(Sized).GroupBy(f => f.Entity).ToDictionary(g => g.Key, g => g.First());
+        var previews = CampFigures.Select(id => Game.Plugins.TryGet<CampFigureRecord>(id)).OfType<CampFigureRecord>().Select(Sized).ToList();
         foreach (var missing in CampFigures.Where(id => Game.Plugins.TryGet<CampFigureRecord>(id) is null))
             _host.Log($"Camp: no figure {missing} to show.");
         var arrangement = site is null ? null
@@ -1218,6 +1218,9 @@ public sealed class GameSession
         return true;
     }
 
+    /// <summary>A camp figure as its entity's body sizes it (<see cref="CampFigureRecord.Sized"/>).</summary>
+    private CampFigureRecord Sized(CampFigureRecord figure) => figure.Sized(Game.Plugins.TryGet<EntityRecord>(figure.Entity));
+
     /// <summary>
     /// The camp's debug overlay's choice for a slot, the user's (Nov 7, 2026): a figure standing or seated there, or nobody
     /// (<see cref="CampArranger.Place"/>). Whether the camp changed: not where the figure has no such pose at the slot.
@@ -1229,7 +1232,7 @@ public sealed class GameSession
         var record = figure is { } id ? Game.Plugins.TryGet<CampFigureRecord>(id) : null;
         if (figure is not null && record is null)
             return false;
-        var placed = CampArranger.Place(arrangement, slot, record, seated);
+        var placed = CampArranger.Place(arrangement, slot, record is null ? null : Sized(record), seated);
         if (ReferenceEquals(placed, arrangement))
             return false;
         camp.Arrangement = placed;

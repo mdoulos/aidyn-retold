@@ -146,4 +146,20 @@ public sealed class CampRecordsTests
         Assert.Equal(440, alaron.PoseOf(CampPoses.SitProfile, CampFacing.Right)!.AnchorY);
         Assert.Equal(3, alaron.Poses.Count);
     }
+
+    [Fact]
+    public void AFigureCanBeDrawnFromAModelAndKeepsItsPaintedPoses()
+    {
+        using var temp = new TempPlugins();
+        var set = PluginSet.Load([
+            temp.Add("aidyn", null),
+            temp.Add("acre", ["aidyn"], ("camp/campsites.json", Campsite), ("camp/figures.json", Figure)),
+            temp.Add("mymod", ["acre"],
+                ("figure.json", """{ "patch": "acre:campfigure/alaron", "model": { "actor": "aidyn:actor/0x25F9", "stand": "aidyn:animation/0x25E7", "sit": "acre:animation/0x000c" } }""")),
+        ]);
+        var alaron = set.Get<CampFigureRecord>(RecordId.Parse("acre:campfigure/alaron"));
+        Assert.Equal(RecordId.Parse("aidyn:actor/0x25F9"), alaron.Model!.Actor);
+        Assert.Equal(RecordId.Parse("acre:animation/0x000c"), alaron.Model.Sit);
+        Assert.NotNull(alaron.PoseOf(CampPoses.SitRear));
+    }
 }

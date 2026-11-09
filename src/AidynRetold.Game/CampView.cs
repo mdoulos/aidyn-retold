@@ -92,6 +92,12 @@ public partial class CampView : Control
     private readonly PluginSet _plugins;
     private readonly PauseScrollView? _scroll;
 
+    /// <summary>The figures drawn from 3D models (<see cref="CampFigureRecord.Model"/>).</summary>
+    private readonly CampModels _modelFigures = null!;
+
+    /// <summary>The draw colour of a 3D model's picture, lit already: a green of none, which a painted figure's light never has, tells the figures' shader to leave it as it is.</summary>
+    private static readonly Color ModelPicture = new(1, 0, 1, 1);
+
     /// <summary>What the mouse can land on: a tab, a recipe or Rest.</summary>
     private enum Target { Tab, Recipe, Rest, Bar, Badge, RestOption }
 
@@ -114,10 +120,13 @@ public partial class CampView : Control
     private Vector2 _base;
 
     /// <param name="scroll">The band's scroll, the pause menu's actor again, or null without one: then the band has no rollers.</param>
-    public CampView(PluginSet plugins, PauseScrollView? scroll)
+    /// <param name="models">The models the figures with 3D models are drawn from.</param>
+    public CampView(PluginSet plugins, PauseScrollView? scroll, Models models)
     {
         _plugins = plugins;
         _scroll = scroll;
+        _modelFigures = new CampModels(plugins, models);
+        AddChild(_modelFigures);
         _ui = new UiPainter(plugins) { TextSize = UiPainter.StandardText };
         Name = "Camp screen";
         MouseFilter = MouseFilterEnum.Pass;
@@ -445,7 +454,10 @@ public partial class CampView : Control
     public override void _Process(double delta)
     {
         if (Camp is null)
+        {
+            _modelFigures.Clear();
             return;
+        }
         Glow.QueueRedraw();
         FireBehind.QueueRedraw();
         Fire.QueueRedraw();
@@ -459,6 +471,7 @@ public partial class CampView : Control
         Tripod.QueueRedraw();
         HungPot.QueueRedraw();
         LightFigures();
+        StepModels(delta);
     }
 
     public override void _Draw()
@@ -1128,7 +1141,22 @@ public partial class CampView : Control
         foreach (var placement in arrangement.InDrawOrder.Where(p => p.Slot.Depth > CampsiteRecord.FireDepth == front))
         {
             var foot = At(fit, placement.Slot.X, placement.Slot.Y);
-            if (placement.Image is { } pose && Lit(pose) is { } image)
+            if (placement.Figure?.Model is not null)
+            {
+                if (_modelFigures.Picture(placement.Slot.Id) is { } picture)
+                {
+                    var size = new Vector2(CampModels.ViewWidth, CampModels.ViewHeight) * ModelUnit(site, placement, pixel);
+                    // On the ground the painted pose's shadows are laid on: the foot of its image, a little below the pose point its slot marks.
+                    var ground = foot;
+                    if (placement.Image is { } painted && Lit(painted) is { } shape)
+                    {
+                        var (area, _) = Placed(placement, painted, shape, site, fit);
+                        ground.Y = area.End.Y - 2 * area.Size.Y / shape.GetHeight();
+                    }
+                    canvas.DrawTextureRect(picture, new Rect2(ground - new Vector2(size.X / 2, CampModels.FootFrom * size.Y), size), false, ModelPicture);
+                }
+            }
+            else if (placement.Image is { } pose && Lit(pose) is { } image)
             {
                 var (area, _) = Placed(placement, pose, image, site, fit);
                 var seed = site.Slots.ToList().FindIndex(s => s.Id == placement.Slot.Id) * 7919 + (int)(Camp!.Seed % 9973);
@@ -1525,6 +1553,10 @@ public partial class CampView : Control
 
         void fragment() {
             vec4 albedo = texture(TEXTURE, UV);
+            // A 3D model's picture, lit as it was rendered, its edges against nothing.
+            if (figure.g < 0.002) {
+                COLOR = vec4(albedo.rgb / max(albedo.a, 0.001), albedo.a);
+            } else {
             vec3 n = texture(NORMAL_TEXTURE, UV).rgb * 2.0 - 1.0;
             n.x *= dFdx(UV.x) < 0.0 ? -1.0 : 1.0;
             n = normalize(n);
@@ -1539,6 +1571,7 @@ public partial class CampView : Control
             vec3 sky = ambient * mix(below, above, n.y * 0.5 + 0.5);
             float sunlit = max(0.0, (dot(n, sun_dir) + sun_wrap) / (1.0 + sun_wrap));
             COLOR = vec4(albedo.rgb * (sky + sun_color * sunlit + fire_color * fire_strength * facing * falloff), albedo.a);
+            }
         }
         """;
 
@@ -1589,6 +1622,49 @@ public partial class CampView : Control
         _figureLight.SetShaderParameter("fire_rise", FigureFireRise);
         _figureLight.SetShaderParameter("fire_radius", FigureFireRadius);
         _figureLight.SetShaderParameter("wrap", FigureFireWrap);
+    }
+
+    /// <summary>How many of this control's pixels a unit of a 3D model's world is, at a placement's slot and stature.</summary>
+    private static float ModelUnit(CampsiteRecord site, CampPlacement placement, float pixel) =>
+        pixel * (site.FigureHeight > 0 ? site.FigureHeight : 230) * placement.Scale / CampFigureRecord.CanonicalHeight;
+
+    /// <summary>
+    /// The figures drawn from 3D models, moved on and lit as the painted ones are by the figures' shader, at their middles: the ambient, more from above than below; the sun;
+    /// and the fire, its flicker and how far it reaches, from where it is against the slot.
+    /// </summary>
+    private void StepModels(double delta)
+    {
+        if (Camp is not { Arrangement: { } arrangement } camp || Scene() is not var (site, fit))
+            return;
+        var pixel = fit.Size.X / site.Width;
+        var models = arrangement.Placements.Where(p => p.Figure?.Model is not null).ToList();
+        var tallest = models.Count == 0 ? 0 : models.Max(p => ModelUnit(site, p, pixel)) * CampModels.ViewHeight;
+        // Twice the pixels it's drawn over at most, for clean edges and fine detail.
+        var height = Math.Clamp(Mathf.RoundToInt(tallest * GetWindow().Size.Y / Math.Max(Size.Y, 1) * 1.6f), 256, 1400);
+        _modelFigures.Step(delta, arrangement.Placements, height);
+        var light = site.LightAt(camp.HourOfDay);
+        var sky = Ambient(light.Ambient);
+        var middle = sky * (FigureAbove + FigureBelow) * 0.5f;
+        var fireX = At(fit, site.Fire.X, site.Fire.Y).X;
+        var flicker = FigureFireStrength * light.Fire * FireStrength(Seconds);
+        foreach (var placement in models)
+        {
+            var foot = At(fit, placement.Slot.X, placement.Slot.Y);
+            var figureSize = pixel * (site.FigureHeight > 0 ? site.FigureHeight : 230) * placement.Slot.Scale;
+            var forward = placement.Slot.Scale > 0 ? FireDistance * (1 - 1 / placement.Slot.Scale) : 0;
+            var toFire = new Vector3((fireX - foot.X) / figureSize, FigureFireRise - 0.5f, -forward);
+            var near = Math.Clamp(1 - toFire.LengthSquared() / (FigureFireRadius * FigureFireRadius), 0, 1);
+            var fire = FigureFireColor * (flicker * near * near);
+            var sun = light.Sun is { } s && (s.X != 0 || s.Y != 0 || s.Z != 0) ? s : null;
+            List<(Color Color, Vector3 Toward)> lights =
+            [
+                (sky * (FigureAbove - FigureBelow) * 0.5f, Vector3.Up),
+                (new Color(fire.R, fire.G, fire.B), toFire.Normalized()),
+            ];
+            if (sun is not null)
+                lights.Add((new Color(sun.Color.R / 255f * sun.Strength, sun.Color.G / 255f * sun.Strength, sun.Color.B / 255f * sun.Strength), new Vector3(sun.X, sun.Y, sun.Z).Normalized()));
+            _modelFigures.Light(placement.Slot.Id, middle, lights);
+        }
     }
 
     /// <summary>
@@ -2045,7 +2121,7 @@ public partial class CampLayer : CanvasLayer
         AddChild(_screen);
         _models = new Models(plugins);
         _scroll = PauseScrollView.Create(plugins, _models);
-        _view = new CampView(plugins, _scroll) { Click = _screen.Click };
+        _view = new CampView(plugins, _scroll, _models) { Click = _screen.Click };
         _view.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         // The picture with the figures behind the fire, the campfire and its tripod, the flames behind the pot and the pot, the firelight, the fire
         // in front over it, the front stones with their own firelight and the figures in front of the fire with theirs, then the band,

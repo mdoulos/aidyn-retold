@@ -276,6 +276,15 @@ public sealed record CampPose(string Pose, RecordId Image, int AnchorX, int Anch
 }
 
 /// <summary>
+/// A 3D model a figure is drawn from at camp in place of its painted poses, the user's choice (Nov 9, 2026). The painted poses stay on the figure: they still say which
+/// slots it fits, and its shadows and contacts come from them, and taking the model off a figure brings the painting back.
+/// </summary>
+/// <param name="Actor">The actor drawn.</param>
+/// <param name="Stand">The clip it plays standing.</param>
+/// <param name="Sit">The clip it plays seated.</param>
+public sealed record CampFigureModel(RecordId Actor, RecordId Stand, RecordId Sit);
+
+/// <summary>
 /// The figure a character cuts at camp (<c>acre:campfigure/&lt;name&gt;</c>): its poses' images and its stature. A character with
 /// no figure is placed all the same, and the camp screen says it has nothing to draw.
 /// </summary>
@@ -292,12 +301,14 @@ public sealed record CampPose(string Pose, RecordId Image, int AnchorX, int Anch
 /// Its standing height in its images' pixels, crown to soles, all its images painted at one scale: the campsite scales it to its
 /// <see cref="CampsiteRecord.FigureHeight"/>. 0, its images are painted at the picture's own scale.
 /// </param>
+/// <param name="Model">A 3D model to draw it from instead of its images (<see cref="CampFigureModel"/>), or none to draw it as painted.</param>
 public sealed record CampFigureRecord(
     RecordId Id,
     RecordId Entity,
     [property: KeyedList(nameof(CampPose.Pose), nameof(CampPose.Facing))] IReadOnlyList<CampPose> Poses,
     float? Stature = null,
-    float Height = 0)
+    float Height = 0,
+    CampFigureModel? Model = null)
 {
     /// <summary>The height in the world a stature of 1 stands for: Alaron's, his model's 1.82 at his scale of 1.</summary>
     public const float CanonicalHeight = 1.82f;

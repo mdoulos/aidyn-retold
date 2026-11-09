@@ -262,7 +262,7 @@ public class CampTests
     {
         var site = Forest(mirror: false);
         var alaron = BothWays(Alaron);
-        // Painted facing right alone, as Becan is so far (Nov 8, 2026).
+        // Painted facing right alone, as Becan's first sheet was (Nov 8, 2026).
         var becan = BothWays(Becan) is var both ? both with { Poses = [.. both.Poses.Where(p => p.Facing == CampFacing.Right)] } : null!;
         var preview = CampArranger.Preview(site, [becan, alaron], 1234);
         Assert.Equal(["left_profile", "right_profile", "rear_left", "rear_right"], preview.Placements.Select(p => p.Slot.Id));

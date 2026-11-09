@@ -281,8 +281,10 @@ public sealed record CampPose(string Pose, RecordId Image, int AnchorX, int Anch
 /// </summary>
 /// <param name="Actor">The actor drawn.</param>
 /// <param name="Stands">The poses it may take standing, the user's (Nov 9, 2026): each placement takes one at random (<c>CampPlacement.Clip</c>).</param>
-/// <param name="Sits">The poses it may take seated, likewise.</param>
-public sealed record CampFigureModel(RecordId Actor, IReadOnlyList<CampModelPose> Stands, IReadOnlyList<CampModelPose> Sits)
+/// <param name="Sits">The poses it may take seated, likewise. The first is the one it passes through on its way between the others, so its legs have room to rearrange.</param>
+/// <param name="SitEveryMin">The fewest seconds it stays in a seated pose before taking another.</param>
+/// <param name="SitEveryMax">The most.</param>
+public sealed record CampFigureModel(RecordId Actor, IReadOnlyList<CampModelPose> Stands, IReadOnlyList<CampModelPose> Sits, float SitEveryMin = 60, float SitEveryMax = 120)
 {
     /// <summary>The poses it may take of the kind: seated or standing.</summary>
     public IReadOnlyList<CampModelPose> Poses(bool seated) => seated ? Sits : Stands;
@@ -318,13 +320,15 @@ public sealed record CampModelPose(RecordId Clip, RecordId? Upright = null, Reco
 /// <see cref="CampsiteRecord.FigureHeight"/>. 0, its images are painted at the picture's own scale.
 /// </param>
 /// <param name="Model">A 3D model to draw it from instead of its images (<see cref="CampFigureModel"/>), or none to draw it as painted.</param>
+/// <param name="Hidden">Whether it's set aside: out of the camp and the debug list, its art and record kept, the user's (Nov 9, 2026). Take this off to bring it back.</param>
 public sealed record CampFigureRecord(
     RecordId Id,
     RecordId Entity,
     [property: KeyedList(nameof(CampPose.Pose), nameof(CampPose.Facing))] IReadOnlyList<CampPose> Poses,
     float? Stature = null,
     float Height = 0,
-    CampFigureModel? Model = null)
+    CampFigureModel? Model = null,
+    bool Hidden = false)
 {
     /// <summary>The height in the world a stature of 1 stands for: Alaron's, his model's 1.82 at his scale of 1.</summary>
     public const float CanonicalHeight = 1.82f;

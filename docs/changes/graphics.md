@@ -38,7 +38,7 @@ are the remake's look ([options](options.md#graphic-quality)).
   landing ([replacing graphics](../replacing-graphics.md#a-skinned-character)). He wears the one outfit, whatever armor he has on.
 - **His hair moves.** It trails behind him as he jogs and runs, flutters with his stride and lifts as he jumps, and settles when he stands or
   walks. The original's doesn't move ([rendering](../systems/rendering.md)).
-- **Alaron is 3D at camp.** He's drawn from his model round the fire, standing or in one of five seated poses chosen at random, some shifting a little as he sits, lit by the camp's sun and fire as the painted figures are; the others are still painted ([camping](../systems/camping.md#the-camp-screen)).
+- **Alaron is 3D at camp.** He's drawn from his model round the fire, standing in one of two poses or sitting in one of seven, chosen at random, looking about him as he sits and changing how he sits every minute or two, lit by the camp's sun and fire as the painted figures are; Abrecan and Becan's painted figures are set aside for now ([camping](../systems/camping.md#the-camp-screen)).
 - **His neck bends.** The foot of his neck stays in his collar while his head turns and nods.
 - **His hands are never quite still.** While he stands, his fingers, thumbs and wrists move a little, and his thumbs lie closer to his fingers than the
   remodel's did. The animations are otherwise the remodel's.

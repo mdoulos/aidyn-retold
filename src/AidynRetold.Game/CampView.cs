@@ -648,7 +648,7 @@ public partial class CampView : Control
             return;
         // The open list, over the rows under its slot.
         List<SlotChoice> choices = [new("none", null, false, true)];
-        foreach (var figure in _plugins.All<CampFigureRecord>(RecordTypes.CampFigure).OrderBy(f => f.Id.ToString(), StringComparer.Ordinal))
+        foreach (var figure in _plugins.All<CampFigureRecord>(RecordTypes.CampFigure).Where(f => !f.Hidden).OrderBy(f => f.Id.ToString(), StringComparer.Ordinal))
         {
             var name = MemberName(figure.Entity);
             choices.Add(new($"{name} standing", figure.Id, false, CampArranger.Pick(figure, chosen, seated: false) is not null));
@@ -1641,7 +1641,14 @@ public partial class CampView : Control
         var tallest = models.Count == 0 ? 0 : models.Max(p => ModelUnit(site, p, pixel)) * CampModels.ViewHeight;
         // Twice the pixels it's drawn over at most, for clean edges and fine detail.
         var height = Math.Clamp(Mathf.RoundToInt(tallest * GetWindow().Size.Y / Math.Max(Size.Y, 1) * 1.6f), 256, 1400);
-        _modelFigures.Step(delta, arrangement.Placements, height);
+        // Where everyone is on the ground, for those who look at one another.
+        var ground = new Dictionary<string, Vector2>();
+        if (Ground.Of(site, fit) is { } laid)
+        {
+            foreach (var placement in arrangement.Placements)
+                ground[placement.Slot.Id] = laid.ToGround(At(fit, placement.Slot.X, placement.Slot.Y));
+        }
+        _modelFigures.Step(delta, arrangement.Placements, height, ground);
         var light = site.LightAt(camp.HourOfDay);
         var sky = Ambient(light.Ambient);
         var middle = sky * (FigureAbove + FigureBelow) * 0.5f;

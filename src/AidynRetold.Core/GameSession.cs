@@ -1058,8 +1058,8 @@ public sealed class GameSession
         var day = (int)(Game.Clock.Time / GameClock.Day);
         var seed = CampSeed.Of(day, chunk is { } here ? $"{here.MapSet}/{here.Row},{here.Column}" : "", party);
         var site = CampsiteRecord.For(Game.Plugins, terrain);
-        var figures = Game.Plugins.All<CampFigureRecord>(RecordTypes.CampFigure).Select(Sized).GroupBy(f => f.Entity).ToDictionary(g => g.Key, g => g.First());
-        var previews = CampFigures.Select(id => Game.Plugins.TryGet<CampFigureRecord>(id)).OfType<CampFigureRecord>().Select(Sized).ToList();
+        var figures = Game.Plugins.All<CampFigureRecord>(RecordTypes.CampFigure).Where(f => !f.Hidden).Select(Sized).GroupBy(f => f.Entity).ToDictionary(g => g.Key, g => g.First());
+        var previews = CampFigures.Select(id => Game.Plugins.TryGet<CampFigureRecord>(id)).OfType<CampFigureRecord>().Where(f => !f.Hidden).Select(Sized).ToList();
         foreach (var missing in CampFigures.Where(id => Game.Plugins.TryGet<CampFigureRecord>(id) is null))
             _host.Log($"Camp: no figure {missing} to show.");
         var arrangement = site is null ? null

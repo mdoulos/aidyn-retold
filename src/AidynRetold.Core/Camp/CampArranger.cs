@@ -51,6 +51,9 @@ public static class CampArranger
     /// <summary>The most members a campsite is laid out for.</summary>
     public const int MostMembers = 5;
 
+    /// <summary>The most slots the figures shown in place of the party take: all six round the fire, the user's (Nov 9, 2026).</summary>
+    public const int MostPreviewed = 6;
+
     /// <summary>The slots a campsite should give, for a party of up to five to vary over.</summary>
     public const int SlotsWanted = 7;
 
@@ -194,9 +197,9 @@ public static class CampArranger
     }
 
     /// <summary>
-    /// Figures in place of the party, for judging their art round the fire (<c>--camp-figure</c>, a launch's): a party's worth of them,
-    /// <see cref="MostMembers"/>, at that many of the slots one of them fits, the user's (Nov 8, 2026), or at all of those where there are
-    /// fewer. The seed chooses which slots, who takes each and which of its poses there. Who's chosen among those least placed so far that
+    /// Figures in place of the party, for judging their art round the fire (<c>--camp-figure</c>, a launch's): <see cref="MostPreviewed"/> of them,
+    /// at that many of the slots one of them fits, the user's (Nov 9, 2026), or at all of those where there are fewer. The seed chooses which
+    /// slots, who takes each and which of its poses there, a figure drawn from a model taking a different one of its poses at each slot while it has one left. Who's chosen among those least placed so far that
     /// fit, the slots fewest fit going first, so the figures are shared out as evenly as their art allows, however few there are.
     /// </summary>
     public static CampArrangement Preview(CampsiteRecord site, IReadOnlyList<CampFigureRecord> figures, uint seed) => Preview(site, figures, new Lcg(seed));
@@ -209,13 +212,16 @@ public static class CampArranger
         var slots = site.Slots.Where(s => figures.Any(f => Fits(f, s))).ToList();
         Shuffle(slots, random);
         var placements = new List<CampPlacement>();
-        foreach (var slot in slots.Take(MostMembers).OrderBy(s => figures.Count(f => Fits(f, s))))
+        var decks = new Dictionary<CampFigureRecord, List<(bool Seated, int Clip)>>();
+        foreach (var slot in slots.Take(MostPreviewed).OrderBy(s => figures.Count(f => Fits(f, s))))
         {
             var fitting = figures.Where(f => Fits(f, slot)).ToList();
             var fewest = fitting.Min(f => placements.Count(p => p.Figure == f));
             var least = fitting.Where(f => placements.Count(p => p.Figure == f) == fewest).ToList();
             var figure = least[(int)random.Below((uint)least.Count)];
-            if (Fit(figure, slot, random) is var (pose, mirrored, image))
+            if (Dealt(figure, slot, decks, random) is { } dealt)
+                placements.Add(dealt);
+            else if (Fit(figure, slot, random) is var (pose, mirrored, image))
                 placements.Add(Varied(new CampPlacement(figure.Entity, slot, pose, slot.Facing, mirrored, figure, image), random));
         }
         placements = [.. placements.OrderBy(p => site.Slots.ToList().FindIndex(s => s.Id == p.Slot.Id))];
@@ -225,22 +231,27 @@ public static class CampArranger
 
     /// <summary>
     /// The figures shown in place of the party drawn afresh (<see cref="Preview(CampsiteRecord, IReadOnlyList{CampFigureRecord}, uint)"/>):
-    /// which slots they fill, who's at each and how, the debug Poses button's, the user's (Nov 8, 2026). Drawn again until something
-    /// changes, where something can.
+    /// which slots they fill, who's at each and how, the debug Poses button's, the user's (Nov 8, 2026). Drawn again until everyone is doing
+    /// something else, the user's (Nov 9, 2026), or failing that until something has changed, where something can.
     /// </summary>
     public static CampArrangement Reshuffle(CampArrangement arrangement, IReadOnlyList<CampFigureRecord> figures, IRandom random)
     {
-        const int Tries = 16;
+        const int Tries = 32;
+        var was = arrangement.Placements.ToDictionary(p => p.Slot.Id, Shown);
         var next = arrangement;
+        CampArrangement? changed = null;
         for (var attempt = 0; attempt < Tries; attempt++)
         {
             next = Preview(arrangement.Site, figures, random);
-            if (!next.Placements.Select(Shown).SequenceEqual(arrangement.Placements.Select(Shown)))
-                break;
+            var fresh = next.Placements.Count(p => !was.TryGetValue(p.Slot.Id, out var before) || before != Shown(p));
+            if (fresh == next.Placements.Count && fresh > 0)
+                return next;
+            if (fresh > 0)
+                changed ??= next;
         }
-        return next;
+        return changed ?? next;
 
-        static (string Slot, RecordId Member, string Pose, int Clip, float Lean) Shown(CampPlacement p) => (p.Slot.Id, p.Member, p.Pose, p.Clip, p.Lean);
+        static (RecordId Member, string Pose, int Clip) Shown(CampPlacement p) => (p.Member, p.Pose, p.Clip);
     }
 
     /// <summary>
@@ -272,21 +283,25 @@ public static class CampArranger
 
     /// <summary>
     /// The arrangement with each figure's pose chosen afresh among those it has at its slot, everyone where they were: the debug Poses
-    /// button's for the party itself, the user's (Nov 7, 2026). Drawn again until a pose changes, where one can.
+    /// button's for the party itself, the user's (Nov 7, 2026). Drawn again until everyone with a figure is doing something else, the user's
+    /// (Nov 9, 2026), or failing that keeping the draw that changed the most, where one can change at all.
     /// </summary>
     public static CampArrangement Repose(CampArrangement arrangement, IRandom random)
     {
-        const int Tries = 16;
-        var placements = arrangement.Placements;
-        for (var attempt = 0; attempt < Tries; attempt++)
+        const int Tries = 32;
+        var best = arrangement.Placements;
+        var bestChanged = 0;
+        var figures = arrangement.Placements.Count(p => p.Figure is not null);
+        for (var attempt = 0; attempt < Tries && bestChanged < figures; attempt++)
         {
-            placements = [.. arrangement.Placements.Select(p => p.Figure is { } figure && Fit(figure, p.Slot, random) is var (pose, mirrored, image)
+            List<CampPlacement> placements = [.. arrangement.Placements.Select(p => p.Figure is { } figure && Fit(figure, p.Slot, random) is var (pose, mirrored, image)
                 ? Varied(p with { Pose = pose, Mirrored = mirrored, Image = image }, random)
                 : p)];
-            if (placements.Zip(arrangement.Placements).Any(pair => pair.First.Pose != pair.Second.Pose || pair.First.Clip != pair.Second.Clip || pair.First.Lean != pair.Second.Lean))
-                break;
+            var changed = placements.Zip(arrangement.Placements).Count(pair => pair.First.Pose != pair.Second.Pose || pair.First.Clip != pair.Second.Clip);
+            if (changed > bestChanged)
+                (best, bestChanged) = (placements, changed);
         }
-        return arrangement with { Placements = placements };
+        return arrangement with { Placements = best };
     }
 
     /// <summary>One of a figure's options at a slot, chosen by the seed, or the preferred pose if it's among them; null with none.</summary>
@@ -300,13 +315,40 @@ public static class CampArranger
         return options[(int)random.Below((uint)options.Count)];
     }
 
+    /// <summary>
+    /// A figure drawn from a model, placed in the next of its poses in a deck dealt out across the preview, so each slot's differs while there are any left: the first in the deck
+    /// that the slot can take. Null for a figure with no model, or a slot that takes none of its poses.
+    /// </summary>
+    private static CampPlacement? Dealt(CampFigureRecord figure, CampSlot slot, Dictionary<CampFigureRecord, List<(bool Seated, int Clip)>> decks, IRandom random)
+    {
+        if (figure.Model is not { } model)
+            return null;
+        if (!decks.TryGetValue(figure, out var deck) || deck.Count == 0)
+        {
+            deck = [.. Enumerable.Range(0, model.Sits.Count).Select(i => (true, i)), .. Enumerable.Range(0, model.Stands.Count).Select(i => (false, i))];
+            Shuffle(deck, random);
+            decks[figure] = deck;
+        }
+        foreach (var card in deck)
+        {
+            if (Pick(figure, slot, card.Seated) is not var (pose, mirrored, image))
+                continue;
+            deck.Remove(card);
+            return new CampPlacement(figure.Entity, slot, pose, slot.Facing, mirrored, figure, image, card.Clip, Lean(model.Poses(card.Seated)[card.Clip], random));
+        }
+        return null;
+    }
+
+    /// <summary>How upright a placement in a pose sits: a random share where the pose has an upright version, no number drawn where not.</summary>
+    private static float Lean(CampModelPose pose, IRandom random) => pose.Upright is null ? 0 : random.Below(1001) / 1000f;
+
     /// <summary>A placement with its model's pose chosen by the seed, and how upright it sits if that pose can vary; no number is drawn where there's no choice.</summary>
     private static CampPlacement Varied(CampPlacement placement, IRandom random)
     {
         if (placement.Figure?.Model?.Poses(CampPoses.IsSeated(placement.Pose)) is not { Count: > 0 } poses)
             return placement;
         var clip = poses.Count > 1 ? (int)random.Below((uint)poses.Count) : 0;
-        return placement with { Clip = clip, Lean = poses[clip].Upright is null ? 0 : random.Below(1001) / 1000f };
+        return placement with { Clip = clip, Lean = Lean(poses[clip], random) };
     }
 
     private static void Shuffle<T>(IList<T> list, IRandom random)

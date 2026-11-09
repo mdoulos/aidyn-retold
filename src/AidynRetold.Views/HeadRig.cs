@@ -104,14 +104,20 @@ public partial class HeadRig : Node
         }
     }
 
-    /// <summary>Turns the head to face <paramref name="way"/> on the ground, in X and Z, about the world's up, leaving the neck's tilt as it is.</summary>
-    public void Turn(System.Numerics.Vector2 way)
+    /// <summary>Puts the head back as the animation has it, turned no way.</summary>
+    public void Rest() => _head.Quaternion = _rest;
+
+    /// <summary>Turns the head to face <paramref name="way"/> on the ground, in X and Z, about the world's up, leaving the neck's tilt as it is, and nods it down by <paramref name="nod"/> radians, up if negative.</summary>
+    public void Turn(System.Numerics.Vector2 way, float nod = 0)
     {
         if (NeckFacing is not { } neck)
             return;
         var turn = Mathf.Wrap(MathF.Atan2(way.X, way.Y) - MathF.Atan2(neck.X, neck.Y), -Mathf.Pi, Mathf.Pi);
         var locator = LocatorRotation();
-        _head.Quaternion = locator.Inverse() * new Quaternion(Vector3.Up, turn) * locator * _rest;
+        var world = new Quaternion(Vector3.Up, turn);
+        if (nod != 0)
+            world = new Quaternion(Vector3.Up.Cross(new Vector3(way.X, 0, way.Y)).Normalized(), nod) * world;
+        _head.Quaternion = locator.Inverse() * world * locator * _rest;
     }
 
     /// <summary>

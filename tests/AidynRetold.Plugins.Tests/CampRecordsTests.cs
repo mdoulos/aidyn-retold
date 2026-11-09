@@ -165,6 +165,8 @@ public sealed class CampRecordsTests
         Assert.Equal(RecordId.Parse("acre:animation/0x000e"), varies.Upright);
         Assert.Equal(RecordId.Parse("acre:animation/0x000f"), varies.Shifted);
         Assert.Equal((10, 30), (varies.ShiftMin, varies.ShiftMax));
+        Assert.Equal((60, 120), (alaron.Model.SitEveryMin, alaron.Model.SitEveryMax));
+        Assert.False(alaron.Hidden);
         Assert.NotNull(alaron.PoseOf(CampPoses.SitRear));
     }
 }

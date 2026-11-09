@@ -52,14 +52,14 @@ are the remake's look ([options](options.md#graphic-quality)).
   front logs laid again over the flames that burn behind them and its front stones over all the flames, animated flames, smoke and
   embers, and firelight added over it, so another biome or another fire changes a piece, not the painting
   ([camping](../systems/camping.md#the-camp-screen)).
-- **The party sits or stands round the camp's fire**, each figure the user's art, Alaron's and Becan's painted both ways, with most of the light it was
+- **The party sits or stands round the camp's fire**, each figure the user's art, Alaron's and Becan's painted both ways and Abrecan's so far facing right, with most of the light it was
   painted under taken out, and lit as the forest is through the user's normal maps: a low sun behind the trees at the upper right rims
   their edges, the side the camera sees in the shade, a little brighter from above and greener from below, the fire a warm touch on the
   side that faces it, flickering with it, and a soft shadow under each where it meets the grass. Each casts a long soft shadow from the
   lights strong enough to cast one, as dark as its share of the light: in the day the sun's, away from it, lighter where it crosses
   the firelit ground round the fire; at night it would be the fire's, out from it. Whatever touches the ground has a shadow of its own
   too, each foot and a sitting figure's seat, darkest at the spot it touches and blending into the rest. They idle, each leaning, breathing and half turning a little every few seconds, its feet
-  planted. Each stands as tall as the game's own height for them, which sets how long their shadows run, and each party member has a body size, normal, large or giant, which sets how wide: a large man's is about a quarter wider and a giant's about half. Alaron's and Becan's are the first
+  planted. Each stands as tall as the game's own height for them, which sets how long their shadows run, and each party member has a body size, normal, large or giant, which sets how wide: a large man's is about a quarter wider and a giant's about half. Alaron's, Becan's and Abrecan's are the first
   ([camping](../systems/camping.md#the-camp-screen)).
 
 - **Redrawn pictures.** Aidyn ReChronicled's redrawn portraits, item icons, empty slots, titles and HUD pieces stand in the original's, drawn

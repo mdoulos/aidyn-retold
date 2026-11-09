@@ -212,6 +212,12 @@ public class CampTests
     {
         Assert.Equal([CampFacing.Left, CampFacing.Right], CampPoses.FacingsOf(CampPoses.SitRear3Q));
         Assert.Equal([CampFacing.Away], CampPoses.FacingsOf(CampPoses.SitRear));
+        // The front three-quarters are like the rear ones: either way, and one of them seated.
+        Assert.Equal([CampFacing.Left, CampFacing.Right], CampPoses.FacingsOf(CampPoses.StandFront3Q));
+        Assert.Equal([CampFacing.Left, CampFacing.Right], CampPoses.FacingsOf(CampPoses.SitFront3Q));
+        Assert.True(CampPoses.IsSeated(CampPoses.SitFront3Q));
+        Assert.False(CampPoses.IsSeated(CampPoses.StandFront3Q));
+        Assert.True(CampPoses.IsKnown(CampPoses.StandFront3Q));
         var figure = BothWays(Alaron);
         Assert.Equal(Image($"{Alaron.Key}_{CampPoses.SitProfile}_{CampFacing.Left}"), figure.PoseOf(CampPoses.SitProfile, CampFacing.Left)!.Image);
         Assert.Null(figure.PoseOf(CampPoses.SitRear, CampFacing.Away));

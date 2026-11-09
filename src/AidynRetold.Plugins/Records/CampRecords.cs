@@ -23,8 +23,9 @@ public enum CampFacing
 }
 
 /// <summary>
-/// The seven canonical poses a figure at camp may have (the campsite brief's table), which slots name and figures' images are
-/// keyed by. A library to grow into, not a requirement: a figure declares the poses it has.
+/// The canonical poses a figure at camp may have, which slots name and figures' images are keyed by: the campsite brief's seven, and
+/// the two front three-quarters the user painted (Alaron Sheet 3, Nov 8, 2026). A library to grow into, not a requirement: a figure
+/// declares the poses it has.
 /// </summary>
 public static class CampPoses
 {
@@ -42,21 +43,25 @@ public static class CampPoses
     public const string SitRear = "sit_rear";
     /// <summary>Crouched or leaning to tend the fire, the hands toward the shared pot.</summary>
     public const string TendFire = "tend_fire";
+    /// <summary>Standing, turned three-quarters toward the viewer.</summary>
+    public const string StandFront3Q = "stand_front_3q";
+    /// <summary>Seated, turned three-quarters toward the viewer.</summary>
+    public const string SitFront3Q = "sit_front_3q";
 
-    public static readonly IReadOnlyList<string> All = [StandProfile, SitProfile, StandRear3Q, SitRear3Q, StandRear, SitRear, TendFire];
+    public static readonly IReadOnlyList<string> All = [StandProfile, SitProfile, StandRear3Q, SitRear3Q, StandRear, SitRear, TendFire, StandFront3Q, SitFront3Q];
 
-    /// <summary>Whether a pose is one of the seven.</summary>
+    /// <summary>Whether a pose is one of the canonical ones.</summary>
     public static bool IsKnown(string pose) => All.Contains(pose);
 
     /// <summary>Whether the figure sits in the pose, so its apparent height is a seated one's, never scaled to a standing one's.</summary>
-    public static bool IsSeated(string pose) => pose is SitProfile or SitRear3Q or SitRear or TendFire;
+    public static bool IsSeated(string pose) => pose is SitProfile or SitRear3Q or SitRear or TendFire or SitFront3Q;
 
     /// <summary>
-    /// The facings a pose can be drawn in: a profile or a three-quarter rear faces left or right, toward the fire, and the rest away. A
-    /// figure in front of the fire and to its left turns away from the viewer to the right, as the user's art has it (Nov 7, 2026).
+    /// The facings a pose can be drawn in: a profile or a three-quarter, rear or front, faces left or right, and the rest away. A figure in
+    /// front of the fire and to its left turns away from the viewer to the right, as the user's art has it (Nov 7, 2026).
     /// </summary>
     public static IReadOnlyList<CampFacing> FacingsOf(string pose) =>
-        pose is StandProfile or SitProfile or StandRear3Q or SitRear3Q ? [CampFacing.Left, CampFacing.Right] : [CampFacing.Away];
+        pose is StandProfile or SitProfile or StandRear3Q or SitRear3Q or StandFront3Q or SitFront3Q ? [CampFacing.Left, CampFacing.Right] : [CampFacing.Away];
 }
 
 /// <summary>A point in a campsite's picture, as a share of its width and height, 0 to 1.</summary>

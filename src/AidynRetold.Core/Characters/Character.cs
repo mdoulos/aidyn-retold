@@ -110,6 +110,9 @@ public sealed partial class Character
     /// </summary>
     public bool TrueName { get; set; }
 
+    /// <summary>The background chosen for its portrait (<see cref="PortraitLook"/>), or null for the first of them.</summary>
+    public RecordId? PortraitBackground { get; set; }
+
     public bool Heavy => Record.Heavy;
 
     /// <summary>

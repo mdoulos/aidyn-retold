@@ -117,6 +117,9 @@ public sealed record SaveCharacter(RecordId Entity)
     /// </summary>
     public bool? TrueName { get; init; }
 
+    /// <summary>The background chosen for the portrait, or none for its first (the player's choice, Nov 9, 2026; <see cref="Records.PortraitLook"/>).</summary>
+    public RecordId? PortraitBackground { get; init; }
+
     public uint TotalExp { get; init; }
 
     public uint SpendableExp { get; init; }

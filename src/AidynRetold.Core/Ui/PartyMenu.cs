@@ -126,6 +126,11 @@ public sealed partial class PartyMenu : IPartyWindow
     /// </summary>
     void IPartyWindow.Sideways(int direction)
     {
+        if (Picker is { } picker)
+        {
+            picker.Step(direction);
+            return;
+        }
         if (LetGoPinned() || _aim is null && StepSpatially(direction, 0))
             return;
         ChangeList(-direction);
@@ -311,7 +316,7 @@ public sealed partial class PartyMenu : IPartyWindow
     /// </summary>
     public void MoveCursor(int by)
     {
-        if (Overlay.MoveCursor(by) || LetGoPinned() || Message is not null || DetailsPane.Showing)
+        if (Picker is not null || Overlay.MoveCursor(by) || LetGoPinned() || Message is not null || DetailsPane.Showing)
             return;
         if (Crafting is { } crafting)
         {

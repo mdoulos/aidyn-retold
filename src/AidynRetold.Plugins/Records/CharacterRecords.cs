@@ -2,6 +2,14 @@ using System.Text.Json.Serialization;
 
 namespace AidynRetold.Plugins.Records;
 
+/// <summary>
+/// A portrait the player can recolour, the user's design (Nov 9, 2026): the character cut out, over one of several backgrounds, the
+/// first of them until another is chosen. It's drawn in place of the entity's <see cref="EntityRecord.Portrait"/>, wherever that image is drawn.
+/// </summary>
+/// <param name="Cutout">The character, on a transparent background.</param>
+/// <param name="Backgrounds">The backgrounds to choose from, in the order the arrows step through them.</param>
+public sealed record PortraitLook(RecordId Cutout, IReadOnlyList<RecordId> Backgrounds);
+
 /// <summary>How broad a body is, the user's sizes for the party (Nov 8, 2026), which set how wide a shadow it casts.</summary>
 public enum BodySize
 {
@@ -108,7 +116,8 @@ public sealed record EntityRecord(
     string? VoiceTone = null,
     BlipCadence? VoiceCadence = null,
     IReadOnlyList<RecordId>? Gear = null,
-    BodySize? BodySize = null)
+    BodySize? BodySize = null,
+    PortraitLook? PortraitLook = null)
 {
     /// <summary>
     /// Which of the four kinds the editor lists it under (<see cref="EntityKind"/>), from the entity DB's own groups: the Party group

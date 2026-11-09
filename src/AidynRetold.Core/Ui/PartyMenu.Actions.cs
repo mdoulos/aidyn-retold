@@ -50,7 +50,19 @@ public sealed partial class PartyMenu
     public DetailsPane DetailsPane => Overlay.Details;
 
     /// <summary>Whether a popup or the details are taking the presses, fading or not.</summary>
-    public bool HasPopup => Overlay.HasPopup || Crafting is not null;
+    public bool HasPopup => Overlay.HasPopup || Crafting is not null || Picker is not null;
+
+    /// <summary>The portrait's colours being chosen, if they are.</summary>
+    public PortraitPicker? Picker { get; private set; }
+
+    /// <summary>Opens the colours of a member's portrait, if it can be recoloured and nothing else is up. True if it opened.</summary>
+    public bool OpenPicker(Character member)
+    {
+        if (HasPopup || OriginalLook || Slide is not null || member.Record.PortraitLook is not { } look)
+            return false;
+        Picker = new PortraitPicker(member, look);
+        return true;
+    }
 
     /// <summary>The crafting popup, if it's open and nothing over it takes the presses.</summary>
     private CraftingMenu? OpenCraftingPopup => Crafting is { Fade.IsOpen: true } crafting && !DetailsPane.Showing ? crafting : null;
@@ -63,6 +75,8 @@ public sealed partial class PartyMenu
     /// </summary>
     public void PressDetails()
     {
+        if (Picker is not null)
+            return;
         _quietClick = false;
         var open = Message is null && (Crafting is null || OpenCraftingPopup is not null) && Details() is not null;
         if (!Spatial)
@@ -113,7 +127,9 @@ public sealed partial class PartyMenu
     /// </summary>
     public void Accept()
     {
-        if (Message is not null)
+        if (Picker is not null)
+            Picker = null;
+        else if (Message is not null)
             CloseMessage();
         else if (Overlay.Choice is { } question)
             AnswerDrop(question);
@@ -167,7 +183,9 @@ public sealed partial class PartyMenu
     /// </summary>
     public bool Back()
     {
-        if (Message is not null)
+        if (Picker is not null)
+            Picker = null;
+        else if (Message is not null)
             CloseMessage();
         else if (Overlay.Choice is not null)
             Overlay.CloseChoice();

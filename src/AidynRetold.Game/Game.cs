@@ -198,6 +198,7 @@ public partial class Game : Node3D, ITrekHost, IPauseMenuHost, ICombatHost
 
         var session = BuildWorld(plugins, game, start);
         session.CampFigures = options.CampFigures;
+        UiImages.ChosenBackground = image => _session?.Game.Party.Members.FirstOrDefault(m => m.Record.Portrait == image)?.PortraitBackground;
         // After the first terrain and the time, which can change the weather.
         if (options.Weather is { } weather)
         {

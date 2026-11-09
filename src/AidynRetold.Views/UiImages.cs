@@ -58,6 +58,8 @@ public sealed class UiImages
     {
         // The original look draws the original's image, the first plugin's, whatever a mod or the game's own art puts over it.
         var original = UiPainter.Original || wantOriginal;
+        if (!original && Looks.TryGetValue(image, out var look))
+            return Recoloured(image, look);
         var textures = original ? _originals : _textures;
         if (textures.TryGetValue(image, out var texture))
             return texture;
@@ -82,6 +84,52 @@ public sealed class UiImages
             GD.PushWarning($"No asset for {image}.");
         }
         return textures[image] = texture;
+    }
+
+    /// <summary>
+    /// The background the player has chosen for a portrait image, or null for its first (<see cref="PortraitLook"/>): the runtime's,
+    /// from the party, so every portrait of a member, in any menu or conversation, takes the colour. With none set, as in the editor, the first.
+    /// </summary>
+    public static Func<RecordId, RecordId?>? ChosenBackground { get; set; }
+
+    private Dictionary<RecordId, PortraitLook>? _looks;
+
+    /// <summary>The portraits that are a cutout over a background to choose, by the image they're drawn in place of.</summary>
+    private Dictionary<RecordId, PortraitLook> Looks => _looks ??= _plugins.All<EntityRecord>(RecordTypes.Entity)
+        .Where(e => e is { Portrait: not null, PortraitLook: not null }).GroupBy(e => e.Portrait!.Value).ToDictionary(g => g.Key, g => g.First().PortraitLook!);
+
+    private readonly Dictionary<(RecordId, RecordId), Texture2D?> _recoloured = [];
+
+    /// <summary>The background a recolourable portrait is drawn over now: the one chosen if it's still one of its own, else its first.</summary>
+    private static RecordId BackgroundOf(RecordId image, PortraitLook look) =>
+        ChosenBackground?.Invoke(image) is { } chosen && look.Backgrounds.Contains(chosen) ? chosen : look.Backgrounds[0];
+
+    /// <summary>A recolourable portrait over its background, laid out at the size of the image it's drawn in place of. Each colour is made once.</summary>
+    private Texture2D? Recoloured(RecordId image, PortraitLook look)
+    {
+        var background = BackgroundOf(image, look);
+        if (_recoloured.TryGetValue((image, background), out var made))
+            return made;
+        made = Composed(look, background) is { } data && _plugins.ImageSize(image) is var (width, height)
+            ? Sharper(data, width > 0 ? new Vector2I(width, height) : data.GetSize()) : null;
+        return _recoloured[(image, background)] = made;
+    }
+
+    /// <summary>The cutout laid over a background, at the cutout's size; null if either can't be read.</summary>
+    private Image? Composed(PortraitLook look, RecordId background)
+    {
+        if (_plugins.FindAsset(look.Cutout, "png") is not { } cutoutPng || Png.Load(cutoutPng) is not { } cutout
+            || _plugins.FindAsset(background, "png") is not { } backgroundPng || Png.Load(backgroundPng) is not { } under)
+        {
+            GD.PushWarning($"A portrait's cutout {look.Cutout} or background {background} has no asset.");
+            return null;
+        }
+        cutout.Convert(Image.Format.Rgba8);
+        under.Convert(Image.Format.Rgba8);
+        if (under.GetSize() != cutout.GetSize())
+            under.Resize(cutout.GetWidth(), cutout.GetHeight(), Image.Interpolation.Lanczos);
+        under.BlendRect(cutout, new Rect2I(Vector2I.Zero, cutout.GetSize()), Vector2I.Zero);
+        return under;
     }
 
     /// <summary>A larger picture drawn at a smaller size: mipmapped and filtered, the texture saying it's that size.</summary>
@@ -320,7 +368,7 @@ public sealed class UiImages
         return OwnImages[key] = (image, paper);
     }
 
-    private readonly Dictionary<(RecordId, string), Texture2D?> _cut = [];
+    private readonly Dictionary<(RecordId, string, RecordId?), Texture2D?> _cut = [];
 
     /// <summary>
     /// An image cut to the outline of a piece of the game's own art, the art's paper stretched over the image, the user's choice
@@ -330,9 +378,13 @@ public sealed class UiImages
     /// </summary>
     public Texture2D? CutTo(RecordId image, string art)
     {
-        if (_cut.TryGetValue((image, art), out var cut))
+        // A recolourable portrait is cut once for each colour it's shown in.
+        var look = !UiPainter.Original && Looks.TryGetValue(image, out var found) ? found : null;
+        RecordId? background = look is null ? null : BackgroundOf(image, look);
+        if (_cut.TryGetValue((image, art, background), out var cut))
             return cut;
-        if (_plugins.FindAsset(image, "png") is { } png && Png.Load(png) is { } data && ArtImage(art) is ({ } mask, var paper))
+        var source = look is not null ? Composed(look, background!.Value) : _plugins.FindAsset(image, "png") is { } png ? Png.Load(png) : null;
+        if (source is { } data && ArtImage(art) is ({ } mask, var paper))
         {
             data.Convert(Image.Format.Rgba8);
             if (data.GetWidth() < CutSize)
@@ -357,7 +409,7 @@ public sealed class UiImages
             var result = Image.CreateFromData(w, h, true, Image.Format.Rgba8, CoverageMipmaps.Chain(bytes, w, h));
             cut = new CanvasTexture { DiffuseTexture = ImageTexture.CreateFromImage(result), TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps };
         }
-        return _cut[(image, art)] = cut;
+        return _cut[(image, art, background)] = cut;
     }
 
     /// <summary>How wide an image is made, at least, before it's cut to an outline.</summary>

@@ -66,6 +66,7 @@ public sealed class CharacterSaves(PluginSet plugins, CharacterRules rules, Item
         {
             Name = member.Name != member.RecordName ? member.Name : null,
             TrueName = member.TrueName,
+            PortraitBackground = member.PortraitBackground,
             TotalExp = member.TotalExp,
             SpendableExp = member.SpendableExp,
             Trained = SaveStats.From([.. stats.Select(member.Stats.Trained)]),
@@ -132,6 +133,7 @@ public sealed class CharacterSaves(PluginSet plugins, CharacterRules rules, Item
         // A save from before True Names were saved leaves the record's and the flags'.
         if (saved.TrueName is { } trueName)
             character.TrueName = trueName;
+        character.PortraitBackground = saved.PortraitBackground;
         character.TotalExp = saved.TotalExp;
         character.SpendableExp = saved.SpendableExp;
         character.HalfPoint = saved.HalfPoint;

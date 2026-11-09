@@ -508,7 +508,7 @@ public partial class PartyTabView : Control
                 return;
             }
         }
-        if (DetailsInput(@event) || DragInput(@event))
+        if (PickerInput(@event) || DetailsInput(@event) || DragInput(@event))
         {
             AcceptEvent();
             return;
@@ -1399,6 +1399,8 @@ public partial class PartyTabView : Control
         if (Window is BarterMenu { Confirm: { } confirm } barter)
             Confirm(confirm, barter.PopupHighlight);
         _ui.Overlay(_canvas, screen, Window.Overlay);
+        if (OwnTab && Menu.Picker is { } picker)
+            PickerArt(picker);
     }
 
     /// <summary>

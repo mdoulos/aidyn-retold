@@ -50,7 +50,7 @@ are the remake's look ([options](options.md#graphic-quality)).
 
 - **The camp is a picture in pieces**: the user's forest with three tents pitched in it, with the user's campfire laid on it at the fire's point, its pot and
   front logs laid again over the flames that burn behind them and its front stones over all the flames, animated flames, smoke and
-  embers, and firelight added over it, so another biome or another fire changes a piece, not the painting
+  embers, and firelight added over it, so another biome or another fire changes a piece, not the painting; its tripod and pot take the scene's light as the figures do, dim in the forest's shade and warmed by the fire
   ([camping](../systems/camping.md#the-camp-screen)).
 - **The party sits or stands round the camp's fire**, each figure the user's art, Alaron's and Becan's painted both ways and Abrecan's flipped for the other way, with most of the light it was
   painted under taken out, and lit as the forest is through the user's normal maps: a low sun behind the trees at the upper right rims

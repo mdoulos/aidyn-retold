@@ -75,15 +75,21 @@ public sealed record CampPoint(float X, float Y);
 /// fire, <paramref name="Width"/> of the picture's pixels wide, its height kept to its shape.
 /// </summary>
 /// <param name="Pot">
-/// The pot alone, an image the same size as <paramref name="Image"/> laid on the same spot, over the flames that burn behind the pot
-/// and under those that burn in front of it.
+/// What's laid on the same spot over the flames that burn behind the pot and under those that burn in front of it, an image the same size
+/// as <paramref name="Image"/>: the pot alone, or, with <paramref name="HungPot"/> to draw the pot, what else lies there.
 /// </param>
 /// <param name="Rim">The middle of the pot's rim, as shares of the image, where the smoke rises from.</param>
 /// <param name="Front">
 /// The stones in front of the fire, an image the same size as <paramref name="Image"/> laid on the same spot over all the flames,
 /// hiding their feet, the user's art (Nov 7, 2026).
 /// </param>
-public sealed record CampfireArt(RecordId Image, CampPoint Anchor, float Width, RecordId? Pot = null, CampPoint? Rim = null, RecordId? Front = null);
+/// <param name="Tripod">The tripod alone, lit as the figures are (<see cref="CampLitLayer"/>), under all the flames, the user's ask (Nov 8, 2026).</param>
+/// <param name="HungPot">The pot hung from it alone, lit as the figures are, over the flames that burn behind it, the user's ask (Nov 8, 2026).</param>
+public sealed record CampfireArt(RecordId Image, CampPoint Anchor, float Width, RecordId? Pot = null, CampPoint? Rim = null, RecordId? Front = null,
+    CampLitLayer? Tripod = null, CampLitLayer? HungPot = null);
+
+/// <summary>A part of a campfire that takes the scene's light as the figures do rather than being drawn as painted: its image, the same size as the campfire's, and its normal map.</summary>
+public sealed record CampLitLayer(RecordId Image, RecordId Normal);
 
 /// <summary>
 /// The sun's light on a campsite's figures, the user's day (Nov 7, 2026): the way to it as the camera sees it, x to the right, y up and z

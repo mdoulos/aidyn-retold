@@ -134,6 +134,10 @@ public partial class CampView : Control
         PartyBehind.Painter = PaintPartyBehind;
         PartyBehind.Material = _figureLight;
         Campfire.Painter = PaintCampfire;
+        Tripod.Painter = canvas => PaintLitCampfire(canvas, campfire => campfire.Tripod);
+        Tripod.Material = _figureLight;
+        HungPot.Painter = canvas => PaintLitCampfire(canvas, campfire => campfire.HungPot);
+        HungPot.Material = _figureLight;
         PartyFront.Painter = PaintPartyFront;
         PartyFront.Material = _figureLight;
         PartyLight.Painter = PaintGlow;
@@ -200,6 +204,12 @@ public partial class CampView : Control
 
     /// <summary>The campfire's art over the figures behind it, the vignette over both and the debug overlay (<see cref="PaintCampfire"/>).</summary>
     public PaintedControl Campfire { get; } = new() { Name = "Camp campfire", MouseFilter = MouseFilterEnum.Ignore };
+
+    /// <summary>The campfire's tripod, lit as the figures are (<see cref="PaintLitCampfire"/>); the layer puts it over <see cref="Campfire"/> and under the flames.</summary>
+    public PaintedControl Tripod { get; } = new() { Name = "Camp tripod", MouseFilter = MouseFilterEnum.Ignore };
+
+    /// <summary>The pot hung from the tripod, lit as the figures are (<see cref="PaintLitCampfire"/>); the layer puts it over <see cref="FireBehind"/> and under the firelight.</summary>
+    public PaintedControl HungPot { get; } = new() { Name = "Camp hung pot", MouseFilter = MouseFilterEnum.Ignore };
 
     /// <summary>
     /// The figures in front of the fire (<see cref="PaintPartyFront"/>), lit as those behind it are, over the flames, the embers and the
@@ -446,6 +456,8 @@ public partial class CampView : Control
         // The figures idle every frame (Idle).
         PartyBehind.QueueRedraw();
         PartyFront.QueueRedraw();
+        Tripod.QueueRedraw();
+        HungPot.QueueRedraw();
         LightFigures();
     }
 
@@ -753,6 +765,20 @@ public partial class CampView : Control
     {
         if (Camp is { Arrangement: { } arrangement } && Scene() is var (site, fit))
             DrawParty(canvas, arrangement, site, fit, front: false);
+    }
+
+    /// <summary>
+    /// A part of the campfire that takes the scene's light as the figures do, the user's ask (Nov 8, 2026): the same size as the campfire on
+    /// the same spot, standing level with the fire, so the ambient of the biome and the hour dims it, the sun rims it and the fire lights
+    /// what faces it, less the further from it, and flickers on it (<see cref="FigureShader"/>).
+    /// </summary>
+    private void PaintLitCampfire(CanvasItem canvas, Func<CampfireArt, CampLitLayer?> layer)
+    {
+        if (Scene() is not var (site, fit) || site.Campfire is not { } campfire || layer(campfire) is not { } lit
+            || _ui.Images.Get(campfire.Image) is not { } image || Lit(lit.Image, lit.Normal) is not { } texture)
+            return;
+        var fire = At(fit, site.Fire.X, site.Fire.Y);
+        canvas.DrawTextureRect(texture, CampfireRect(campfire, image, site, fit), false, LightData(site, 1, fire, fit.Size.X / site.Width));
     }
 
     /// <summary>The campfire's art, over the figures behind the fire; the vignette as painted over both; and the debug overlay.</summary>
@@ -1106,7 +1132,7 @@ public partial class CampView : Control
             {
                 var (area, _) = Placed(placement, pose, image, site, fit);
                 var seed = site.Slots.ToList().FindIndex(s => s.Id == placement.Slot.Id) * 7919 + (int)(Camp!.Seed % 9973);
-                DrawFigure(canvas, image, area, placement.Mirrored, foot, LightData(site, placement.Slot, foot, pixel), Idle(Seconds, seed));
+                DrawFigure(canvas, image, area, placement.Mirrored, foot, LightData(site, placement.Slot.Scale, foot, pixel), Idle(Seconds, seed));
             }
             else if (ShowOverlay)
             {
@@ -1522,21 +1548,23 @@ public partial class CampView : Control
     /// <summary>A figure's image with its normal map, made once: the image alone where it has none, which the shader takes as flat.</summary>
     private readonly Dictionary<RecordId, Texture2D?> _lit = [];
 
-    private Texture2D? Lit(CampPose pose)
+    private Texture2D? Lit(CampPose pose) => Lit(pose.Image, pose.Normal);
+
+    private Texture2D? Lit(RecordId id, RecordId? normal)
     {
-        if (_lit.TryGetValue(pose.Image, out var made))
+        if (_lit.TryGetValue(id, out var made))
             return made;
-        var image = _ui.Images.Get(pose.Image);
-        if (pose.Normal is { } normal && image is CanvasTexture { DiffuseTexture: { } diffuse } && _ui.Images.Get(normal) is CanvasTexture { DiffuseTexture: { } map })
+        var image = _ui.Images.Get(id);
+        if (normal is { } normalId && image is CanvasTexture { DiffuseTexture: { } diffuse } && _ui.Images.Get(normalId) is CanvasTexture { DiffuseTexture: { } map })
             image = new CanvasTexture { DiffuseTexture = diffuse, NormalTexture = map, TextureFilter = TextureFilterEnum.LinearWithMipmaps };
-        return _lit[pose.Image] = image;
+        return _lit[id] = image;
     }
 
-    /// <summary>A figure's own light, in its draw's colour for the shader: how far in front of the fire its slot is, how large a figure height is there, and its ground's row.</summary>
-    private static Color LightData(CampsiteRecord site, CampSlot slot, Vector2 foot, float pixel)
+    /// <summary>A figure's own light, in its draw's colour for the shader: how far in front of the fire it is, by its scale, 1 being level with the fire; how large a figure height is there; and its ground's row.</summary>
+    private static Color LightData(CampsiteRecord site, float scale, Vector2 foot, float pixel)
     {
-        var forward = slot.Scale > 0 ? FireDistance * (1 - 1 / slot.Scale) : 0;
-        var height = pixel * (site.FigureHeight > 0 ? site.FigureHeight : 230) * slot.Scale;
+        var forward = scale > 0 ? FireDistance * (1 - 1 / scale) : 0;
+        var height = pixel * (site.FigureHeight > 0 ? site.FigureHeight : 230) * scale;
         return new Color(Math.Clamp(forward / 8 + 0.5f, 0, 1), Math.Clamp(height / 256, 0, 1), Math.Clamp((foot.Y + 128) / 512, 0, 1));
     }
 
@@ -2019,7 +2047,7 @@ public partial class CampLayer : CanvasLayer
         _scroll = PauseScrollView.Create(plugins, _models);
         _view = new CampView(plugins, _scroll) { Click = _screen.Click };
         _view.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-        // The picture with the figures behind the fire and the campfire, the flames behind the pot and the pot, the firelight, the fire
+        // The picture with the figures behind the fire, the campfire and its tripod, the flames behind the pot and the pot, the firelight, the fire
         // in front over it, the front stones with their own firelight and the figures in front of the fire with theirs, then the band,
         // the rollers over the band's edges, and the debug marks over all.
         _screen.Canvas.AddChild(_view);
@@ -2029,8 +2057,12 @@ public partial class CampLayer : CanvasLayer
         _screen.Canvas.AddChild(_view.PartyBehind);
         _view.Campfire.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         _screen.Canvas.AddChild(_view.Campfire);
+        _view.Tripod.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        _screen.Canvas.AddChild(_view.Tripod);
         _view.FireBehind.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         _screen.Canvas.AddChild(_view.FireBehind);
+        _view.HungPot.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        _screen.Canvas.AddChild(_view.HungPot);
         _view.Glow.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         _screen.Canvas.AddChild(_view.Glow);
         _view.Fire.SetAnchorsPreset(Control.LayoutPreset.FullRect);

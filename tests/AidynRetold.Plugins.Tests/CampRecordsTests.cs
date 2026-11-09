@@ -14,7 +14,9 @@ public sealed class CampRecordsTests
           "lights": [ { "from": 6, "ambient": [160, 158, 142, 255], "sun": { "x": 0.55, "y": 0.5, "z": -0.67, "color": [255, 214, 150, 255] }, "fire": 0.35 },
                       { "from": 19, "ambient": [60, 62, 80, 255] } ],
           "campfire": { "image": "acre:image/camp_campfire", "pot": "acre:image/camp_pot", "anchor": { "x": 0.505, "y": 0.75 }, "width": 184,
-            "rim": { "x": 0.4975, "y": 0.475 }, "front": "acre:image/camp_rock_front" },
+            "rim": { "x": 0.4975, "y": 0.475 }, "front": "acre:image/camp_rock_front",
+            "tripod": { "image": "acre:image/camp_tripod", "normal": "acre:image/camp_tripod_normal" },
+            "hungPot": { "image": "acre:image/camp_hung_pot", "normal": "acre:image/camp_hung_pot_normal" } },
           "slots": [
             { "id": "left_profile", "x": 0.38, "y": 0.64, "scale": 0.95, "depth": 20, "poses": ["sit_profile", "stand_profile"], "facing": "Right", "mirror": true },
             { "id": "rear_center", "x": 0.51, "y": 0.54, "scale": 0.84, "depth": 10, "poses": ["sit_rear", "stand_rear"], "facing": "Away" }
@@ -65,6 +67,8 @@ public sealed class CampRecordsTests
         Assert.Equal(RecordId.Parse("acre:image/camp_pot"), campfire.Pot);
         Assert.Equal(0.475f, campfire.Rim!.Y);
         Assert.Equal(RecordId.Parse("acre:image/camp_rock_front"), campfire.Front);
+        Assert.Equal(RecordId.Parse("acre:image/camp_tripod_normal"), campfire.Tripod!.Normal);
+        Assert.Equal(RecordId.Parse("acre:image/camp_hung_pot"), campfire.HungPot!.Image);
         Assert.Equal(["left_profile", "rear_center"], forest.Slots.Select(s => s.Id));
         Assert.Equal(CampFacing.Right, forest.Slot("left_profile")!.Facing);
         Assert.True(forest.Slot("left_profile")!.Mirror);

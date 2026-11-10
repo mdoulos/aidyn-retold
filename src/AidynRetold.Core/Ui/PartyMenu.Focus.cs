@@ -247,9 +247,12 @@ public sealed partial class PartyMenu
             if (OriginalLook || KeyName is null || Shown is null)
                 return [];
             var prompts = new List<MenuPrompt>();
-            if (Picker is not null)
+            if (Picker is { } picker)
             {
-                Add("Color", GameControls.MenuCursor);
+                if (picker.OnOverlay)
+                    Add("Wear or Remove", GameControls.MenuAccept);
+                else
+                    Add("Color", GameControls.MenuCursor);
                 Add("Close", GameControls.MenuBack);
             }
             else if (Message is not null)

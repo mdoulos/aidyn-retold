@@ -316,7 +316,12 @@ public sealed partial class PartyMenu : IPartyWindow
     /// </summary>
     public void MoveCursor(int by)
     {
-        if (Picker is not null || Overlay.MoveCursor(by) || LetGoPinned() || Message is not null || DetailsPane.Showing)
+        if (Picker is { } picker)
+        {
+            picker.MoveRow(Math.Sign(by));
+            return;
+        }
+        if (Overlay.MoveCursor(by) || LetGoPinned() || Message is not null || DetailsPane.Showing)
             return;
         if (Crafting is { } crafting)
         {

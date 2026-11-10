@@ -127,7 +127,9 @@ public sealed partial class PartyMenu
     /// </summary>
     public void Accept()
     {
-        if (Picker is not null)
+        if (Picker is { OnOverlay: true } dressing)
+            dressing.Toggle();
+        else if (Picker is not null)
             Picker = null;
         else if (Message is not null)
             CloseMessage();

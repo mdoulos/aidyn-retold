@@ -8,7 +8,21 @@ namespace AidynRetold.Plugins.Records;
 /// </summary>
 /// <param name="Cutout">The character, on a transparent background.</param>
 /// <param name="Backgrounds">The backgrounds to choose from, in the order the arrows step through them.</param>
-public sealed record PortraitLook(RecordId Cutout, IReadOnlyList<RecordId> Backgrounds);
+/// <param name="Overlays">What the player can put on it or take off, each on its own, as Alaron's two pauldrons are (the user's design, Nov 9, 2026), laid over the cutout in this order.</param>
+public sealed record PortraitLook(RecordId Cutout, IReadOnlyList<RecordId> Backgrounds, IReadOnlyList<PortraitOverlay>? Overlays = null)
+{
+    /// <summary>
+    /// The overlays a portrait wears, in the order they're laid: those chosen, or with no choice made those worn to begin with. One no longer offered is dropped.
+    /// </summary>
+    public IReadOnlyList<RecordId> Worn(IReadOnlyList<RecordId>? chosen) =>
+        Overlays is null ? [] : chosen is null ? [.. Overlays.Where(o => o.Worn).Select(o => o.Image)] : [.. Overlays.Select(o => o.Image).Where(chosen.Contains)];
+}
+
+/// <summary>Something a portrait can wear, the same size as its cutout and transparent but for itself.</summary>
+/// <param name="Image">The picture.</param>
+/// <param name="Name">What the dialog calls it.</param>
+/// <param name="Worn">Whether it's worn until the player chooses otherwise.</param>
+public sealed record PortraitOverlay(RecordId Image, string Name, bool Worn = false);
 
 /// <summary>How broad a body is, the user's sizes for the party (Nov 8, 2026), which set how wide a shadow it casts.</summary>
 public enum BodySize

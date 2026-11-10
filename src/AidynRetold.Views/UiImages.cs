@@ -92,13 +92,16 @@ public sealed class UiImages
     /// </summary>
     public static Func<RecordId, RecordId?>? ChosenBackground { get; set; }
 
+    /// <summary>The overlays the player has chosen for a portrait image, or null for those it wears to begin with (<see cref="PortraitLook.Overlays"/>): the runtime's, from the party.</summary>
+    public static Func<RecordId, IReadOnlyList<RecordId>?>? ChosenOverlays { get; set; }
+
     private Dictionary<RecordId, PortraitLook>? _looks;
 
     /// <summary>The portraits that are a cutout over a background to choose, by the image they're drawn in place of.</summary>
     private Dictionary<RecordId, PortraitLook> Looks => _looks ??= _plugins.All<EntityRecord>(RecordTypes.Entity)
         .Where(e => e is { Portrait: not null, PortraitLook: not null }).GroupBy(e => e.Portrait!.Value).ToDictionary(g => g.Key, g => g.First().PortraitLook!);
 
-    private readonly Dictionary<(RecordId, RecordId), Texture2D?> _recoloured = [];
+    private readonly Dictionary<(RecordId, RecordId, string), Texture2D?> _recoloured = [];
 
     /// <summary>The background a recolourable portrait is drawn over now: the one chosen if it's still one of its own, else its first.</summary>
     private static RecordId BackgroundOf(RecordId image, PortraitLook look) =>
@@ -108,15 +111,17 @@ public sealed class UiImages
     private Texture2D? Recoloured(RecordId image, PortraitLook look)
     {
         var background = BackgroundOf(image, look);
-        if (_recoloured.TryGetValue((image, background), out var made))
+        var worn = look.Worn(ChosenOverlays?.Invoke(image));
+        var key = (image, background, string.Join(",", worn));
+        if (_recoloured.TryGetValue(key, out var made))
             return made;
-        made = Composed(look, background) is { } data && _plugins.ImageSize(image) is var (width, height)
+        made = Composed(look, background, worn) is { } data && _plugins.ImageSize(image) is var (width, height)
             ? Sharper(data, width > 0 ? new Vector2I(width, height) : data.GetSize()) : null;
-        return _recoloured[(image, background)] = made;
+        return _recoloured[key] = made;
     }
 
-    /// <summary>The cutout laid over a background, at the cutout's size; null if either can't be read.</summary>
-    private Image? Composed(PortraitLook look, RecordId background)
+    /// <summary>The cutout laid over a background and what it wears laid over that, at the cutout's size; null if the cutout or the background can't be read.</summary>
+    private Image? Composed(PortraitLook look, RecordId background, IReadOnlyList<RecordId> worn)
     {
         if (_plugins.FindAsset(look.Cutout, "png") is not { } cutoutPng || Png.Load(cutoutPng) is not { } cutout
             || _plugins.FindAsset(background, "png") is not { } backgroundPng || Png.Load(backgroundPng) is not { } under)
@@ -129,6 +134,18 @@ public sealed class UiImages
         if (under.GetSize() != cutout.GetSize())
             under.Resize(cutout.GetWidth(), cutout.GetHeight(), Image.Interpolation.Lanczos);
         under.BlendRect(cutout, new Rect2I(Vector2I.Zero, cutout.GetSize()), Vector2I.Zero);
+        foreach (var overlay in worn)
+        {
+            if (_plugins.FindAsset(overlay, "png") is not { } overlayPng || Png.Load(overlayPng) is not { } over)
+            {
+                GD.PushWarning($"A portrait's overlay {overlay} has no asset.");
+                continue;
+            }
+            over.Convert(Image.Format.Rgba8);
+            if (over.GetSize() != cutout.GetSize())
+                over.Resize(cutout.GetWidth(), cutout.GetHeight(), Image.Interpolation.Lanczos);
+            under.BlendRect(over, new Rect2I(Vector2I.Zero, over.GetSize()), Vector2I.Zero);
+        }
         return under;
     }
 
@@ -368,7 +385,7 @@ public sealed class UiImages
         return OwnImages[key] = (image, paper);
     }
 
-    private readonly Dictionary<(RecordId, string, RecordId?), Texture2D?> _cut = [];
+    private readonly Dictionary<(RecordId, string, RecordId?, string), Texture2D?> _cut = [];
 
     /// <summary>
     /// An image cut to the outline of a piece of the game's own art, the art's paper stretched over the image, the user's choice
@@ -378,12 +395,14 @@ public sealed class UiImages
     /// </summary>
     public Texture2D? CutTo(RecordId image, string art)
     {
-        // A recolourable portrait is cut once for each colour it's shown in.
+        // A recolourable portrait is cut once for each colour it's shown in and each set of things it wears.
         var look = !UiPainter.Original && Looks.TryGetValue(image, out var found) ? found : null;
         RecordId? background = look is null ? null : BackgroundOf(image, look);
-        if (_cut.TryGetValue((image, art, background), out var cut))
+        IReadOnlyList<RecordId> worn = look is null ? [] : look.Worn(ChosenOverlays?.Invoke(image));
+        var key = (image, art, background, string.Join(",", worn));
+        if (_cut.TryGetValue(key, out var cut))
             return cut;
-        var source = look is not null ? Composed(look, background!.Value) : _plugins.FindAsset(image, "png") is { } png ? Png.Load(png) : null;
+        var source = look is not null ? Composed(look, background!.Value, worn) : _plugins.FindAsset(image, "png") is { } png ? Png.Load(png) : null;
         if (source is { } data && ArtImage(art) is ({ } mask, var paper))
         {
             data.Convert(Image.Format.Rgba8);
@@ -409,7 +428,7 @@ public sealed class UiImages
             var result = Image.CreateFromData(w, h, true, Image.Format.Rgba8, CoverageMipmaps.Chain(bytes, w, h));
             cut = new CanvasTexture { DiffuseTexture = ImageTexture.CreateFromImage(result), TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps };
         }
-        return _cut[(image, art, background)] = cut;
+        return _cut[key] = cut;
     }
 
     /// <summary>How wide an image is made, at least, before it's cut to an outline.</summary>

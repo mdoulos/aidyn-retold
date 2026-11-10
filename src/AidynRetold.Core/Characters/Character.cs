@@ -113,6 +113,9 @@ public sealed partial class Character
     /// <summary>The background chosen for its portrait (<see cref="PortraitLook"/>), or null for the first of them.</summary>
     public RecordId? PortraitBackground { get; set; }
 
+    /// <summary>The overlays chosen for its portrait (<see cref="PortraitLook.Overlays"/>), or null for those it wears to begin with.</summary>
+    public IReadOnlyList<RecordId>? PortraitWorn { get; set; }
+
     public bool Heavy => Record.Heavy;
 
     /// <summary>

@@ -1079,9 +1079,11 @@ public sealed class GameSession
             Location = location,
             HourOfDay = (double)(Game.Clock.Time % GameClock.Day) / GameClock.Hour,
         };
-        // Trek's music stops under the camp, the user's choice (Nov 7, 2026): the campsite's own plays in the music's volume, none yet.
+        // Trek's music stops under the camp, the user's choice (Nov 7, 2026): the campsite's own plays in the music's volume, none yet. So do
+        // the music objects of the chunks round him, a town's tune near its gates, which play on with trek's world under the camp.
         _musicBeforeCamp = Zone.Audio.Music;
         Zone.Audio.Music = site?.Music;
+        Zone.Sounds.HushesMusic = true;
         Send(new Transition.OpenCamp(Camp));
         // The camp opens on the party's talk, the user's design (Nov 7, 2026): the night's conversation in the box over the picture,
         // the rows coming once it's over. With none to tell, the rows come at once.
@@ -1300,6 +1302,7 @@ public sealed class GameSession
         if (Zone.Audio.Music == Camp?.Site?.Music)
             Zone.Audio.Music = _musicBeforeCamp;
         Camp = null;
+        Zone.Sounds.HushesMusic = false;
         Send(new Transition.CloseCamp(choice));
     }
 

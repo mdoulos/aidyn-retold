@@ -83,6 +83,27 @@ public class MapSoundsTests
     }
 
     [Fact]
+    public void HushedMusicFadesOutAndStaysSilentAndComesBackAfterWhileOtherSoundsPlayOn()
+    {
+        var audio = Audio();
+        var sounds = new MapSounds(audio, new Lcg(), _ => true);
+        sounds.Load(Map(Worlds.Chunk(0), Sound(0, SoundFlags.Music | SoundFlags.Loop | SoundFlags.NoFalloff, Song), Sound(1, SoundFlags.Loop | SoundFlags.NoFalloff)));
+        for (var i = 0; i < AudioLevels.FadeTicks; i++)
+            sounds.Step(Vector3.Zero, Eye, Vector3.Zero);
+        Assert.Equal(2, sounds.Playing);
+        sounds.HushesMusic = true;
+        for (var i = 0; i < AudioLevels.FadeTicks + 2; i++)
+            sounds.Step(Vector3.Zero, Eye, Vector3.Zero);
+        Assert.Equal(1, sounds.Playing);
+        for (var i = 0; i < 300; i++)
+            sounds.Step(Vector3.Zero, Eye, Vector3.Zero);
+        Assert.Equal(1, sounds.Playing);
+        sounds.HushesMusic = false;
+        sounds.Step(Vector3.Zero, Eye, Vector3.Zero);
+        Assert.Equal(2, sounds.Playing);
+    }
+
+    [Fact]
     public void MusicPlaysOnIntoTheNextChunkThatHasTheSame()
     {
         var audio = Audio();

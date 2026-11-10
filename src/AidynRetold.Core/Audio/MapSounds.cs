@@ -27,6 +27,12 @@ public sealed class MapSounds(GameAudio audio, IRandom random, Func<MapObject, b
     /// </summary>
     public bool SkipsMusic { get; set; }
 
+    /// <summary>
+    /// Whether the music objects already loaded are silent: they fade out as they would going out of range and don't start, and come back
+    /// when this goes off. The camp's, under which trek's world plays on, the user's choice (Nov 7, 2026).
+    /// </summary>
+    public bool HushesMusic { get; set; }
+
     /// <summary>How many sound objects the loaded chunks have, playing or not.</summary>
     public int Count => _bubbles.Count;
 
@@ -112,7 +118,7 @@ public sealed class MapSounds(GameAudio audio, IRandom random, Func<MapObject, b
     private void Step(Bubble b, Vector3 player, Vector3 eye, Vector3 aim)
     {
         var o = b.Sound;
-        if (Vector3.Distance(player, b.Position) <= o.Radius)
+        if (Vector3.Distance(player, b.Position) <= o.Radius && !(HushesMusic && (o.Flags & SoundFlags.Music) != 0))
         {
             var loudness = AudioLevels.Loudness(Vector3.Distance(aim, b.Position), o.Radius);
             b.Fade = (o.Flags & SoundFlags.NoFalloff) == 0 ? loudness : MathF.Min(1, b.Fade + 1f / AudioLevels.FadeTicks);

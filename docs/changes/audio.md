@@ -17,7 +17,7 @@ settings are in [options](options.md#audio), and the audio bugs Retold fixes in 
   ([audio](../systems/audio.md#recordings-in-the-sequences-place)).
 - **Any sequence can be a recording.** A plugin's WAV named for a sequence plays wherever that sequence would
   ([audio](../systems/audio.md#recordings-in-the-sequences-place)).
-- **No music at camp.** Trek's music stops as the camp screen opens and starts again as it closes; the camp is to have music of its own,
+- **No music at camp.** Trek's music stops as the camp screen opens and starts again as it closes, and so does a town's music near its gates; the camp is to have music of its own,
   in the music's volume ([camping](../systems/camping.md#the-camp-screen)).
 
 ## The text's voice

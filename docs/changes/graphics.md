@@ -32,8 +32,9 @@ are the remake's look ([options](options.md#graphic-quality)).
 
 ## Models
 
-- **Alaron is remodelled.** His body is about 2,500 triangles on 23 bones, skinned, with fingers and a thumb that close as he runs, and his
-  head is a separate model of about 2,500, a face and six pieces of hair, as the original's head was its own scene. Both have colour and normal
+- **Alaron is remodelled.** His body is about 5,000 triangles on 27 bones, skinned, with gloves whose fingers stand apart, fingers and a thumb
+  that close as he runs, and an index finger that can point on its own; his
+  head is a separate model of about 5,000, a face and six pieces of hair, as the original's head was its own scene. Both have colour and normal
   maps. He walks, jogs and runs on the remodel's own animations, and jumps two ways at random, each with its rise, its time in the air and its
   landing ([replacing graphics](../replacing-graphics.md#a-skinned-character)). He wears the one outfit, whatever armor he has on.
 - **His hair moves.** It trails behind him as he jogs and runs, flutters with his stride and lifts as he jumps, and settles when he stands or

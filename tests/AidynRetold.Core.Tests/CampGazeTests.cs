@@ -67,6 +67,7 @@ public sealed class CampGazeTests
         {
             gaze.Step(Step, 2);
             var large = MathF.Abs(gaze.Yaw) >= CampGaze.LargeMin - 0.001f;
+            Assert.Equal(large, gaze.Glancing);
             if (large && !inGlance)
             {
                 glances.Add(t - lastGlance);

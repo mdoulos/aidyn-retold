@@ -38,6 +38,9 @@ public sealed class CampGaze
     /// <summary>How far across from the focus the head is to turn just now, in radians.</summary>
     public float Yaw => _glance > 0 ? _largeYaw : _smallYaw;
 
+    /// <summary>Whether it's glancing a larger way off its focus just now.</summary>
+    public bool Glancing => _glance > 0;
+
     /// <summary>How far down from level the head is to nod just now, in radians; up is negative.</summary>
     public float Nod => _glance > 0 ? _largeNod : _smallNod;
 

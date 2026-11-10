@@ -284,7 +284,9 @@ public sealed record CampPose(string Pose, RecordId Image, int AnchorX, int Anch
 /// <param name="Sits">The poses it may take seated, likewise. The first is the one it passes through on its way between the others, so its legs have room to rearrange.</param>
 /// <param name="SitEveryMin">The fewest seconds it stays in a seated pose before taking another.</param>
 /// <param name="SitEveryMax">The most.</param>
-public sealed record CampFigureModel(RecordId Actor, IReadOnlyList<CampModelPose> Stands, IReadOnlyList<CampModelPose> Sits, float SitEveryMin = 60, float SitEveryMax = 120)
+/// <param name="SitDown">The poses it passes through from standing to the first of its sits, in order, and back the other way standing up (<c>CampMoves</c>).</param>
+public sealed record CampFigureModel(RecordId Actor, IReadOnlyList<CampModelPose> Stands, IReadOnlyList<CampModelPose> Sits, float SitEveryMin = 60, float SitEveryMax = 120,
+    IReadOnlyList<CampModelPose>? SitDown = null)
 {
     /// <summary>The poses it may take of the kind: seated or standing.</summary>
     public IReadOnlyList<CampModelPose> Poses(bool seated) => seated ? Sits : Stands;

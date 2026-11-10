@@ -19,7 +19,19 @@ public partial class CampModels : Node
     public const float ViewWidth = 2.3f, ViewHeight = 2.3f;
 
     /// <summary>The height the camera aims at, and how far it looks down: the picture's ground, seen at about 13°.</summary>
-    private const float Aim = 0.95f, Pitch = 13 * Mathf.Pi / 180;
+    public const float Aim = 0.95f, Pitch = 13 * Mathf.Pi / 180;
+
+    /// <summary>
+    /// Where a figure is in its world as it stands now, each frame, for the shadows the camp lays under it: its hips, its top and its eyes' height, how far it reaches to either
+    /// side, and what of it touches the ground, each a place on the ground, how wide, and how firmly, 0 to 1, as it comes down to it.
+    /// </summary>
+    public sealed record ModelShape(Vector3 Hips, float Top, float Eyes, float Left, float Right, IReadOnlyList<(Vector3 At, float Width, float Strength)> Touches);
+
+    /// <summary>Someone at the camp, for those who look at them: where on the ground, in figure heights across from the fire and toward the camera; whether standing; and how tall against Alaron.</summary>
+    public readonly record struct Spot(Vector2 Ground, bool Standing, float Stature);
+
+    /// <summary>The shape of the figure at a slot as it stands now, or null if none is drawn there.</summary>
+    public ModelShape? Shape(string slot) => _figures.GetValueOrDefault(slot)?.Shape;
 
     /// <summary>How far down a picture the ground under the model's origin is, as a share of its height.</summary>
     public static float FootFrom => 0.5f + Aim * Mathf.Cos(Pitch) / ViewHeight;
@@ -79,20 +91,33 @@ public partial class CampModels : Node
         /// <summary>The seconds until it changes how it sits.</summary>
         public double ChangeIn { get; set; }
 
-        /// <summary>Its bones as they were when it began moving to its pose, or null when it's not moving; and how far it has got, 0 to 1.</summary>
+        /// <summary>Its bones as they were when it began moving to the pose it's moving to now, or null when it's not moving.</summary>
         public BonePose[]? From { get; set; }
 
-        public double FadeAt { get; set; }
+        /// <summary>The poses still to come on its way, after the one it's moving to.</summary>
+        public Queue<CampModelPose> Path { get; } = new();
 
-        /// <summary>Where it goes after the pose it's moving to, on a move that passes through another.</summary>
-        public CampModelPose? Next { get; set; }
+        /// <summary>How many poses its way passes through in all, which it's moving to now, how far along the whole of it it has got, in poses, and how long each takes.</summary>
+        public int Stops { get; set; }
+
+        public int Stop { get; set; }
+
+        public double Along { get; set; }
+
+        public double StopSeconds { get; set; }
+
+        /// <summary>Where it is as it stands now (<see cref="ModelShape"/>).</summary>
+        public ModelShape? Shape { get; set; }
     }
 
     /// <summary>A bone as it stands at a moment.</summary>
     private readonly record struct BonePose(Vector3 Position, Quaternion Rotation, Vector3 Scale);
 
-    /// <summary>How long a move to another pose takes, in seconds, or each half of one that passes through another.</summary>
-    private const double FadeSeconds = 1.5;
+    /// <summary>How long a move to another pose takes, in seconds, and each step of one that passes through others.</summary>
+    private const double MoveSeconds = 1.5, StepSeconds = 0.75;
+
+    /// <summary>The height of a standing figure's eyes, for those who look up at it; and how much of the way up to them a seated one tilts its head, the eyes doing the rest, and at most.</summary>
+    private const float StandingEyes = 1.68f, LookUpShare = 0.8f, MostLookUp = 30 * Mathf.Pi / 180;
 
     /// <summary>How far a neck turns the head from where the body faces, in radians: 65°, short of what a neck can do.</summary>
     private const float MostFromBody = 65 * Mathf.Pi / 180;
@@ -130,8 +155,8 @@ public partial class CampModels : Node
     /// Keeps a figure for each placement that has a model, gone with its placement, and moves each on to now.
     /// </summary>
     /// <param name="height">How tall the pictures should be, in pixels.</param>
-    /// <param name="ground">Where each slot with someone at it is on the ground, by its name, in figure heights: across from the fire and toward the camera from it.</param>
-    public void Step(double delta, IEnumerable<CampPlacement> placements, int height, IReadOnlyDictionary<string, Vector2> ground)
+    /// <param name="spots">Everyone at the camp, by their slot's name (<see cref="Spot"/>).</param>
+    public void Step(double delta, IEnumerable<CampPlacement> placements, int height, IReadOnlyDictionary<string, Spot> spots)
     {
         var wanted = placements.Where(p => p.Figure?.Model is not null).ToDictionary(p => p.Slot.Id);
         foreach (var gone in _figures.Keys.Except(wanted.Keys).ToList())
@@ -188,9 +213,10 @@ public partial class CampModels : Node
                     Fade(figure, delta);
             }
             if (seated)
-                Look(figure, placement, ground, (float)delta);
+                Look(figure, placement, spots, (float)delta);
             else
-                figure.Rig?.Rest();
+                LookAhead(figure, placement, (float)delta);
+            figure.Shape = Measure(figure);
         }
     }
 
@@ -207,22 +233,26 @@ public partial class CampModels : Node
             skeleton.ResetBonePoses();
         figure.Player.Play(clip);
         figure.Player.Pause();
+        // Posed at once: a pose taken after this frame's has been laid would otherwise show the skeleton at its rest for a frame.
+        figure.Player.Seek(figure.Clock % figure.Player.GetAnimation(clip).Length, update: true);
         figure.Varied = Vary(figure, pose);
         figure.ShiftedTo = false;
         figure.Shift = 0;
         figure.ShiftIn = figure.Varied is { } varied ? Wait(varied) : 0;
     }
 
-    /// <summary>
-    /// Sets a figure moving to a pose, from whatever it's doing. A move between two poses that have the legs in different places passes through the first of its sits, knees drawn
-    /// up, where the legs have room, rather than through one another.
-    /// </summary>
+    /// <summary>Sets a figure moving to a pose, from whatever it's doing, through the poses between (<see cref="CampMoves"/>).</summary>
     private static void Move(Figure figure, CampModelPose to, bool seated, CampFigureModel model)
     {
-        var through = model.Sits.Count > 0 ? model.Sits[0] : null;
-        var direct = through is null || figure.Current == through || to == through || !(figure.Seated || seated);
-        Glide(figure, direct ? to : through!);
-        figure.Next = direct ? null : to;
+        var path = CampMoves.Path(model, figure.Current, figure.Seated, to, seated);
+        figure.Path.Clear();
+        foreach (var pose in path.Skip(1))
+            figure.Path.Enqueue(pose);
+        figure.Stops = path.Count;
+        figure.Stop = 0;
+        figure.Along = 0;
+        figure.StopSeconds = path.Count == 1 ? MoveSeconds : StepSeconds;
+        Glide(figure, path[0]);
     }
 
     /// <summary>Begins a figure's move to a pose, from its bones as they stand.</summary>
@@ -230,15 +260,24 @@ public partial class CampModels : Node
     {
         var body = figure.Body;
         figure.From = [.. Enumerable.Range(0, body.GetBoneCount()).Select(b => new BonePose(body.GetBonePosePosition(b), body.GetBonePoseRotation(b), body.GetBonePoseScale(b)))];
-        figure.FadeAt = 0;
         Take(figure, pose);
     }
 
-    /// <summary>Lays where a moving figure has got to over the pose it's moving to, and carries it on to the next when it arrives.</summary>
+    /// <summary>
+    /// Lays where a moving figure has got to over the pose it's moving to, going on to the next pose on its way as it reaches each. The whole way eases in at its start and out
+    /// at its end and goes on steadily between, so it doesn't stop at each pose it passes through.
+    /// </summary>
     private static void Fade(Figure figure, double delta)
     {
-        figure.FadeAt += delta / FadeSeconds;
-        var share = (float)Mathf.SmoothStep(0.0, 1.0, Math.Min(figure.FadeAt, 1));
+        figure.Along = Math.Min(figure.Along + delta / figure.StopSeconds, figure.Stops);
+        var eased = Mathf.SmoothStep(0.0, 1.0, figure.Along / figure.Stops) * figure.Stops;
+        // Each pose reached, the next begins from it: the bones stand in it now, its clip having posed them this frame.
+        while (eased >= figure.Stop + 1 && figure.Path.TryDequeue(out var next))
+        {
+            figure.Stop++;
+            Glide(figure, next);
+        }
+        var share = (float)Math.Clamp(eased - figure.Stop, 0, 1);
         var (body, from) = (figure.Body, figure.From!);
         for (var b = 0; b < from.Length; b++)
         {
@@ -246,36 +285,101 @@ public partial class CampModels : Node
             body.SetBonePoseRotation(b, from[b].Rotation.Normalized().Slerp(body.GetBonePoseRotation(b).Normalized(), share));
             body.SetBonePoseScale(b, from[b].Scale.Lerp(body.GetBonePoseScale(b), share));
         }
-        if (figure.FadeAt < 1)
-            return;
-        figure.From = null;
-        if (figure.Next is { } next)
-        {
-            figure.Next = null;
-            Glide(figure, next);
-        }
+        if (figure.Along >= figure.Stops)
+            figure.From = null;
     }
 
     /// <summary>
     /// Turns a seated figure's head to what it's looking at (<see cref="CampGaze"/>): the fire or another figure's place, a little off it or now and then a good way off, as far as a
     /// neck turns from where the body faces, easing there.
     /// </summary>
-    private static void Look(Figure figure, CampPlacement placement, IReadOnlyDictionary<string, Vector2> ground, float delta)
+    private void Look(Figure figure, CampPlacement placement, IReadOnlyDictionary<string, Spot> spots, float delta)
     {
-        if (figure.Rig is not { } rig || !ground.TryGetValue(placement.Slot.Id, out var here))
+        if (figure.Rig is not { } rig || !spots.TryGetValue(placement.Slot.Id, out var here))
             return;
-        var others = ground.Where(g => g.Key != placement.Slot.Id).OrderBy(g => g.Key, StringComparer.Ordinal).Select(g => g.Value).ToList();
+        var others = spots.Where(s => s.Key != placement.Slot.Id).OrderBy(s => s.Key, StringComparer.Ordinal).ToList();
         figure.Gaze.Step(delta, others.Count);
-        var way = (figure.Gaze.Focus == 0 ? Vector2.Zero : others[figure.Gaze.Focus - 1]) - here;
+        var focus = figure.Gaze.Focus == 0 ? (KeyValuePair<string, Spot>?)null : others[figure.Gaze.Focus - 1];
+        var way = (focus?.Value.Ground ?? Vector2.Zero) - here.Ground;
         var body = Yaw(placement);
         var goal = way.LengthSquared() < 1e-4f ? body : Mathf.Atan2(way.X, way.Y);
         var turn = Mathf.Clamp(Mathf.Wrap(goal + figure.Gaze.Yaw - body, -Mathf.Pi, Mathf.Pi), -MostFromBody, MostFromBody);
+        // Up at someone standing, the user's (Nov 9, 2026): most of the way along the line from his eyes to theirs, so less the further off they are.
+        var up = 0f;
+        if (focus is { Value.Standing: true } standing && !figure.Gaze.Glancing)
+        {
+            var theirs = _figures.GetValueOrDefault(standing.Key)?.Shape?.Eyes ?? StandingEyes * standing.Value.Stature;
+            var distance = Math.Max(way.Length() * CampFigureRecord.CanonicalHeight, 0.3f);
+            up = Mathf.Clamp(Mathf.Atan2(theirs - rig.Position.Y, distance) * LookUpShare, 0, MostLookUp);
+        }
         var ease = 1 - Mathf.Exp(-delta / HeadEase);
         figure.HeadTurn += (turn - figure.HeadTurn) * ease;
-        figure.HeadNod += (figure.Gaze.Nod - figure.HeadNod) * ease;
+        figure.HeadNod += (figure.Gaze.Nod - up - figure.HeadNod) * ease;
         var angle = body + figure.HeadTurn;
         rig.Turn(new System.Numerics.Vector2(MathF.Sin(angle), MathF.Cos(angle)), figure.HeadNod);
     }
+
+    /// <summary>A standing figure's head easing back to look where its body faces, as the animation has it.</summary>
+    private static void LookAhead(Figure figure, CampPlacement placement, float delta)
+    {
+        if (figure.Rig is not { } rig)
+            return;
+        var keep = Mathf.Exp(-delta / HeadEase);
+        figure.HeadTurn *= keep;
+        figure.HeadNod *= keep;
+        if (Math.Abs(figure.HeadTurn) + Math.Abs(figure.HeadNod) < 0.002f)
+        {
+            (figure.HeadTurn, figure.HeadNod) = (0, 0);
+            rig.Rest();
+            return;
+        }
+        var angle = Yaw(placement) + figure.HeadTurn;
+        rig.Turn(new System.Numerics.Vector2(MathF.Sin(angle), MathF.Cos(angle)), figure.HeadNod);
+    }
+
+    /// <summary>
+    /// Where a figure is as it stands now (<see cref="ModelShape"/>): its hips, top, eyes and reach from its bones; and what touches the ground, its soles at the heel, the
+    /// ball and the toe, its seat, a shin or a knee laid on the ground and a hand on it, each as firmly as it's near the ground.
+    /// </summary>
+    private static ModelShape Measure(Figure figure)
+    {
+        var body = figure.Body;
+        var world = body.GlobalTransform;
+        Transform3D? Bone(string name) => body.FindBone(name) is >= 0 and var b ? world * body.GetBoneGlobalPose(b) : null;
+        Vector3 At(string name) => Bone(name)?.Origin ?? Vector3.Zero;
+        List<(Vector3 At, float Width, float Strength)> touches = [];
+        void Touch(Vector3 at, float width, float low, float high)
+        {
+            var strength = Mathf.Clamp(1 - (at.Y - low) / (high - low), 0, 1);
+            if (strength > 0.05f)
+                touches.Add((at with { Y = 0 }, width, strength));
+        }
+        var hips = At("pelvis");
+        var head = At("head");
+        var points = new List<Vector3> { hips };
+        foreach (var side in new[] { "_L", "_R" })
+        {
+            var knee = At("shin" + side);
+            var ankle = At("foot" + side);
+            points.AddRange([knee, ankle]);
+            // The sole, from where it lies on the foot as the skeleton rests: under the heel and forward to the toe.
+            if (Bone("foot" + side) is { } foot && body.FindBone("foot" + side) is var footBone)
+            {
+                var rest = body.GetBoneGlobalRest(footBone).Basis.Inverse();
+                var across = side == "_L" ? 0.02f : -0.02f;
+                foreach (var under in new[] { new Vector3(0, -0.1f, -0.06f), new Vector3(across / 2, -0.1f, 0.08f), new Vector3(across, -0.09f, 0.2f) })
+                    Touch(world.Basis.Orthonormalized() * (body.GetBoneGlobalPose(footBone).Basis.Orthonormalized() * (rest.Orthonormalized() * under)) + ankle, 0.09f, 0.0f, 0.09f);
+            }
+            foreach (var t in new[] { 0f, 0.35f, 0.7f })
+                Touch(knee.Lerp(ankle, t), 0.11f, 0.08f, 0.17f);
+            var hand = At("hand" + side).Lerp(At("fingers" + side), 0.5f);
+            points.Add(hand);
+            Touch(hand, 0.08f, 0.04f, 0.13f);
+        }
+        Touch(hips + new Vector3(0, 0, -0.04f), 0.3f, 0.1f, 0.28f);
+        return new ModelShape(hips, head.Y + 0.17f, head.Y + 0.06f, points.Min(p => p.X), points.Max(p => p.X), touches);
+    }
+
 
     private static string ClipName(RecordId clip) => SceneNames.Animation(Convert.ToInt32(clip.Key, 16));
 

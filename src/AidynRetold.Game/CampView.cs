@@ -961,14 +961,26 @@ public partial class CampView : Control
         var ring = Ring(arrangement, site, fit);
         foreach (var placement in arrangement.Placements)
         {
+            if (placement.Figure?.Model is not null)
+            {
+                if (_modelFigures.Shape(placement.Slot.Id) is { } shape)
+                    ModelShadows(canvas, site, fit, light, placement, shape, ring);
+                continue;
+            }
             if (placement.Image is not { } pose || Lit(pose) is not { } image)
                 continue;
             var (area, _) = Placed(placement, pose, image, site, fit);
             var width = area.Size.X;
             // The image's foot, less the 2 clear pixels round every figure.
             var ground = area.End.Y - 2 * area.Size.Y / image.GetHeight();
-            if (placement.Figure is { } figure)
-                CastShadows(canvas, site, fit, light, placement, figure, image, area, ground, ring);
+            if (placement.Figure is { Height: > 0 } figure)
+            {
+                var pixel = area.Size.Y / image.GetHeight();
+                List<Touch> touches = [.. (pose.Contacts ?? []).Select(c => new Touch(
+                    area.Position + new Vector2(placement.Mirrored ? image.GetWidth() - c.X : c.X, c.Y) * pixel, c.Width * pixel, c.Width / figure.Height, 1))];
+                CastShadows(canvas, site, fit, light, placement, figure.ShadowWidth, new Vector2(area.Position.X + width / 2, ground),
+                    image.GetHeight() / figure.Height, image.GetWidth() / figure.Height, touches, ring);
+            }
             var middle = new Vector2(area.Position.X + width / 2, ground - width * ShadowFlat * 0.15f);
             Light(canvas, middle, new Vector2(width * ShadowWide, width * ShadowWide * ShadowFlat), new Color(0, 0, 0, ShadowAlpha));
             Light(canvas, new Vector2(middle.X, ground), new Vector2(width * ShadowCoreWide, width * ShadowCoreWide * ShadowFlat), new Color(0, 0, 0, ShadowCoreAlpha));
@@ -1014,20 +1026,21 @@ public partial class CampView : Control
     /// (<see cref="CampPose.Contacts"/>), the strongest light's alone: a dark pool along where it touches and a trail from it along that
     /// light's way, blending into the rest, darkest at the spot it touches and fading from it.
     /// </summary>
-    private void CastShadows(CanvasItem canvas, CampsiteRecord site, Rect2 fit, CampLight light, CampPlacement placement, CampFigureRecord figure,
-        Texture2D image, Rect2 area, float bottom, float ring)
+    /// <param name="foot">Where its body meets the ground, on the picture.</param>
+    /// <param name="tallShare">How tall it is now against its standing height.</param>
+    /// <param name="wideShare">How wide, likewise.</param>
+    /// <param name="touches">What of it touches the ground.</param>
+    private void CastShadows(CanvasItem canvas, CampsiteRecord site, Rect2 fit, CampLight light, CampPlacement placement, float shadowWidth,
+        Vector2 foot, float tallShare, float wideShare, IReadOnlyList<Touch> touches, float ring)
     {
-        if (Ground.Of(site, fit) is not { } ground || figure.Height <= 0)
-            return;
-        var foot = new Vector2(area.Position.X + area.Size.X / 2, bottom);
-        if (foot.Y <= ground.Horizon)
+        if (Ground.Of(site, fit) is not { } ground || foot.Y <= ground.Horizon)
             return;
         // The figure as drawn against the ground where it stands, in figure heights there.
         var drawn = placement.Scale / ground.ScaleAt(foot.Y);
-        var tall = image.GetHeight() / figure.Height * drawn;
-        var wide = image.GetWidth() / figure.Height * drawn;
+        var tall = tallShare * drawn;
+        var wide = wideShare * drawn;
         // Its length follows how tall it's drawn (tall, below); its width, its body's size as well, the user's (Nov 8, 2026).
-        var breadth = (ShadowBody * drawn + ShadowSpread * wide) * figure.ShadowWidth;
+        var breadth = (ShadowBody * drawn + ShadowSpread * wide) * shadowWidth;
         var start = ground.ToGround(foot);
         var fromFire = start.Length();
         // The fire's light on the figure's middle, as the figures' shader has it.
@@ -1058,23 +1071,64 @@ public partial class CampView : Control
                 continue;
             }
             Blob(canvas, ground, start, away, length, breadth, caster.Darkness, caster.Light == CampLightKind.Sun ? ring : 0);
-            if (caster != casters[0] || placement.Image?.Contacts is not { } contacts)
+            if (caster != casters[0])
                 continue;
             // What touches the ground, at each spot. No ring: it's the figure's own contact with the ground, and a sitting figure's feet are inside it.
-            var pixel = area.Size.Y / image.GetHeight();
-            foreach (var contact in contacts)
+            foreach (var touch in touches)
             {
-                var at = area.Position + new Vector2(placement.Mirrored ? image.GetWidth() - contact.X : contact.X, contact.Y) * pixel;
-                if (at.Y <= ground.Horizon)
+                if (touch.At.Y <= ground.Horizon)
                     continue;
                 // A pool along it, as a sole or a seat is too long for the trail alone to reach its ends, and the trail away from the light.
-                var pool = new Vector2(contact.Width * pixel * ContactPoolWide, contact.Width * pixel * ContactPoolWide * ContactPoolFlat);
-                canvas.DrawTextureRect(ContactPool, new Rect2(at - pool / 2, pool), false, new Color(0, 0, 0, Math.Min(1, caster.Darkness * ContactPoolDark)));
-                Blob(canvas, ground, ground.ToGround(at), away, length * ContactTrailLength, contact.Width / figure.Height * drawn * ContactTrailWide,
-                    caster.Darkness, 0, darkestAtStart: true);
+                var pool = new Vector2(touch.Pixels * ContactPoolWide, touch.Pixels * ContactPoolWide * ContactPoolFlat);
+                canvas.DrawTextureRect(ContactPool, new Rect2(touch.At - pool / 2, pool), false, new Color(0, 0, 0, Math.Min(1, caster.Darkness * ContactPoolDark) * touch.Strength));
+                Blob(canvas, ground, ground.ToGround(touch.At), away, length * ContactTrailLength, touch.Heights * drawn * ContactTrailWide,
+                    caster.Darkness * touch.Strength, 0, darkestAtStart: true);
             }
         }
     }
+
+    /// <summary>Something of a figure touching the ground: where on the picture, how wide there in its pixels and in figure heights, and how firmly, 0 to 1.</summary>
+    private readonly record struct Touch(Vector2 At, float Pixels, float Heights, float Strength);
+
+    /// <summary>
+    /// The ground under a 3D figure's origin: the foot of its standing painted image at its slot, which its painted poses were measured on, so that it doesn't jump as it sits or
+    /// stands; its slot's point where it has none.
+    /// </summary>
+    private Vector2 ModelGround(CampPlacement placement, CampsiteRecord site, Rect2 fit)
+    {
+        var ground = At(fit, placement.Slot.X, placement.Slot.Y);
+        if (placement.Figure is { } figure && CampArranger.Pick(figure, placement.Slot, seated: false) is var (_, mirrored, standing) && Lit(standing) is { } shape)
+        {
+            var (area, _) = Placed(placement with { Mirrored = mirrored }, standing, shape, site, fit);
+            ground.Y = area.End.Y - 2 * area.Size.Y / shape.GetHeight();
+        }
+        return ground;
+    }
+
+    /// <summary>
+    /// A 3D figure's shadows, from where it is now rather than from a painted pose, the user's ask (Nov 9, 2026): the pool under its body, as wide as it reaches; the shadows its
+    /// lights cast from its hips, as long as it's tall now; and a contact shadow under each thing of it on the ground, its soles, its seat, a shin and a hand, as firmly as it's down.
+    /// </summary>
+    private void ModelShadows(CanvasItem canvas, CampsiteRecord site, Rect2 fit, CampLight light, CampPlacement placement, CampModels.ModelShape shape, float ring)
+    {
+        var unit = ModelUnit(site, placement, fit.Size.X / site.Width);
+        var origin = ModelGround(placement, site, fit);
+        // A place on the ground in the model's world, on the picture: across, and toward the camera lower down, as its camera sees the ground.
+        Vector2 OnPicture(Vector3 at) => origin + new Vector2(at.X, at.Z * Mathf.Sin(CampModels.Pitch)) * unit;
+        var reach = shape.Right - shape.Left + BodyBreadth;
+        var foot = OnPicture(shape.Hips);
+        foot.X = origin.X + (shape.Left + shape.Right) / 2 * unit;
+        List<Touch> touches = [.. shape.Touches.Select(t => new Touch(OnPicture(t.At), t.Width * unit, t.Width / CampFigureRecord.CanonicalHeight, t.Strength))];
+        CastShadows(canvas, site, fit, light, placement, placement.Figure!.ShadowWidth, foot, shape.Top / CampFigureRecord.CanonicalHeight,
+            reach / CampFigureRecord.CanonicalHeight, touches, ring);
+        var width = reach * unit;
+        var middle = foot with { Y = foot.Y - width * ShadowFlat * 0.15f };
+        Light(canvas, middle, new Vector2(width * ShadowWide, width * ShadowWide * ShadowFlat), new Color(0, 0, 0, ShadowAlpha));
+        Light(canvas, foot, new Vector2(width * ShadowCoreWide, width * ShadowCoreWide * ShadowFlat), new Color(0, 0, 0, ShadowCoreAlpha));
+    }
+
+    /// <summary>How wide a body is beyond its joints, in the model's units, for the pool under a 3D figure.</summary>
+    private const float BodyBreadth = 0.3f;
 
     /// <summary>The fire's light as the shader's colour has it, for its brightness.</summary>
     private static readonly Rgba FireLightColor = new(255, 153, 77, 255);
@@ -1204,13 +1258,7 @@ public partial class CampView : Control
                 if (_modelFigures.Picture(placement.Slot.Id) is { } picture)
                 {
                     var size = new Vector2(CampModels.ViewWidth, CampModels.ViewHeight) * ModelUnit(site, placement, pixel);
-                    // On the ground the painted pose's shadows are laid on: the foot of its image, a little below the pose point its slot marks.
-                    var ground = foot;
-                    if (placement.Image is { } painted && Lit(painted) is { } shape)
-                    {
-                        var (area, _) = Placed(placement, painted, shape, site, fit);
-                        ground.Y = area.End.Y - 2 * area.Size.Y / shape.GetHeight();
-                    }
+                    var ground = ModelGround(placement, site, fit);
                     canvas.DrawTextureRect(picture, new Rect2(ground - new Vector2(size.X / 2, CampModels.FootFrom * size.Y), size), false, ModelPicture);
                 }
             }
@@ -1700,13 +1748,13 @@ public partial class CampView : Control
         // Twice the pixels it's drawn over at most, for clean edges and fine detail.
         var height = Math.Clamp(Mathf.RoundToInt(tallest * GetWindow().Size.Y / Math.Max(Size.Y, 1) * 1.6f), 256, 1400);
         // Where everyone is on the ground, for those who look at one another.
-        var ground = new Dictionary<string, Vector2>();
+        var spots = new Dictionary<string, CampModels.Spot>();
         if (Ground.Of(site, fit) is { } laid)
         {
             foreach (var placement in arrangement.Placements)
-                ground[placement.Slot.Id] = laid.ToGround(At(fit, placement.Slot.X, placement.Slot.Y));
+                spots[placement.Slot.Id] = new(laid.ToGround(At(fit, placement.Slot.X, placement.Slot.Y)), !CampPoses.IsSeated(placement.Pose), placement.Figure?.Stature ?? 1);
         }
-        _modelFigures.Step(delta, arrangement.Placements, height, ground);
+        _modelFigures.Step(delta, arrangement.Placements, height, spots);
         var light = site.LightAt(camp.HourOfDay);
         var sky = Ambient(light.Ambient);
         var middle = sky * (FigureAbove + FigureBelow) * 0.5f;

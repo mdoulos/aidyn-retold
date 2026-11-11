@@ -22,7 +22,7 @@
 
     <Icon Id="AidynRetold.ico" SourceFile="$(var.Icon)" />
     <Property Id="ARPPRODUCTICON" Value="AidynRetold.ico" />
-    <Property Id="ARPURLINFOABOUT" Value="https://github.com/mdoulos/aidyn-chronicles-enhanced" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/mdoulos/aidyn-retold" />
 
     <!-- One page with the license and Install. -->
     <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />

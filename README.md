@@ -1,152 +1,129 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/mdoulos/aidyn-retold/main/docs/images/acre-logo.png" alt="Aidyn Chronicles: The First Mage, Retold" width="440">
+</p>
+
 # Aidyn Chronicles Retold
 
-A PC port of the engine that runs Aidyn Chronicles: The First Mage for the
-Nintendo 64, written in C# and Godot. It is a fork of
-[HBHT](https://github.com/Aquatakat/hbht), continued under its own name; see
-[Provenance](#provenance).
+A PC remake of *Aidyn Chronicles: The First Mage*, the Nintendo 64 role-playing game, made by mdoulos in C# and
+Godot.
 
-Aidyn Chronicles Retold retells the game. The story is the original's, with
-selective changes that keep the main story the same but add, and here and
-there take away, and expand lore the original condensed. The mechanics and
-the art are being reworked as well. Under it is a port of the original's
-engine, running the original's content as your ROM has it; what Retold
-changes is laid over that, and players will be able to make mods of their own
-with its editor, a comprehensive mod editor similar to something like
-OpenMW-CS.
+Retold retells the game. The story is the original's and its main line stays, with changes and additions that
+expand the lore the original condensed. The mechanics and the art are being remade with it: new character
+models, a camp you sit down at, a party that grows hungry and tired, and menus drawn for a PC. Underneath is
+a reimplementation of the original's engine running the original's content as your ROM has it, so the game you
+remember is the ground everything new is laid over. An editor comes with it, growing into a full mod editor in
+the spirit of OpenMW-CS, so players can make mods of their own.
 
-No game content is included. You must bring your own copy of the US 1.0 ROM,
-unmodified: a ROM hack isn't imported, so the game is the same for everyone
+No game content is included. You bring your own copy of the North American 1.0 ROM, unmodified: a ROM hack
+isn't imported, so the game is the same for everyone
 ([ADR 0038](docs/adr/0038-only-the-unmodified-1.0-rom-imports.md)).
-Not affiliated with H2O Entertainment or THQ; Aidyn Chronicles is their
-trademark.
+Retold isn't affiliated with H2O Entertainment or THQ; Aidyn Chronicles is their trademark.
 
 ## Getting started
 
-1. Download the latest release
-2. Run `acre` or `acre.exe`
-3. On first run, select your ROM (the North American 1.0 one) and import it.
-   The mushroom (you know the one) is fixed
-4. Play
+1. Download the latest build from [Releases](https://github.com/mdoulos/aidyn-retold/releases): the Windows
+   installer or portable zip, the Linux tarball, or the macOS disk image. Retold is in alpha.
+2. Run `acre` (`acre.exe` on Windows).
+3. On the first run, choose your ROM and let it import. It takes a minute, once.
+4. Play.
 
-To build from source, install the .NET 10 SDK that `global.json` pins and run
-`dotnet test` from the repository root. `acre import <rom>` imports the
-ROM, and `tools/godot.ps1 --path src/AidynRetold.Game` runs the game on it.
-[CLAUDE.md](CLAUDE.md) maps the code, the formats, the systems and the docs.
+To build from source, install the .NET 10 SDK that `global.json` pins and run `dotnet test` from the repository
+root. `acre import <rom>` imports the ROM, and `tools/godot.ps1 --path src/AidynRetold.Game` runs the game on
+it. [CLAUDE.md](CLAUDE.md) maps the code, the ROM's formats, the systems and the docs.
 
-## Accuracy
+## What's new
 
-This project is not a decompilation. It is a clean-room reimplementation of the
-engine in a different language, with the ROM's machine code read to answer
-specific questions about how certain systems function. This gains a lot of
-flexibility and the ability to expand the game in the future, but loses
-flawless accuracy and requires significantly more testing.
+- **A remake, not a re-release.** Retold's own design comes first; the original is where it starts, not a
+  limit. Graphic Quality's *Original* setting brings back the original's look for anyone who wants it.
+- **New characters.** Alaron is remodelled from head to toe, with hair that moves, a neck that bends and hands
+  that are never quite still. The rest of the party follows, on shared bodies that every piece of armor fits.
+- **Camping is a screen.** The party gathers round the fire to talk, cook, brew, make armor and rest for as
+  long as it chooses, and Alaron sits down among them in 3D.
+- **Survival.** Members grow hungry and tired, food spoils, and Cook joins the skills.
+- **Painted art and a typeface.** Portraits and icons painted by the sister project Aidyn ReChronicled, text in a
+  typeface, sharp at any size, and parchment menus as wide as the window.
+- **Any resolution, any frame rate.** Draw distance, object distance, model and surface detail go well past the
+  console's, with smooth animation blending and thicker rain and snow.
+- **PC controls.** Every control can be rebound, the mouse drives the menus and turns the camera, and there's a
+  jump and a full run.
+- **Sound.** Six volumes, new music for Gwernia, a voice for each line of a conversation, and a crackling
+  campfire.
+- **Mods.** Everything is a plugin: the original's content, the remade game laid over it, and any mod over both.
+  The editor saves into a mod, the world can be edited in Blender, and a broken mod is reported rather than
+  crashing the game.
 
-The primary goal is a reasonable representation of the game, down to some of
-its weirder quirks, but this is a game limited by its hardware and rushed out
-the door, so some bugs and limitations are corrected at the expense of perfect
-N64 accuracy.
+[docs/changes](docs/changes/README.md) lists everything Retold changes, by category, with every bug it fixes and
+the few it keeps on purpose.
 
-Timing is a big one. A lot of effects in the game (weather, animated textures,
-some RNG) are directly tied to framerate, so the speed could vary. On a modern
-computer, this isn't as much of an issue, but in order to get the feel roughly
-the same, some reasonable defaults were chosen: weather and animated textures
-go as fast as if the original were running at 20 FPS, camera movement is a
-little faster at 30 FPS.
+## How it's built
 
-Examples of some fixed bugs:
-- Precipitation splashes on visible geometry, rather than on collision boxes.
-- Weather continues from trek mode into cutscenes rather than reverting to clear
-  and restarting.
-- The time of day and compass are meant to be hidden inside some interiors. The
-  original shows them when you load a save inside; this port hides them.
-- Lowering a stat with a spell no longer freezes the combatant for the rest
-  of the battle.
+Retold isn't a decompilation. The engine is written anew in C#, and the ROM's machine code, its data and an
+emulator are read to settle how each system works, with the addresses cited in the docs. That leaves the code
+free to grow past the original, at the cost of perfect accuracy and a great deal of testing.
 
-The type of things not fixed:
-- Spirit and Starlight Shield leave a level of protection behind each time
-  they end.
+The aim is the game as you remember it, down to some of its stranger quirks. But it was held back by its
+hardware and rushed out the door, so its bugs are fixed where they hurt it, each fix a deliberate choice, and a
+few are kept because they're part of how it plays.
+
+Timing is one example. Much of the original (the weather, animated textures, some of its random rolls) is tied
+to its frame rate, which ran slow and unsteady. Retold keeps the feel at any frame rate: weather and animated
+textures move as they did at 20 frames a second, and the camera a little faster, as at 30.
+
+Some of the bugs it fixes:
+- The mushroom in Roog Cave no longer blocks the passage.
+- Rain and snow splash on what you see, not on invisible collision boxes.
+- Weather carries on into cut-scenes rather than clearing and starting over.
+- The time of day and compass stay hidden in the interiors that hide them, even after loading a save there.
+- Lowering a stat with a spell no longer freezes the combatant for the rest of the battle.
+
+And some it keeps:
+- Spirit and Starlight Shield leave a level of protection behind each time they end.
 - Wind cast on an ally raises its Stamina for good.
-
-## Enhancements
-
-- High resolution, including rendering higher than screen resolution
-- High frame rate, no upper limit
-- Extended draw distance
-- Higher rain and snow density, four times the original's by default
-- Three size settings for the HUD and menus
-- A jump (Space) and a full run (Shift)
-- Status auras appear more often in battle
-- Rebindable controls
-
-Each setting here is optional, and the jump and the full run are only keys to
-press. The frame rate can be limited to 30, but there's no going back to the
-15-20 from the console.
-
-[docs/changes](docs/changes/README.md) lists everything Retold changes, by
-category, with the bugs it fixes and the ones it keeps.
 
 ## Status
 
-Trek mode has been tested from a new game through defeating Pochanargarat. More
-combat testing is required. The editor hasn't been meaningfully started, though
-there is an inspector and a map/dialogue viewer.
+Retold is in alpha. The original's whole game plays through on the reimplemented engine, and the remake is
+being built over it.
 
-| System | Status |
+| Area | Status |
 | --- | --- |
-| Trek | ✅ Complete, tested in a variety of situations. There's probably some odd edge cases left. |
-| Quest progression | ✅ A full playthrough revealed no quest progression or flag-related bugs. The side quests (Gwernia's Inn, Elisheva's Tomb, etc.) have not been tested yet. Some content-related bugs are left unfixed, leaving them for the mod editor (talking to Keelin in Terminor from certain angles loads the wrong set of camera positions). |
-| Cut-scenes | ⚠️ All story cut-scenes play through with no game-breaking issues. Some edge cases involving differences between the port and the original cause some cut-scenes to play out better (Niesen no longer faces the wrong way during the Fire Lord cutscene) and some to play out worse (Shamsuk sometimes doesn't stand in the correct spot in the scene prior to his fight). A full test of all cut-scenes is required. |
-| Combat | ⚠️ Combat has been fully implemented, but only basic combat has been thoroughly tested (Alaron vs rats and bats in the intro). A full test of all spell types in various scenarios is required. |
-| Menu | ✅ Complete |
-| Editor | ⏳ An inspector is available for in-game maps, characters, scenes, dialogue. Editing hasn't been started yet. Some systemic changes need to happen first - custom fights like the Goblin ambush, that whole weird thing with Sholeh, and the Shadow should be reimplemented as scripts rather than being hardcoded. |
+| Exploring | ✅ Complete, and played from a new game through Pochanargarat's defeat. |
+| Story and quests | ✅ The main story plays through with no quest or flag bugs found. The side quests need a fuller test. |
+| The prologue | ✅ Played side by side with the original in an emulator, and what differed is fixed. |
+| Cut-scenes | ⚠️ Every story cut-scene plays through. A few still stage a little differently from the original. |
+| Combat | ⚠️ Complete. The opening fights and the special battles are tested; every spell in every situation isn't yet. |
+| Menus and camp | ✅ Complete, redrawn, with the new camp screen. |
+| Character models | ⏳ Alaron is remodelled; the rest of the party is under way. |
+| Editor | ⏳ Browses the whole game and edits characters, items, spells, shops and rules into a mod. |
+| The retelling | ⏳ The story's changes and additions are to come. |
 
-## Provenance
+Next is matching the rest of the original's content, then the retelling itself. The
+[roadmap](docs/roadmap.md#where-things-stand) has the details.
 
-Aidyn Chronicles Retold was forked on October 27, 2026 from
-[HBHT](https://github.com/Aquatakat/hbht) (Hoo Boy, Here's Trouble) by
-Aquatakat, at its commit 6ec85b3, under the MIT license. HBHT's code was
-written mostly by Claude models under its author's direction and playtesting,
-and that is true of the code here. The fork keeps HBHT's git history, its
-architecture decision records in their own words, and the upstream copyright
-notice in [LICENSE](LICENSE) as the record of where the work came from. Its
-name, packages, docs and the names its code cites are its own
-([ADR 0030](docs/adr/0030-the-project-is-aidyn-renewed.md)). Its code was named
-Aidyn Renewed, after the fork's folder, until the project was first named, as
-Aidyn Chronicles Enhanced, on October 28, 2026
-([ADR 0033](docs/adr/0033-the-project-is-aidyn-chronicles-enhanced.md)), and
-renamed Aidyn Chronicles Retold on November 3, 2026
-([ADR 0040](docs/adr/0040-the-project-is-aidyn-chronicles-retold.md)).
+## Credits
 
-### Credits
+Aidyn Chronicles Retold is mdoulos's project. Much of its code is written by Claude models under mdoulos's
+direction and playtesting.
 
-- [AidynEditor](https://github.com/TiberGuy/AidynEditor) (MIT licensed): used
-  to cross-check the database's fields.
-- [Aidyn ReChronicled](https://github.com/spitzdano/AidynReChronicled) by
-  Spitzdano: a sister project, a static recompilation of the original with
-  enhancements of its own. The two projects collaborate and share their assets
-  freely, both ways. Its findings and designs (fixes to the original's bugs,
-  its rendering and sound work, its play aids) guide work here, rebuilt in
-  this project's own code and checked against the ROM, and its painted art
-  and restored sound are this project's to carry in the ACRE plugin and the
-  releases
-  ([ADR 0032](docs/adr/0032-rechronicled-is-read-for-its-findings.md),
-  [ADR 0034](docs/adr/0034-retold-and-rechronicled-collaborate.md)).
-- [Marcellus SC](https://fonts.google.com/specimen/Marcellus+SC) by Astigmatic (Brian J. Bonislawsky), under the SIL Open Font
-  License 1.1 ([assets/fonts/OFL.txt](assets/fonts/OFL.txt)): the typeface the text is drawn in, as ReChronicled's HD text
-  pack draws it.
-- Early in HBHT's life, a community decompilation of the game served as a map
-  to the ROM's machine code. No code was copied from it, HBHT stopped reading
-  it on October 4, 2026
-  ([ADR 0015](docs/adr/0015-the-port-no-longer-reads-the-decomp.md)), and this
-  project cites none of its names. Everything the port relies on was settled
-  from the ROM's machine code, its data and the emulator.
+- [Aidyn ReChronicled](https://github.com/spitzdano/AidynReChronicled) by Spitzdano: a sister project, a static
+  recompilation of the original with enhancements of its own. The two collaborate and share their assets freely
+  both ways; its painted art and restored sound are carried in Retold's releases
+  ([ADR 0034](docs/adr/0034-retold-and-rechronicled-collaborate.md)).
+- [AidynEditor](https://github.com/TiberGuy/AidynEditor) (MIT licensed): used to cross-check the database's
+  fields.
+- [Marcellus SC](https://fonts.google.com/specimen/Marcellus+SC) by Astigmatic (Brian J. Bonislawsky), under the
+  SIL Open Font License 1.1 ([assets/fonts/OFL.txt](assets/fonts/OFL.txt)): the typeface the text is drawn in.
+- Retold began in October 2026 as a fork of [HBHT](https://github.com/Aquatakat/hbht) by Aquatakat, under the MIT
+  license, whose copyright notice [LICENSE](LICENSE) keeps. The code it grew from used a community decompilation
+  early on as a map to the machine code; nothing was copied from it, and Retold reads and cites none
+  ([ADR 0015](docs/adr/0015-the-port-no-longer-reads-the-decomp.md)).
 
 ## License
 
-This software is [MIT licensed](LICENSE). This license covers this repository's
-code and docs. The typeface in `assets/fonts` is under its own license, the SIL Open Font
-License 1.1. The art and music a release carries aren't in this repository
-and aren't under the MIT license: the `NOTICE.md` beside a release's `LICENSE`
-says whose they are and on what terms
-([ADR 0041](docs/adr/0041-the-art-and-music-are-the-private-repositorys.md)).
-Any imported game content remains the property of its rights holders.
+The code and docs in this repository are [MIT licensed](LICENSE). The typeface in `assets/fonts` is under its own
+license, the SIL Open Font License 1.1. The logo at the top of this page is the original's title logo with
+Retold's name under it; like the art and music a release carries, it isn't under the MIT license. The
+`NOTICE.md` beside a release's `LICENSE` says whose the art and music are and on what terms
+([ADR 0041](docs/adr/0041-the-art-and-music-are-the-private-repositorys.md),
+[ADR 0047](docs/adr/0047-the-readme-shows-the-logo.md)). Any imported game content remains the property of its
+rights holders.
